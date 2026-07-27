@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { desktopBridge } from '../desktop.js';
 import { api } from '../api.js';
+import { NotificationManager } from './NotificationManager.js';
 
 const navigation = [
   ['/', 'Dashboard', 'DB'],
@@ -41,6 +42,7 @@ export function AppLayout() {
 
   return (
     <div className="app-shell">
+      <NotificationManager />
       <aside className="sidebar" aria-label="Primary navigation">
         <div className="brand">
           <span className="brand-mark">JB</span>

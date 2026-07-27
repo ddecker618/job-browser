@@ -519,27 +519,6 @@ const SOURCE_SELECT = `SELECT sources.*,
 
 const DEFAULT_SOURCES = [
   {
-    id: 'provider:builtin',
-    employer: 'Built In',
-    displayName: 'Built In',
-    providerId: 'builtin',
-    careersUrl: 'https://builtin.com/jobs',
-    enabled: true,
-    configuration: {
-      searchKeywords: 'security',
-      location: 'Remote',
-      remoteFilter: 'remote',
-      datePosted: 'any',
-      maxResults: 50,
-    },
-    searchCriteria: {
-      query: 'security',
-      location: null,
-      remoteOnly: true,
-      limit: 50,
-    },
-  },
-  {
     id: 'provider:wellfound',
     employer: 'Wellfound',
     displayName: 'Wellfound (browser)',

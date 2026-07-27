@@ -28,10 +28,20 @@ export function JobDetailPanel({
       client.invalidateQueries({ queryKey: ['source-control-center'] }),
     ]);
   };
+  const [statusError, setStatusError] = useState<string | null>(null);
   const updateStatus = useMutation({
     mutationFn: (status: string) => api.updateStatus(jobId, status),
-    onSuccess: invalidate,
   });
+  const changeStatus = (status: string, closeAfter?: boolean) => {
+    updateStatus.mutate(status, {
+      onSuccess: () => {
+        setStatusError(null);
+        void invalidate();
+        if (closeAfter) onClose();
+      },
+      onError: (error) => setStatusError(error.message),
+    });
+  };
   const update = useMutation({
     mutationFn: (body: { favorite?: boolean; notes?: string | null }) =>
       api.updateJob(jobId, body),
@@ -82,11 +92,21 @@ export function JobDetailPanel({
               </div>
             </div>
             <div className="action-strip">
-              <button onClick={() => updateStatus.mutate('applied')}>
-                Mark applied
+              <button
+                onClick={() => changeStatus('applied')}
+                disabled={updateStatus.isPending}
+              >
+                {updateStatus.isPending && updateStatus.variables === 'applied'
+                  ? 'Applying…'
+                  : 'Mark applied'}
               </button>
-              <button onClick={() => updateStatus.mutate('ignored')}>
-                Hide
+              <button
+                onClick={() => changeStatus('ignored', true)}
+                disabled={updateStatus.isPending}
+              >
+                {updateStatus.isPending && updateStatus.variables === 'ignored'
+                  ? 'Hiding…'
+                  : 'Hide'}
               </button>
               <button
                 aria-label="Favorite job"
@@ -101,6 +121,11 @@ export function JobDetailPanel({
                 {refresh.isPending ? 'Refreshing…' : 'Refresh'}
               </button>
             </div>
+            {statusError === null ? null : (
+              <p className="source-error" role="alert">
+                {statusError}
+              </p>
+            )}
             <section className="detail-section">
               <h3>Match breakdown</h3>
               {job.data.categoryScores === null ? (

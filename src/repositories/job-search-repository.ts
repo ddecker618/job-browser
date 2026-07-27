@@ -157,7 +157,11 @@ export class JobSearchRepository {
       parameters.push(query.minSalary);
     }
     addEqual(clauses, parameters, 'jobs.recommendation', query.recommendation);
-    addEqual(clauses, parameters, 'jobs.status', query.status);
+    if (query.status !== undefined) {
+      addEqual(clauses, parameters, 'jobs.status', query.status);
+    } else {
+      clauses.push("jobs.status != 'ignored'");
+    }
     addComparison(
       clauses,
       parameters,

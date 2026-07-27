@@ -39,14 +39,14 @@ describe('source management API', () => {
     };
 
     expect(control.sources.map((source) => source.providerId)).toEqual(
-      expect.arrayContaining(['builtin', 'wellfound', 'ziprecruiter', 'dice']),
+      expect.arrayContaining(['wellfound', 'ziprecruiter', 'dice']),
     );
-    expect(control.sources).toHaveLength(4);
+    expect(control.sources).toHaveLength(3);
     expect(
       control.sources
         .filter((source) => source.enabled)
         .map((source) => source.providerId),
-    ).toEqual(expect.arrayContaining(['builtin']));
+    ).toEqual([]);
     expect(
       control.sources.every((source) => source.configurationStatus === 'valid'),
     ).toBe(true);

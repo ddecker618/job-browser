@@ -373,7 +373,7 @@ function buildSearchUrl(
   location: string,
   configuration: WellfoundConfiguration,
 ): string {
-  const url = new URL('https://wellfound.com/jobs/list');
+  const url = new URL('https://wellfound.com/jobs');
   url.searchParams.set('query', query.trim());
   if (location.trim()) url.searchParams.set('location', location.trim());
   if (configuration.remoteFilter)

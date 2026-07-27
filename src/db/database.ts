@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -15,6 +15,19 @@ export function defaultDatabasePath(): string {
 export function openDatabase(filename = defaultDatabasePath()): JobDatabase {
   if (filename !== ':memory:') {
     mkdirSync(dirname(resolve(filename)), { recursive: true });
+  }
+
+  const walFile = `${filename}-wal`;
+  const shmFile = `${filename}-shm`;
+
+  for (const sidecar of [walFile, shmFile]) {
+    if (existsSync(sidecar)) {
+      try {
+        unlinkSync(sidecar);
+      } catch {
+        // Best-effort: if we can't remove it, the open below will fail with a clear error
+      }
+    }
   }
 
   let database: JobDatabase | undefined;
