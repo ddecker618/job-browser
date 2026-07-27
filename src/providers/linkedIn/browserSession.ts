@@ -50,6 +50,17 @@ export function getActiveSession(): BrowserSession | null {
   return activeSession;
 }
 
+function getChromeChannel(): string | null {
+  try {
+    const programFiles = process.env['ProgramFiles'] ?? 'C:\\Program Files';
+    const chromePath = `${programFiles}\\Google\\Chrome\\Application\\chrome.exe`;
+    if (existsSync(chromePath)) return 'chrome';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function launchBrowserSession(
   config: BrowserSessionConfig,
 ): Promise<BrowserSession> {
@@ -76,21 +87,32 @@ export async function launchBrowserSession(
 
   ensureDir(config.profileDir);
 
+  const launchOptions: Record<string, unknown> = {
+    headless: config.headless,
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--no-first-run',
+      '--no-default-browser-check',
+    ],
+    viewport: { width: 1280, height: 900 },
+    locale: 'en-US',
+    timezoneId: 'America/New_York',
+    deviceScaleFactor: 1,
+    acceptDownloads: false,
+  };
+
+  try {
+    const channel = getChromeChannel();
+    if (channel !== null) {
+      launchOptions['channel'] = channel;
+    }
+  } catch {
+    // fall back to bundled Chromium
+  }
+
   const persistentContext = await chromium.launchPersistentContext(
     config.profileDir,
-    {
-      headless: config.headless,
-      args: [
-        '--disable-blink-features=AutomationControlled',
-        '--no-first-run',
-        '--no-default-browser-check',
-      ],
-      viewport: { width: 1280, height: 900 },
-      locale: 'en-US',
-      timezoneId: 'America/New_York',
-      deviceScaleFactor: 1,
-      acceptDownloads: false,
-    },
+    launchOptions as Parameters<typeof chromium.launchPersistentContext>[1],
   );
 
   const underlyingBrowser = persistentContext.browser();

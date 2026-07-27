@@ -14,7 +14,7 @@
       "git log*": "allow",
       "git add *": "ask",
       "git commit *": "ask",
-      "git push *": "deny",
+      "git push *": "ask",
       "Remove-Item *": "deny",
       "rmdir *": "deny",
       "del *": "deny",
