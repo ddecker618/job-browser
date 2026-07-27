@@ -50,11 +50,32 @@ export function getActiveSession(): BrowserSession | null {
   return activeSession;
 }
 
-function getChromeChannel(): string | null {
+function detectInstalledChrome(): { channel: string; path: string } | null {
   try {
-    const programFiles = process.env['ProgramFiles'] ?? 'C:\\Program Files';
-    const chromePath = `${programFiles}\\Google\\Chrome\\Application\\chrome.exe`;
-    if (existsSync(chromePath)) return 'chrome';
+    const candidates = [
+      {
+        channel: 'chrome',
+        path: `${process.env['ProgramFiles'] ?? 'C:\\Program Files'}\\Google\\Chrome\\Application\\chrome.exe`,
+      },
+      {
+        channel: 'chrome',
+        path: `${process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)'}\\Google\\Chrome\\Application\\chrome.exe`,
+      },
+      {
+        channel: 'chrome',
+        path: `${process.env['LOCALAPPDATA'] ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
+      },
+    ];
+    for (const candidate of candidates) {
+      if (existsSync(candidate.path)) {
+        log('info', 'Using installed Chrome browser', {
+          channel: candidate.channel,
+          path: candidate.path,
+        });
+        return candidate;
+      }
+    }
+    log('info', 'No installed Chrome found, using bundled Chromium');
     return null;
   } catch {
     return null;
@@ -102,9 +123,9 @@ export async function launchBrowserSession(
   };
 
   try {
-    const channel = getChromeChannel();
-    if (channel !== null) {
-      launchOptions['channel'] = channel;
+    const chrome = detectInstalledChrome();
+    if (chrome !== null) {
+      launchOptions['channel'] = chrome.channel;
     }
   } catch {
     // fall back to bundled Chromium

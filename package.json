@@ -1,6 +1,6 @@
 {
   "name": "job-browser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local job discovery, deduplication, and application tracking",
   "main": "dist/src/desktop/main.js",
   "private": true,

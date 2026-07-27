@@ -156,19 +156,26 @@ export async function waitForSecurityChallenge(
       await page
         .evaluate(() => {
           if (document.getElementById('__jbs_banner')) return;
-          (window as unknown as Record<string, unknown>)['__jbs_dismiss'] =
-            false;
+          const win = window as unknown as Record<string, unknown>;
+          win['__jbs_dismiss'] = false;
           const banner = document.createElement('div');
           banner.id = '__jbs_banner';
           banner.style.cssText =
-            'position:fixed;top:0;left:0;right:0;z-index:999999;background:#cc0000;color:#fff;padding:14px 20px;font:bold 16px/1.4 Arial,sans-serif;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.5)';
+            'position:fixed;top:0;left:0;right:0;z-index:999999;background:#cc0000;color:#fff;padding:18px 20px;font:bold 16px/1.4 Arial,sans-serif;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.5)';
           banner.innerHTML =
-            'SECURITY CHECK DETECTED — Complete the challenge in the browser window, then press <b>Ctrl+Shift+C</b> to continue.';
+            '<div style="margin-bottom:10px">SECURITY CHECK DETECTED \u2014 Complete the challenge in the browser window, then click <b>Continue</b> below.</div>' +
+            '<button id="__jbs_continue" style="background:#fff;color:#cc0000;border:none;border-radius:4px;padding:10px 32px;font:bold 15px Arial,sans-serif;cursor:pointer">Continue</button>' +
+            '<div style="margin-top:8px;font-size:12px;opacity:0.7">Or press Ctrl+Shift+C</div>';
           document.body.prepend(banner);
-          document.addEventListener('keydown', (e: KeyboardEvent) => {
+          const btn = document.getElementById('__jbs_continue');
+          if (btn) {
+            btn.addEventListener('click', function () {
+              win['__jbs_dismiss'] = true;
+            });
+          }
+          document.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c') {
-              (window as unknown as Record<string, unknown>)['__jbs_dismiss'] =
-                true;
+              win['__jbs_dismiss'] = true;
             }
           });
         })

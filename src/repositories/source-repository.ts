@@ -83,7 +83,41 @@ export class SourceRepository {
   }
 
   public ensureRemoteOkSource(): void {
-    this.ensureSources([DEFAULT_SOURCES[0]]);
+    const existing = this.database
+      .prepare(
+        "SELECT COUNT(*) AS count FROM sources WHERE id = 'provider:remote-ok'",
+      )
+      .get() as { count: number };
+    if (existing.count > 0) return;
+    const timestamp = nowUtc();
+    this.database
+      .prepare(
+        `INSERT INTO sources (
+          id, employer, source_type, careers_url, enabled, connector,
+          last_successful_run, last_failure, failure_count, created_at, updated_at,
+          display_name, provider_id, configuration_json, search_criteria_json,
+          configuration_status, health_status
+        ) VALUES (?, ?, 'job-board', ?, ?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?, 'valid', 'never-run')`,
+      )
+      .run(
+        'provider:remote-ok',
+        'Remote OK',
+        'https://remoteok.com',
+        1,
+        'remote-ok',
+        timestamp,
+        timestamp,
+        'Remote OK',
+        'remote-ok',
+        JSON.stringify({}),
+        JSON.stringify({
+          query: 'security',
+          location: null,
+          remoteOnly: true,
+          limit: 50,
+        }),
+      );
+    this.ensureSchedule('provider:remote-ok', false, 'manual', null);
   }
 
   private ensureSources(sources: readonly DefaultSource[]): void {
@@ -484,21 +518,6 @@ const SOURCE_SELECT = `SELECT sources.*,
  FROM sources LEFT JOIN source_schedules ON source_schedules.source_id = sources.id`;
 
 const DEFAULT_SOURCES = [
-  {
-    id: 'provider:remote-ok',
-    employer: 'Remote OK',
-    displayName: 'Remote OK',
-    providerId: 'remote-ok',
-    careersUrl: 'https://remoteok.com',
-    enabled: true,
-    configuration: {},
-    searchCriteria: {
-      query: 'security',
-      location: null,
-      remoteOnly: true,
-      limit: 50,
-    },
-  },
   {
     id: 'provider:builtin',
     employer: 'Built In',
