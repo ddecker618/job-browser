@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Starting Job Browser</title>
+    <link rel="stylesheet" href="startup.css" />
+  </head>
+  <body>
+    <main>
+      <div class="mark">JB</div>
+      <p class="eyebrow">Job Browser</p>
+      <h1 id="title">Preparing your workspace</h1>
+      <p id="stage">Preparing application</p>
+      <div class="progress"><i id="bar"></i></div>
+      <section id="failure" hidden>
+        <p id="message"></p>
+        <code id="database"></code>
+        <div class="actions">
+          <button id="retry">Retry</button><button id="logs">Open Logs</button>
+          <button id="data">Open Data Folder</button
+          ><button id="copy">Copy Diagnostic Details</button>
+          <button id="exit" class="danger">Safe Exit</button>
+        </div>
+      </section>
+    </main>
+    <script src="startup-renderer.js"></script>
+  </body>
+</html>

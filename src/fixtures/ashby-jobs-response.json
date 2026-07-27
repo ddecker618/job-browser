@@ -1,0 +1,39 @@
+{
+  "jobs": [
+    {
+      "id": "ashby-101",
+      "title": "Cloud Security Engineer",
+      "location": "Remote - Americas",
+      "remoteType": "Remote",
+      "employmentType": "FullTime",
+      "department": "Engineering",
+      "team": "Security",
+      "descriptionHtml": "<p>Protect production cloud infrastructure.</p>",
+      "publishedAt": "2026-07-16T10:30:00Z",
+      "jobUrl": "https://jobs.ashbyhq.com/example/ashby-101",
+      "applyUrl": "https://jobs.ashbyhq.com/example/ashby-101/application",
+      "compensation": {
+        "compensationTierSummary": "$120,000 - $150,000 USD",
+        "summaryComponents": [
+          { "minValue": 120000, "maxValue": 150000, "currencyCode": "USD" }
+        ]
+      }
+    },
+    {
+      "id": "ashby-102",
+      "title": "Account Executive",
+      "location": "Chicago, IL",
+      "remoteType": "OnSite",
+      "employmentType": "FullTime",
+      "descriptionPlain": null,
+      "publishedAt": null,
+      "jobUrl": "https://jobs.ashbyhq.com/example/ashby-102",
+      "applyUrl": null,
+      "compensation": null
+    },
+    {
+      "id": "missing-title",
+      "jobUrl": "https://jobs.ashbyhq.com/example/missing-title"
+    }
+  ]
+}

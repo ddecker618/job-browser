@@ -1,0 +1,21 @@
+{
+  "offers": [
+    {
+      "id": 201,
+      "title": "Application Security Engineer",
+      "company_name": "Fixture Recruitee",
+      "city": "Austin",
+      "state": "TX",
+      "country": "United States",
+      "remote": true,
+      "remote_status": "hybrid",
+      "employment_type": "full_time",
+      "description": "<p>Build secure software delivery controls.</p>",
+      "requirements": "<p>Application security experience.</p>",
+      "careers_url": "https://fixture.recruitee.com/o/application-security-engineer",
+      "careers_apply_url": "https://fixture.recruitee.com/o/application-security-engineer/c/new",
+      "published_at": "2026-07-15T08:30:00Z"
+    },
+    { "id": null, "title": "Invalid" }
+  ]
+}

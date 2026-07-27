@@ -1,0 +1,87 @@
+{
+  "name": "Fixture Corp",
+  "description": "A fictional company used for testing Workable provider integration.",
+  "jobs": [
+    {
+      "title": "Senior Security Engineer",
+      "shortcode": "FIXTURE01",
+      "code": "SEC-001",
+      "employment_type": "Full-time",
+      "telecommuting": true,
+      "department": "Security",
+      "url": "https://apply.workable.com/j/FIXTURE01",
+      "shortlink": "https://apply.workable.com/j/FIXTURE01",
+      "application_url": "https://apply.workable.com/j/FIXTURE01/apply",
+      "published_on": "2026-07-17",
+      "created_at": "2026-07-17",
+      "country": "United States",
+      "city": "San Francisco",
+      "state": "California",
+      "education": "Bachelor's Degree",
+      "experience": "Senior",
+      "function": "Engineering",
+      "industry": "Computer Software",
+      "locations": [
+        {
+          "country": "United States",
+          "countryCode": "US",
+          "city": "San Francisco",
+          "region": "California",
+          "hidden": false
+        }
+      ],
+      "description": "<p>Protect production systems and infrastructure at Fixture Corp.</p>"
+    },
+    {
+      "title": "Backend Developer",
+      "shortcode": "FIXTURE02",
+      "code": "ENG-002",
+      "employment_type": "Full-time",
+      "telecommuting": false,
+      "department": "Engineering",
+      "url": "https://apply.workable.com/j/FIXTURE02",
+      "shortlink": "https://apply.workable.com/j/FIXTURE02",
+      "application_url": "https://apply.workable.com/j/FIXTURE02/apply",
+      "published_on": "2026-07-16",
+      "created_at": "2026-07-15",
+      "country": "United States",
+      "city": "Denver",
+      "state": "Colorado",
+      "education": "",
+      "experience": "Mid-Senior level",
+      "function": "",
+      "industry": "Computer Software",
+      "locations": [
+        {
+          "country": "United States",
+          "countryCode": "US",
+          "city": "Denver",
+          "region": "Colorado",
+          "hidden": false
+        }
+      ],
+      "description": "<p>Build and maintain backend services and APIs.</p>"
+    },
+    {
+      "title": "Malformed Entry",
+      "shortcode": "",
+      "code": "",
+      "employment_type": null,
+      "telecommuting": false,
+      "department": null,
+      "url": null,
+      "shortlink": null,
+      "application_url": null,
+      "published_on": null,
+      "created_at": null,
+      "country": null,
+      "city": null,
+      "state": null,
+      "education": null,
+      "experience": null,
+      "function": null,
+      "industry": null,
+      "description": null
+    }
+  ]
+}

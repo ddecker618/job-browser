@@ -1,0 +1,92 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Segoe UI Variable', 'Segoe UI', sans-serif;
+  background: #090d12;
+  color: #edf2f7;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 20%, #17251f, #090d12 55%);
+}
+main {
+  width: min(560px, 82vw);
+  text-align: center;
+}
+.mark {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  margin: auto;
+  border-radius: 18px;
+  background: #65d6ad;
+  color: #07130f;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  box-shadow: 0 18px 50px #65d6ad22;
+}
+.eyebrow {
+  color: #65d6ad;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+  margin: 1.4rem 0 0.4rem;
+}
+h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  letter-spacing: -0.04em;
+}
+#stage {
+  color: #94a0b1;
+}
+.progress {
+  height: 5px;
+  margin: 1.5rem 0;
+  background: #202b38;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.progress i {
+  display: block;
+  width: 12%;
+  height: 100%;
+  background: linear-gradient(90deg, #7ba7ff, #65d6ad);
+  transition: width 0.35s ease;
+}
+section {
+  border: 1px solid #263342;
+  background: #111821;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: left;
+}
+code {
+  display: block;
+  color: #94a0b1;
+  word-break: break-all;
+  font-size: 0.72rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+button {
+  background: #18222e;
+  border: 1px solid #2a3949;
+  color: #edf2f7;
+  padding: 0.6rem 0.8rem;
+  border-radius: 7px;
+  cursor: pointer;
+}
+button:focus {
+  outline: 2px solid #65d6ad;
+}
+.danger {
+  color: #ff778c;
+}

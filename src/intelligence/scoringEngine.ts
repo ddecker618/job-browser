@@ -1,0 +1,353 @@
+import type { Job } from '../domain/job.js';
+import type {
+  CategoryScores,
+  JobIntelligence,
+  RecommendationStatus,
+} from '../models/intelligence.js';
+import type { CandidateProfile } from '../schemas/candidate-profile.js';
+import type { ScoringConfig } from '../schemas/scoring-config.js';
+import { extractJobTerms, profileHasTerm } from '../skills/skillExtractor.js';
+import { normalizeText } from '../utilities/normalization.js';
+
+const DAY_MS = 86_400_000;
+
+export function scoreJob(
+  job: Job,
+  profile: CandidateProfile,
+  config: ScoringConfig,
+  analyzedAt = new Date().toISOString(),
+): JobIntelligence {
+  const terms = extractJobTerms(job, config);
+  const explanations: string[] = [];
+  const missingQualifications: string[] = [];
+
+  const title = scoreTitle(job, profile, explanations);
+  const skills = scoreTerms(
+    terms.skills,
+    config.skills,
+    profile.skills,
+    'skill',
+    explanations,
+    missingQualifications,
+  );
+  const certifications = scoreTerms(
+    terms.certifications,
+    config.certifications,
+    profile.certifications,
+    'certification',
+    explanations,
+    missingQualifications,
+  );
+  const location = scoreLocation(job, profile, explanations);
+  const remotePreference = scoreRemote(job, profile, explanations);
+  const salary = scoreSalary(job, profile, explanations);
+  const experience = scoreExperience(
+    job,
+    profile,
+    explanations,
+    missingQualifications,
+  );
+  const employmentType = scoreEmploymentType(job, profile, explanations);
+  const recency = scoreRecency(job, config, analyzedAt, explanations);
+  const categoryScores: CategoryScores = {
+    title,
+    skills,
+    certifications,
+    location,
+    remotePreference,
+    salary,
+    experience,
+    employmentType,
+    recency,
+  };
+  const overallScore = roundScore(
+    Object.entries(categoryScores).reduce(
+      (total, [category, score]) =>
+        total +
+        score * (config.weights[category as keyof CategoryScores] / 100),
+      0,
+    ),
+  );
+  const recommendationStatus = recommend(job, profile, config, overallScore);
+
+  explanations.unshift(
+    `Overall weighted match score: ${overallScore.toFixed(1)}.`,
+  );
+  explanations.push(`Recommendation: ${recommendationStatus}.`);
+
+  return {
+    jobId: job.id,
+    overallScore,
+    categoryScores,
+    recommendationStatus,
+    explanations,
+    missingQualifications,
+    skills: terms.skills,
+    certifications: terms.certifications,
+    analyzedAt,
+  };
+}
+
+function scoreTitle(
+  job: Job,
+  profile: CandidateProfile,
+  explanations: string[],
+): number {
+  const title = normalizeText(job.title);
+  const excluded = profile.excludedJobTitles.some((value) =>
+    title.includes(normalizeText(value)),
+  );
+  if (excluded) {
+    explanations.push('Title matches an excluded job-title rule.');
+    return 0;
+  }
+
+  let best = 0;
+  for (const desired of profile.desiredJobTitles) {
+    const normalizedDesired = normalizeText(desired);
+    if (title === normalizedDesired) {
+      explanations.push('Excellent title match.');
+      return 100;
+    }
+    if (title.includes(normalizedDesired) || normalizedDesired.includes(title))
+      best = Math.max(best, 90);
+    best = Math.max(best, tokenSimilarity(title, normalizedDesired) * 100);
+  }
+  const result = roundScore(best);
+  explanations.push(
+    result >= 70 ? 'Strong title similarity.' : 'Limited title match.',
+  );
+  return result;
+}
+
+function scoreTerms(
+  extracted: JobIntelligence['skills'],
+  catalog: ScoringConfig['skills'],
+  profileValues: readonly string[],
+  label: 'skill' | 'certification',
+  explanations: string[],
+  missing: string[],
+): number {
+  if (extracted.length === 0) {
+    explanations.push(`No ${label} requirements were identified.`);
+    return 60;
+  }
+
+  let matched = 0;
+  for (const term of extracted) {
+    const entry = catalog.find((candidate) => candidate.name === term.name);
+    const possessed =
+      entry !== undefined && profileHasTerm(profileValues, entry);
+    if (possessed) {
+      matched += 1;
+      explanations.push(
+        `Requires ${term.name}, which the candidate possesses.`,
+      );
+    } else {
+      const message = `Missing requested ${label}: ${term.name}.`;
+      explanations.push(message);
+      missing.push(message);
+    }
+  }
+  return roundScore((matched / extracted.length) * 100);
+}
+
+function scoreLocation(
+  job: Job,
+  profile: CandidateProfile,
+  explanations: string[],
+): number {
+  if (job.remoteType === 'remote') {
+    explanations.push('Remote role satisfies location constraints.');
+    return 100;
+  }
+  if (job.city === null && job.state === null) {
+    explanations.push('Location is not specific enough to calculate distance.');
+    return 50;
+  }
+  const exact = profile.preferredLocations.some(
+    (location) =>
+      normalizeText(location.city) === normalizeText(job.city ?? '') &&
+      normalizeText(location.state) === normalizeText(job.state ?? ''),
+  );
+  if (exact) {
+    explanations.push('Job is in a preferred city.');
+    return 100;
+  }
+  const sameState = profile.preferredLocations.some(
+    (location) =>
+      normalizeText(location.state) === normalizeText(job.state ?? ''),
+  );
+  if (sameState) {
+    explanations.push(
+      `Job is in a preferred state; exact distance against the ${String(profile.searchRadiusMiles)}-mile radius is unavailable.`,
+    );
+    return 70;
+  }
+  explanations.push(
+    'Outside preferred locations; exact distance is unavailable.',
+  );
+  return 20;
+}
+
+function scoreRemote(
+  job: Job,
+  profile: CandidateProfile,
+  explanations: string[],
+): number {
+  if (job.remoteType === 'remote') {
+    if (profile.remotePreference === 'not-preferred') {
+      explanations.push('Remote work is not preferred.');
+      return 30;
+    }
+    explanations.push('Remote arrangement matches the candidate preference.');
+    return profile.remotePreference === 'preferred' ? 100 : 90;
+  }
+  if (job.remoteType === 'hybrid') {
+    explanations.push(
+      'Hybrid arrangement is acceptable when commuting is realistic.',
+    );
+    return 75;
+  }
+  if (profile.remotePreference === 'preferred') {
+    explanations.push(
+      'On-site work is less desirable than the remote preference.',
+    );
+    return 40;
+  }
+  return 75;
+}
+
+function scoreSalary(
+  job: Job,
+  profile: CandidateProfile,
+  explanations: string[],
+): number {
+  if (job.salaryMinimum === null && job.salaryMaximum === null) {
+    explanations.push('Salary not listed.');
+    return 50;
+  }
+  if (profile.desiredSalary === null) {
+    explanations.push(
+      'No desired salary is configured, so listed salary is neutral.',
+    );
+    return 60;
+  }
+  const effectiveSalary = job.salaryMaximum ?? job.salaryMinimum ?? 0;
+  if (effectiveSalary >= profile.desiredSalary.target) {
+    explanations.push('Salary meets or exceeds the target.');
+    return 100;
+  }
+  if (effectiveSalary >= profile.desiredSalary.minimum) {
+    explanations.push('Salary meets the configured minimum.');
+    return 75;
+  }
+  explanations.push('Salary is below the configured minimum.');
+  return 20;
+}
+
+function scoreExperience(
+  job: Job,
+  profile: CandidateProfile,
+  explanations: string[],
+  missing: string[],
+): number {
+  if (job.estimatedExperienceYears === null) {
+    explanations.push('Required experience could not be determined.');
+    return 60;
+  }
+  if (profile.yearsOfExperience === null) {
+    explanations.push('Candidate experience years are not configured.');
+    return 60;
+  }
+  const gap = job.estimatedExperienceYears - profile.yearsOfExperience;
+  if (gap <= 0) {
+    explanations.push('Candidate meets the stated experience requirement.');
+    return 100;
+  }
+  const message = `Missing ${gap.toFixed(1)} years of requested experience.`;
+  missing.push(message);
+  explanations.push(message);
+  return gap <= 2 ? 60 : 20;
+}
+
+function scoreEmploymentType(
+  job: Job,
+  profile: CandidateProfile,
+  explanations: string[],
+): number {
+  const matched = profile.desiredEmploymentTypes.includes(job.employmentType);
+  explanations.push(
+    matched
+      ? 'Employment type matches preferences.'
+      : 'Employment type is not preferred.',
+  );
+  return matched ? 100 : 30;
+}
+
+function scoreRecency(
+  job: Job,
+  config: ScoringConfig,
+  analyzedAt: string,
+  explanations: string[],
+): number {
+  const sourceDate = job.datePosted ?? job.firstSeenAt;
+  const ageDays = Math.max(
+    0,
+    (Date.parse(analyzedAt) - Date.parse(sourceDate)) / DAY_MS,
+  );
+  if (ageDays <= config.recency.freshDays) {
+    explanations.push('Recently posted opportunity.');
+    return 100;
+  }
+  if (ageDays <= config.recency.recentDays) {
+    explanations.push('Posting is still reasonably recent.');
+    return 70;
+  }
+  explanations.push('Posting is older than the configured recency window.');
+  return 30;
+}
+
+function recommend(
+  job: Job,
+  profile: CandidateProfile,
+  config: ScoringConfig,
+  score: number,
+): RecommendationStatus {
+  if (
+    job.status === 'applied' ||
+    job.status === 'interview' ||
+    job.status === 'offer' ||
+    job.status === 'rejected'
+  ) {
+    return 'Already Applied';
+  }
+  if (!job.active || job.status === 'expired') return 'Expired';
+  if (
+    job.status === 'ignored' ||
+    profile.excludedJobTitles.some((title) =>
+      normalizeText(job.title).includes(normalizeText(title)),
+    )
+  ) {
+    return 'Hidden';
+  }
+  const thresholds = config.recommendationThresholds;
+  if (score >= thresholds.applyImmediately) return 'Apply Immediately';
+  if (score >= thresholds.strongMatch) return 'Strong Match';
+  if (score >= thresholds.possibleMatch) return 'Possible Match';
+  return 'Weak Match';
+}
+
+function tokenSimilarity(left: string, right: string): number {
+  const leftTokens = new Set(left.split(' '));
+  const rightTokens = new Set(right.split(' '));
+  const intersection = [...leftTokens].filter((token) =>
+    rightTokens.has(token),
+  ).length;
+  const union = new Set([...leftTokens, ...rightTokens]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function roundScore(value: number): number {
+  return Math.round(Math.min(100, Math.max(0, value)) * 10) / 10;
+}

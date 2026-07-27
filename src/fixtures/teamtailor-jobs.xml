@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:tt="https://teamtailor.com/rss">
+  <channel>
+    <title>Fixture Teamtailor jobs</title>
+    <item>
+      <guid>tt-301</guid>
+      <title>Security Operations Engineer</title>
+      <link>https://fixture.teamtailor.com/jobs/tt-301-security-operations-engineer</link>
+      <description><![CDATA[<p>Operate detection and response systems.</p>]]></description>
+      <pubDate>Tue, 14 Jul 2026 10:00:00 GMT</pubDate>
+      <tt:locations><tt:location><tt:name>Remote, United States</tt:name></tt:location></tt:locations>
+      <tt:department><tt:name>Security</tt:name></tt:department>
+      <tt:role><tt:name>Engineering</tt:name></tt:role>
+      <tt:division><tt:name>Product</tt:name></tt:division>
+      <tt:employment-type>Full-time</tt:employment-type>
+      <remoteStatus>fully_remote</remoteStatus>
+      <tt:apply-url>https://fixture.teamtailor.com/jobs/tt-301-security-operations-engineer/apply</tt:apply-url>
+    </item>
+    <item><title>Invalid item</title></item>
+  </channel>
+</rss>

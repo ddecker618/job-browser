@@ -1,0 +1,25 @@
+{
+  "jobs": [
+    {
+      "id": 101,
+      "title": "Security Engineer",
+      "location": { "name": "Remote, United States" },
+      "content": "<p>Build and operate cloud security controls.</p>",
+      "absolute_url": "https://boards.greenhouse.io/example/jobs/101",
+      "updated_at": "2026-07-17T14:00:00-04:00",
+      "company_name": "Example Greenhouse Company",
+      "departments": [{ "name": "Engineering" }],
+      "metadata": [{ "name": "Employment Type", "value": "Full-time" }]
+    },
+    {
+      "id": 102,
+      "title": "Product Designer",
+      "location": { "name": "New York, NY" },
+      "content": "<p>Design customer-facing workflows.</p>",
+      "absolute_url": "https://boards.greenhouse.io/example/jobs/102",
+      "updated_at": null,
+      "company_name": "Example Greenhouse Company"
+    },
+    { "id": 103, "location": { "name": "Remote" } }
+  ]
+}

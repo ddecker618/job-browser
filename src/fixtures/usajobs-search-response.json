@@ -1,0 +1,97 @@
+{
+  "LanguageCode": "EN",
+  "SearchParameters": {
+    "Keyword": "information security",
+    "LocationName": "Virginia",
+    "RemoteIndicator": true,
+    "Page": "1",
+    "ResultsPerPage": "2"
+  },
+  "SearchResult": {
+    "SearchResultCount": 2,
+    "SearchResultCountAll": 2,
+    "SearchResultItems": [
+      {
+        "MatchedObjectId": "fixture-usajobs-001",
+        "MatchedObjectDescriptor": {
+          "PositionID": "CY-2026-0001",
+          "PositionTitle": "Information Security Specialist",
+          "PositionURI": "https://www.usajobs.gov/job/800000001",
+          "ApplyURI": [
+            "https://www.usajobs.gov/apply/800000001",
+            "https://agency.example.test/apply?announcement=CY-2026-0001"
+          ],
+          "PositionLocationDisplay": "Arlington, Virginia",
+          "PositionLocation": [
+            {
+              "LocationName": "Arlington, Virginia",
+              "CityName": "Arlington",
+              "CountrySubDivisionCode": "Virginia"
+            }
+          ],
+          "OrganizationName": "Cybersecurity and Infrastructure Security Agency",
+          "DepartmentName": "Department of Homeland Security",
+          "JobGrade": [{ "Code": "GS" }],
+          "PositionSchedule": [{ "Name": "Full-time", "Code": "1" }],
+          "PositionOfferingType": [{ "Name": "Permanent", "Code": "15317" }],
+          "PositionRemuneration": [
+            {
+              "MinimumRange": "117962",
+              "MaximumRange": "181216",
+              "RateIntervalCode": "Per Year",
+              "Description": "$117,962 - $181,216 per year"
+            }
+          ],
+          "QualificationSummary": "<p>You must have one year of specialized security experience.</p>",
+          "PublicationStartDate": "2026-07-15T00:00:00-04:00",
+          "ApplicationCloseDate": "2026-07-29T23:59:59-04:00",
+          "UserArea": {
+            "Details": {
+              "JobSummary": "<p>Protect federal civilian networks and critical infrastructure.</p>",
+              "LowGrade": "13",
+              "HighGrade": "14",
+              "TeleworkEligible": true,
+              "RemoteIndicator": true
+            }
+          }
+        }
+      },
+      {
+        "MatchedObjectId": "fixture-usajobs-002",
+        "MatchedObjectDescriptor": {
+          "PositionID": "IT-2026-0002",
+          "PositionTitle": "IT Specialist (Network)",
+          "PositionURI": "https://www.usajobs.gov/job/800000002?source=api",
+          "ApplyURI": ["https://www.usajobs.gov/apply/800000002?source=api"],
+          "PositionLocationDisplay": "Multiple Locations",
+          "PositionLocation": [],
+          "OrganizationName": "Defense Information Systems Agency",
+          "DepartmentName": "Department of Defense",
+          "JobGrade": [{ "Code": "GG" }],
+          "PositionSchedule": [{ "Name": "Full-time", "Code": "1" }],
+          "PositionOfferingType": [{ "Name": "Term", "Code": "15318" }],
+          "PositionRemuneration": [
+            {
+              "MinimumRange": 86962,
+              "MaximumRange": 134435,
+              "RateIntervalCode": "Per Year"
+            }
+          ],
+          "QualificationSummary": "Network engineering experience is required.",
+          "PublicationStartDate": "2026-07-16T00:00:00Z",
+          "ApplicationCloseDate": "2026-08-01T23:59:59Z",
+          "UserArea": {
+            "Details": {
+              "JobSummary": "Operate and secure enterprise network services.",
+              "LowGrade": "12",
+              "HighGrade": "12",
+              "TeleworkEligible": true,
+              "RemoteIndicator": false
+            }
+          }
+        }
+      }
+    ],
+    "UserArea": { "NumberOfPages": "1" }
+  }
+}

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "lever-101",
+    "text": "Security Analyst",
+    "categories": {
+      "commitment": "Full-time",
+      "location": "Remote - US",
+      "team": "Security"
+    },
+    "descriptionPlain": "Investigate security alerts.",
+    "additionalPlain": "Experience with cloud platforms preferred.",
+    "hostedUrl": "https://jobs.lever.co/example/lever-101",
+    "applyUrl": "https://jobs.lever.co/example/lever-101/apply",
+    "createdAt": 1784296800000,
+    "workplaceType": "remote",
+    "salaryRange": {
+      "min": 80000,
+      "max": 100000,
+      "currency": "USD",
+      "interval": "per year"
+    }
+  },
+  {
+    "id": "lever-102",
+    "text": "Office Manager",
+    "categories": {
+      "commitment": "Part-time",
+      "location": "Austin, TX",
+      "team": "Operations"
+    },
+    "descriptionPlain": null,
+    "hostedUrl": "https://jobs.lever.co/example/lever-102",
+    "applyUrl": null,
+    "createdAt": null,
+    "workplaceType": "onsite"
+  },
+  {
+    "id": "missing-title",
+    "hostedUrl": "https://jobs.lever.co/example/missing-title"
+  }
+]

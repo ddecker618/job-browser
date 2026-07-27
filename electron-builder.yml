@@ -1,0 +1,50 @@
+appId: com.dustindecker.jobbrowser
+productName: Job Browser
+artifactName: Job-Browser-Setup-${version}.${ext}
+directories:
+  output: release
+files:
+  - dist/**/*
+  - package.json
+asar: true
+npmRebuild: false
+asarUnpack:
+  - node_modules/better-sqlite3/**/*
+  - node_modules/playwright/**/*
+  - node_modules/playwright-core/**/*
+extraResources:
+  - from: src/db/migrations
+    to: assets/migrations
+    filter:
+      - '*.sql'
+  - from: config
+    to: assets/default-config
+    filter:
+      - '*.json'
+  - from: src/desktop
+    to: assets/startup
+    filter:
+      - startup.html
+      - startup.css
+      - startup-renderer.js
+  - from: build/icon.png
+    to: icon.png
+  - from: assets/ms-playwright/chromium-1200
+    to: ms-playwright/chromium-1200
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.png
+  executableName: Job Browser
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Job Browser
+  uninstallDisplayName: Job Browser
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true

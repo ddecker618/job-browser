@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Valid Job URLs -->
+  <url>
+    <loc>https://careers.example.com/jobs/101/software-engineer/job</loc>
+    <lastmod>2026-07-18T12:00:00Z</lastmod>
+  </url>
+  <url>
+    <loc>https://careers.example.com/jobs/102/data-scientist/job</loc>
+    <lastmod>2026-07-19T12:00:00Z</lastmod>
+  </url>
+  <!-- Invalid Candidate/Talent/Login URLs (should be excluded) -->
+  <url>
+    <loc>https://careers.example.com/jobs/login</loc>
+  </url>
+  <url>
+    <loc>https://careers.example.com/jobs/candidate/dashboard</loc>
+  </url>
+  <url>
+    <loc>https://careers.example.com/jobs/talent-network</loc>
+  </url>
+  <url>
+    <loc>https://careers.example.com/jobs/referral</loc>
+  </url>
+  <url>
+    <loc>https://careers.example.com/jobs/apply</loc>
+  </url>
+  <url>
+    <loc>https://careers.example.com/jobs/search</loc>
+  </url>
+</urlset>

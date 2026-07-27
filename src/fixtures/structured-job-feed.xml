@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example jobs</title>
+    <item>
+      <guid>OPS-303</guid>
+      <title>Security Operations Analyst</title>
+      <company>Example Defense</company>
+      <location>Arlington, VA</location>
+      <description><![CDATA[<p>Investigate and respond to security alerts.</p>]]></description>
+      <pubDate>Fri, 17 Jul 2026 12:00:00 GMT</pubDate>
+      <employmentType>FULL_TIME</employmentType>
+      <link>https://careers.example.com/OPS-303</link>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,27 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "JobPosting",
+      "identifier": "ENG-202",
+      "title": "Platform Engineer",
+      "description": "Build reliable developer platforms.",
+      "datePosted": "2026-07-16T09:30:00Z",
+      "employmentType": ["FULL_TIME"],
+      "hiringOrganization": { "name": "Example Systems" },
+      "jobLocation": {
+        "address": {
+          "addressLocality": "Denver",
+          "addressRegion": "CO",
+          "addressCountry": "US"
+        }
+      },
+      "baseSalary": {
+        "currency": "USD",
+        "value": { "value": 150000, "unitText": "YEAR" }
+      },
+      "url": "https://jobs.example.com/ENG-202"
+    },
+    { "@type": "Organization", "name": "Not a job" }
+  ]
+}

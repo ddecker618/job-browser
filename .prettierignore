@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+data/
+artifacts/
+screenshots/
+snapshots/
+logs/
+playwright-report/
+test-results/
+dice-profile/
+wellfound-profile/
+ziprecruiter-profile/
+package-lock.json
+scripts/

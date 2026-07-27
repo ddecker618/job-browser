@@ -1,0 +1,28 @@
+{
+  "total": 3,
+  "jobPostings": [
+    {
+      "title": "Information Security Engineer",
+      "externalPath": "/example.wd1.myworkdayjobs.com/en-US/careers/job/Remote/Information-Security-Engineer_R101",
+      "locationsText": "Remote, United States",
+      "postedOn": "2026-07-17T12:00:00Z",
+      "bulletFields": ["Full time", "Remote"],
+      "remoteType": "Remote",
+      "timeType": "Full time",
+      "jobId": "R101"
+    },
+    {
+      "title": "Facilities Coordinator",
+      "externalPath": "/example.wd1.myworkdayjobs.com/en-US/careers/job/Denver-CO/Facilities-Coordinator_R102",
+      "locationsText": "Denver, CO",
+      "postedOn": null,
+      "bulletFields": ["Part time"],
+      "remoteType": "Onsite",
+      "timeType": "Part time",
+      "jobId": "R102"
+    },
+    {
+      "externalPath": "/example.wd1.myworkdayjobs.com/en-US/careers/job/invalid"
+    }
+  ]
+}

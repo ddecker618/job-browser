@@ -1,0 +1,31 @@
+[
+  { "legal": "test fixture" },
+  {
+    "id": 123456,
+    "company": "Example Security Company",
+    "position": "Cybersecurity Analyst",
+    "location": "Remote",
+    "description": "Monitor alerts and investigate security events.",
+    "date": "2026-07-17T14:00:00.000Z",
+    "epoch": 1750168800,
+    "salary_min": 150000,
+    "salary_max": 200000,
+    "tags": ["full-time", "remote"],
+    "url": "https://remoteok.com/example-security-job",
+    "apply_url": "https://remoteok.com/example-security-job/apply"
+  },
+  {
+    "id": 123457,
+    "company": "Example Infrastructure Company",
+    "position": "Security Operations Analyst",
+    "location": "Remote",
+    "description": "Investigate security alerts and document incidents.",
+    "date": "2026-07-18T14:00:00.000Z",
+    "epoch": 1750255200,
+    "salary_min": 125000,
+    "salary_max": 165000,
+    "tags": ["full-time", "remote"],
+    "url": "https://remoteok.com/example-security-operations-job",
+    "apply_url": "https://remoteok.com/example-security-operations-job/apply"
+  }
+]

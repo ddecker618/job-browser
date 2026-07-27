@@ -1,0 +1,33 @@
+{
+  "result": {
+    "jobOpening": {
+      "id": 101,
+      "jobOpeningName": "Cloud Security Analyst",
+      "departmentLabel": "Security",
+      "employmentStatusLabel": "Full-Time",
+      "atsLocation": {
+        "city": "Denver",
+        "state": "Colorado",
+        "country": "United States"
+      },
+      "isRemote": true,
+      "locationType": "Remote",
+      "description": "<p>Investigate alerts and improve cloud controls.</p>",
+      "datePosted": "2026-07-16T14:00:00Z",
+      "jobOpeningShareUrl": "https://fixture.bamboohr.com/careers/101",
+      "compensation": {
+        "minimum": 110000,
+        "maximum": 145000,
+        "currency": "USD",
+        "interval": "year"
+      }
+    },
+    "formFields": [
+      {
+        "id": "genderIdentity",
+        "label": "Gender identity",
+        "value": "must-not-be-stored"
+      }
+    ]
+  }
+}

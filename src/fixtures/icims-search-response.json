@@ -1,0 +1,81 @@
+{
+  "jobs": [
+    {
+      "data": {
+        "slug": "18316",
+        "req_id": "18316",
+        "title": "Senior Software Engineer",
+        "description": "<p>Build and maintain software systems for the enterprise platform.</p>",
+        "city": "Seattle",
+        "state": "Washington",
+        "country": "United States",
+        "country_code": "US",
+        "categories": ["Technology"],
+        "employment_type": "FULL_TIME",
+        "hiring_organization": "Fixture Corp",
+        "posted_date": "2026-07-15T12:00:00+0000",
+        "apply_url": "https://fixture.icims.com/jobs/18316/login",
+        "canonical_url": "https://careers.fixturecorp.com/jobs/18316",
+        "ats_code": "icims"
+      },
+      "category": ["Technology"],
+      "full_location": "Seattle, Washington, United States",
+      "short_location": "Seattle, Washington",
+      "create_date": "2026-07-15T12:00:00+0000",
+      "update_date": "2026-07-15T12:00:00+0000"
+    },
+    {
+      "data": {
+        "slug": "18317",
+        "req_id": "18317",
+        "title": "Security Analyst",
+        "description": "<p>Monitor and respond to security incidents across the organization.</p>",
+        "city": "Denver",
+        "state": "Colorado",
+        "country": "United States",
+        "country_code": "US",
+        "categories": ["Security"],
+        "employment_type": "FULL_TIME",
+        "hiring_organization": "Fixture Corp",
+        "posted_date": "2026-07-14T12:00:00+0000",
+        "apply_url": "https://fixture.icims.com/jobs/18317/login",
+        "canonical_url": "https://careers.fixturecorp.com/jobs/18317",
+        "ats_code": "icims"
+      },
+      "category": ["Security"],
+      "full_location": "Denver, Colorado, United States",
+      "short_location": "Denver, Colorado",
+      "create_date": "2026-07-14T12:00:00+0000",
+      "update_date": "2026-07-14T12:00:00+0000"
+    },
+    {
+      "data": {
+        "slug": "18318",
+        "req_id": "18318",
+        "title": "Part-time Store Associate",
+        "description": "<p>Provide excellent customer service in a retail environment.</p>",
+        "city": "Miami",
+        "state": "Florida",
+        "country": "United States",
+        "country_code": "US",
+        "categories": ["Retail"],
+        "employment_type": "PART_TIME",
+        "hiring_organization": "Fixture Corp",
+        "posted_date": "2026-07-13T12:00:00+0000",
+        "canonical_url": "https://careers.fixturecorp.com/jobs/18318",
+        "ats_code": "icims"
+      },
+      "category": ["Retail"],
+      "full_location": "Miami, Florida, United States",
+      "short_location": "Miami, Florida",
+      "create_date": "2026-07-13T12:00:00+0000",
+      "update_date": "2026-07-13T12:00:00+0000"
+    },
+    {
+      "malformed": true,
+      "no_title": true
+    }
+  ],
+  "totalCount": 4,
+  "count": 4
+}

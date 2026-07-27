@@ -1,0 +1,26 @@
+{
+  "content": [
+    {
+      "id": "sec-101",
+      "uuid": "sec-101",
+      "name": "Senior Security Engineer",
+      "company": { "name": "Fixture Corp", "identifier": "FixtureCorp" },
+      "location": {
+        "city": "Remote",
+        "country": "United States",
+        "remote": true
+      },
+      "releasedDate": "2026-07-17T12:00:00Z",
+      "typeOfEmployment": { "label": "Full-time" },
+      "jobAd": {
+        "sections": {
+          "jobDescription": { "text": "<p>Protect cloud systems.</p>" },
+          "qualifications": { "text": "Five years of security experience." }
+        }
+      },
+      "applyUrl": "https://jobs.smartrecruiters.com/FixtureCorp/sec-101/apply"
+    },
+    { "id": 7, "name": null }
+  ],
+  "totalFound": 2
+}
