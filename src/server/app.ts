@@ -26,7 +26,6 @@ import { providerRegistry } from '../providers/providerRegistry.js';
 import {
   DEFAULT_SEARCH_PROFILE,
   searchProfileSchema,
-  type SearchProfile,
 } from '../config/search-profile.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import { JobSearchRepository } from '../repositories/job-search-repository.js';
@@ -581,12 +580,15 @@ const settingsSchema = z.strictObject({
   loggingLevel: z.enum(['debug', 'info', 'warn', 'error']),
   resumeDirectory: z.string().trim().min(1),
   artifactDirectory: z.string().trim().min(1),
-  targetRoles: z.array(z.string().trim().min(1)).min(1).default([
-    'systems administrator',
-    'network administrator',
-    'network analyst',
-    'SOC analyst',
-  ]),
+  targetRoles: z
+    .array(z.string().trim().min(1))
+    .min(1)
+    .default([
+      'systems administrator',
+      'network administrator',
+      'network analyst',
+      'SOC analyst',
+    ]),
 });
 
 function defaultSettings(

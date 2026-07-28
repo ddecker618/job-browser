@@ -16,7 +16,7 @@ afterEach(async () => {
 });
 
 describe('source management API', () => {
-  it('seeds public starter sources without adding login providers', async () => {
+  it('seeds public and browser starter sources', async () => {
     const directory = mkdtempSync(
       join(tmpdir(), 'job-browser-default-sources-'),
     );
@@ -39,14 +39,21 @@ describe('source management API', () => {
     };
 
     expect(control.sources.map((source) => source.providerId)).toEqual(
-      expect.arrayContaining(['wellfound', 'ziprecruiter', 'dice', 'indeed']),
+      expect.arrayContaining([
+        'remote-ok',
+        'builtin',
+        'wellfound',
+        'ziprecruiter',
+        'dice',
+        'indeed',
+      ]),
     );
-    expect(control.sources).toHaveLength(4);
+    expect(control.sources).toHaveLength(6);
     expect(
       control.sources
         .filter((source) => source.enabled)
         .map((source) => source.providerId),
-    ).toEqual([]);
+    ).toEqual(expect.arrayContaining(['remote-ok', 'builtin']));
     expect(
       control.sources.every((source) => source.configurationStatus === 'valid'),
     ).toBe(true);

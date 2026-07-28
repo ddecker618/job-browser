@@ -8,8 +8,10 @@ import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import { nowUtc } from '../utilities/timestamps.js';
 import { scoreJob } from './scoringEngine.js';
-import { verifyPosting, type VerificationResult } from './verificationService.js';
-
+import {
+  verifyPosting,
+  type VerificationResult,
+} from './verificationService.js';
 
 export class IntelligenceEngine {
   private readonly intelligenceRepository: IntelligenceRepository;
@@ -42,12 +44,14 @@ export class IntelligenceEngine {
       let totalScore = 0;
       for (const job of jobs) {
         const jobText = buildJobTextForVerification(job);
-        const verification = verifyPosting(
-          jobText,
-          job.postingUrl,
-          200,
+        const verification = verifyPosting(jobText, job.postingUrl, 200);
+        const intelligence = scoreJob(
+          job,
+          profile,
+          config,
+          analyzedAt,
+          verification,
         );
-        const intelligence = scoreJob(job, profile, config, analyzedAt, verification);
         this.intelligenceRepository.saveIntelligence(profile.id, intelligence);
         this.saveVerification(job.id, verification);
         totalScore += intelligence.overallScore;
@@ -80,7 +84,10 @@ export class IntelligenceEngine {
     }
   }
 
-  private saveVerification(jobId: string, verification: VerificationResult): void {
+  private saveVerification(
+    jobId: string,
+    verification: VerificationResult,
+  ): void {
     const status = verification.evidence.status;
     this.database
       .prepare(
@@ -105,7 +112,6 @@ export class IntelligenceEngine {
         jobId,
       );
   }
-
 }
 
 function buildJobTextForVerification(job: {
@@ -120,6 +126,7 @@ function buildJobTextForVerification(job: {
   if (job.location !== null) parts.push(`Location: ${job.location}`);
   if (job.description !== null) parts.push(job.description);
   if (job.requirements !== null) parts.push(job.requirements);
-  if (job.preferredQualifications !== null) parts.push(job.preferredQualifications);
+  if (job.preferredQualifications !== null)
+    parts.push(job.preferredQualifications);
   return parts.join('\n\n');
 }

@@ -13,6 +13,7 @@ import { nowUtc } from '../utilities/timestamps.js';
 import {
   collectEnabledTitles,
   DEFAULT_SEARCH_PROFILE,
+  searchProfileSchema,
   type SearchProfile,
 } from '../config/search-profile.js';
 
@@ -82,11 +83,15 @@ export class SourceRepository {
   public ensureDefaultSources(): void {
     const titles = this.loadSearchProfileTitles();
     if (titles.length === 0) return;
+    this.ensureRemoteOkSource();
     const queries = queriesFromRoles(titles);
     this.ensureSources(
       DEFAULT_SOURCES.map((source) => ({
         ...source,
-        configuration: { ...source.configuration, queries } as Record<string, unknown>,
+        configuration: { ...source.configuration, queries } as Record<
+          string,
+          unknown
+        >,
         searchCriteria: {
           ...source.searchCriteria,
           query: titles[0] ?? source.searchCriteria.query,
@@ -97,17 +102,20 @@ export class SourceRepository {
 
   private loadSearchProfileTitles(): string[] {
     const row = this.database
-      .prepare<[], { setting_value_json: string } | undefined>(
-        `SELECT setting_value_json FROM app_settings WHERE setting_key = 'searchProfile'`,
-      )
+      .prepare<
+        [],
+        { setting_value_json: string } | undefined
+      >(`SELECT setting_value_json FROM app_settings WHERE setting_key = 'searchProfile'`)
       .get();
     if (row === undefined) {
       return collectEnabledTitles(DEFAULT_SEARCH_PROFILE);
     }
     try {
-      const parsed = JSON.parse(row.setting_value_json) as SearchProfile;
-      if (parsed && Array.isArray(parsed.families)) {
-        return collectEnabledTitles(parsed);
+      const parsed = searchProfileSchema.safeParse(
+        JSON.parse(row.setting_value_json),
+      );
+      if (parsed.success) {
+        return collectEnabledTitles(parsed.data);
       }
     } catch {
       // fall through
@@ -119,9 +127,10 @@ export class SourceRepository {
     if (roles.length === 0) return;
     const queries = queriesFromRoles(roles);
     const row = this.database
-      .prepare<[], { id: string; configuration_json: string }>(
-        `SELECT id, configuration_json FROM sources WHERE provider_id IS NOT NULL`,
-      )
+      .prepare<
+        [],
+        { id: string; configuration_json: string }
+      >(`SELECT id, configuration_json FROM sources WHERE provider_id IS NOT NULL`)
       .all();
     const update = this.database.prepare(
       `UPDATE sources SET configuration_json = ?, updated_at = ? WHERE id = ?`,
@@ -142,9 +151,10 @@ export class SourceRepository {
     if (titles.length === 0) return;
     const queries = queriesFromRoles(titles);
     const row = this.database
-      .prepare<[], { id: string; configuration_json: string }>(
-        `SELECT id, configuration_json FROM sources WHERE provider_id IS NOT NULL`,
-      )
+      .prepare<
+        [],
+        { id: string; configuration_json: string }
+      >(`SELECT id, configuration_json FROM sources WHERE provider_id IS NOT NULL`)
       .all();
     const update = this.database.prepare(
       `UPDATE sources SET configuration_json = ?, updated_at = ? WHERE id = ?`,
@@ -162,9 +172,10 @@ export class SourceRepository {
 
   private loadTargetRoles(): string[] {
     const row = this.database
-      .prepare<[], { setting_value_json: string } | undefined>(
-        `SELECT setting_value_json FROM app_settings WHERE setting_key = 'targetRoles'`,
-      )
+      .prepare<
+        [],
+        { setting_value_json: string } | undefined
+      >(`SELECT setting_value_json FROM app_settings WHERE setting_key = 'targetRoles'`)
       .get();
     if (row === undefined) {
       return [
@@ -175,13 +186,13 @@ export class SourceRepository {
       ];
     }
     try {
-      const parsed = JSON.parse(row.setting_value_json);
+      const parsed: unknown = JSON.parse(row.setting_value_json);
       if (
         Array.isArray(parsed) &&
         parsed.length > 0 &&
-        parsed.every((r: unknown) => typeof r === 'string')
+        parsed.every((r: unknown): r is string => typeof r === 'string')
       ) {
-        return parsed as string[];
+        return parsed;
       }
     } catch {
       // fall through to default
@@ -664,6 +675,34 @@ const SOURCE_SELECT = `SELECT sources.*,
 
 const DEFAULT_SOURCES = [
   {
+    id: 'provider:builtin',
+    employer: 'Built In',
+    displayName: 'Built In',
+    providerId: 'builtin',
+    careersUrl: 'https://builtin.com/jobs',
+    enabled: true,
+    configuration: {
+      searchKeywords: 'systems administrator',
+      location: '',
+      remoteFilter: '',
+      datePosted: 'any',
+      maxResults: 50,
+      fetchDetails: true,
+      queries: [
+        { keywords: 'systems administrator', location: '' },
+        { keywords: 'network administrator', location: '' },
+        { keywords: 'network analyst', location: '' },
+        { keywords: 'SOC analyst', location: '' },
+      ],
+    },
+    searchCriteria: {
+      query: 'systems administrator',
+      location: null,
+      remoteOnly: false,
+      limit: 50,
+    },
+  },
+  {
     id: 'provider:wellfound',
     employer: 'Wellfound',
     displayName: 'Wellfound (browser)',
@@ -778,7 +817,9 @@ const DEFAULT_SOURCES = [
 
 type DefaultSource = (typeof DEFAULT_SOURCES)[number];
 
-function queriesFromRoles(roles: string[]): { keywords: string; location: string }[] {
+function queriesFromRoles(
+  roles: string[],
+): { keywords: string; location: string }[] {
   return roles.map((role) => ({ keywords: role, location: '' }));
 }
 

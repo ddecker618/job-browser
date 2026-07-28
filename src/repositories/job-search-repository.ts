@@ -152,7 +152,12 @@ export class JobSearchRepository {
       query.location,
     );
     addEqual(clauses, parameters, 'jobs.remote_type', query.remoteType);
-    addEqual(clauses, parameters, 'jobs.verification_status', query.verificationStatus);
+    addEqual(
+      clauses,
+      parameters,
+      'jobs.verification_status',
+      query.verificationStatus,
+    );
     addComparison(clauses, parameters, 'jobs.score', '>=', query.minScore);
     addComparison(clauses, parameters, 'jobs.score', '<=', query.maxScore);
     if (query.minSalary !== undefined) {
@@ -241,8 +246,14 @@ export class JobSearchRepository {
       )`;
       clauses.push(query.multipleSource ? multiple : `NOT ${multiple}`);
     }
-    if (query.matchedFamilies !== undefined && query.matchedFamilies.length > 0) {
-      const families = query.matchedFamilies.split(',').map((f) => f.trim()).filter(Boolean);
+    if (
+      query.matchedFamilies !== undefined &&
+      query.matchedFamilies.length > 0
+    ) {
+      const families = query.matchedFamilies
+        .split(',')
+        .map((f) => f.trim())
+        .filter(Boolean);
       if (families.length > 0) {
         const orClauses = families.map(() => 'jobs.matched_families LIKE ?');
         clauses.push(`(${orClauses.join(' OR ')})`);
@@ -480,8 +491,6 @@ function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
     sources,
     verificationStatus: row.verification_status,
     eligibilityPassed:
-      row.eligibility_passed === null
-        ? null
-        : Boolean(row.eligibility_passed),
+      row.eligibility_passed === null ? null : Boolean(row.eligibility_passed),
   };
 }

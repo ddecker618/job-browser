@@ -1,4 +1,4 @@
-import type { Job } from '../domain/job.js';
+import type { JobForScoring } from '../domain/job.js';
 import type {
   CategoryScores,
   JobIntelligence,
@@ -21,7 +21,7 @@ const SENIORITY_DOWN_RANK: readonly [RegExp, number][] = [
 const DAY_MS = 86_400_000;
 
 export function scoreJob(
-  job: Job,
+  job: JobForScoring,
   profile: CandidateProfile,
   config: ScoringConfig,
   analyzedAt = new Date().toISOString(),
@@ -103,9 +103,10 @@ export function scoreJob(
     ),
   );
 
-  const finalScore = verificationResult.modifier !== null
-    ? roundScore(overallScore * verificationResult.modifier)
-    : overallScore;
+  const finalScore =
+    verificationResult.modifier !== null
+      ? roundScore(overallScore * verificationResult.modifier)
+      : overallScore;
 
   const recommendationStatus = recommend(
     job,
@@ -217,7 +218,7 @@ function applyVerification(
 }
 
 function scoreTitle(
-  job: Job,
+  job: JobForScoring,
   profile: CandidateProfile,
   explanations: string[],
 ): number {
@@ -243,7 +244,11 @@ function scoreTitle(
     best = Math.max(best, tokenSimilarity(title, normalizedDesired) * 100);
   }
 
-  if (job.matchedFamilies !== null && job.matchedFamilies !== undefined && job.matchedFamilies.length > 0) {
+  if (
+    job.matchedFamilies !== null &&
+    job.matchedFamilies !== undefined &&
+    job.matchedFamilies.length > 0
+  ) {
     const familyBonus = best > 0 ? 5 : 20;
     best = Math.min(100, best + familyBonus);
     explanations.push(
@@ -301,7 +306,7 @@ function scoreTerms(
 }
 
 function scoreLocation(
-  job: Job,
+  job: JobForScoring,
   profile: CandidateProfile,
   explanations: string[],
 ): number {
@@ -339,7 +344,7 @@ function scoreLocation(
 }
 
 function scoreRemote(
-  job: Job,
+  job: JobForScoring,
   profile: CandidateProfile,
   explanations: string[],
 ): number {
@@ -367,7 +372,7 @@ function scoreRemote(
 }
 
 function scoreSalary(
-  job: Job,
+  job: JobForScoring,
   profile: CandidateProfile,
   explanations: string[],
 ): number {
@@ -395,7 +400,7 @@ function scoreSalary(
 }
 
 function scoreExperience(
-  job: Job,
+  job: JobForScoring,
   profile: CandidateProfile,
   explanations: string[],
   missing: string[],
@@ -420,7 +425,7 @@ function scoreExperience(
 }
 
 function scoreEmploymentType(
-  job: Job,
+  job: JobForScoring,
   profile: CandidateProfile,
   explanations: string[],
 ): number {
@@ -434,7 +439,7 @@ function scoreEmploymentType(
 }
 
 function scoreRecency(
-  job: Job,
+  job: JobForScoring,
   config: ScoringConfig,
   analyzedAt: string,
   explanations: string[],
@@ -457,7 +462,7 @@ function scoreRecency(
 }
 
 function recommend(
-  job: Job,
+  job: JobForScoring,
   profile: CandidateProfile,
   config: ScoringConfig,
   score: number,

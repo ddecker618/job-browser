@@ -469,7 +469,10 @@ export function JobsPage() {
                       </strong>
                       <span className="family-badges">
                         {job.matchedFamilies?.split(',').map((family) => (
-                          <span key={family} className={`family-badge family-${family}`}>
+                          <span
+                            key={family}
+                            className={`family-badge family-${family}`}
+                          >
                             {family}
                           </span>
                         ))}
@@ -488,8 +491,14 @@ export function JobsPage() {
                     <td>
                       <span className="recommendation-cell">
                         {job.recommendation ?? 'Unscored'}
-                        {job.verificationStatus === 'verified' && job.eligibilityPassed ? (
-                          <span className="verified-badge" title="Verified eligible match">✓</span>
+                        {job.verificationStatus === 'verified' &&
+                        job.eligibilityPassed ? (
+                          <span
+                            className="verified-badge"
+                            title="Verified eligible match"
+                          >
+                            ✓
+                          </span>
                         ) : null}
                       </span>
                     </td>

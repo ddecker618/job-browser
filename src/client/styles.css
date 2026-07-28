@@ -1546,11 +1546,26 @@ kbd {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.family-systems { background: #2d6a4f; color: #d8f3dc; }
-.family-network { background: #1e6091; color: #d0ebff; }
-.family-security { background: #7b2d8b; color: #f3d8fa; }
-.family-splunk { background: #a85d00; color: #fff3d6; }
-.family-support { background: #5c4d3c; color: #f0e6d3; }
+.family-systems {
+  background: #2d6a4f;
+  color: #d8f3dc;
+}
+.family-network {
+  background: #1e6091;
+  color: #d0ebff;
+}
+.family-security {
+  background: #7b2d8b;
+  color: #f3d8fa;
+}
+.family-splunk {
+  background: #a85d00;
+  color: #fff3d6;
+}
+.family-support {
+  background: #5c4d3c;
+  color: #f0e6d3;
+}
 
 .verified-badge {
   display: inline-flex;

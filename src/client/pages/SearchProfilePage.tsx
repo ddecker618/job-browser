@@ -20,7 +20,9 @@ export function SearchProfilePage() {
 
   if (query.isPending) return <LoadingState label="Loading search profile" />;
   if (query.isError)
-    return <ErrorState error={query.error} title="Search profile unavailable" />;
+    return (
+      <ErrorState error={query.error} title="Search profile unavailable" />
+    );
 
   const toggleFamily = (key: string) => {
     if (!profile) return;
@@ -40,7 +42,12 @@ export function SearchProfilePage() {
       ...profile,
       families: profile.families.map((f) =>
         f.key === familyKey
-          ? { ...f, titles: f.titles.includes(trimmed) ? f.titles : [...f.titles, trimmed] }
+          ? {
+              ...f,
+              titles: f.titles.includes(trimmed)
+                ? f.titles
+                : [...f.titles, trimmed],
+            }
           : f,
       ),
     });
@@ -63,16 +70,17 @@ export function SearchProfilePage() {
     setDraft(null);
   };
 
-  const totalEnabled = profile?.families
-    .filter((f) => f.enabled)
-    .reduce((sum, f) => sum + f.titles.length, 0) ?? 0;
+  const totalEnabled =
+    profile?.families
+      .filter((f) => f.enabled)
+      .reduce((sum, f) => sum + f.titles.length, 0) ?? 0;
 
   return (
     <>
       <PageHeader
         eyebrow="Discovery configuration"
         title="Search Profile"
-        description={`${totalEnabled} job titles across ${profile?.families.filter((f) => f.enabled).length ?? 0} enabled role families.`}
+        description={`${String(totalEnabled)} job titles across ${String(profile?.families.filter((f) => f.enabled).length ?? 0)} enabled role families.`}
       />
       <div className="search-profile-page">
         <div className="profile-summary">
@@ -140,11 +148,7 @@ function FamilyCard({
     <div className={`family-card${family.enabled ? '' : ' family-disabled'}`}>
       <div className="family-header">
         <label className="family-toggle">
-          <input
-            type="checkbox"
-            checked={family.enabled}
-            onChange={onToggle}
-          />
+          <input type="checkbox" checked={family.enabled} onChange={onToggle} />
           <strong>{family.displayName}</strong>
           <span className="family-count">{family.titles.length} titles</span>
         </label>

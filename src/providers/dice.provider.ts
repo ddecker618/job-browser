@@ -38,12 +38,15 @@ const diceQuerySchema = z.strictObject({
 const configurationSchema = z.strictObject({
   searchKeywords: z.string().trim().min(1).default('systems administrator'),
   location: z.string().optional().default(''),
-  queries: z.array(diceQuerySchema).optional().default([
-    { keywords: 'systems administrator', location: '' },
-    { keywords: 'network administrator', location: '' },
-    { keywords: 'network analyst', location: '' },
-    { keywords: 'SOC analyst', location: '' },
-  ]),
+  queries: z
+    .array(diceQuerySchema)
+    .optional()
+    .default([
+      { keywords: 'systems administrator', location: '' },
+      { keywords: 'network administrator', location: '' },
+      { keywords: 'network analyst', location: '' },
+      { keywords: 'SOC analyst', location: '' },
+    ]),
   remoteFilter: z
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
@@ -481,7 +484,9 @@ export class DiceProvider extends BaseProvider {
         job.companyLogo = detail.companyLogo;
         job.employmentDetails = detail.employmentDetails;
 
-        await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => {});
+        await page
+          .goBack({ waitUntil: 'domcontentloaded' })
+          .catch(() => undefined);
         await page.waitForTimeout(1500);
         await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
       } catch {

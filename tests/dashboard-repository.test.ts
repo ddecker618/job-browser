@@ -73,7 +73,12 @@ describe('DashboardRepository', () => {
       loggingLevel: 'info' as const,
       resumeDirectory: 'data/resumes',
       artifactDirectory: 'artifacts',
-      targetRoles: ['systems administrator', 'network administrator', 'network analyst', 'SOC analyst'],
+      targetRoles: [
+        'systems administrator',
+        'network administrator',
+        'network analyst',
+        'SOC analyst',
+      ],
     };
     dashboard.saveSettings({ ...defaults, defaultSearch: 'security' });
     expect(dashboard.getSettings(defaults).defaultSearch).toBe('security');

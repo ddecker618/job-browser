@@ -1,4 +1,4 @@
-import type { Job } from '../domain/job.js';
+import type { JobForScoring } from '../domain/job.js';
 import type { ExtractedTerm } from '../models/intelligence.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import { normalizeText } from '../utilities/normalization.js';
@@ -10,7 +10,10 @@ export interface JobTerms {
   certifications: ExtractedTerm[];
 }
 
-export function extractJobTerms(job: Job, config: ScoringConfig): JobTerms {
+export function extractJobTerms(
+  job: JobForScoring,
+  config: ScoringConfig,
+): JobTerms {
   const text = [
     job.title,
     job.description,

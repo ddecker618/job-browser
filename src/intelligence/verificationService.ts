@@ -5,7 +5,6 @@ import type {
   ScheduleEvidence,
   IllinoisEligibility,
   EligibilityResult,
-  EligibilityRejectionReason,
 } from '../domain/verification.js';
 import { nowUtc } from '../utilities/timestamps.js';
 
@@ -204,7 +203,11 @@ export function verifyPosting(
   const closedIndicators = findMatches(text, CLOSED_INDICATORS);
   const isClosed = closedIndicators.length > 0;
   const evidence: VerificationEvidence = {
-    status: isClosed ? 'closed' : httpStatus !== null && httpStatus >= 200 && httpStatus < 400 ? 'verified' : 'unverified',
+    status: isClosed
+      ? 'closed'
+      : httpStatus !== null && httpStatus >= 200 && httpStatus < 400
+        ? 'verified'
+        : 'unverified',
     verifiedAt: now,
     verificationSource: url ?? 'unknown',
     httpStatus,
@@ -214,7 +217,10 @@ export function verifyPosting(
   };
 
   const workArrangementResult = classifyWorkArrangement(text);
-  const illinoisResult = classifyIllinoisEligibility(text, workArrangementResult.arrangement);
+  const illinoisResult = classifyIllinoisEligibility(
+    text,
+    workArrangementResult.arrangement,
+  );
   const scheduleResult = classifySchedule(text);
 
   const eligibility = evaluateEligibility(
@@ -222,7 +228,6 @@ export function verifyPosting(
     workArrangementResult.arrangement,
     illinoisResult.eligibility,
     scheduleResult.classification,
-    url,
   );
 
   const requirements = extractStructuredRequirements(text);
@@ -239,19 +244,28 @@ export function verifyPosting(
   };
 }
 
-function classifyWorkArrangement(text: string): { arrangement: WorkArrangement; evidence: string[] } {
-  const lower = text.toLowerCase();
-
+function classifyWorkArrangement(text: string): {
+  arrangement: WorkArrangement;
+  evidence: string[];
+} {
   const hasOnsite = findMatches(text, ONSITE_EVIDENCE).length > 0;
   const hasTechLang = findMatches(text, REMOTE_TECH_LANGUAGE).length > 0;
   const hasRemote = findMatches(text, REMOTE_EVIDENCE).length > 0;
   const hasHybrid = findMatches(text, HYBRID_EVIDENCE).length > 0;
 
   if (hasOnsite) {
-    return { arrangement: 'onsite', evidence: ['Strong onsite evidence found in posting'] };
+    return {
+      arrangement: 'onsite',
+      evidence: ['Strong onsite evidence found in posting'],
+    };
   }
   if (hasTechLang && !hasRemote) {
-    return { arrangement: 'onsite', evidence: ['Remote language refers to technical support, not work arrangement'] };
+    return {
+      arrangement: 'onsite',
+      evidence: [
+        'Remote language refers to technical support, not work arrangement',
+      ],
+    };
   }
   if (hasHybrid && hasRemote) {
     return { arrangement: 'hybrid', evidence: ['Hybrid schedule indicated'] };
@@ -260,9 +274,6 @@ function classifyWorkArrangement(text: string): { arrangement: WorkArrangement; 
     return { arrangement: 'hybrid', evidence: ['Hybrid schedule indicated'] };
   }
   if (hasRemote) {
-    if (hasOnsite) {
-      return { arrangement: 'onsite', evidence: ['Onsite evidence overrides remote language'] };
-    }
     return { arrangement: 'remote', evidence: ['Remote work indicated'] };
   }
 
@@ -274,7 +285,10 @@ function classifyIllinoisEligibility(
   arrangement: WorkArrangement,
 ): { eligibility: IllinoisEligibility; evidence: string[] } {
   if (arrangement !== 'remote') {
-    return { eligibility: 'unknown', evidence: ['Not a remote position; location-based eligibility applies'] };
+    return {
+      eligibility: 'unknown',
+      evidence: ['Not a remote position; location-based eligibility applies'],
+    };
   }
 
   const excluded = findMatches(text, ILLINOIS_EXCLUDED);
@@ -287,7 +301,10 @@ function classifyIllinoisEligibility(
     return { eligibility: 'eligible', evidence: included };
   }
 
-  return { eligibility: 'unrestricted', evidence: ['No Illinois restrictions found; treated as eligible'] };
+  return {
+    eligibility: 'unrestricted',
+    evidence: ['No Illinois restrictions found; treated as eligible'],
+  };
 }
 
 function classifySchedule(text: string): ScheduleEvidence {
@@ -297,7 +314,8 @@ function classifySchedule(text: string): ScheduleEvidence {
   let classification: ScheduleType = 'unknown';
 
   if (riskIndicators.length > 0) {
-    if (/overnight\s+shift|night\s+shift/i.test(text)) classification = 'overnight';
+    if (/overnight\s+shift|night\s+shift/i.test(text))
+      classification = 'overnight';
     else if (/rotating/i.test(text)) classification = 'rotating';
     else if (/weekend/i.test(text)) classification = 'weekend';
     else if (/on[-]?call/i.test(text)) classification = 'onCall';
@@ -321,7 +339,6 @@ function evaluateEligibility(
   arrangement: WorkArrangement,
   illinoisEligibility: IllinoisEligibility,
   schedule: ScheduleType,
-  url: string | null,
 ): EligibilityResult {
   if (illinoisEligibility === 'excluded') {
     return {
@@ -361,7 +378,8 @@ function evaluateEligibility(
     return {
       passed: false,
       rejectionReason: 'clearance_required',
-      rejectionDetail: 'Active security clearance required and sponsorship not indicated',
+      rejectionDetail:
+        'Active security clearance required and sponsorship not indicated',
     };
   }
 
@@ -377,7 +395,8 @@ function evaluateEligibility(
     return {
       passed: false,
       rejectionReason: 'field_installation',
-      rejectionDetail: 'Position has substantial physical or field-installation requirements',
+      rejectionDetail:
+        'Position has substantial physical or field-installation requirements',
     };
   }
 
@@ -433,7 +452,7 @@ function extractYears(text: string, patterns: RegExp[]): number | null {
 }
 
 function extractTravelPercent(text: string): number | null {
-  const match = text.match(/(\d+)\s*%\s*(?:travel|overnight)/i);
+  const match = /(\d+)\s*%\s*(?:travel|overnight)/i.exec(text);
   if (match?.[1]) {
     const pct = parseInt(match[1], 10);
     return isNaN(pct) ? null : pct;

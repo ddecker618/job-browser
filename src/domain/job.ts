@@ -84,3 +84,14 @@ export interface Job {
   scheduleClassification: string | null;
   verifiedAt: string | null;
 }
+
+export type JobForScoring = Omit<
+  Job,
+  | 'verificationStatus'
+  | 'eligibilityPassed'
+  | 'eligibilityRejection'
+  | 'workArrangement'
+  | 'illinoisEligibility'
+  | 'scheduleClassification'
+  | 'verifiedAt'
+>;

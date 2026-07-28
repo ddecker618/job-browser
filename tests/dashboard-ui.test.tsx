@@ -295,7 +295,12 @@ describe('dashboard UI', () => {
       loggingLevel: 'info',
       resumeDirectory: 'data/resumes',
       artifactDirectory: 'artifacts',
-      targetRoles: ['systems administrator', 'network administrator', 'network analyst', 'SOC analyst'],
+      targetRoles: [
+        'systems administrator',
+        'network administrator',
+        'network analyst',
+        'SOC analyst',
+      ],
     };
     const calls: string[] = [];
     mockFetch((_url, init) => {

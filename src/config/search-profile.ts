@@ -186,19 +186,29 @@ export function titleMatchScore(
     for (const t of family.titles) {
       if (lower.includes(t.toLowerCase())) {
         families.push(family.key);
-        if (family.priority < maxFamilyPriority) maxFamilyPriority = family.priority;
+        if (family.priority < maxFamilyPriority)
+          maxFamilyPriority = family.priority;
         break;
       }
     }
   }
   const seniorityKeywords = [
-    'senior', 'sr.', 'sr ', 'lead', 'principal', 'staff',
-    'manager', 'director', 'vice president', 'vp ', 'chief', 'cto',
+    'senior',
+    'sr.',
+    'sr ',
+    'lead',
+    'principal',
+    'staff',
+    'manager',
+    'director',
+    'vice president',
+    'vp ',
+    'chief',
+    'cto',
   ];
   const hasSenior = seniorityKeywords.some((k) => lower.includes(k));
-  const baseScore = families.length > 0
-    ? Math.max(0, 1 - (maxFamilyPriority - 1) * 0.15)
-    : 0.1;
+  const baseScore =
+    families.length > 0 ? Math.max(0, 1 - (maxFamilyPriority - 1) * 0.15) : 0.1;
   return {
     families,
     score: hasSenior ? baseScore * 0.5 : baseScore,

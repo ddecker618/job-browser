@@ -18,9 +18,15 @@ try {
 
   if (command === 'report') {
     const jobs = jobRepo.listJobs();
-    const verified = jobs.filter((j) => j.verificationStatus === 'verified' && j.eligibilityPassed === true);
+    const verified = jobs.filter(
+      (j) =>
+        j.verificationStatus === 'verified' && j.eligibilityPassed === true,
+    );
     const hardNo = jobs.filter((j) => j.eligibilityPassed === false);
-    const unverified = jobs.filter((j) => j.verificationStatus === null || j.verificationStatus === 'unverified');
+    const unverified = jobs.filter(
+      (j) =>
+        j.verificationStatus === null || j.verificationStatus === 'unverified',
+    );
 
     log('info', 'Verified Matches Report', {
       totalJobs: jobs.length,
@@ -32,13 +38,19 @@ try {
     if (verified.length > 0) {
       log('info', '--- Verified Eligible Jobs ---');
       for (const job of verified) {
-        log('info', `  ${job.title} @ ${job.company} (score: ${String(job.score ?? 'N/A')})`);
+        log(
+          'info',
+          `  ${job.title} @ ${job.company} (score: ${String(job.score ?? 'N/A')})`,
+        );
       }
     }
     if (hardNo.length > 0) {
       log('info', '--- Hard No (Failed Eligibility) ---');
       for (const job of hardNo) {
-        log('info', `  ${job.title} @ ${job.company} - reason: ${job.eligibilityRejection ?? 'N/A'}`);
+        log(
+          'info',
+          `  ${job.title} @ ${job.company} - reason: ${job.eligibilityRejection ?? 'N/A'}`,
+        );
       }
     }
   } else if (command === 'run') {

@@ -59,12 +59,15 @@ const linkedInQuerySchema = z.strictObject({
 const linkedInConfigurationSchema = z.strictObject({
   searchKeywords: z.string().trim().min(1).default('systems administrator'),
   location: z.string().optional().default(''),
-  queries: z.array(linkedInQuerySchema).optional().default([
-    { keywords: 'systems administrator', location: '' },
-    { keywords: 'network administrator', location: '' },
-    { keywords: 'network analyst', location: '' },
-    { keywords: 'SOC analyst', location: '' },
-  ]),
+  queries: z
+    .array(linkedInQuerySchema)
+    .optional()
+    .default([
+      { keywords: 'systems administrator', location: '' },
+      { keywords: 'network administrator', location: '' },
+      { keywords: 'network analyst', location: '' },
+      { keywords: 'SOC analyst', location: '' },
+    ]),
   remoteFilter: z
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
@@ -638,7 +641,9 @@ export class LinkedInProvider extends BaseProvider {
             companyLogo: detail.companyLogo,
           });
 
-          await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => {});
+          await page
+            .goBack({ waitUntil: 'domcontentloaded' })
+            .catch(() => undefined);
           await page.waitForTimeout(1500);
           await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
         } catch (error) {

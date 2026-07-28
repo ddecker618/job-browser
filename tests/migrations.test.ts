@@ -318,17 +318,21 @@ describe('migration runner', () => {
       '011_add_matched_families.sql',
       '012_verification_columns.sql',
     ]);
-  
+
     const remaining = database
-      .prepare<[], { id: string }>("SELECT id FROM sources WHERE provider_id = 'indeed'")
+      .prepare<
+        [],
+        { id: string }
+      >("SELECT id FROM sources WHERE provider_id = 'indeed'")
       .all();
     expect(remaining).toHaveLength(1);
     expect(remaining[0]!.id).toBe('provider:indeed');
 
     const jobSources = database
-      .prepare<[], { id: string; job_id: string; external_id: string }>(
-        "SELECT id, job_id, external_id FROM job_sources WHERE source_id = 'provider:indeed'",
-      )
+      .prepare<
+        [],
+        { id: string; job_id: string; external_id: string }
+      >("SELECT id, job_id, external_id FROM job_sources WHERE source_id = 'provider:indeed'")
       .all();
     // js-keeper (ext-keeper) kept, js-dup1 (ext-keeper) removed (collision with keeper)
     // js-dup2a (ext-dup-collide) kept (earliest id), js-dup2b (ext-dup-collide) removed (collision with dup1)
@@ -339,7 +343,10 @@ describe('migration runner', () => {
     ]);
 
     const jobs = database
-      .prepare<[], { id: string }>("SELECT id FROM jobs WHERE id IN ('job-keeper', 'job-dup1', 'job-dup2')")
+      .prepare<
+        [],
+        { id: string }
+      >("SELECT id FROM jobs WHERE id IN ('job-keeper', 'job-dup1', 'job-dup2')")
       .all();
     expect(jobs).toHaveLength(3);
   });

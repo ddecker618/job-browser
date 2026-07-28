@@ -144,8 +144,13 @@ describe('scoring engine', () => {
     };
 
     expect(
-      scoreJob(matchingJob, profile, permissiveConfig, analyzedAt, baseVerification())
-        .recommendationStatus,
+      scoreJob(
+        matchingJob,
+        profile,
+        permissiveConfig,
+        analyzedAt,
+        baseVerification(),
+      ).recommendationStatus,
     ).toBe('Verified Match');
     expect(
       scoreJob(

@@ -46,12 +46,15 @@ const querySchema = z.strictObject({
 const configurationSchema = z.strictObject({
   searchKeywords: z.string().trim().min(1).default('systems administrator'),
   location: z.string().optional().default(''),
-  queries: z.array(querySchema).optional().default([
-    { keywords: 'systems administrator', location: '' },
-    { keywords: 'network administrator', location: '' },
-    { keywords: 'network analyst', location: '' },
-    { keywords: 'SOC analyst', location: '' },
-  ]),
+  queries: z
+    .array(querySchema)
+    .optional()
+    .default([
+      { keywords: 'systems administrator', location: '' },
+      { keywords: 'network administrator', location: '' },
+      { keywords: 'network analyst', location: '' },
+      { keywords: 'SOC analyst', location: '' },
+    ]),
   remoteFilter: z
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
@@ -247,9 +250,7 @@ export class IndeedProvider extends BaseProvider {
   }
 }
 
-async function extractIndeedCards(
-  page: Page,
-): Promise<readonly IndeedJob[]> {
+async function extractIndeedCards(page: Page): Promise<readonly IndeedJob[]> {
   const cards = await page.evaluate(() => {
     const clean = (value: string | null | undefined): string | null => {
       const text = value?.replace(/\s+/g, ' ').trim() ?? '';
@@ -276,7 +277,9 @@ async function extractIndeedCards(
       const href = link.getAttribute('href');
       if (!href?.includes('jk=')) continue;
       const jobKey = new URL(
-        href.startsWith('http') ? href : `https://www.indeed.com${href.startsWith('/') ? '' : '/'}${href}`,
+        href.startsWith('http')
+          ? href
+          : `https://www.indeed.com${href.startsWith('/') ? '' : '/'}${href}`,
       ).searchParams.get('jk');
       if (!jobKey) continue;
       const postingUrl = `https://www.indeed.com/viewjob?jk=${jobKey}`;
@@ -350,11 +353,7 @@ async function enrichIndeedCard(
       '[class*="location"]',
       '[class*="loc"]',
     ],
-    salary: [
-      '[data-testid*="salary"]',
-      '[class*="salary"]',
-      '[id*="salary"]',
-    ],
+    salary: ['[data-testid*="salary"]', '[class*="salary"]', '[id*="salary"]'],
     description: [
       '[id*="description"]',
       '[class*="description"]',
@@ -414,7 +413,9 @@ function resolveQueries(
   return [
     {
       keywords:
-        configuration.searchKeywords || request.query || 'systems administrator',
+        configuration.searchKeywords ||
+        request.query ||
+        'systems administrator',
       location: configuredLocation(configuration.location, request.location),
     },
   ];

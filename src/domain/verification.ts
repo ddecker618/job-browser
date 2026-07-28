@@ -1,7 +1,16 @@
-export const VERIFICATION_STATUSES = ['verified', 'closed', 'unverified'] as const;
+export const VERIFICATION_STATUSES = [
+  'verified',
+  'closed',
+  'unverified',
+] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
-export const WORK_ARRANGEMENTS = ['remote', 'hybrid', 'onsite', 'unknown'] as const;
+export const WORK_ARRANGEMENTS = [
+  'remote',
+  'hybrid',
+  'onsite',
+  'unknown',
+] as const;
 export type WorkArrangement = (typeof WORK_ARRANGEMENTS)[number];
 
 export const SCHEDULE_TYPES = [
@@ -39,7 +48,8 @@ export const ELIGIBILITY_REJECTION_REASONS = [
   'dismissed',
   'none',
 ] as const;
-export type EligibilityRejectionReason = (typeof ELIGIBILITY_REJECTION_REASONS)[number];
+export type EligibilityRejectionReason =
+  (typeof ELIGIBILITY_REJECTION_REASONS)[number];
 
 export interface VerificationEvidence {
   status: VerificationStatus;

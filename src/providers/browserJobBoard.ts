@@ -126,7 +126,9 @@ export async function runBrowserSearch<T extends BrowserJobRecord>(
         await page.waitForTimeout(1_000);
         enriched.push(await options.enrichCard(page, card));
         if (options.goBackAfterEnrich) {
-          await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => {});
+          await page
+            .goBack({ waitUntil: 'domcontentloaded' })
+            .catch(() => undefined);
           await page.waitForTimeout(1_500);
         }
       } catch (error) {

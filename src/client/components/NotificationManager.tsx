@@ -39,9 +39,11 @@ export function NotificationManager() {
   const topJobs = useQuery({
     queryKey: ['notifications', 'top-jobs'],
     queryFn: () =>
-      api.searchJobs(
-        { minScore: SCORE_THRESHOLD, sort: 'firstSeenAt', pageSize: 20 },
-      ),
+      api.searchJobs({
+        minScore: SCORE_THRESHOLD,
+        sort: 'firstSeenAt',
+        pageSize: 20,
+      }),
     refetchInterval: 60_000,
   });
 

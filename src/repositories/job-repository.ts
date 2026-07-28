@@ -18,6 +18,7 @@ import { assertUtcTimestamp, nowUtc } from '../utilities/timestamps.js';
 import {
   DEFAULT_SEARCH_PROFILE,
   familiesForJobTitle,
+  searchProfileSchema,
   type SearchProfile,
 } from '../config/search-profile.js';
 
@@ -1079,18 +1080,21 @@ let _cachedProfile: SearchProfile | null = null;
 function loadSearchProfile(database: JobDatabase): SearchProfile {
   if (_cachedProfile !== null) return _cachedProfile;
   const row = database
-    .prepare<[], { setting_value_json: string } | undefined>(
-      `SELECT setting_value_json FROM app_settings WHERE setting_key = 'searchProfile'`,
-    )
+    .prepare<
+      [],
+      { setting_value_json: string } | undefined
+    >(`SELECT setting_value_json FROM app_settings WHERE setting_key = 'searchProfile'`)
     .get();
   if (row === undefined) {
     _cachedProfile = DEFAULT_SEARCH_PROFILE;
     return _cachedProfile;
   }
   try {
-    const parsed = JSON.parse(row.setting_value_json) as SearchProfile;
-    if (parsed && Array.isArray(parsed.families)) {
-      _cachedProfile = parsed;
+    const parsed = searchProfileSchema.safeParse(
+      JSON.parse(row.setting_value_json),
+    );
+    if (parsed.success) {
+      _cachedProfile = parsed.data;
       return _cachedProfile;
     }
   } catch {
@@ -1100,7 +1104,10 @@ function loadSearchProfile(database: JobDatabase): SearchProfile {
   return _cachedProfile;
 }
 
-function computeMatchedFamilies(database: JobDatabase, title: string): string | null {
+function computeMatchedFamilies(
+  database: JobDatabase,
+  title: string,
+): string | null {
   const profile = loadSearchProfile(database);
   const families = familiesForJobTitle(title, profile);
   return families.length > 0 ? families.join(',') : null;

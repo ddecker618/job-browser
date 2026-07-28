@@ -604,9 +604,10 @@ export class DashboardRepository {
 
   public getSetting(key: string): string | null {
     const row = this.database
-      .prepare<[string], { setting_value_json: string } | undefined>(
-        'SELECT setting_value_json FROM app_settings WHERE setting_key = ?',
-      )
+      .prepare<
+        [string],
+        { setting_value_json: string } | undefined
+      >('SELECT setting_value_json FROM app_settings WHERE setting_key = ?')
       .get(key);
     return row?.setting_value_json ?? null;
   }

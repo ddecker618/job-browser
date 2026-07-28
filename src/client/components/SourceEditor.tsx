@@ -958,7 +958,8 @@ function ProviderFields({
               : [
                   {
                     keywords:
-                      configuration['searchKeywords'] ?? 'systems administrator',
+                      configuration['searchKeywords'] ??
+                      'systems administrator',
                   },
                 ];
             update('queries', [...existing, { keywords: '' }]);
@@ -1215,7 +1216,8 @@ function ProviderFields({
               : [
                   {
                     keywords:
-                      configuration['searchKeywords'] ?? 'systems administrator',
+                      configuration['searchKeywords'] ??
+                      'systems administrator',
                   },
                 ];
             update('queries', [...existing, { keywords: '' }]);

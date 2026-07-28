@@ -46,12 +46,15 @@ const querySchema = z.strictObject({
 const configurationSchema = z.strictObject({
   searchKeywords: z.string().trim().min(1).default('systems administrator'),
   location: z.string().optional().default(''),
-  queries: z.array(querySchema).optional().default([
-    { keywords: 'systems administrator', location: '' },
-    { keywords: 'network administrator', location: '' },
-    { keywords: 'network analyst', location: '' },
-    { keywords: 'SOC analyst', location: '' },
-  ]),
+  queries: z
+    .array(querySchema)
+    .optional()
+    .default([
+      { keywords: 'systems administrator', location: '' },
+      { keywords: 'network administrator', location: '' },
+      { keywords: 'network analyst', location: '' },
+      { keywords: 'SOC analyst', location: '' },
+    ]),
   remoteFilter: z
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
@@ -397,7 +400,9 @@ function resolveQueries(
   return [
     {
       keywords:
-        configuration.searchKeywords || request.query || 'systems administrator',
+        configuration.searchKeywords ||
+        request.query ||
+        'systems administrator',
       location: configuredLocation(configuration.location, request.location),
     },
   ];
