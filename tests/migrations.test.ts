@@ -51,6 +51,7 @@ describe('migration runner', () => {
       '007_expanded_discovery.sql',
       '008_job_search_salary.sql',
       '009_clean_touchette_demo_source.sql',
+      '010_merge_duplicate_provider_sources.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -175,6 +176,7 @@ describe('migration runner', () => {
       '007_expanded_discovery.sql',
       '008_job_search_salary.sql',
       '009_clean_touchette_demo_source.sql',
+      '010_merge_duplicate_provider_sources.sql',
     ]);
     expect(
       database
@@ -200,6 +202,140 @@ describe('migration runner', () => {
       notes: 'preserve me',
       application_status: 'applied',
     });
+  });
+
+  it('merges duplicate provider sources with colliding external_ids', () => {
+    const directory = temporaryMigrationDirectory();
+    for (const filename of [
+      '001_initial_schema.sql',
+      '002_discovery_engine.sql',
+      '003_job_intelligence.sql',
+      '004_dashboard.sql',
+      '005_resume_parsing_error.sql',
+      '006_multi_source_discovery.sql',
+      '007_expanded_discovery.sql',
+      '008_job_search_salary.sql',
+      '009_clean_touchette_demo_source.sql',
+    ]) {
+      copyFileSync(
+        join(DEFAULT_MIGRATIONS_DIRECTORY, filename),
+        join(directory, filename),
+      );
+    }
+    const database = openDatabase(':memory:');
+    databases.push(database);
+    runMigrations(database, directory);
+
+    database.exec(`
+      -- Three sources with the same provider_id:
+      --   keeper    = 'provider:indeed' (the fixed-ID winner)
+      --   dup1     = shares keeper's external_id 'ext-keeper' for a different job
+      --   dup2     = shares dup1's external_id 'ext-dup-collide' but NOT the keeper's
+      INSERT INTO sources (
+        id, employer, source_type, enabled, connector, failure_count,
+        created_at, updated_at, display_name, provider_id, configuration_json,
+        search_criteria_json, configuration_status, health_status
+      ) VALUES (
+        'provider:indeed', 'Indeed', 'job-board', 1, 'indeed', 0,
+        '2026-07-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z',
+        'Indeed (browser)', 'indeed', '{}', '{}', 'valid', 'never-run'
+      );
+      INSERT INTO sources (
+        id, employer, source_type, enabled, connector, failure_count,
+        created_at, updated_at, display_name, provider_id, configuration_json,
+        search_criteria_json, configuration_status, health_status
+      ) VALUES (
+        'dup-1', 'Indeed', 'job-board', 1, 'indeed', 0,
+        '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z',
+        'Indeed (dup1)', 'indeed', '{}', '{}', 'valid', 'never-run'
+      );
+      INSERT INTO sources (
+        id, employer, source_type, enabled, connector, failure_count,
+        created_at, updated_at, display_name, provider_id, configuration_json,
+        search_criteria_json, configuration_status, health_status
+      ) VALUES (
+        'dup-2', 'Indeed', 'job-board', 1, 'indeed', 0,
+        '2026-06-02T00:00:00.000Z', '2026-06-02T00:00:00.000Z',
+        'Indeed (dup2)', 'indeed', '{}', '{}', 'valid', 'never-run'
+      );
+      INSERT INTO source_schedules (id, source_id, enabled, cadence, created_at, updated_at)
+      VALUES ('sched-1', 'provider:indeed', 0, 'manual', '2026-07-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z');
+      INSERT INTO source_schedules (id, source_id, enabled, cadence, created_at, updated_at)
+      VALUES ('sched-2', 'dup-1', 0, 'manual', '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z');
+      INSERT INTO source_schedules (id, source_id, enabled, cadence, created_at, updated_at)
+      VALUES ('sched-3', 'dup-2', 0, 'manual', '2026-06-02T00:00:00.000Z', '2026-06-02T00:00:00.000Z');
+
+      INSERT INTO jobs (id, fingerprint, external_id, title, normalized_title, company,
+        normalized_company, remote_type, employment_type, source_name,
+        source_type, first_seen_at, last_seen_at, active, seniority_level,
+        status, created_at, updated_at)
+      VALUES ('job-keeper', '${'b'.repeat(64)}', 'ext-keeper', 'Keeper Job',
+        'keeper job', 'Acme', 'acme', 'remote', 'full-time', 'Indeed',
+        'job-board', '2026-07-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z',
+        1, 'mid', 'new', '2026-07-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z');
+      INSERT INTO jobs (id, fingerprint, external_id, title, normalized_title, company,
+        normalized_company, remote_type, employment_type, source_name,
+        source_type, first_seen_at, last_seen_at, active, seniority_level,
+        status, created_at, updated_at)
+      VALUES ('job-dup1', '${'c'.repeat(64)}', 'ext-dup1', 'Dup 1 Job',
+        'dup1 job', 'Acme', 'acme', 'remote', 'full-time', 'Indeed',
+        'job-board', '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z',
+        1, 'mid', 'new', '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z');
+      INSERT INTO jobs (id, fingerprint, external_id, title, normalized_title, company,
+        normalized_company, remote_type, employment_type, source_name,
+        source_type, first_seen_at, last_seen_at, active, seniority_level,
+        status, created_at, updated_at)
+      VALUES ('job-dup2', '${'d'.repeat(64)}', 'ext-dup2', 'Dup 2 Job',
+        'dup2 job', 'Acme', 'acme', 'remote', 'full-time', 'Indeed',
+        'job-board', '2026-06-02T00:00:00.000Z', '2026-06-02T00:00:00.000Z',
+        1, 'mid', 'new', '2026-06-02T00:00:00.000Z', '2026-06-02T00:00:00.000Z');
+
+      -- Keeper source has external_id='ext-keeper'
+      INSERT INTO job_sources (id, job_id, source_id, external_id, first_seen_at, last_seen_at)
+      VALUES ('js-keeper', 'job-keeper', 'provider:indeed', 'ext-keeper',
+        '2026-07-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z');
+
+      -- dup1: same external_id 'ext-keeper' as keeper → collides with keeper
+      INSERT INTO job_sources (id, job_id, source_id, external_id, first_seen_at, last_seen_at)
+      VALUES ('js-dup1', 'job-dup1', 'dup-1', 'ext-keeper',
+        '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z');
+
+      -- dup2: external_id='ext-dup-collide' which dup1 ALSO has → collides with dup1, not keeper
+      INSERT INTO job_sources (id, job_id, source_id, external_id, first_seen_at, last_seen_at)
+      VALUES ('js-dup2a', 'job-dup1', 'dup-1', 'ext-dup-collide',
+        '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z');
+      INSERT INTO job_sources (id, job_id, source_id, external_id, first_seen_at, last_seen_at)
+      VALUES ('js-dup2b', 'job-dup2', 'dup-2', 'ext-dup-collide',
+        '2026-06-02T00:00:00.000Z', '2026-06-02T00:00:00.000Z');
+    `);
+
+    expect(runMigrations(database).applied).toEqual([
+      '010_merge_duplicate_provider_sources.sql',
+    ]);
+
+    const remaining = database
+      .prepare<[], { id: string }>("SELECT id FROM sources WHERE provider_id = 'indeed'")
+      .all();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]!.id).toBe('provider:indeed');
+
+    const jobSources = database
+      .prepare<[], { id: string; job_id: string; external_id: string }>(
+        "SELECT id, job_id, external_id FROM job_sources WHERE source_id = 'provider:indeed'",
+      )
+      .all();
+    // js-keeper (ext-keeper) kept, js-dup1 (ext-keeper) removed (collision with keeper)
+    // js-dup2a (ext-dup-collide) kept (earliest id), js-dup2b (ext-dup-collide) removed (collision with dup1)
+    expect(jobSources).toHaveLength(2);
+    expect(jobSources.map((js) => js.external_id).sort()).toEqual([
+      'ext-dup-collide',
+      'ext-keeper',
+    ]);
+
+    const jobs = database
+      .prepare<[], { id: string }>("SELECT id FROM jobs WHERE id IN ('job-keeper', 'job-dup1', 'job-dup2')")
+      .all();
+    expect(jobs).toHaveLength(3);
   });
 
   it('uses the lifecycle index for active verification queries', () => {

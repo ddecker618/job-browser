@@ -28,7 +28,7 @@ const DEFAULT_FIXTURE_PATH = fileURLToPath(
   new URL('../fixtures/builtin-search-response.html', import.meta.url),
 );
 const configurationSchema = z.strictObject({
-  searchKeywords: z.string().trim().min(1).default('software engineer'),
+  searchKeywords: z.string().trim().min(1).default('systems administrator'),
   location: z.string().optional().default(''),
   queries: z
     .array(
@@ -38,7 +38,12 @@ const configurationSchema = z.strictObject({
       }),
     )
     .optional()
-    .default([]),
+    .default([
+      { keywords: 'systems administrator', location: '' },
+      { keywords: 'network administrator', location: '' },
+      { keywords: 'network analyst', location: '' },
+      { keywords: 'SOC analyst', location: '' },
+    ]),
   remoteFilter: z
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()

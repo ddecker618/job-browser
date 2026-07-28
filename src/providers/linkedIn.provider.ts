@@ -57,9 +57,14 @@ const linkedInQuerySchema = z.strictObject({
 });
 
 const linkedInConfigurationSchema = z.strictObject({
-  searchKeywords: z.string().trim().min(1).default('software engineer'),
+  searchKeywords: z.string().trim().min(1).default('systems administrator'),
   location: z.string().optional().default(''),
-  queries: z.array(linkedInQuerySchema).optional().default([]),
+  queries: z.array(linkedInQuerySchema).optional().default([
+    { keywords: 'systems administrator', location: '' },
+    { keywords: 'network administrator', location: '' },
+    { keywords: 'network analyst', location: '' },
+    { keywords: 'SOC analyst', location: '' },
+  ]),
   remoteFilter: z
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
@@ -152,7 +157,7 @@ export class LinkedInProvider extends BaseProvider {
     }
 
     const keywords =
-      (config.searchKeywords || requestQuery) ?? 'software engineer';
+      (config.searchKeywords || requestQuery) ?? 'systems administrator';
     return [
       {
         keywords,
@@ -520,7 +525,7 @@ export class LinkedInProvider extends BaseProvider {
           description:
             'This is a test job description for Software Engineer position.',
           searchQuery: {
-            query: 'software engineer',
+            query: 'systems administrator',
             location: null,
             remoteOnly: false,
             limit: 25,
@@ -633,6 +638,8 @@ export class LinkedInProvider extends BaseProvider {
             companyLogo: detail.companyLogo,
           });
 
+          await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => {});
+          await page.waitForTimeout(1500);
           await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
         } catch (error) {
           log('warn', `Failed to open job detail page for job ${jobId}`, {

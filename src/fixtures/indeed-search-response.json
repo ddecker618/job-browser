@@ -1,0 +1,19 @@
+[
+  {
+    "jobId": "abc123def456",
+    "title": "Cybersecurity Analyst",
+    "company": "Example Corp",
+    "location": "Remote",
+    "salaryText": "$120,000 - $160,000 a year",
+    "salaryMinimum": 120000,
+    "salaryMaximum": 160000,
+    "description": "We are looking for a Cybersecurity Analyst to join our team. You will monitor security events, analyze threats, and respond to incidents. Experience with SIEM tools and vulnerability assessment is required.",
+    "requirements": "3+ years of cybersecurity experience\nCompTIA Security+ or equivalent\nExperience with SIEM platforms",
+    "preferredQualifications": null,
+    "postingUrl": "https://www.indeed.com/viewjob?jk=abc123def456",
+    "postedDate": "2026-07-27T12:00:00.000Z",
+    "employmentType": "full-time",
+    "workplaceType": "remote",
+    "seniorityLevel": null
+  }
+]

@@ -39,9 +39,9 @@ describe('source management API', () => {
     };
 
     expect(control.sources.map((source) => source.providerId)).toEqual(
-      expect.arrayContaining(['wellfound', 'ziprecruiter', 'dice']),
+      expect.arrayContaining(['wellfound', 'ziprecruiter', 'dice', 'indeed']),
     );
-    expect(control.sources).toHaveLength(3);
+    expect(control.sources).toHaveLength(4);
     expect(
       control.sources
         .filter((source) => source.enabled)

@@ -779,7 +779,7 @@ function ProviderFields({
           <input
             value={textValue(configuration['searchKeywords'])}
             onChange={(event) => update('searchKeywords', event.target.value)}
-            placeholder="software engineer"
+            placeholder="systems administrator"
           />
         </label>
         <label>
@@ -958,7 +958,7 @@ function ProviderFields({
               : [
                   {
                     keywords:
-                      configuration['searchKeywords'] ?? 'software engineer',
+                      configuration['searchKeywords'] ?? 'systems administrator',
                   },
                 ];
             update('queries', [...existing, { keywords: '' }]);
@@ -1215,7 +1215,7 @@ function ProviderFields({
               : [
                   {
                     keywords:
-                      configuration['searchKeywords'] ?? 'software engineer',
+                      configuration['searchKeywords'] ?? 'systems administrator',
                   },
                 ];
             update('queries', [...existing, { keywords: '' }]);

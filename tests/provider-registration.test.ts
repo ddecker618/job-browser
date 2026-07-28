@@ -30,6 +30,7 @@ describe('provider registration', () => {
       'dice',
       'greenhouse',
       'icims',
+      'indeed',
       'lever',
       'linkedin',
       'recruitee',

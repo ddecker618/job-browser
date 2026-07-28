@@ -44,9 +44,14 @@ const querySchema = z.strictObject({
 });
 
 const configurationSchema = z.strictObject({
-  searchKeywords: z.string().trim().min(1).default('software engineer'),
+  searchKeywords: z.string().trim().min(1).default('systems administrator'),
   location: z.string().optional().default(''),
-  queries: z.array(querySchema).optional().default([]),
+  queries: z.array(querySchema).optional().default([
+    { keywords: 'systems administrator', location: '' },
+    { keywords: 'network administrator', location: '' },
+    { keywords: 'network analyst', location: '' },
+    { keywords: 'SOC analyst', location: '' },
+  ]),
   remoteFilter: z
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
@@ -161,6 +166,7 @@ export class WellfoundProvider extends BaseProvider {
         configuration.browserProfileDir ?? this.resolveBrowserProfileDir(),
       ),
       keepBrowserOpen: configuration.keepBrowserOpen,
+      goBackAfterEnrich: true,
       maxResults,
       queries: queries.map((query) => query.keywords),
       buildSearchUrl: (query) => {
@@ -391,7 +397,7 @@ function resolveQueries(
   return [
     {
       keywords:
-        configuration.searchKeywords || request.query || 'software engineer',
+        configuration.searchKeywords || request.query || 'systems administrator',
       location: configuredLocation(configuration.location, request.location),
     },
   ];

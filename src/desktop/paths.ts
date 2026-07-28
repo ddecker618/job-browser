@@ -35,6 +35,7 @@ export interface DesktopPaths {
   icon: string;
   linkedinProfile: string;
   diceProfile: string;
+  indeedProfile: string;
   wellfoundProfile: string;
   ziprecruiterProfile: string;
 }
@@ -78,6 +79,7 @@ export function resolveDesktopPaths(input: DesktopPathInput): DesktopPaths {
       : resolve(input.projectRoot, 'build', 'icon.png'),
     linkedinProfile: resolve(root, 'linkedin-profile'),
     diceProfile: resolve(root, 'dice-profile'),
+    indeedProfile: resolve(root, 'indeed-profile'),
     wellfoundProfile: resolve(root, 'wellfound-profile'),
     ziprecruiterProfile: resolve(root, 'ziprecruiter-profile'),
   };
@@ -97,6 +99,7 @@ export function initializeDesktopPaths(
     paths.settings,
     paths.linkedinProfile,
     paths.diceProfile,
+    paths.indeedProfile,
     paths.wellfoundProfile,
     paths.ziprecruiterProfile,
   ]) {

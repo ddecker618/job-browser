@@ -44,6 +44,7 @@ export interface BrowserSearchOptions<T extends BrowserJobRecord> {
   signal?: AbortSignal | undefined;
   isCancelled?: () => boolean;
   securityTimeout?: number;
+  goBackAfterEnrich?: boolean;
 }
 
 export async function runBrowserSearch<T extends BrowserJobRecord>(
@@ -124,6 +125,10 @@ export async function runBrowserSearch<T extends BrowserJobRecord>(
         );
         await page.waitForTimeout(1_000);
         enriched.push(await options.enrichCard(page, card));
+        if (options.goBackAfterEnrich) {
+          await page.goBack({ waitUntil: 'domcontentloaded' }).catch(() => {});
+          await page.waitForTimeout(1_500);
+        }
       } catch (error) {
         log('warn', `${options.providerName}: detail page failed`, {
           url: card.postingUrl,
