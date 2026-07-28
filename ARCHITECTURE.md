@@ -141,7 +141,7 @@ explicit authorization; otherwise keep its source disabled.
 
 6. **Provider timeout handling** — Many "timed out" errors on scheduled runs are transient network issues. Add retry with backoff at the coordinator level, not just the HTTP client level.
 7. **Source deduplication UI** — Show which sources contributed each job. Currently jobs can come from multiple overlapping sources.
-8. **Job expiry** — Jobs from ATS sources should expire if the source stops listing them. Currently they're never removed.
+8. **Job expiry** — Jobs from ATS sources should expire if the source stops listing them. Currently they're never removed. -- this should be a higher priority meaning asap
 9. **Source health dashboard** — Visual health of all sources with failure reasons, not just text `healthy`/`failed`.
 10. **Better error messages** — Many provider errors are opaque ("request timed out"). Surface more detail (HTTP status, response body preview).
 

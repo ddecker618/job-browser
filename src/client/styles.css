@@ -1343,6 +1343,57 @@ kbd {
   margin: 1rem 0 1.5rem;
 }
 
+.roles-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 2.2rem;
+  cursor: text;
+}
+.roles-editor:focus-within {
+  border-color: var(--green);
+}
+.role-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.5rem;
+  background: var(--green);
+  color: #0c0204;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.role-tag button {
+  background: none;
+  border: none;
+  color: #0c0204;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+  margin-left: 0.15rem;
+  opacity: 0.7;
+}
+.role-tag button:hover {
+  opacity: 1;
+}
+.roles-editor input {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 0.82rem;
+  padding: 0.2rem 0;
+  outline: none;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

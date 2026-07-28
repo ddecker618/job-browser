@@ -139,6 +139,7 @@ export interface AppSettings {
   loggingLevel: 'debug' | 'info' | 'warn' | 'error';
   resumeDirectory: string;
   artifactDirectory: string;
+  targetRoles: string[];
 }
 
 export interface SavedFilterView {

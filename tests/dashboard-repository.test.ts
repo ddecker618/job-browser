@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { loadCandidateProfile } from '../src/config/candidate-profile.js';
 import { loadScoringConfig } from '../src/config/scoring-config.js';
+import type { AppSettings } from '../src/models/dashboard.js';
 import { DashboardRepository } from '../src/database/dashboardRepository.js';
 import type { JobDatabase } from '../src/db/database.js';
 import { IntelligenceEngine } from '../src/intelligence/intelligenceEngine.js';
@@ -64,7 +65,7 @@ describe('DashboardRepository', () => {
       value: 1,
     });
 
-    const defaults = {
+    const defaults: AppSettings = {
       databaseLocation: 'data/test.sqlite',
       defaultSearch: '',
       theme: 'dark' as const,
@@ -72,6 +73,7 @@ describe('DashboardRepository', () => {
       loggingLevel: 'info' as const,
       resumeDirectory: 'data/resumes',
       artifactDirectory: 'artifacts',
+      targetRoles: ['systems administrator', 'network administrator', 'network analyst', 'SOC analyst'],
     };
     dashboard.saveSettings({ ...defaults, defaultSearch: 'security' });
     expect(dashboard.getSettings(defaults).defaultSearch).toBe('security');

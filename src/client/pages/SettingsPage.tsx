@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AppSettings } from '../../models/dashboard.js';
@@ -6,6 +6,63 @@ import { api } from '../api.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { ErrorState, LoadingState } from '../components/States.js';
 import { DesktopSettings } from '../components/DesktopSettings.js';
+
+function RolesEditor({
+  value,
+  onChange,
+}: {
+  value: string[] | undefined;
+  onChange: (roles: string[]) => void;
+}) {
+  const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const roles = value ?? [];
+  const addRole = (role: string) => {
+    const trimmed = role.trim().toLowerCase();
+    if (trimmed && !roles.includes(trimmed)) {
+      onChange([...roles, trimmed]);
+    }
+  };
+  const removeRole = (index: number) => {
+    const next = roles.filter((_, i) => i !== index);
+    onChange(next.length > 0 ? next : roles);
+  };
+  const handleKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      addRole(input);
+      setInput('');
+    }
+    if (event.key === 'Backspace' && input === '' && roles.length > 0) {
+      removeRole(roles.length - 1);
+    }
+  };
+  return (
+    <div className="roles-editor" onClick={() => inputRef.current?.focus()}>
+      {roles.map((role, index) => (
+        <span key={role} className="role-tag">
+          {role}
+          <button type="button" onClick={() => removeRole(index)}>
+            &times;
+          </button>
+        </span>
+      ))}
+      <input
+        ref={inputRef}
+        value={input}
+        placeholder={roles.length === 0 ? 'Type a role and press Enter' : ''}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKey}
+        onBlur={() => {
+          if (input.trim()) {
+            addRole(input);
+            setInput('');
+          }
+        }}
+      />
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: api.settings });
@@ -107,6 +164,26 @@ export function SettingsPage() {
                 <option value="error">Error</option>
               </select>
             </label>
+          </div>
+        </section>
+        <section className="form-panel">
+          <div className="section-heading">
+            <span>03</span>
+            <div>
+              <h3>Target Roles</h3>
+              <p>
+                Job titles to search for across all sources. Add or remove roles
+                to control what every source discovers.
+              </p>
+            </div>
+          </div>
+          <div className="form-grid">
+            <div className="span-2">
+              <RolesEditor
+                value={form.watch('targetRoles')}
+                onChange={(roles) => form.setValue('targetRoles', roles)}
+              />
+            </div>
           </div>
         </section>
         <DesktopSettings />

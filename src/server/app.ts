@@ -480,6 +480,9 @@ export function createApp(
   app.put('/api/settings', (request, response) => {
     const settings = settingsSchema.parse(request.body);
     repository.saveSettings(settings);
+    if (settings.targetRoles.length > 0) {
+      sourceRepository.cascadeTargetRoles(settings.targetRoles);
+    }
     options.onSettingsSaved?.(settings);
     response.json(settings);
   });
@@ -557,6 +560,12 @@ const settingsSchema = z.strictObject({
   loggingLevel: z.enum(['debug', 'info', 'warn', 'error']),
   resumeDirectory: z.string().trim().min(1),
   artifactDirectory: z.string().trim().min(1),
+  targetRoles: z.array(z.string().trim().min(1)).min(1).default([
+    'systems administrator',
+    'network administrator',
+    'network analyst',
+    'SOC analyst',
+  ]),
 });
 
 function defaultSettings(
@@ -571,6 +580,12 @@ function defaultSettings(
     loggingLevel: 'info',
     resumeDirectory,
     artifactDirectory,
+    targetRoles: [
+      'systems administrator',
+      'network administrator',
+      'network analyst',
+      'SOC analyst',
+    ],
   };
 }
 
