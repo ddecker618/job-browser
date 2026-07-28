@@ -21,6 +21,8 @@ interface Filters {
   minSalary: string;
   recommendation: string;
   status: string;
+  matchedFamilies: string;
+  verificationStatus: string;
   firstDiscoveredFrom: string;
   firstDiscoveredTo: string;
   lastVerifiedFrom: string;
@@ -44,6 +46,8 @@ const initialFilters: Filters = {
   minSalary: '',
   recommendation: '',
   status: '',
+  matchedFamilies: '',
+  verificationStatus: '',
   firstDiscoveredFrom: '',
   firstDiscoveredTo: '',
   lastVerifiedFrom: '',
@@ -114,6 +118,12 @@ export function JobsPage() {
     ...(filters.status === ''
       ? {}
       : { status: filters.status as JobSearchQuery['status'] }),
+    ...(filters.matchedFamilies === ''
+      ? {}
+      : { matchedFamilies: filters.matchedFamilies }),
+    ...(filters.verificationStatus === ''
+      ? {}
+      : { verificationStatus: filters.verificationStatus }),
     ...textQuery('firstDiscoveredFrom', filters.firstDiscoveredFrom),
     ...textQuery('firstDiscoveredTo', filters.firstDiscoveredTo),
     ...textQuery('lastVerifiedFrom', filters.lastVerifiedFrom),
@@ -325,6 +335,26 @@ export function JobsPage() {
             options={facets.statuses}
             onChange={(value) => updateFilter('status', value)}
           />
+          <label>
+            Role family
+            <input
+              value={filters.matchedFamilies}
+              placeholder="e.g. systems, network"
+              onChange={(event) =>
+                updateFilter('matchedFamilies', event.target.value)
+              }
+            />
+          </label>
+          <FacetSelect
+            label="Verification"
+            value={filters.verificationStatus}
+            options={[
+              { value: 'verified', label: 'Verified', count: 0 },
+              { value: 'unverified', label: 'Unverified', count: 0 },
+              { value: 'closed', label: 'Closed', count: 0 },
+            ]}
+            onChange={(value) => updateFilter('verificationStatus', value)}
+          />
           <DateFilter
             label="First discovered from"
             value={filters.firstDiscoveredFrom}
@@ -437,6 +467,13 @@ export function JobsPage() {
                         {job.favorite ? '★ ' : ''}
                         {job.title}
                       </strong>
+                      <span className="family-badges">
+                        {job.matchedFamilies?.split(',').map((family) => (
+                          <span key={family} className={`family-badge family-${family}`}>
+                            {family}
+                          </span>
+                        ))}
+                      </span>
                       <small>{job.remoteType}</small>
                     </td>
                     <td>{job.company}</td>
@@ -451,6 +488,9 @@ export function JobsPage() {
                     <td>
                       <span className="recommendation-cell">
                         {job.recommendation ?? 'Unscored'}
+                        {job.verificationStatus === 'verified' && job.eligibilityPassed ? (
+                          <span className="verified-badge" title="Verified eligible match">✓</span>
+                        ) : null}
                       </span>
                     </td>
                     <td>

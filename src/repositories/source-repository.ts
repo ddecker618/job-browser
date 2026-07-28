@@ -10,6 +10,11 @@ import type {
   SourceSchedule,
 } from '../models/source-management.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import {
+  collectEnabledTitles,
+  DEFAULT_SEARCH_PROFILE,
+  type SearchProfile,
+} from '../config/search-profile.js';
 
 interface SourceRow extends Record<string, unknown> {
   id: string;
@@ -75,18 +80,39 @@ export class SourceRepository {
   }
 
   public ensureDefaultSources(): void {
-    const roles = this.loadTargetRoles();
-    const queries = queriesFromRoles(roles);
+    const titles = this.loadSearchProfileTitles();
+    if (titles.length === 0) return;
+    const queries = queriesFromRoles(titles);
     this.ensureSources(
       DEFAULT_SOURCES.map((source) => ({
         ...source,
         configuration: { ...source.configuration, queries } as Record<string, unknown>,
         searchCriteria: {
           ...source.searchCriteria,
-          query: roles[0] ?? source.searchCriteria.query,
+          query: titles[0] ?? source.searchCriteria.query,
         },
       })) as unknown as readonly DefaultSource[],
     );
+  }
+
+  private loadSearchProfileTitles(): string[] {
+    const row = this.database
+      .prepare<[], { setting_value_json: string } | undefined>(
+        `SELECT setting_value_json FROM app_settings WHERE setting_key = 'searchProfile'`,
+      )
+      .get();
+    if (row === undefined) {
+      return collectEnabledTitles(DEFAULT_SEARCH_PROFILE);
+    }
+    try {
+      const parsed = JSON.parse(row.setting_value_json) as SearchProfile;
+      if (parsed && Array.isArray(parsed.families)) {
+        return collectEnabledTitles(parsed);
+      }
+    } catch {
+      // fall through
+    }
+    return collectEnabledTitles(DEFAULT_SEARCH_PROFILE);
   }
 
   public cascadeTargetRoles(roles: string[]): void {
@@ -106,6 +132,29 @@ export class SourceRepository {
         const config = parseObject(source.configuration_json);
         config['queries'] = queries;
         config['searchKeywords'] = roles[0];
+        update.run(JSON.stringify(config), timestamp, source.id);
+      }
+    })();
+  }
+
+  public cascadeSearchProfile(profile: SearchProfile): void {
+    const titles = collectEnabledTitles(profile);
+    if (titles.length === 0) return;
+    const queries = queriesFromRoles(titles);
+    const row = this.database
+      .prepare<[], { id: string; configuration_json: string }>(
+        `SELECT id, configuration_json FROM sources WHERE provider_id IS NOT NULL`,
+      )
+      .all();
+    const update = this.database.prepare(
+      `UPDATE sources SET configuration_json = ?, updated_at = ? WHERE id = ?`,
+    );
+    const timestamp = nowUtc();
+    this.database.transaction(() => {
+      for (const source of row) {
+        const config = parseObject(source.configuration_json);
+        config['queries'] = queries;
+        config['searchKeywords'] = titles[0];
         update.run(JSON.stringify(config), timestamp, source.id);
       }
     })();

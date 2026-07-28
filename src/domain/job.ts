@@ -66,6 +66,7 @@ export interface Job {
   materiallyUpdatedAt?: string | null;
   removedAt?: string | null;
   providerConfidence?: number | null;
+  matchedFamilies?: string | null;
   active: boolean;
   clearanceRequirement: string | null;
   sponsorshipAvailable: boolean | null;
@@ -75,4 +76,11 @@ export interface Job {
   recommendation: string | null;
   scoreExplanation: string | null;
   status: JobStatus;
+  verificationStatus: string | null;
+  eligibilityPassed: boolean | null;
+  eligibilityRejection: string | null;
+  workArrangement: string | null;
+  illinoisEligibility: string | null;
+  scheduleClassification: string | null;
+  verifiedAt: string | null;
 }

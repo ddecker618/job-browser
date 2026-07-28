@@ -24,6 +24,7 @@ import type {
   JobSearchQuery,
   JobSearchResponse,
 } from '../models/job-search.js';
+import type { SearchProfile } from '../config/search-profile.js';
 
 export interface ProfileResponse {
   profile: CandidateProfile;
@@ -152,6 +153,9 @@ export const api = {
   settings: () => request<AppSettings>('/api/settings'),
   saveSettings: (settings: AppSettings) =>
     request<AppSettings>('/api/settings', json('PUT', settings)),
+  searchProfile: () => request<SearchProfile>('/api/search-profile'),
+  saveSearchProfile: (profile: SearchProfile) =>
+    request<SearchProfile>('/api/search-profile', json('PUT', profile)),
   savedFilters: () => request<SavedFilterView[]>('/api/saved-filters'),
   saveFilter: (
     name: string,

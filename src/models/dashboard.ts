@@ -8,6 +8,7 @@ export interface DashboardSummary {
   appliedJobs: number;
   hiddenJobs: number;
   expiredJobs: number;
+  verifiedMatches: number;
   averageMatchScore: number;
   topEmployer: string | null;
   topSkill: string | null;
@@ -31,6 +32,7 @@ export interface JobListItem {
   salaryMaximum: number | null;
   score: number | null;
   recommendation: string | null;
+  matchedFamilies: string | null;
   status: JobStatus;
   firstSeenAt: string;
   lastSeenAt: string;

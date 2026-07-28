@@ -6,8 +6,17 @@ import type {
 } from '../models/intelligence.js';
 import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
+import type { VerificationResult } from './verificationService.js';
 import { extractJobTerms, profileHasTerm } from '../skills/skillExtractor.js';
 import { normalizeText } from '../utilities/normalization.js';
+
+const SENIORITY_DOWN_RANK: readonly [RegExp, number][] = [
+  [/^(chief|cto|ceo|cfo|executive)\b/i, 0],
+  [/\b(vice president|vp|director)\b/i, 0.3],
+  [/\b(principal|staff)\b/i, 0.5],
+  [/\b(lead|manager)\b/i, 0.6],
+  [/\b(senior|sr\.?)\b/i, 0.7],
+];
 
 const DAY_MS = 86_400_000;
 
@@ -16,10 +25,35 @@ export function scoreJob(
   profile: CandidateProfile,
   config: ScoringConfig,
   analyzedAt = new Date().toISOString(),
+  verification?: VerificationResult | null,
 ): JobIntelligence {
   const terms = extractJobTerms(job, config);
   const explanations: string[] = [];
   const missingQualifications: string[] = [];
+
+  const verificationResult = applyVerification(
+    verification ?? null,
+    profile,
+    config,
+    explanations,
+  );
+
+  if (verificationResult.hardBlock) {
+    return {
+      jobId: job.id,
+      overallScore: 0,
+      categoryScores: createZeroScores(),
+      recommendationStatus: 'Hard No',
+      explanations,
+      missingQualifications,
+      skills: terms.skills,
+      certifications: terms.certifications,
+      analyzedAt,
+      eligibilityPassed: false,
+      eligibilityRejection: verificationResult.rejectionReason,
+      verifiedStatus: verificationResult.verifiedStatus,
+    };
+  }
 
   const title = scoreTitle(job, profile, explanations);
   const skills = scoreTerms(
@@ -68,16 +102,32 @@ export function scoreJob(
       0,
     ),
   );
-  const recommendationStatus = recommend(job, profile, config, overallScore);
+
+  const finalScore = verificationResult.modifier !== null
+    ? roundScore(overallScore * verificationResult.modifier)
+    : overallScore;
+
+  const recommendationStatus = recommend(
+    job,
+    profile,
+    config,
+    finalScore,
+    verificationResult,
+  );
 
   explanations.unshift(
-    `Overall weighted match score: ${overallScore.toFixed(1)}.`,
+    `Overall weighted match score: ${finalScore.toFixed(1)}.`,
   );
+  if (verificationResult.modifier !== null && verificationResult.modifier < 1) {
+    explanations.push(
+      `Score adjusted by ${String(Math.round((1 - verificationResult.modifier) * 100))}% due to posting condition.`,
+    );
+  }
   explanations.push(`Recommendation: ${recommendationStatus}.`);
 
   return {
     jobId: job.id,
-    overallScore,
+    overallScore: finalScore,
     categoryScores,
     recommendationStatus,
     explanations,
@@ -85,6 +135,84 @@ export function scoreJob(
     skills: terms.skills,
     certifications: terms.certifications,
     analyzedAt,
+    eligibilityPassed: verificationResult.eligibilityPassed,
+    eligibilityRejection: verificationResult.rejectionReason,
+    verifiedStatus: verificationResult.verifiedStatus,
+  };
+}
+
+interface VerificationScoringResult {
+  hardBlock: boolean;
+  eligibilityPassed: boolean;
+  rejectionReason: JobIntelligence['eligibilityRejection'];
+  verifiedStatus: JobIntelligence['verifiedStatus'];
+  modifier: number | null;
+}
+
+function applyVerification(
+  verification: VerificationResult | null,
+  profile: CandidateProfile,
+  config: ScoringConfig,
+  explanations: string[],
+): VerificationScoringResult {
+  const cfg = config.verification;
+
+  if (!cfg.enabled || verification === null) {
+    explanations.push('Verification pass skipped or not configured.');
+    return {
+      hardBlock: false,
+      eligibilityPassed: true,
+      rejectionReason: 'none',
+      verifiedStatus: null,
+      modifier: null,
+    };
+  }
+
+  let verifiedStatus: string | null = verification.evidence.status;
+  if (verification.evidence.status === 'closed') {
+    explanations.push('Posting is closed.');
+    return {
+      hardBlock: false,
+      eligibilityPassed: true,
+      rejectionReason: 'closed',
+      verifiedStatus: 'closed',
+      modifier: 0,
+    };
+  }
+
+  if (cfg.eligibilityGate && !verification.eligibility.passed) {
+    explanations.push(
+      `Hard eligibility gate failed: ${String(verification.eligibility.rejectionDetail)}.`,
+    );
+    return {
+      hardBlock: true,
+      eligibilityPassed: false,
+      rejectionReason: verification.eligibility.rejectionReason,
+      verifiedStatus,
+      modifier: null,
+    };
+  }
+
+  if (verification.workArrangement === 'onsite') {
+    explanations.push('Onsite position at non-remote employer.');
+    return {
+      hardBlock: false,
+      eligibilityPassed: true,
+      rejectionReason: 'location_outside_radius',
+      verifiedStatus,
+      modifier: 0.5,
+    };
+  }
+
+  verifiedStatus = 'verified';
+  explanations.push('Verification pass succeeded.');
+
+  return {
+    hardBlock: false,
+    eligibilityPassed: true,
+    rejectionReason: 'none',
+    verifiedStatus,
+    modifier: null,
   };
 }
 
@@ -107,16 +235,36 @@ function scoreTitle(
     const normalizedDesired = normalizeText(desired);
     if (title === normalizedDesired) {
       explanations.push('Excellent title match.');
-      return 100;
+      best = 100;
+      break;
     }
     if (title.includes(normalizedDesired) || normalizedDesired.includes(title))
       best = Math.max(best, 90);
     best = Math.max(best, tokenSimilarity(title, normalizedDesired) * 100);
   }
+
+  if (job.matchedFamilies !== null && job.matchedFamilies !== undefined && job.matchedFamilies.length > 0) {
+    const familyBonus = best > 0 ? 5 : 20;
+    best = Math.min(100, best + familyBonus);
+    explanations.push(
+      `Job matches role famil${job.matchedFamilies.includes(',') ? 'ies' : 'y'}: ${job.matchedFamilies}.`,
+    );
+  }
+
+  for (const [pattern, multiplier] of SENIORITY_DOWN_RANK) {
+    if (pattern.test(title)) {
+      best = roundScore(best * multiplier);
+      explanations.push(
+        `Seniority level (${pattern.source}) adjusted score by ${String(multiplier * 100)}%.`,
+      );
+      break;
+    }
+  }
+
   const result = roundScore(best);
-  explanations.push(
-    result >= 70 ? 'Strong title similarity.' : 'Limited title match.',
-  );
+  if (result < 70) {
+    explanations.push('Limited title match.');
+  }
   return result;
 }
 
@@ -313,6 +461,7 @@ function recommend(
   profile: CandidateProfile,
   config: ScoringConfig,
   score: number,
+  verificationResult: VerificationScoringResult,
 ): RecommendationStatus {
   if (
     job.status === 'applied' ||
@@ -331,6 +480,23 @@ function recommend(
   ) {
     return 'Hidden';
   }
+  const title = normalizeText(job.title);
+  const tooSeniorPatterns = [
+    /^(chief|cto|ceo|cfo|executive)\b/i,
+    /\b(vice president|vp|director)\b/i,
+  ];
+  const hasDesiredExact = profile.desiredJobTitles.some(
+    (t) => normalizeText(t) === title,
+  );
+  if (!hasDesiredExact && tooSeniorPatterns.some((p) => p.test(title))) {
+    return 'Hidden';
+  }
+
+  if (verificationResult.verifiedStatus === 'verified') {
+    const thresholds = config.recommendationThresholds;
+    if (score >= thresholds.applyImmediately) return 'Verified Match';
+  }
+
   const thresholds = config.recommendationThresholds;
   if (score >= thresholds.applyImmediately) return 'Apply Immediately';
   if (score >= thresholds.strongMatch) return 'Strong Match';
@@ -350,4 +516,18 @@ function tokenSimilarity(left: string, right: string): number {
 
 function roundScore(value: number): number {
   return Math.round(Math.min(100, Math.max(0, value)) * 10) / 10;
+}
+
+function createZeroScores(): CategoryScores {
+  return {
+    title: 0,
+    skills: 0,
+    certifications: 0,
+    location: 0,
+    remotePreference: 0,
+    salary: 0,
+    experience: 0,
+    employmentType: 0,
+    recency: 0,
+  };
 }

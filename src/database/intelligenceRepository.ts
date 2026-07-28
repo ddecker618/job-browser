@@ -116,13 +116,18 @@ export class IntelligenceRepository {
 
       this.database
         .prepare(
-          `UPDATE jobs SET score = ?, recommendation = ?, score_explanation = ?, updated_at = ?
+          `UPDATE jobs SET score = ?, recommendation = ?, score_explanation = ?,
+            verification_status = ?, eligibility_passed = ?, eligibility_rejection = ?,
+            updated_at = ?
            WHERE id = ?`,
         )
         .run(
           result.overallScore,
           result.recommendationStatus,
           result.explanations.join('\n'),
+          result.verifiedStatus,
+          result.eligibilityPassed ? 1 : 0,
+          result.eligibilityRejection,
           result.analyzedAt,
           result.jobId,
         );

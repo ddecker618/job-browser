@@ -11,6 +11,7 @@ const navigation = [
   ['/profile', 'Profile', 'PR'],
   ['/resumes', 'Resumes', 'RS'],
   ['/analytics', 'Analytics', 'AN'],
+  ['/search-profile', 'Search Profile', 'SP'],
   ['/sources', 'Sources', 'SO'],
   ['/settings', 'Settings', 'ST'],
 ] as const;

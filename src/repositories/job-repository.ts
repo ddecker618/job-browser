@@ -15,6 +15,11 @@ import {
   normalizeLocation,
 } from '../utilities/normalization.js';
 import { assertUtcTimestamp, nowUtc } from '../utilities/timestamps.js';
+import {
+  DEFAULT_SEARCH_PROFILE,
+  familiesForJobTitle,
+  type SearchProfile,
+} from '../config/search-profile.js';
 
 interface JobIdRow {
   id: string;
@@ -82,7 +87,8 @@ const INSERT_JOB_SQL = `
     recommendation, score_explanation, status, created_at, updated_at
     , agency, department, grade_low, grade_high, pay_plan, appointment_type,
     work_schedule, telework_eligible, opening_date, closing_date, application_urls_json,
-    last_verified_at, discovery_count, materially_updated_at, removed_at, provider_confidence
+    last_verified_at, discovery_count, materially_updated_at, removed_at, provider_confidence,
+    matched_families
   ) VALUES (
     @id, @fingerprint, @externalId, @title, @normalizedTitle, @company, @normalizedCompany,
     @location, @normalizedLocation, @city, @state, @remoteType, @employmentType,
@@ -93,7 +99,8 @@ const INSERT_JOB_SQL = `
     @recommendation, @scoreExplanation, @status, @createdAt, @updatedAt,
     @agency, @department, @gradeLow, @gradeHigh, @payPlan, @appointmentType,
     @workSchedule, @teleworkEligible, @openingDate, @closingDate, @applicationUrlsJson,
-    @lastVerifiedAt, 1, NULL, NULL, @providerConfidence
+    @lastVerifiedAt, 1, NULL, NULL, @providerConfidence,
+    @matchedFamilies
   )
 `;
 
@@ -164,6 +171,7 @@ export class JobRepository {
           applicationUrlsJson: JSON.stringify(job.applicationUrls),
           lastVerifiedAt: job.lastSeenAt,
           providerConfidence,
+          matchedFamilies: computeMatchedFamilies(this.database, job.title),
         });
         this.insertStatusHistory(
           jobId,
@@ -608,6 +616,7 @@ export class JobRepository {
           materially_updated_at = CASE WHEN @materiallyUpdated = 1 THEN @lastSeenAt ELSE materially_updated_at END,
           active = 1, removed_at = NULL,
           provider_confidence = COALESCE(@providerConfidence, provider_confidence),
+          matched_families = @matchedFamilies,
           updated_at = @updatedAt
          WHERE id = @jobId`,
       )
@@ -653,6 +662,7 @@ export class JobRepository {
         applicationUrlsJson: JSON.stringify(job.applicationUrls),
         lastSeenAt: job.lastSeenAt,
         providerConfidence,
+        matchedFamilies: computeMatchedFamilies(this.database, job.title),
         updatedAt: timestamp,
       });
   }
@@ -964,6 +974,7 @@ function mapJob(row: Record<string, unknown>): Job {
     materiallyUpdatedAt: nullableString(row['materially_updated_at']),
     removedAt: nullableString(row['removed_at']),
     providerConfidence: nullableNumber(row['provider_confidence']),
+    matchedFamilies: nullableString(row['matched_families']),
     active: Boolean(row['active']),
     clearanceRequirement: nullableString(row['clearance_requirement']),
     sponsorshipAvailable:
@@ -976,6 +987,16 @@ function mapJob(row: Record<string, unknown>): Job {
     recommendation: nullableString(row['recommendation']),
     scoreExplanation: nullableString(row['score_explanation']),
     status: row['status'] as JobStatus,
+    verificationStatus: nullableString(row['verification_status']),
+    eligibilityPassed:
+      row['eligibility_passed'] === null
+        ? null
+        : Boolean(row['eligibility_passed']),
+    eligibilityRejection: nullableString(row['eligibility_rejection']),
+    workArrangement: nullableString(row['work_arrangement']),
+    illinoisEligibility: nullableString(row['illinois_eligibility']),
+    scheduleClassification: nullableString(row['schedule_classification']),
+    verifiedAt: nullableString(row['verified_at']),
   };
 }
 
@@ -1051,4 +1072,36 @@ function normalizeContent(value: string | null): string | null {
 
 function hashDiagnostic(value: string): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+let _cachedProfile: SearchProfile | null = null;
+
+function loadSearchProfile(database: JobDatabase): SearchProfile {
+  if (_cachedProfile !== null) return _cachedProfile;
+  const row = database
+    .prepare<[], { setting_value_json: string } | undefined>(
+      `SELECT setting_value_json FROM app_settings WHERE setting_key = 'searchProfile'`,
+    )
+    .get();
+  if (row === undefined) {
+    _cachedProfile = DEFAULT_SEARCH_PROFILE;
+    return _cachedProfile;
+  }
+  try {
+    const parsed = JSON.parse(row.setting_value_json) as SearchProfile;
+    if (parsed && Array.isArray(parsed.families)) {
+      _cachedProfile = parsed;
+      return _cachedProfile;
+    }
+  } catch {
+    // fall through
+  }
+  _cachedProfile = DEFAULT_SEARCH_PROFILE;
+  return _cachedProfile;
+}
+
+function computeMatchedFamilies(database: JobDatabase, title: string): string | null {
+  const profile = loadSearchProfile(database);
+  const families = familiesForJobTitle(title, profile);
+  return families.length > 0 ? families.join(',') : null;
 }

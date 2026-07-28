@@ -52,6 +52,8 @@ describe('migration runner', () => {
       '008_job_search_salary.sql',
       '009_clean_touchette_demo_source.sql',
       '010_merge_duplicate_provider_sources.sql',
+      '011_add_matched_families.sql',
+      '012_verification_columns.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -177,6 +179,8 @@ describe('migration runner', () => {
       '008_job_search_salary.sql',
       '009_clean_touchette_demo_source.sql',
       '010_merge_duplicate_provider_sources.sql',
+      '011_add_matched_families.sql',
+      '012_verification_columns.sql',
     ]);
     expect(
       database
@@ -311,8 +315,10 @@ describe('migration runner', () => {
 
     expect(runMigrations(database).applied).toEqual([
       '010_merge_duplicate_provider_sources.sql',
+      '011_add_matched_families.sql',
+      '012_verification_columns.sql',
     ]);
-
+  
     const remaining = database
       .prepare<[], { id: string }>("SELECT id FROM sources WHERE provider_id = 'indeed'")
       .all();

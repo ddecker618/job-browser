@@ -15,6 +15,7 @@ export function DashboardPage() {
     ['Total jobs', summary.data.totalJobs, 'All discovered opportunities'],
     ['New today', summary.data.newJobsToday, 'Freshly discovered'],
     ['Strong matches', summary.data.strongMatches, 'Apply first'],
+    ['Verified matches', summary.data.verifiedMatches, 'Eligibility confirmed'],
     ['Applied', summary.data.appliedJobs, 'Application history'],
     ['Hidden', summary.data.hiddenJobs, 'Removed from focus'],
     ['Expired', summary.data.expiredJobs, 'No longer active'],

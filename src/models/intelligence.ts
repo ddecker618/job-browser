@@ -1,10 +1,14 @@
+import type { EligibilityRejectionReason } from '../domain/verification.js';
 import type { ScoreCategoryName } from '../schemas/scoring-config.js';
 
 export const RECOMMENDATION_STATUSES = [
+  'Verified Match',
   'Apply Immediately',
   'Strong Match',
   'Possible Match',
   'Weak Match',
+  'Hard No',
+  'Needs Review',
   'Already Applied',
   'Expired',
   'Hidden',
@@ -29,6 +33,9 @@ export interface JobIntelligence {
   skills: ExtractedTerm[];
   certifications: ExtractedTerm[];
   analyzedAt: string;
+  eligibilityPassed: boolean;
+  eligibilityRejection: EligibilityRejectionReason;
+  verifiedStatus: string | null;
 }
 
 export interface AnalysisSummary {

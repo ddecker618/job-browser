@@ -35,6 +35,8 @@ export interface JobSearchQuery {
   closingSoon?: boolean | undefined;
   active?: 'active' | 'removed' | undefined;
   multipleSource?: boolean | undefined;
+  matchedFamilies?: string | undefined;
+  verificationStatus?: string | undefined;
   page: number;
   pageSize: number;
   sort: JobSearchSortField;
@@ -57,6 +59,7 @@ export interface JobSearchItem {
   salaryMaximum: number | null;
   score: number | null;
   recommendation: string | null;
+  matchedFamilies: string | null;
   status: JobStatus;
   firstSeenAt: string;
   lastVerifiedAt: string | null;
@@ -65,6 +68,8 @@ export interface JobSearchItem {
   favorite: boolean;
   active: boolean;
   sources: JobSearchSource[];
+  verificationStatus: string | null;
+  eligibilityPassed: boolean | null;
 }
 
 export interface JobSearchFacet {

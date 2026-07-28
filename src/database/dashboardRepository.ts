@@ -47,6 +47,7 @@ interface JobListRow {
   salary_maximum: number | null;
   score: number | null;
   recommendation: string | null;
+  matched_families: string | null;
   status: JobStatus;
   first_seen_at: string;
   last_seen_at: string;
@@ -185,6 +186,9 @@ export class DashboardRepository {
       expiredJobs: this.scalar(
         "SELECT COUNT(*) AS value FROM jobs WHERE status = 'expired' OR active = 0",
       ),
+      verifiedMatches: this.scalar(
+        "SELECT COUNT(*) AS value FROM jobs WHERE verification_status = 'verified' AND eligibility_passed = 1",
+      ),
       averageMatchScore: this.scalar('SELECT AVG(score) AS value FROM jobs'),
       topEmployer: this.text(
         `SELECT company AS value FROM jobs GROUP BY normalized_company
@@ -204,7 +208,8 @@ export class DashboardRepository {
       .prepare<[], JobListRow>(
         `SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.remote_type,
           jobs.salary_minimum, jobs.salary_maximum, jobs.score, jobs.recommendation,
-          jobs.status, jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
+          jobs.matched_families, jobs.status, jobs.first_seen_at, jobs.last_seen_at,
+          jobs.favorite, jobs.active,
           COALESCE(MIN(job_sources.provider_id), jobs.source_type) AS provider
          FROM jobs LEFT JOIN job_sources ON job_sources.job_id = jobs.id
          GROUP BY jobs.id ORDER BY jobs.first_seen_at DESC`,
@@ -218,7 +223,7 @@ export class DashboardRepository {
       .prepare<[string], JobDetailRow>(
         `SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.city, jobs.state,
           jobs.remote_type, jobs.employment_type, jobs.salary_minimum, jobs.salary_maximum,
-          jobs.salary_text, jobs.score, jobs.recommendation, jobs.status,
+          jobs.salary_text, jobs.score, jobs.recommendation, jobs.matched_families, jobs.status,
           jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
           jobs.description, jobs.requirements, jobs.preferred_qualifications,
            jobs.posting_url, jobs.date_posted, jobs.clearance_requirement, jobs.notes,
@@ -597,6 +602,25 @@ export class DashboardRepository {
     return settings;
   }
 
+  public getSetting(key: string): string | null {
+    const row = this.database
+      .prepare<[string], { setting_value_json: string } | undefined>(
+        'SELECT setting_value_json FROM app_settings WHERE setting_key = ?',
+      )
+      .get(key);
+    return row?.setting_value_json ?? null;
+  }
+
+  public saveSetting(key: string, valueJson: string): void {
+    this.database
+      .prepare(
+        `INSERT INTO app_settings (setting_key, setting_value_json, updated_at)
+         VALUES (?, ?, ?) ON CONFLICT(setting_key) DO UPDATE SET
+         setting_value_json = excluded.setting_value_json, updated_at = excluded.updated_at`,
+      )
+      .run(key, valueJson, nowUtc());
+  }
+
   public saveSettings(settings: AppSettings): void {
     const statement = this.database.prepare(
       `INSERT INTO app_settings (setting_key, setting_value_json, updated_at)
@@ -731,6 +755,7 @@ function mapJobListItem(row: JobListRow): JobListItem {
     salaryMaximum: row.salary_maximum,
     score: row.score,
     recommendation: row.recommendation,
+    matchedFamilies: row.matched_families,
     status: row.status,
     firstSeenAt: row.first_seen_at,
     lastSeenAt: row.last_seen_at,

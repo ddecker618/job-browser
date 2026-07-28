@@ -46,6 +46,13 @@ export const candidateProfileSchema = z
     desiredJobTitles: z.array(z.string().trim().min(1)).min(1),
     excludedJobTitles: z.array(z.string().trim().min(1)),
     desiredEmploymentTypes: z.array(z.enum(EMPLOYMENT_TYPES)).min(1),
+    degreeRequired: z.boolean().default(false),
+    degreeInProgressOk: z.boolean().default(true),
+    maxTravelPercent: z.number().min(0).max(100).nullable().default(null),
+    noWeekends: z.boolean().default(false),
+    noOnCall: z.boolean().default(false),
+    noRotatingShifts: z.boolean().default(true),
+    noOvernightShifts: z.boolean().default(true),
   })
   .refine(
     (profile) =>

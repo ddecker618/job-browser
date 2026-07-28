@@ -29,6 +29,11 @@ const ResumesPage = lazy(() =>
     default: module.ResumesPage,
   })),
 );
+const SearchProfilePage = lazy(() =>
+  import('./pages/SearchProfilePage.js').then((module) => ({
+    default: module.SearchProfilePage,
+  })),
+);
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage.js').then((module) => ({
     default: module.SettingsPage,
@@ -51,6 +56,7 @@ export function App() {
           <Route path="resumes" element={<ResumesPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="sources" element={<SourcesPage />} />
+          <Route path="search-profile" element={<SearchProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

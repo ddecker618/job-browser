@@ -20,6 +20,7 @@ interface JobRow {
   salary_maximum: number | null;
   score: number | null;
   recommendation: string | null;
+  matched_families: string | null;
   status: JobStatus;
   first_seen_at: string;
   last_verified_at: string | null;
@@ -27,6 +28,8 @@ interface JobRow {
   closing_date: string | null;
   favorite: number;
   active: number;
+  verification_status: string | null;
+  eligibility_passed: number | null;
 }
 
 interface SourceRow {
@@ -90,9 +93,10 @@ export class JobSearchRepository {
         `${filtered}
          SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.remote_type,
            jobs.salary_minimum, jobs.salary_maximum, jobs.score, jobs.recommendation,
-           jobs.status, jobs.first_seen_at, jobs.last_verified_at,
-           jobs.materially_updated_at, jobs.closing_date, jobs.favorite, jobs.active
-         FROM filtered_jobs JOIN jobs ON jobs.id = filtered_jobs.id
+           jobs.matched_families, jobs.status, jobs.first_seen_at, jobs.last_verified_at,
+    jobs.materially_updated_at, jobs.closing_date, jobs.favorite, jobs.active,
+       jobs.verification_status, jobs.eligibility_passed
+          FROM filtered_jobs JOIN jobs ON jobs.id = filtered_jobs.id
          ORDER BY ${sortColumn} IS NULL ASC, ${sortColumn} ${direction}, jobs.id ASC
          LIMIT ? OFFSET ?`,
       )
@@ -148,6 +152,7 @@ export class JobSearchRepository {
       query.location,
     );
     addEqual(clauses, parameters, 'jobs.remote_type', query.remoteType);
+    addEqual(clauses, parameters, 'jobs.verification_status', query.verificationStatus);
     addComparison(clauses, parameters, 'jobs.score', '>=', query.minScore);
     addComparison(clauses, parameters, 'jobs.score', '<=', query.maxScore);
     if (query.minSalary !== undefined) {
@@ -235,6 +240,16 @@ export class JobSearchRepository {
         WHERE first_membership.job_id = jobs.id
       )`;
       clauses.push(query.multipleSource ? multiple : `NOT ${multiple}`);
+    }
+    if (query.matchedFamilies !== undefined && query.matchedFamilies.length > 0) {
+      const families = query.matchedFamilies.split(',').map((f) => f.trim()).filter(Boolean);
+      if (families.length > 0) {
+        const orClauses = families.map(() => 'jobs.matched_families LIKE ?');
+        clauses.push(`(${orClauses.join(' OR ')})`);
+        for (const family of families) {
+          parameters.push(`%${family}%`);
+        }
+      }
     }
     return {
       sql: clauses.length === 0 ? '' : ` WHERE ${clauses.join(' AND ')}`,
@@ -454,6 +469,7 @@ function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
     salaryMaximum: row.salary_maximum,
     score: row.score,
     recommendation: row.recommendation,
+    matchedFamilies: row.matched_families,
     status: row.status,
     firstSeenAt: row.first_seen_at,
     lastVerifiedAt: row.last_verified_at,
@@ -462,5 +478,10 @@ function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
     favorite: Boolean(row.favorite),
     active: Boolean(row.active),
     sources,
+    verificationStatus: row.verification_status,
+    eligibilityPassed:
+      row.eligibility_passed === null
+        ? null
+        : Boolean(row.eligibility_passed),
   };
 }

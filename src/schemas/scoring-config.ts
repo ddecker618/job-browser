@@ -41,6 +41,11 @@ export const scoringConfigSchema = z
     }),
     skills: z.array(catalogEntrySchema),
     certifications: z.array(catalogEntrySchema),
+    verification: z.strictObject({
+      enabled: z.boolean(),
+      eligibilityGate: z.boolean(),
+      scoreContribution: z.number().min(0).max(100),
+    }).default({ enabled: true, eligibilityGate: true, scoreContribution: 100 }),
   })
   .superRefine((config, context) => {
     const totalWeight = Object.values(config.weights).reduce(

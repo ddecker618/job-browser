@@ -23,6 +23,11 @@ import type { CredentialResolver } from '../discovery/credentialResolver.js';
 import { IntelligenceEngine } from '../intelligence/intelligenceEngine.js';
 import type { AppSettings } from '../models/dashboard.js';
 import { providerRegistry } from '../providers/providerRegistry.js';
+import {
+  DEFAULT_SEARCH_PROFILE,
+  searchProfileSchema,
+  type SearchProfile,
+} from '../config/search-profile.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import { JobSearchRepository } from '../repositories/job-search-repository.js';
 import { SourceRepository } from '../repositories/source-repository.js';
@@ -485,6 +490,22 @@ export function createApp(
     }
     options.onSettingsSaved?.(settings);
     response.json(settings);
+  });
+  app.get('/api/search-profile', (_request, response) => {
+    const raw = repository.getSetting('searchProfile');
+    if (raw === null) return response.json(DEFAULT_SEARCH_PROFILE);
+    try {
+      const parsed = searchProfileSchema.parse(JSON.parse(raw));
+      response.json(parsed);
+    } catch {
+      response.json(DEFAULT_SEARCH_PROFILE);
+    }
+  });
+  app.put('/api/search-profile', (request, response) => {
+    const profile = searchProfileSchema.parse(request.body);
+    repository.saveSetting('searchProfile', JSON.stringify(profile));
+    sourceRepository.cascadeSearchProfile(profile);
+    response.json(profile);
   });
   app.get('/api/saved-filters', (_request, response) =>
     response.json(repository.listSavedFilters()),
