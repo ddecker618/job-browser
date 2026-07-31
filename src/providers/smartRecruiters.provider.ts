@@ -37,10 +37,17 @@ const configurationSchema = z.strictObject({
     })
     .trim()
     .min(1, 'Company identifier is required')
-    .max(100, 'Company identifier is too long')
-    .regex(
-      /^[A-Za-z0-9_-]+$/,
-      'Company identifier contains invalid characters',
+    .max(300, 'Company identifier is too long')
+    .transform(normalizeCompanyIdentifier)
+    .pipe(
+      z
+        .string()
+        .min(1, 'Company identifier is required')
+        .max(100, 'Company identifier is too long')
+        .regex(
+          /^[A-Za-z0-9_-]+$/,
+          'Company identifier contains invalid characters',
+        ),
     ),
   company: z.string().trim().min(1).max(200).optional(),
 });
@@ -81,6 +88,23 @@ const listSchema = z.object({
   totalFound: z.number().int().nonnegative().optional(),
 });
 type SmartJob = z.infer<typeof jobSchema>;
+
+function normalizeCompanyIdentifier(value: string): string {
+  if (!/^https:\/\//i.test(value)) return value;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (
+      host !== 'jobs.smartrecruiters.com' &&
+      host !== 'careers.smartrecruiters.com'
+    )
+      return value;
+    const slug = url.pathname.split('/').filter(Boolean)[0];
+    return slug === undefined ? '' : decodeURIComponent(slug);
+  } catch {
+    return value;
+  }
+}
 
 export class SmartRecruitersProvider extends BaseProvider {
   public readonly id = 'smartrecruiters';
@@ -147,17 +171,47 @@ export class SmartRecruitersProvider extends BaseProvider {
           preview: null,
         };
       }
+      const count = check.data.totalFound ?? check.data.content.length;
+      const samples = check.data.content
+        .slice(0, 3)
+        .map((item) => {
+          const job = jobSchema.safeParse(item);
+          return job.success
+            ? {
+                title: job.data.name,
+                company:
+                  job.data.company?.name ??
+                  job.data.company_name ??
+                  parsed.data.companyIdentifier,
+                location: locationLabel(job.data),
+              }
+            : null;
+        })
+        .filter(
+          (
+            sample,
+          ): sample is { title: string; company: string; location: string } =>
+            sample !== null,
+        );
       return {
         valid: true,
-        message: 'SmartRecruiters configuration is valid',
+        message:
+          count > 0
+            ? `SmartRecruiters company "${parsed.data.companyIdentifier}" is valid with ${String(count)} open job${count === 1 ? '' : 's'}`
+            : `SmartRecruiters company "${parsed.data.companyIdentifier}" is valid but currently has no open jobs`,
         normalizedConfiguration: parsed.data,
-        preview: null,
+        preview: {
+          format: 'SmartRecruiters Public API',
+          jobCount: count,
+          samples,
+          warnings: [],
+        },
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       let userMessage = 'SmartRecruiters site is unreachable or inactive';
       if (message.includes('404') || message.includes('Not Found')) {
-        userMessage = 'SmartRecruiters company not found';
+        userMessage = `SmartRecruiters company "${parsed.data.companyIdentifier}" was not found`;
       } else if (message.includes('timeout') || message.includes('timed out')) {
         userMessage = 'SmartRecruiters validation timed out';
       }
@@ -198,18 +252,19 @@ export class SmartRecruitersProvider extends BaseProvider {
     const records: unknown[] = [];
     let rejected = 0;
     let exhausted = false;
+    let pageFailed = false;
     let unfilteredCount = 0;
     const limit = Math.min(MAX_ITEMS, search.request.limit);
     for (let page = 0; page < MAX_PAGES && records.length < limit; page += 1) {
       const url = publicTarget(search.target);
       url.searchParams.set('limit', String(PAGE_SIZE));
       url.searchParams.set('offset', String(page * PAGE_SIZE));
-      const parsed = listSchema.safeParse(await this.json(url, search.signal));
-      if (!parsed.success)
-        throw new ProviderFetchError(
-          'SmartRecruiters response must contain a content array',
-        );
-      for (const item of parsed.data.content) {
+      const parsed = await this.tryPage(url, search, page === 0);
+      if (parsed === null) {
+        pageFailed = true;
+        break;
+      }
+      for (const item of parsed.content) {
         const job = jobSchema.safeParse(item);
         if (!job.success) {
           rejected += 1;
@@ -221,9 +276,9 @@ export class SmartRecruitersProvider extends BaseProvider {
         if (records.length >= limit) break;
       }
       if (
-        parsed.data.content.length < PAGE_SIZE ||
-        (parsed.data.totalFound !== undefined &&
-          (page + 1) * PAGE_SIZE >= parsed.data.totalFound)
+        parsed.content.length < PAGE_SIZE ||
+        (parsed.totalFound !== undefined &&
+          (page + 1) * PAGE_SIZE >= parsed.totalFound)
       ) {
         exhausted = true;
         break;
@@ -236,7 +291,7 @@ export class SmartRecruitersProvider extends BaseProvider {
       records: detailed,
       rejected,
       truncated: !exhausted || records.length >= limit,
-      complete: exhausted,
+      complete: exhausted && !pageFailed,
       unfilteredCount,
     };
   }
@@ -306,6 +361,29 @@ export class SmartRecruitersProvider extends BaseProvider {
         },
       })
     ).json();
+  }
+  private async tryPage(
+    url: URL,
+    search: ProviderSearch,
+    failHard: boolean,
+  ): Promise<{ content: unknown[]; totalFound?: number | undefined } | null> {
+    let payload: unknown;
+    try {
+      payload = await this.json(url, search.signal);
+    } catch (error) {
+      if (search.signal?.aborted) throw error;
+      if (failHard) throw error;
+      return null;
+    }
+    const parsed = listSchema.safeParse(payload);
+    if (!parsed.success) {
+      if (failHard)
+        throw new ProviderFetchError(
+          'SmartRecruiters response must contain a content array',
+        );
+      return null;
+    }
+    return parsed.data;
   }
 }
 
@@ -377,6 +455,13 @@ function locationParts(location: string | null): {
 } {
   const parts = location?.split(',').map((v) => v.trim()) ?? [];
   return { city: parts[0] ?? null, state: parts[1] ?? null };
+}
+function locationLabel(job: SmartJob): string {
+  return (
+    [job.location?.city, job.location?.region, job.location?.country]
+      .filter(Boolean)
+      .join(', ') || 'Remote'
+  );
 }
 function remote(job: SmartJob, location: string | null): RemoteType {
   return job.location?.remote === true || /remote/i.test(location ?? '')

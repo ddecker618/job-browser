@@ -358,7 +358,7 @@ function job(id: string, title: string, company: string) {
     status: 'new',
     firstSeenAt: '2026-07-18T12:00:00.000Z',
     lastSeenAt: '2026-07-18T12:00:00.000Z',
-    provider: 'remote-ok',
+    provider: 'smartrecruiters',
     favorite: false,
     active: true,
   };

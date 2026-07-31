@@ -83,7 +83,6 @@ export class SourceRepository {
   public ensureDefaultSources(): void {
     const titles = this.loadTargetRoles();
     if (titles.length === 0) return;
-    this.ensureRemoteOkSource();
     const queries = queriesFromRoles(titles);
     this.ensureSources(
       DEFAULT_SOURCES.map((source) => ({
@@ -182,48 +181,6 @@ export class SourceRepository {
       'SOC Analyst',
       'Technical Support Engineer',
     ];
-  }
-
-  public ensureRemoteOkSource(): void {
-    const existing = this.database
-      .prepare(
-        "SELECT COUNT(*) AS count FROM sources WHERE id = 'provider:remote-ok'",
-      )
-      .get() as { count: number };
-    if (existing.count > 0) return;
-    const targetRoles = this.loadTargetRoles();
-    const primaryRole = targetRoles[0] ?? 'Systems Administrator';
-    const timestamp = nowUtc();
-    this.database
-      .prepare(
-        `INSERT INTO sources (
-          id, employer, source_type, careers_url, enabled, connector,
-          last_successful_run, last_failure, failure_count, created_at, updated_at,
-          display_name, provider_id, configuration_json, search_criteria_json,
-          configuration_status, health_status
-        ) VALUES (?, ?, 'job-board', ?, ?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?, 'valid', 'never-run')`,
-      )
-      .run(
-        'provider:remote-ok',
-        'Remote OK',
-        'https://remoteok.com',
-        1,
-        'remote-ok',
-        timestamp,
-        timestamp,
-        'Remote OK',
-        'remote-ok',
-        JSON.stringify({}),
-        JSON.stringify({
-          query: primaryRole,
-          queries: targetRoles,
-          location: null,
-          remoteOnly: true,
-          limit: 50,
-          maxAgeDays: 30,
-        }),
-      );
-    this.ensureSchedule('provider:remote-ok', false, 'manual', null);
   }
 
   private ensureSources(sources: readonly DefaultSource[]): void {

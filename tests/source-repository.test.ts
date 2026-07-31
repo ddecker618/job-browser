@@ -1,8 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openDatabase, type JobDatabase } from '../src/db/database.js';
 import { runMigrations } from '../src/db/migration-runner.js';
-import { RemoteOkProvider } from '../src/providers/remoteOk.provider.js';
+import { AshbyProvider } from '../src/providers/ashby.provider.js';
 import { DiscoveryStore } from '../src/database/discoveryStore.js';
 import {
   SourceRepository,
@@ -14,17 +15,61 @@ afterEach(() => {
   for (const database of databases.splice(0)) database.close();
 });
 
+function createAshbySource(
+  repository: SourceRepository,
+  database: JobDatabase,
+): string {
+  const timestamp = new Date().toISOString();
+  database
+    .prepare(
+      `INSERT INTO sources (
+        id, employer, source_type, careers_url, enabled, connector,
+        last_successful_run, last_failure, failure_count, created_at, updated_at,
+        display_name, provider_id, configuration_json, search_criteria_json,
+        configuration_status, health_status
+      ) VALUES (?, ?, 'provider', ?, ?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?, ?, 'never-run')`,
+    )
+    .run(
+      'provider:ashby',
+      'Ashby',
+      'https://jobs.ashbyhq.com',
+      1,
+      'ashby',
+      timestamp,
+      timestamp,
+      'Ashby',
+      'ashby',
+      JSON.stringify({ boardName: 'fixture' }),
+      JSON.stringify({
+        query: 'security',
+        location: null,
+        remoteOnly: true,
+        limit: 10,
+      }),
+      'valid',
+    );
+  database
+    .prepare(
+      `INSERT INTO source_schedules (
+        id, source_id, enabled, cadence, daily_local_time, next_run_at,
+        last_due_at, created_at, updated_at
+      ) VALUES (?, 'provider:ashby', ?, 'manual', ?, ?, NULL, ?, ?)`,
+    )
+    .run(randomUUID(), 0, null, null, timestamp, timestamp);
+  return 'provider:ashby';
+}
+
 describe('source repository', () => {
   it('reconciles providers and preserves user enablement', () => {
     const database = openDatabase(':memory:');
     databases.push(database);
     runMigrations(database);
     const repository = new SourceRepository(database);
-    repository.reconcileProviders([new RemoteOkProvider()]);
-    repository.ensureRemoteOkSource();
-    repository.setEnabled('provider:remote-ok', false);
-    repository.reconcileProviders([new RemoteOkProvider()]);
-    expect(repository.get('provider:remote-ok')?.enabled).toBe(false);
+    repository.reconcileProviders([new AshbyProvider()]);
+    createAshbySource(repository, database);
+    repository.setEnabled('provider:ashby', false);
+    repository.reconcileProviders([new AshbyProvider()]);
+    expect(repository.get('provider:ashby')?.enabled).toBe(false);
     expect(repository.list()).toHaveLength(1);
   });
 
@@ -81,13 +126,13 @@ describe('source repository', () => {
     databases.push(database);
     runMigrations(database);
     const repository = new SourceRepository(database);
-    const provider = new RemoteOkProvider();
+    const provider = new AshbyProvider();
     repository.reconcileProviders([provider]);
-    repository.ensureRemoteOkSource();
+    createAshbySource(repository, database);
     const run = new DiscoveryStore(database).startRun(
       provider,
       { query: 'security', location: null, remoteOnly: true, limit: 10 },
-      { fixtureOnly: true, sourceId: 'provider:remote-ok' },
+      { fixtureOnly: true, sourceId: 'provider:ashby' },
     );
 
     expect(repository.recoverInterruptedRuns()).toBe(1);

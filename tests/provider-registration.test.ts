@@ -4,18 +4,18 @@ import {
   ProviderRegistry,
   providerRegistry,
 } from '../src/providers/providerRegistry.js';
-import { RemoteOkProvider } from '../src/providers/remoteOk.provider.js';
+import { SmartRecruitersProvider } from '../src/providers/smartRecruiters.provider.js';
 
 describe('provider registration', () => {
   it('registers and resolves providers by stable id', () => {
     const registry = new ProviderRegistry();
-    const provider = new RemoteOkProvider();
+    const provider = new SmartRecruitersProvider();
 
     registry.register(provider);
 
-    expect(registry.get('remote-ok')).toBe(provider);
+    expect(registry.get('smartrecruiters')).toBe(provider);
     expect(registry.list()).toEqual([provider]);
-    expect(() => registry.register(new RemoteOkProvider())).toThrow(
+    expect(() => registry.register(new SmartRecruitersProvider())).toThrow(
       'Provider is already registered',
     );
   });
@@ -36,7 +36,6 @@ describe('provider registration', () => {
       'lever',
       'linkedin',
       'recruitee',
-      'remote-ok',
       'smartrecruiters',
       'structured-data',
       'teamtailor',

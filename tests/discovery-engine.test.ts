@@ -4,7 +4,7 @@ import type { JobDatabase } from '../src/db/database.js';
 import { DiscoveryEngine } from '../src/discovery/discoveryEngine.js';
 import type { LogLevel } from '../src/logging/logger.js';
 import { ProviderRegistry } from '../src/providers/providerRegistry.js';
-import { RemoteOkProvider } from '../src/providers/remoteOk.provider.js';
+import { BuiltInProvider } from '../src/providers/builtin.provider.js';
 import type {
   ProviderFetchResult,
   ProviderSearch,
@@ -48,26 +48,24 @@ describe('DiscoveryEngine', () => {
   beforeEach(() => {
     database = createTestDatabase();
     registry = new ProviderRegistry();
-    registry.register(new RemoteOkProvider());
+    registry.register(new BuiltInProvider());
     logs.length = 0;
   });
 
   afterEach(() => database.close());
 
   it('inserts fixture jobs and records provider/run metadata and metrics', async () => {
-    const summary = await createEngine().run('remote-ok', request(), {
-      fixtureOnly: true,
-    });
+    const summary = await createEngine().run('builtin', request(), fixtureOptions());
 
     expect(summary).toMatchObject({
-      providerId: 'remote-ok',
-      jobsFound: 2,
-      jobsInserted: 2,
+      providerId: 'builtin',
+      jobsFound: 1,
+      jobsInserted: 1,
       jobsUpdated: 0,
       duplicatesDetected: 0,
       jobsFailed: 0,
     });
-    expect(new JobRepository(database).countJobs()).toBe(2);
+    expect(new JobRepository(database).countJobs()).toBe(1);
     expect(
       database
         .prepare<
@@ -87,8 +85,8 @@ describe('DiscoveryEngine', () => {
         .get(summary.runId),
     ).toEqual({
       status: 'succeeded',
-      jobs_discovered: 2,
-      jobs_inserted: 2,
+      jobs_discovered: 1,
+      jobs_inserted: 1,
       jobs_updated: 0,
       duplicates_found: 0,
       jobs_failed: 0,
@@ -104,19 +102,19 @@ describe('DiscoveryEngine', () => {
     expect(completionLog?.level).toBe('info');
     expect(completionLog?.message).toBe('Discovery run completed');
     expect(completionLog?.context).toMatchObject({
-      jobsFound: 2,
-      provider: 'remote-ok',
+      jobsFound: 1,
+      provider: 'builtin',
     });
   });
 
   it('merges rediscovered jobs and preserves applications and applied status', async () => {
     const engine = createEngine();
-    await engine.run('remote-ok', request(), { fixtureOnly: true });
+    await engine.run('builtin', request(), fixtureOptions());
     const jobRow = database
       .prepare<
         [],
         IdRow
-      >("SELECT id FROM jobs WHERE normalized_title = 'cybersecurity analyst'")
+      >("SELECT id FROM jobs WHERE normalized_title = 'senior software engineer'")
       .get();
     if (jobRow === undefined) throw new Error('Expected fixture job');
 
@@ -126,18 +124,16 @@ describe('DiscoveryEngine', () => {
       changedBy: 'test',
       reason: 'Applied manually',
     });
-    const secondRun = await engine.run('remote-ok', request(), {
-      fixtureOnly: true,
-    });
+    const secondRun = await engine.run('builtin', request(), fixtureOptions());
 
     expect(secondRun).toMatchObject({
       jobsInserted: 0,
       jobsUpdated: 0,
-      duplicatesDetected: 2,
-      rediscoveries: 2,
+      duplicatesDetected: 1,
+      rediscoveries: 1,
       materialUpdates: 0,
     });
-    expect(repository.countJobs()).toBe(2);
+    expect(repository.countJobs()).toBe(1);
     expect(repository.getStatus(jobRow.id)).toBe('applied');
     expect(
       database
@@ -159,10 +155,7 @@ describe('DiscoveryEngine', () => {
       )
       .run();
 
-    await createEngine().run('remote-ok', request(), {
-      fixtureOnly: true,
-      sourceId: 'configured',
-    });
+    await createEngine().run('builtin', request(), fixtureOptions('configured'));
 
     expect(
       database
@@ -175,30 +168,28 @@ describe('DiscoveryEngine', () => {
   });
 
   it('reconciles only complete snapshots, removes after two misses, and recovers', async () => {
-    const provider = new SnapshotRemoteOkProvider();
+    const provider = new SnapshotBuiltInProvider();
     registry = new ProviderRegistry();
     registry.register(provider);
     const engine = createEngine();
-    const first = await engine.run('remote-ok', request(), {
-      fixtureOnly: true,
-    });
+    const first = await engine.run('builtin', request(), fixtureOptions());
 
     provider.empty = true;
     provider.complete = false;
-    await engine.run('remote-ok', request(), { fixtureOnly: true });
-    await engine.run('remote-ok', request(), { fixtureOnly: true });
+    await engine.run('builtin', request(), fixtureOptions());
+    await engine.run('builtin', request(), fixtureOptions());
     expect(lifecycle(database, first.sourceId)).toEqual({
       active: 1,
       consecutive_snapshot_misses: 0,
     });
 
     provider.complete = true;
-    await engine.run('remote-ok', request(), { fixtureOnly: true });
+    await engine.run('builtin', request(), fixtureOptions());
     expect(lifecycle(database, first.sourceId)).toEqual({
       active: 1,
       consecutive_snapshot_misses: 1,
     });
-    await engine.run('remote-ok', request(), { fixtureOnly: true });
+    await engine.run('builtin', request(), fixtureOptions());
     expect(lifecycle(database, first.sourceId)).toEqual({
       active: 0,
       consecutive_snapshot_misses: 2,
@@ -210,7 +201,7 @@ describe('DiscoveryEngine', () => {
     ).toBe(0);
 
     provider.empty = false;
-    await engine.run('remote-ok', request(), { fixtureOnly: true });
+    await engine.run('builtin', request(), fixtureOptions());
     expect(lifecycle(database, first.sourceId)).toEqual({
       active: 1,
       consecutive_snapshot_misses: 0,
@@ -226,29 +217,17 @@ describe('DiscoveryEngine', () => {
   });
 
   it('keeps a canonical job active while another source remains active', async () => {
-    const provider = new SnapshotRemoteOkProvider();
+    const provider = new SnapshotBuiltInProvider();
     registry = new ProviderRegistry();
     registry.register(provider);
     const engine = createEngine();
-    await engine.run('remote-ok', request(), {
-      fixtureOnly: true,
-      sourceId: 'source:primary',
-    });
-    const attached = await engine.run('remote-ok', request(), {
-      fixtureOnly: true,
-      sourceId: 'source:secondary',
-    });
-    expect(attached.crossSourceMerges).toBe(2);
+    await engine.run('builtin', request(), fixtureOptions('source:primary'));
+    const attached = await engine.run('builtin', request(), fixtureOptions('source:secondary'));
+    expect(attached.crossSourceMerges).toBe(1);
 
     provider.empty = true;
-    await engine.run('remote-ok', request(), {
-      fixtureOnly: true,
-      sourceId: 'source:primary',
-    });
-    await engine.run('remote-ok', request(), {
-      fixtureOnly: true,
-      sourceId: 'source:primary',
-    });
+    await engine.run('builtin', request(), fixtureOptions('source:primary'));
+    await engine.run('builtin', request(), fixtureOptions('source:primary'));
 
     expect(lifecycle(database, 'source:primary')?.active).toBe(0);
     expect(lifecycle(database, 'source:secondary')?.active).toBe(1);
@@ -275,14 +254,21 @@ describe('DiscoveryEngine', () => {
 
 function request() {
   return {
-    query: 'security',
+    query: 'software',
     location: null,
     remoteOnly: true,
     limit: 10,
   };
 }
 
-class SnapshotRemoteOkProvider extends RemoteOkProvider {
+function fixtureOptions(sourceId?: string) {
+  return {
+    fixtureOnly: true,
+    ...(sourceId === undefined ? {} : { sourceId }),
+  };
+}
+
+class SnapshotBuiltInProvider extends BuiltInProvider {
   public complete = true;
   public empty = false;
 

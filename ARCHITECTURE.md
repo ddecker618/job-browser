@@ -87,7 +87,7 @@ Sources are managed through the `/api/sources` CRUD endpoints. The `DiscoveryCoo
 | Lever           | ATS        | ✅ Healthy     | 2026-07-25 | 17   | Wealthfront board                                              |
 | LinkedIn Jobs   | Job Board  | ✅ Healthy     | 2026-07-25 | 7    | Headed browser, 7 jobs imported                                |
 | Recruitee       | ATS        | ✅ Healthy     | 2026-07-25 | 2    | bunq board                                                     |
-| Remote OK       | Job Board  | ❌ Removed     | -          | 50   | Source deleted per user request. Code still present for tests. |
+| Remote OK       | Job Board  | ❌ Removed     | -          | -    | Source deleted per user request; provider code removed and legacy sources disabled by migration 014 |
 | SmartRecruiters | ATS        | ✅ Healthy     | 2026-07-25 | 7    | Bosch board                                                    |
 | Structured Data | Generic    | ⚪ Never run   | -          | -    | Needs a URL with JSON-LD (e.g. Stripe careers)                 |
 | Teamtailor      | ATS        | ⚪ Never run   | -          | -    | Needs RSS feed URL                                             |

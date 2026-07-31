@@ -26,7 +26,6 @@ try {
   await providerRegistry.loadProviders();
   const sources = new SourceRepository(database);
   sources.reconcileProviders(providerRegistry.list());
-  sources.ensureRemoteOkSource();
   const coordinator = new DiscoveryCoordinator(database, providerRegistry, {
     credentialResolver: unavailableCredentialResolver,
   });

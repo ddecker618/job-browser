@@ -31,7 +31,7 @@ export function SourceEditor({
   onCancel,
 }: SourceEditorProps) {
   const [providerId, setProviderId] = useState(
-    source?.providerId ?? providers[0]?.id ?? 'remote-ok',
+    source?.providerId ?? providers[0]?.id ?? 'smartrecruiters',
   );
   const [displayName, setDisplayName] = useState(source?.displayName ?? '');
   const [employer, setEmployer] = useState(source?.employer ?? '');

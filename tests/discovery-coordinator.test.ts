@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { openDatabase, type JobDatabase } from '../src/db/database.js';
@@ -20,7 +21,7 @@ import type {
 import type { NormalizedJob } from '../src/schemas/normalized-job.js';
 import { BaseProvider } from '../src/providers/baseProvider.js';
 import { ProviderRegistry } from '../src/providers/providerRegistry.js';
-import { RemoteOkProvider } from '../src/providers/remoteOk.provider.js';
+import { AshbyProvider } from '../src/providers/ashby.provider.js';
 import { SourceRepository } from '../src/repositories/source-repository.js';
 
 const databases: JobDatabase[] = [];
@@ -34,16 +35,14 @@ describe('discovery coordinator', () => {
     databases.push(database);
     runMigrations(database);
     const registry = new ProviderRegistry();
-    registry.register(new RemoteOkProvider());
-    const sources = new SourceRepository(database);
-    sources.reconcileProviders(registry.list());
-    sources.ensureRemoteOkSource();
+    registry.register(new AshbyProvider());
+    const sources = prepareAshbySource(database, registry);
     const coordinator = new DiscoveryCoordinator(database, registry, {
       credentialResolver: unavailableCredentialResolver,
     });
-    const summaries = await coordinator.runFixture('provider:remote-ok');
+    const summaries = await coordinator.runFixture('provider:ashby');
     expect(summaries[0]).toMatchObject({
-      jobsInserted: 2,
+      jobsInserted: 1,
       duplicatesMerged: 0,
     });
     expect(
@@ -53,7 +52,7 @@ describe('discovery coordinator', () => {
           { count: number }
         >('SELECT COUNT(*) AS count FROM job_observations')
         .get()?.count,
-    ).toBe(2);
+    ).toBe(1);
     await coordinator.stop();
   });
 
@@ -62,21 +61,19 @@ describe('discovery coordinator', () => {
     databases.push(database);
     runMigrations(database);
     const registry = new ProviderRegistry();
-    registry.register(new RemoteOkProvider());
-    const sources = new SourceRepository(database);
-    sources.reconcileProviders(registry.list());
-    sources.ensureRemoteOkSource();
+    registry.register(new AshbyProvider());
+    const sources = prepareAshbySource(database, registry);
     const coordinator = new DiscoveryCoordinator(database, registry, {
       credentialResolver: unavailableCredentialResolver,
     });
     const [first, second] = await Promise.all([
-      coordinator.runFixture('provider:remote-ok'),
-      coordinator.runFixture('provider:remote-ok'),
+      coordinator.runFixture('provider:ashby'),
+      coordinator.runFixture('provider:ashby'),
     ]);
-    expect(first[0]?.jobsInserted).toBe(2);
+    expect(first[0]?.jobsInserted).toBe(1);
     expect(second[0]).toMatchObject({
       duplicatesMerged: 0,
-      rediscoveries: 2,
+      rediscoveries: 1,
     });
     await coordinator.stop();
   });
@@ -84,18 +81,18 @@ describe('discovery coordinator', () => {
   it('tracks aggregate progress across overlapping enqueues without overlap', async () => {
     const database = createDatabase();
     const registry = new ProviderRegistry();
-    const provider = new ControlledRemoteOkProvider();
+    const provider = new ControlledAshbyProvider();
     registry.register(provider);
-    prepareRemoteOkSource(database, registry);
+    prepareAshbySource(database, registry);
     const coordinator = createCoordinator(database, registry);
 
-    const first = coordinator.runFixture('provider:remote-ok');
-    const second = coordinator.runFixture('provider:remote-ok');
+    const first = coordinator.runFixture('provider:ashby');
+    const second = coordinator.runFixture('provider:ashby');
     await provider.waitForSearch(1);
     expect(coordinator.status()).toMatchObject({
       running: true,
-      activeSourceId: 'provider:remote-ok',
-      queuedSourceIds: ['provider:remote-ok'],
+      activeSourceId: 'provider:ashby',
+      queuedSourceIds: ['provider:ashby'],
       completedSources: 0,
       totalSources: 2,
     });
@@ -104,7 +101,7 @@ describe('discovery coordinator', () => {
     await provider.waitForSearch(2);
     expect(coordinator.status()).toMatchObject({
       running: true,
-      activeSourceId: 'provider:remote-ok',
+      activeSourceId: 'provider:ashby',
       queuedSourceIds: [],
       completedSources: 1,
       totalSources: 2,
@@ -179,25 +176,25 @@ describe('discovery coordinator', () => {
   it('only advances cadence after a successful scheduled run', async () => {
     const database = createDatabase();
     const registry = new ProviderRegistry();
-    registry.register(new FixtureRemoteOkProvider());
-    const sources = prepareRemoteOkSource(database, registry);
+    registry.register(new FixtureAshbyProvider());
+    const sources = prepareAshbySource(database, registry);
     const dueAt = '2026-07-19T00:00:00.000Z';
     database
       .prepare(
         `UPDATE source_schedules SET enabled = 1, cadence = 'every-6-hours',
-          next_run_at = ? WHERE source_id = 'provider:remote-ok'`,
+          next_run_at = ? WHERE source_id = 'provider:ashby'`,
       )
       .run(dueAt);
     const coordinator = createCoordinator(database, registry);
 
-    await coordinator.runFixture('provider:remote-ok');
-    expect(sources.get('provider:remote-ok')?.schedule.nextRunAt).toBe(dueAt);
-    sources.setEnabled('provider:remote-ok', false);
-    await coordinator.runSource('provider:remote-ok', 'scheduled');
-    expect(sources.get('provider:remote-ok')?.schedule.nextRunAt).toBe(dueAt);
-    sources.setEnabled('provider:remote-ok', true);
-    await coordinator.runSource('provider:remote-ok', 'scheduled');
-    expect(sources.get('provider:remote-ok')?.schedule.nextRunAt).not.toBe(
+    await coordinator.runFixture('provider:ashby');
+    expect(sources.get('provider:ashby')?.schedule.nextRunAt).toBe(dueAt);
+    sources.setEnabled('provider:ashby', false);
+    await coordinator.runSource('provider:ashby', 'scheduled');
+    expect(sources.get('provider:ashby')?.schedule.nextRunAt).toBe(dueAt);
+    sources.setEnabled('provider:ashby', true);
+    await coordinator.runSource('provider:ashby', 'scheduled');
+    expect(sources.get('provider:ashby')?.schedule.nextRunAt).not.toBe(
       dueAt,
     );
     await coordinator.stop();
@@ -206,11 +203,11 @@ describe('discovery coordinator', () => {
   it('aborts active provider work during graceful stop', async () => {
     const database = createDatabase();
     const registry = new ProviderRegistry();
-    const provider = new AbortableRemoteOkProvider();
+    const provider = new AbortableAshbyProvider();
     registry.register(provider);
-    prepareRemoteOkSource(database, registry);
+    prepareAshbySource(database, registry);
     const coordinator = createCoordinator(database, registry);
-    const running = coordinator.runFixture('provider:remote-ok');
+    const running = coordinator.runFixture('provider:ashby');
     await provider.started;
 
     await coordinator.stop();
@@ -227,14 +224,54 @@ function createDatabase(): JobDatabase {
   return database;
 }
 
-function prepareRemoteOkSource(
+function prepareAshbySource(
   database: JobDatabase,
   registry: ProviderRegistry,
 ): SourceRepository {
   const sources = new SourceRepository(database);
   sources.reconcileProviders(registry.list());
-  sources.ensureRemoteOkSource();
+  insertAshbySource(database);
   return sources;
+}
+
+function insertAshbySource(database: JobDatabase): void {
+  const timestamp = new Date().toISOString();
+  database
+    .prepare(
+      `INSERT INTO sources (
+        id, employer, source_type, careers_url, enabled, connector,
+        last_successful_run, last_failure, failure_count, created_at, updated_at,
+        display_name, provider_id, configuration_json, search_criteria_json,
+        configuration_status, health_status
+      ) VALUES (?, ?, 'provider', ?, ?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?, ?, 'never-run')`,
+    )
+    .run(
+      'provider:ashby',
+      'Ashby',
+      'https://jobs.ashbyhq.com',
+      1,
+      'ashby',
+      timestamp,
+      timestamp,
+      'Ashby',
+      'ashby',
+      JSON.stringify({ boardName: 'fixture' }),
+      JSON.stringify({
+        query: 'security',
+        location: null,
+        remoteOnly: true,
+        limit: 10,
+      }),
+      'valid',
+    );
+  database
+    .prepare(
+      `INSERT INTO source_schedules (
+        id, source_id, enabled, cadence, daily_local_time, next_run_at,
+        last_due_at, created_at, updated_at
+      ) VALUES (?, 'provider:ashby', ?, 'manual', ?, ?, NULL, ?, ?)`,
+    )
+    .run(randomUUID(), 0, null, null, timestamp, timestamp);
 }
 
 function createCoordinator(
@@ -272,7 +309,7 @@ function createSource(
   );
 }
 
-class FixtureRemoteOkProvider extends RemoteOkProvider {
+class FixtureAshbyProvider extends AshbyProvider {
   public override search(
     request: SearchRequest,
     options: DiscoveryOptions,
@@ -281,7 +318,7 @@ class FixtureRemoteOkProvider extends RemoteOkProvider {
   }
 }
 
-class ControlledRemoteOkProvider extends FixtureRemoteOkProvider {
+class ControlledAshbyProvider extends FixtureAshbyProvider {
   private readonly releases: (() => void)[] = [];
   private searches = 0;
   private activeSearches = 0;
@@ -312,7 +349,7 @@ class ControlledRemoteOkProvider extends FixtureRemoteOkProvider {
   }
 }
 
-class AbortableRemoteOkProvider extends RemoteOkProvider {
+class AbortableAshbyProvider extends AshbyProvider {
   public aborted = false;
   private resolveStarted!: () => void;
   public readonly started = new Promise<void>((resolve) => {
@@ -342,7 +379,7 @@ class AbortableRemoteOkProvider extends RemoteOkProvider {
 }
 
 class PreflightProvider extends BaseProvider {
-  private readonly delegate = new RemoteOkProvider();
+  private readonly delegate = new AshbyProvider();
 
   public constructor(
     public readonly id: string,
@@ -352,7 +389,7 @@ class PreflightProvider extends BaseProvider {
     super();
     this.name = id;
     this.capabilities = {
-      ...new RemoteOkProvider().capabilities,
+      ...new AshbyProvider().capabilities,
       requiresCredentials,
     };
   }

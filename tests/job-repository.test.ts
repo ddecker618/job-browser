@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { JobDatabase } from '../src/db/database.js';
 import { JobRepository } from '../src/repositories/job-repository.js';
-import { RemoteOkProvider } from '../src/providers/remoteOk.provider.js';
+import { SmartRecruitersProvider } from '../src/providers/smartRecruiters.provider.js';
 import { createJobFixture } from './helpers/job-fixture.js';
 import {
   createTestDatabase,
@@ -49,8 +49,8 @@ describe('JobRepository', () => {
 
   it('persists BaseProvider confidence for migration 007 fields', () => {
     const job = createJobFixture();
-    new RemoteOkProvider().save({ repository, sourceId }, job, job);
-    expect(repository.findJob(job.id)?.providerConfidence).toBe(0.85);
+    new SmartRecruitersProvider().save({ repository, sourceId }, job, job);
+    expect(repository.findJob(job.id)?.providerConfidence).toBe(0.95);
   });
 
   it('detects a canonical URL duplicate and preserves status', () => {

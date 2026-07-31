@@ -55,6 +55,7 @@ describe('migration runner', () => {
       '011_add_matched_families.sql',
       '012_verification_columns.sql',
       '013_scoring_version_and_backfill.sql',
+      '014_legacy_remote_ok_sources.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -183,6 +184,7 @@ describe('migration runner', () => {
       '011_add_matched_families.sql',
       '012_verification_columns.sql',
       '013_scoring_version_and_backfill.sql',
+      '014_legacy_remote_ok_sources.sql',
     ]);
     expect(
       database
@@ -320,6 +322,7 @@ describe('migration runner', () => {
       '011_add_matched_families.sql',
       '012_verification_columns.sql',
       '013_scoring_version_and_backfill.sql',
+      '014_legacy_remote_ok_sources.sql',
     ]);
 
     const remaining = database

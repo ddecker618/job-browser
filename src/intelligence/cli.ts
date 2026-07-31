@@ -17,8 +17,8 @@ try {
   if (fixtureOnly) {
     await providerRegistry.loadProviders();
     await new DiscoveryEngine(database, providerRegistry).run(
-      'remote-ok',
-      { query: 'security', location: null, remoteOnly: true, limit: 50 },
+      'builtin',
+      { query: 'software', location: null, remoteOnly: true, limit: 50 },
       { fixtureOnly: true },
     );
   }

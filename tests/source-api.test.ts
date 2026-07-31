@@ -40,7 +40,6 @@ describe('source management API', () => {
 
     expect(control.sources.map((source) => source.providerId)).toEqual(
       expect.arrayContaining([
-        'remote-ok',
         'builtin',
         'wellfound',
         'ziprecruiter',
@@ -48,12 +47,12 @@ describe('source management API', () => {
         'indeed',
       ]),
     );
-    expect(control.sources).toHaveLength(6);
+    expect(control.sources).toHaveLength(5);
     expect(
       control.sources
         .filter((source) => source.enabled)
         .map((source) => source.providerId),
-    ).toEqual(expect.arrayContaining(['remote-ok', 'builtin']));
+    ).toEqual(expect.arrayContaining(['builtin']));
     expect(
       control.sources.every((source) => source.configurationStatus === 'valid'),
     ).toBe(true);
@@ -71,7 +70,6 @@ describe('source management API', () => {
     )) as { id: string }[];
     expect(providers.map((provider) => provider.id)).toEqual(
       expect.arrayContaining([
-        'remote-ok',
         'greenhouse',
         'lever',
         'ashby',

@@ -2,7 +2,7 @@
 
 Job Browser is a local application for discovering, deduplicating, analyzing, and tracking realistic job opportunities. It runs as a Windows desktop application or as a local Node.js/Express dashboard over the same SQLite-backed services.
 
-Discovery supports Remote OK, Greenhouse, Lever, Ashby, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. LinkedIn, Dice, Wellfound, and ZipRecruiter are visible-browser connectors and must never bypass a CAPTCHA, security check, login control, or site policy. There is no automatic application submission or AI-generated application answer workflow.
+Discovery supports Greenhouse, Lever, Ashby, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. LinkedIn, Dice, Wellfound, and ZipRecruiter are visible-browser connectors and must never bypass a CAPTCHA, security check, login control, or site policy. There is no automatic application submission or AI-generated application answer workflow.
 
 ## Safety Boundaries
 
@@ -51,7 +51,7 @@ The desktop application:
 - Uses an isolated, sandboxed renderer with no Node.js integration.
 - Stops the HTTP server and closes SQLite before exiting.
 - Runs enabled discovery schedules only while the desktop application is open; scheduling is disabled by default.
-- Seeds a small starter source set on desktop startup without overwriting existing sources: Remote OK and Built In are enabled for public discovery, while Wellfound and ZipRecruiter are preconfigured but disabled because they use visible browser sessions. Login providers such as LinkedIn and Dice remain available through Add source when the user is ready.
+- Seeds a small starter source set on desktop startup without overwriting existing sources: Built In is enabled for public discovery, while Wellfound, ZipRecruiter, Dice, and Indeed are preconfigured but disabled because they use visible browser sessions. Login providers such as LinkedIn and Dice remain available through Add source when the user is ready.
 
 Installed data is stored under Electron's per-user `Job Browser` application-data directory, separate from the installation directory. It contains `data/jobs.sqlite`, resumes, settings, logs, diagnostics, and timestamped backups. Development Electron runs use `data/desktop-dev`. The Settings page shows the exact active paths and provides Open Folder, Create Backup, Copy Diagnostics, and Restart actions.
 
@@ -162,14 +162,13 @@ Built-in providers:
 
 | Provider        | Source configuration                                    | Network behavior                                        |
 | --------------- | ------------------------------------------------------- | ------------------------------------------------------- |
-| Remote OK       | No provider-specific fields                             | Public JSON endpoint                                    |
 | Greenhouse      | Board token and optional company name                   | Public Greenhouse job-board API                         |
 | Lever           | Site slug and optional company name                     | Public Lever postings API                               |
 | Ashby           | Board name and optional company name                    | Public Ashby job-board API                              |
 | Workday         | HTTPS origin, tenant, site, and optional company name   | Public Workday CXS endpoint                             |
 | USAJOBS         | Optional page size; email and API key stored separately | Official USAJOBS Search API                             |
 | Structured data | Public HTTPS feed or careers-page URL                   | Bounded JSON-LD, JSON, RSS, or Atom fetch               |
-| SmartRecruiters | Company identifier and optional company name            | Public SmartRecruiters Posting API                      |
+| SmartRecruiters | Company identifier or `jobs.`/`careers.` careers URL, optional company name | Public SmartRecruiters Posting API                      |
 | BambooHR        | BambooHR company subdomain and company name             | Public BambooHR careers endpoints                       |
 | Recruitee       | Public careers origin and optional company name         | Public Recruitee careers JSON endpoint                  |
 | Teamtailor      | Public jobs RSS URL and company name                    | Public Teamtailor RSS feed                              |
@@ -289,8 +288,8 @@ Every analysis run stores snapshots for top skills and certifications, common ti
 | `npm run db:migrate`             | Apply pending SQL migrations                      |
 | `npm run db:seed`                | Apply migrations and seed known applications      |
 | `npm run db:setup`               | Set up migrations and known applications          |
-| `npm run discover`               | Run the Remote OK public demonstration provider   |
-| `npm run discover:test`          | Run discovery with the Remote OK fixture only     |
+| `npm run discover`               | Run discovery against all enabled sources      |
+| `npm run discover:test`          | Run discovery using provider fixtures only     |
 | `npm run analyze`                | Analyze all jobs currently in the database        |
 | `npm run analyze:test`           | Discover fixtures and run analysis offline        |
 | `npm run verify`                 | Run format check, lint, typecheck, and tests      |

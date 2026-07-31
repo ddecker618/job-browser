@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.7] — 2026-07-31
+
+### Added
+
+- SmartRecruiters provider production hardening: config schema accepts both `https://jobs.smartrecruiters.com/<slug>` and `https://careers.smartrecruiters.com/<slug>` URLs (HTTPS-only; bare hosts rejected), later search pages failing no longer discard earlier pages (`tryPage` isolation), and configuration validation reports job counts with preview samples, empty boards, and 404s.
+- Legacy compatibility migration `014_legacy_remote_ok_sources.sql` that disables any previously created Remote OK sources while preserving their jobs and run history.
+- Dedicated SmartRecruiters provider test suite (10 tests) covering URL normalization, validation, pagination isolation, and details enrichment.
+
+### Changed
+
+- Removed the Remote OK provider entirely: `src/providers/remoteOk.provider.ts`, its fixture, and its tests are deleted. `ensureRemoteOkSource` is gone, the discovery/intelligence CLIs and desktop smoke test no longer reference Remote OK, and the Sources editor provider fallback is now SmartRecruiters.
+- The discovery engine and coordinator test suites now use the Ashby provider fixtures; the built-in provider drives the discovery engine tests.
+
+### Removed
+
+- Remote OK is no longer listed as a supported provider, is not seeded as a starter source, and existing Remote OK sources are disabled by migration 014.
+
+### Verification
+
+- Full suite passes: 57 test files and 389 tests, strict typecheck green, ESLint back to the pre-existing baseline error count.
+
 ## [Unreleased] — 2026-07-25
 
 ### Added
