@@ -37,6 +37,7 @@ export const ELIGIBILITY_REJECTION_REASONS = [
   'closed',
   'illinois_excluded',
   'location_outside_radius',
+  'location_unknown',
   'overnight_schedule',
   'rotating_nights',
   'weekend_coverage',

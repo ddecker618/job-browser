@@ -1581,3 +1581,24 @@ kbd {
   font-weight: 800;
   line-height: 1;
 }
+
+.ineligible-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid rgba(198, 93, 93, 0.45);
+  border-radius: 999px;
+  color: #ff9d9d;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.eligibility-warning {
+  margin: 0.8rem 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(198, 93, 93, 0.45);
+  border-radius: 0.5rem;
+  color: #ffb0b0;
+}

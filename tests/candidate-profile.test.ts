@@ -7,14 +7,14 @@ describe('candidate profile', () => {
     const profile = loadCandidateProfile();
 
     expect(profile.preferredLocations).toContainEqual({
-      city: 'Highland',
-      state: 'Illinois',
+      city: 'Example City',
+      state: 'EX',
     });
-    expect(profile.searchRadiusMiles).toBe(45);
-    expect(profile.secondarySearchRadiusMiles).toBe(60);
+    expect(profile.searchRadiusMiles).toBe(25);
+    expect(profile.secondarySearchRadiusMiles).toBe(50);
     expect(profile.desiredJobTitles).toContain('Cybersecurity Analyst');
     expect(profile.certifications).toContain('CompTIA Security+');
-    expect(profile.degrees[0]?.expectedCompletion).toBe('2027-08');
+    expect(profile.degrees).toHaveLength(0);
     expect(profile.clearanceEligibility).toBe('unknown');
     expect(profile.yearsOfExperience).toBeNull();
   });

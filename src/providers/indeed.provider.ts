@@ -59,7 +59,10 @@ const configurationSchema = z.strictObject({
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
     .default(''),
-  datePosted: z.enum(['24h', 'week', 'month', 'any']).optional().default('any'),
+  datePosted: z
+    .enum(['24h', 'week', 'month', 'any'])
+    .optional()
+    .default('month'),
   maxResults: z.number().int().min(1).max(100).optional().default(50),
   browserProfileDir: z.string().optional(),
   keepBrowserOpen: z.boolean().optional().default(true),
@@ -158,11 +161,11 @@ export class IndeedProvider extends BaseProvider {
 
     const configuration = configurationSchema.parse(search.configuration ?? {});
     const queries = resolveQueries(configuration, search.request);
-    const maxResults = Math.min(
+    const maxResultsPerQuery = Math.min(
       configuration.maxResults,
       Math.max(1, search.request.limit),
     );
-    const records = await runBrowserSearch<IndeedJob>({
+    const result = await runBrowserSearch<IndeedJob>({
       providerName: this.name,
       profileDir: resolve(
         process.cwd(),
@@ -170,13 +173,14 @@ export class IndeedProvider extends BaseProvider {
       ),
       keepBrowserOpen: configuration.keepBrowserOpen,
       goBackAfterEnrich: true,
-      maxResults,
+      maxResultsPerQuery,
       queries: queries.map((q) => q.keywords),
-      buildSearchUrl: (query) => {
+      queryLocations: queries.map((q) => q.location),
+      buildSearchUrl: (query, location) => {
         const matchingQuery = queries.find((q) => q.keywords === query);
         return buildSearchUrl(
           query,
-          matchingQuery?.location ?? configuration.location,
+          location ?? matchingQuery?.location ?? configuration.location,
           configuration,
         );
       },
@@ -186,12 +190,15 @@ export class IndeedProvider extends BaseProvider {
       isCancelled: () => this.cancelRequested,
     });
     return {
-      records: records.filter((record) =>
-        matchesRequest(record, search.request),
-      ),
+      records: result.records,
       rejected: 0,
-      truncated: records.length >= maxResults,
-      complete: records.length < maxResults,
+      truncated: result.completedQueries > 0 && result.truncatedQueries > 0,
+      complete: result.complete,
+      queryDiagnostics: result.queryDiagnostics,
+      plannedQueries: result.plannedQueries,
+      completedQueries: result.completedQueries,
+      failedQueries: result.failedQueries,
+      truncatedQueries: result.truncatedQueries,
     };
   }
 
@@ -438,20 +445,6 @@ function effectiveConfiguration(
     };
   }
   return configuration;
-}
-
-function matchesRequest(job: IndeedJob, request: SearchRequest): boolean {
-  const text = [job.title, job.company, job.location, job.description]
-    .filter((value): value is string => value !== null)
-    .join(' ')
-    .toLowerCase();
-  const query = request.query.trim().toLowerCase();
-  const location = request.location?.trim().toLowerCase() ?? '';
-  return (
-    (query === '' || text.includes(query)) &&
-    (location === '' || text.includes(location)) &&
-    (!request.remoteOnly || inferRemoteType(text) === 'remote')
-  );
 }
 
 function configuredLocation(

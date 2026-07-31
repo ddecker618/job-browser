@@ -7,6 +7,7 @@ import type {
 import type {
   DiscoverySummary,
   DiscoveryTrigger,
+  SearchRequest,
 } from '../models/discovery.js';
 import type { ProviderRegistry } from '../providers/providerRegistry.js';
 import { SourceRepository } from '../repositories/source-repository.js';
@@ -15,6 +16,7 @@ import type { CredentialResolver } from './credentialResolver.js';
 
 export interface CoordinatorOptions {
   credentialResolver: CredentialResolver;
+  profilePreferencesPath?: string;
   analyze?: () => void;
 }
 
@@ -32,7 +34,10 @@ export class DiscoveryCoordinator {
     private readonly registry: ProviderRegistry,
     private readonly options: CoordinatorOptions,
   ) {
-    this.sources = new SourceRepository(database);
+    this.sources = new SourceRepository(
+      database,
+      options.profilePreferencesPath,
+    );
     this.engine = new DiscoveryEngine(database, registry);
     this.store = new DiscoveryStore(database);
   }
@@ -207,10 +212,12 @@ export class DiscoveryCoordinator {
         }
         controller.signal.throwIfAborted();
         runStarted = true;
-        const summary = await this.engine.run(
-          provider.id,
+        const requests = discoveryRequests(
+          provider.type,
           source.searchCriteria,
-          {
+        );
+        for (const request of requests) {
+          const summary = await this.engine.run(provider.id, request, {
             fixtureOnly,
             sourceId: source.id,
             configuration:
@@ -218,9 +225,9 @@ export class DiscoveryCoordinator {
             trigger,
             signal: controller.signal,
             ...(credentials === null ? {} : { credentials }),
-          },
-        );
-        summaries.push(summary);
+          });
+          summaries.push(summary);
+        }
         completedSuccessfully = true;
         this.sources.setHealth(
           source.id,
@@ -254,6 +261,30 @@ export class DiscoveryCoordinator {
     }
     return summaries;
   }
+}
+
+function discoveryRequests(
+  providerType: string,
+  criteria: {
+    query: string;
+    queries?: readonly string[] | undefined;
+    location: string | null;
+    remoteOnly: boolean;
+    limit: number;
+  },
+): SearchRequest[] {
+  const { queries, ...base } = criteria;
+  const baseRequest: SearchRequest = {
+    ...base,
+    ...(queries === undefined ? {} : { queries }),
+  };
+  if (providerType === 'job-board') return [baseRequest];
+  if (queries === undefined || queries.length === 0) return [baseRequest];
+  return queries.map((query) => ({
+    ...base,
+    query,
+    queries,
+  }));
 }
 
 function idleStatus(): DiscoveryStatus {

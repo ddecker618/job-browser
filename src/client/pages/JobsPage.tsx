@@ -8,6 +8,7 @@ import { api } from '../api.js';
 import { JobDetailPanel } from '../components/JobDetailPanel.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { EmptyState, ErrorState, LoadingState } from '../components/States.js';
+import { SCORING_RULES_VERSION } from '../../intelligence/scoringVersion.js';
 
 interface Filters {
   q: string;
@@ -60,6 +61,7 @@ const initialFilters: Filters = {
 };
 const filterKeys = Object.keys(initialFilters) as (keyof Filters)[];
 const pageSize = 100;
+const FILTER_STORAGE_KEY = `job-browser-filters:${SCORING_RULES_VERSION}`;
 
 export function JobsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -93,7 +95,7 @@ export function JobsPage() {
 
   const serializedFilters = JSON.stringify(filters);
   useEffect(() => {
-    localStorage.setItem('job-browser-filters', serializedFilters);
+    localStorage.setItem(FILTER_STORAGE_KEY, serializedFilters);
   }, [serializedFilters]);
 
   const query: Partial<JobSearchQuery> = {
@@ -485,7 +487,7 @@ export function JobsPage() {
                       <span
                         className={`score-chip score-${scoreBand(job.score)}`}
                       >
-                        {job.score?.toFixed(0) ?? '—'}
+                        {job.score?.toFixed(1) ?? '—'}
                       </span>
                     </td>
                     <td>
@@ -498,6 +500,13 @@ export function JobsPage() {
                             title="Verified eligible match"
                           >
                             ✓
+                          </span>
+                        ) : job.eligibilityPassed === false ? (
+                          <span
+                            className="ineligible-badge"
+                            title={job.eligibilityRejection ?? 'Ineligible'}
+                          >
+                            Ineligible
                           </span>
                         ) : null}
                       </span>
@@ -703,7 +712,7 @@ function readFilters(parameters: URLSearchParams, fallback: Filters): Filters {
 function loadFilters(): Filters {
   try {
     const saved = JSON.parse(
-      localStorage.getItem('job-browser-filters') ?? '{}',
+      localStorage.getItem(FILTER_STORAGE_KEY) ?? '{}',
     ) as Record<string, unknown>;
     return normalizeSavedFilters(saved);
   } catch {

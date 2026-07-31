@@ -1321,6 +1321,12 @@ function ProviderFields({
         </div>
       </div>
     );
+  if (providerId === 'cisco' || providerId === 'crowdstrike')
+    return (
+      <p className="field-note span-2">
+        This provider uses the Workday API. No additional configuration needed.
+      </p>
+    );
   return null;
 }
 
@@ -1343,6 +1349,8 @@ function configurationFor(
       'teamtailor',
       'workable',
       'icims',
+      'cisco',
+      'crowdstrike',
     ].includes(providerId)
   )
     return {

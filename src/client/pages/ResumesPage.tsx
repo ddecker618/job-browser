@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { EmptyState, ErrorState, LoadingState } from '../components/States.js';
+import { invalidateScoreQueries } from '../scoreCache.js';
 
 export function ResumesPage() {
   const resumes = useQuery({ queryKey: ['resumes'], queryFn: api.resumes });
@@ -59,7 +60,10 @@ export function ResumesPage() {
     }) => api.reviewAllProposals(id, status),
     onSuccess: invalidate,
   });
-  const rescore = useMutation({ mutationFn: api.rescoreResume });
+  const rescore = useMutation({
+    mutationFn: api.rescoreResume,
+    onSuccess: () => invalidateScoreQueries(client),
+  });
 
   if (resumes.isPending) return <LoadingState label="Loading resumes" />;
   if (resumes.isError)

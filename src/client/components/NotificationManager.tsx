@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '../api.js';
+import { SCORING_RULES_VERSION } from '../../intelligence/scoringVersion.js';
 
-const STORAGE_KEY = 'job-browser-notified-jobs';
+const STORAGE_KEY = `job-browser-notified-jobs:${SCORING_RULES_VERSION}`;
 const SCORE_THRESHOLD = 75;
 const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -66,7 +67,7 @@ export function NotificationManager() {
       changed = true;
       showNotification(
         `Strong match: ${job.title}`,
-        `${job.company} · Score: ${job.score?.toFixed(0) ?? '?'}`,
+        `${job.company} · Score: ${job.score?.toFixed(1) ?? '?'}`,
       );
     }
     if (changed) {

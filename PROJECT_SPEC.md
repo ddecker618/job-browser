@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Build a local job-discovery and ranking application for Dustin Decker, an IT and cybersecurity job seeker located in Highland, Illinois.
+Build a local job-discovery and ranking application for an IT and cybersecurity job seeker.
 
 The application must search approved employer career sites, collect relevant jobs, remove duplicates, rank realistic opportunities, remember prior decisions, and display the results in a local dashboard.
 
@@ -12,69 +12,30 @@ The system must never submit job applications automatically.
 
 Location:
 
-- Highland, Illinois
+- Configurable by the local user
 
 Search preferences:
 
-- Primary radius: 45 miles
-- Secondary radius: 60 miles for unusually strong opportunities
+- Primary and secondary radii are configurable
 - Remote roles are acceptable
 - Hybrid roles are acceptable when commuting is realistic
 
 Target roles:
 
-- Cybersecurity Analyst
-- SOC Analyst
-- Security Operations Analyst
-- Vulnerability Analyst
-- Risk Analyst
-- NOC Engineer
-- Network Operations Center Analyst
-- Network Administrator
-- Systems Administrator
-- Junior Systems Administrator
-- IT Support Analyst
-- Infrastructure Support Analyst
-- Technical Support Specialist
+- Infrastructure, networking, security, Splunk, database, and support role families
+- Role variants are configured through the local profile and search profile
 
 Education:
 
-- Bachelor of Science in Cybersecurity and Information Assurance in progress
-- Western Governors University
-- Expected completion August 2027
+- Configurable by the local user
 
 Certifications:
 
-- CompTIA Security+
-- CompTIA Network+
-- CompTIA A+
-- ITIL 4 Foundation
+- Configurable by the local user
 
 Relevant experience and skills:
 
-- United States Army veteran
-- Decker Tech Services
-- BitsIO security analytics training
-- Splunk
-- Cribl
-- SIEM monitoring
-- Alert investigation
-- Windows administration
-- Linux
-- Hyper-V
-- Active Directory fundamentals
-- Networking
-- TCP/IP
-- DNS
-- DHCP
-- VLANs
-- Wireshark
-- Nmap
-- Vulnerability analysis
-- Security documentation
-- Technical support
-- Incident documentation
-- Network troubleshooting
+- Configurable by the local user
 
 ## Technology requirements
 
@@ -276,10 +237,8 @@ The browser must not recommend this job as a new opportunity.
 
 - Never submit an application.
 - Never log into a job board during initial development.
-- Never bypass CAPTCHAs.
-- Never bypass access controls.
+- I want you to bypass CAPTCHAs if possible.
 - Respect reasonable request rates.
-- Do not scrape sites that expressly block the method being used.
 - Prefer public employer career pages and public ATS endpoints.
 - Do not store passwords.
 - Do not collect protected demographic data.

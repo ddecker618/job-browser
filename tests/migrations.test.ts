@@ -54,6 +54,7 @@ describe('migration runner', () => {
       '010_merge_duplicate_provider_sources.sql',
       '011_add_matched_families.sql',
       '012_verification_columns.sql',
+      '013_scoring_version_and_backfill.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -181,6 +182,7 @@ describe('migration runner', () => {
       '010_merge_duplicate_provider_sources.sql',
       '011_add_matched_families.sql',
       '012_verification_columns.sql',
+      '013_scoring_version_and_backfill.sql',
     ]);
     expect(
       database
@@ -317,6 +319,7 @@ describe('migration runner', () => {
       '010_merge_duplicate_provider_sources.sql',
       '011_add_matched_families.sql',
       '012_verification_columns.sql',
+      '013_scoring_version_and_backfill.sql',
     ]);
 
     const remaining = database

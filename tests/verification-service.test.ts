@@ -31,6 +31,15 @@ describe('verificationService', () => {
       expect(result.workArrangement).toBe('onsite');
     });
 
+    it('does not treat technical remote terminology as a remote arrangement', () => {
+      const result = verifyPosting(
+        'This is an onsite role in Columbia, Missouri. The team supports on-premises and remote infrastructure.',
+        'https://example.com/job/technical-remote-language',
+        200,
+      );
+      expect(result.workArrangement).toBe('onsite');
+    });
+
     it('defaults to unknown when no arrangement is stated', () => {
       const result = verifyPosting(
         'Join our team. Great benefits.',

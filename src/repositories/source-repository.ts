@@ -9,13 +9,10 @@ import type {
   SourceInput,
   SourceSchedule,
 } from '../models/source-management.js';
+import { searchRequestSchema } from '../schemas/source-management.js';
 import { nowUtc } from '../utilities/timestamps.js';
-import {
-  collectEnabledTitles,
-  DEFAULT_SEARCH_PROFILE,
-  searchProfileSchema,
-  type SearchProfile,
-} from '../config/search-profile.js';
+import type { SearchProfile } from '../config/search-profile.js';
+import { loadUnifiedLegacyPreferences } from '../preferences/profilePreferencesRuntime.js';
 
 interface SourceRow extends Record<string, unknown> {
   id: string;
@@ -44,7 +41,10 @@ interface SourceRow extends Record<string, unknown> {
 }
 
 export class SourceRepository {
-  public constructor(private readonly database: JobDatabase) {}
+  public constructor(
+    private readonly database: JobDatabase,
+    private readonly profilePreferencesPath?: string,
+  ) {}
 
   public reconcileProviders(providers: readonly JobProvider[]): void {
     const timestamp = nowUtc();
@@ -81,96 +81,75 @@ export class SourceRepository {
   }
 
   public ensureDefaultSources(): void {
-    const titles = this.loadSearchProfileTitles();
+    const titles = this.loadTargetRoles();
     if (titles.length === 0) return;
     this.ensureRemoteOkSource();
     const queries = queriesFromRoles(titles);
     this.ensureSources(
       DEFAULT_SOURCES.map((source) => ({
         ...source,
-        configuration: { ...source.configuration, queries } as Record<
-          string,
-          unknown
-        >,
+        configuration: withQueryConfiguration(
+          source.configuration,
+          queries,
+          titles[0] ?? source.searchCriteria.query,
+        ),
         searchCriteria: {
           ...source.searchCriteria,
           query: titles[0] ?? source.searchCriteria.query,
+          queries: [...titles],
         },
       })) as unknown as readonly DefaultSource[],
     );
   }
 
-  private loadSearchProfileTitles(): string[] {
-    const row = this.database
-      .prepare<
-        [],
-        { setting_value_json: string } | undefined
-      >(`SELECT setting_value_json FROM app_settings WHERE setting_key = 'searchProfile'`)
-      .get();
-    if (row === undefined) {
-      return collectEnabledTitles(DEFAULT_SEARCH_PROFILE);
-    }
-    try {
-      const parsed = searchProfileSchema.safeParse(
-        JSON.parse(row.setting_value_json),
-      );
-      if (parsed.success) {
-        return collectEnabledTitles(parsed.data);
-      }
-    } catch {
-      // fall through
-    }
-    return collectEnabledTitles(DEFAULT_SEARCH_PROFILE);
+  public cascadeTargetRoles(roles: string[]): void {
+    this.cascadeQueries(roles);
   }
 
-  public cascadeTargetRoles(roles: string[]): void {
+  public cascadeSearchProfile(profile: SearchProfile): void {
+    void profile;
+    this.cascadeQueries(this.loadTargetRoles());
+  }
+
+  private cascadeQueries(roles: string[]): void {
     if (roles.length === 0) return;
     const queries = queriesFromRoles(roles);
     const row = this.database
       .prepare<
         [],
-        { id: string; configuration_json: string }
-      >(`SELECT id, configuration_json FROM sources WHERE provider_id IS NOT NULL`)
+        { id: string; configuration_json: string; search_criteria_json: string }
+      >(`SELECT id, configuration_json, search_criteria_json FROM sources WHERE provider_id IS NOT NULL`)
       .all();
     const update = this.database.prepare(
-      `UPDATE sources SET configuration_json = ?, updated_at = ? WHERE id = ?`,
+      `UPDATE sources SET configuration_json = ?, search_criteria_json = ?, updated_at = ? WHERE id = ?`,
     );
     const timestamp = nowUtc();
     this.database.transaction(() => {
       for (const source of row) {
         const config = parseObject(source.configuration_json);
-        config['queries'] = queries;
-        config['searchKeywords'] = roles[0];
-        update.run(JSON.stringify(config), timestamp, source.id);
-      }
-    })();
-  }
-
-  public cascadeSearchProfile(profile: SearchProfile): void {
-    const titles = collectEnabledTitles(profile);
-    if (titles.length === 0) return;
-    const queries = queriesFromRoles(titles);
-    const row = this.database
-      .prepare<
-        [],
-        { id: string; configuration_json: string }
-      >(`SELECT id, configuration_json FROM sources WHERE provider_id IS NOT NULL`)
-      .all();
-    const update = this.database.prepare(
-      `UPDATE sources SET configuration_json = ?, updated_at = ? WHERE id = ?`,
-    );
-    const timestamp = nowUtc();
-    this.database.transaction(() => {
-      for (const source of row) {
-        const config = parseObject(source.configuration_json);
-        config['queries'] = queries;
-        config['searchKeywords'] = titles[0];
-        update.run(JSON.stringify(config), timestamp, source.id);
+        const criteria = searchRequestSchema.parse(
+          JSON.parse(source.search_criteria_json) as unknown,
+        );
+        const nextCriteria = {
+          ...criteria,
+          query: roles[0] ?? criteria.query,
+          queries: [...roles],
+        };
+        update.run(
+          JSON.stringify(
+            withQueryConfiguration(config, queries, roles[0] ?? ''),
+          ),
+          JSON.stringify(nextCriteria),
+          timestamp,
+          source.id,
+        );
       }
     })();
   }
 
   private loadTargetRoles(): string[] {
+    const unified = loadUnifiedLegacyPreferences(this.profilePreferencesPath);
+    if (unified !== null) return [...unified.sourceQueryRoles];
     const row = this.database
       .prepare<
         [],
@@ -179,10 +158,10 @@ export class SourceRepository {
       .get();
     if (row === undefined) {
       return [
-        'systems administrator',
-        'network administrator',
-        'network analyst',
-        'SOC analyst',
+        'Systems Administrator',
+        'Network Administrator',
+        'SOC Analyst',
+        'Technical Support Engineer',
       ];
     }
     try {
@@ -198,10 +177,10 @@ export class SourceRepository {
       // fall through to default
     }
     return [
-      'systems administrator',
-      'network administrator',
-      'network analyst',
-      'SOC analyst',
+      'Systems Administrator',
+      'Network Administrator',
+      'SOC Analyst',
+      'Technical Support Engineer',
     ];
   }
 
@@ -212,6 +191,8 @@ export class SourceRepository {
       )
       .get() as { count: number };
     if (existing.count > 0) return;
+    const targetRoles = this.loadTargetRoles();
+    const primaryRole = targetRoles[0] ?? 'Systems Administrator';
     const timestamp = nowUtc();
     this.database
       .prepare(
@@ -234,10 +215,12 @@ export class SourceRepository {
         'remote-ok',
         JSON.stringify({}),
         JSON.stringify({
-          query: 'security',
+          query: primaryRole,
+          queries: targetRoles,
           location: null,
           remoteOnly: true,
           limit: 50,
+          maxAgeDays: 30,
         }),
       );
     this.ensureSchedule('provider:remote-ok', false, 'manual', null);
@@ -685,7 +668,7 @@ const DEFAULT_SOURCES = [
       searchKeywords: 'systems administrator',
       location: '',
       remoteFilter: '',
-      datePosted: 'any',
+      datePosted: 'month',
       maxResults: 50,
       fetchDetails: true,
       queries: [
@@ -700,6 +683,7 @@ const DEFAULT_SOURCES = [
       location: null,
       remoteOnly: false,
       limit: 50,
+      maxAgeDays: 30,
     },
   },
   {
@@ -713,7 +697,7 @@ const DEFAULT_SOURCES = [
       searchKeywords: 'systems administrator',
       location: '',
       remoteFilter: '',
-      datePosted: 'any',
+      datePosted: 'month',
       maxResults: 50,
       keepBrowserOpen: true,
       queries: [
@@ -728,6 +712,7 @@ const DEFAULT_SOURCES = [
       location: null,
       remoteOnly: false,
       limit: 50,
+      maxAgeDays: 30,
     },
   },
   {
@@ -741,7 +726,7 @@ const DEFAULT_SOURCES = [
       searchKeywords: 'systems administrator',
       location: '',
       remoteFilter: '',
-      datePosted: 'any',
+      datePosted: 'month',
       maxResults: 50,
       keepBrowserOpen: true,
       queries: [
@@ -756,6 +741,7 @@ const DEFAULT_SOURCES = [
       location: null,
       remoteOnly: false,
       limit: 50,
+      maxAgeDays: 30,
     },
   },
   {
@@ -769,7 +755,7 @@ const DEFAULT_SOURCES = [
       searchKeywords: 'systems administrator',
       location: '',
       remoteFilter: '',
-      datePosted: 'any',
+      datePosted: 'month',
       maxResults: 50,
       queries: [
         { keywords: 'systems administrator', location: '' },
@@ -783,6 +769,7 @@ const DEFAULT_SOURCES = [
       location: null,
       remoteOnly: false,
       limit: 50,
+      maxAgeDays: 30,
     },
   },
   {
@@ -796,7 +783,7 @@ const DEFAULT_SOURCES = [
       searchKeywords: 'systems administrator',
       location: '',
       remoteFilter: '',
-      datePosted: 'any',
+      datePosted: 'month',
       maxResults: 50,
       keepBrowserOpen: true,
       queries: [
@@ -811,6 +798,7 @@ const DEFAULT_SOURCES = [
       location: null,
       remoteOnly: false,
       limit: 50,
+      maxAgeDays: 30,
     },
   },
 ] as const;
@@ -883,6 +871,19 @@ function parseObject(value: string): Record<string, unknown> {
   return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
     ? (parsed as Record<string, unknown>)
     : {};
+}
+
+function withQueryConfiguration(
+  configuration: Record<string, unknown>,
+  queries: { keywords: string; location: string }[],
+  primaryQuery: string,
+): Record<string, unknown> {
+  const next = { ...configuration };
+  if (Array.isArray(next['queries'])) next['queries'] = queries;
+  if (typeof next['searchKeywords'] === 'string')
+    next['searchKeywords'] = primaryQuery;
+  if (typeof next['query'] === 'string') next['query'] = primaryQuery;
+  return next;
 }
 
 function nullableString(value: unknown): string | null {

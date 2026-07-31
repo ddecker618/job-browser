@@ -24,6 +24,7 @@ import type {
   JobSearchQuery,
   JobSearchResponse,
 } from '../models/job-search.js';
+import type { AnalysisSummary } from '../models/intelligence.js';
 import type { SearchProfile } from '../config/search-profile.js';
 
 export interface ProfileResponse {
@@ -90,12 +91,15 @@ export const api = {
     request<JobDetail>(`/api/jobs/${id}/refresh`, { method: 'POST' }),
   profile: () => request<ProfileResponse>('/api/profile'),
   saveProfile: (profile: CandidateProfile, rescore: boolean) =>
-    request<{ profile: CandidateProfile }>(
+    request<{ profile: CandidateProfile; analysis: AnalysisSummary }>(
       '/api/profile',
       json('PUT', { profile, rescore }),
     ),
   saveScoring: (scoring: ScoringConfig) =>
-    request<ScoringConfig>('/api/scoring', json('PUT', scoring)),
+    request<{ scoring: ScoringConfig; analysis: AnalysisSummary }>(
+      '/api/scoring',
+      json('PUT', scoring),
+    ),
   resumes: () => request<ResumeView[]>('/api/resumes'),
   uploadResume: (form: FormData) =>
     request<ResumeView>('/api/resumes', { method: 'POST', body: form }),
@@ -155,7 +159,10 @@ export const api = {
     request<AppSettings>('/api/settings', json('PUT', settings)),
   searchProfile: () => request<SearchProfile>('/api/search-profile'),
   saveSearchProfile: (profile: SearchProfile) =>
-    request<SearchProfile>('/api/search-profile', json('PUT', profile)),
+    request<{ profile: SearchProfile; analysis: AnalysisSummary }>(
+      '/api/search-profile',
+      json('PUT', profile),
+    ),
   savedFilters: () => request<SavedFilterView[]>('/api/saved-filters'),
   saveFilter: (
     name: string,

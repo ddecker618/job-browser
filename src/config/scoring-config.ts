@@ -5,10 +5,14 @@ import {
   scoringConfigSchema,
   type ScoringConfig,
 } from '../schemas/scoring-config.js';
+import { loadUnifiedLegacyPreferences } from '../preferences/profilePreferencesRuntime.js';
 
 export function loadScoringConfig(
   configPath = resolve(process.cwd(), 'config', 'scoring-config.json'),
+  profilePreferencesPath?: string,
 ): ScoringConfig {
+  const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
+  if (unified !== null) return unified.scoringConfig;
   try {
     const contents = readFileSync(configPath, 'utf8');
     return scoringConfigSchema.parse(JSON.parse(contents) as unknown);

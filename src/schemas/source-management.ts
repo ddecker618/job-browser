@@ -2,9 +2,11 @@ import { z } from 'zod';
 
 export const searchRequestSchema = z.strictObject({
   query: z.string().trim().max(200).default(''),
+  queries: z.array(z.string().trim().min(1).max(200)).max(200).optional(),
   location: z.string().trim().max(200).nullable().default(null),
   remoteOnly: z.boolean().default(false),
   limit: z.number().int().min(1).max(500).default(50),
+  maxAgeDays: z.number().int().min(1).max(3650).nullable().default(null),
 });
 
 export const sourceScheduleSchema = z

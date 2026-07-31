@@ -54,6 +54,11 @@ interface JobListRow {
   provider: string;
   favorite: number;
   active: number;
+  verification_status: string | null;
+  eligibility_passed: number | null;
+  eligibility_rejection: string | null;
+  work_arrangement: string | null;
+  score_version: string | null;
 }
 
 interface JobDetailRow extends JobListRow {
@@ -143,6 +148,10 @@ interface SettingRow {
   setting_value_json: string;
 }
 
+export interface DashboardRepositoryOptions {
+  getScoreVersion?: (() => string) | undefined;
+}
+
 interface SavedFilterRow {
   id: string;
   name: string;
@@ -162,7 +171,10 @@ export interface ResumeInput {
 }
 
 export class DashboardRepository {
-  public constructor(private readonly database: JobDatabase) {}
+  public constructor(
+    private readonly database: JobDatabase,
+    private readonly options: DashboardRepositoryOptions = {},
+  ) {}
 
   public getSummary(): DashboardSummary {
     const today = nowUtc().slice(0, 10);
@@ -204,17 +216,25 @@ export class DashboardRepository {
   }
 
   public listJobs(): JobListItem[] {
+    const scoreVersion = this.options.getScoreVersion?.();
+    const currentScoreFilter =
+      scoreVersion === undefined
+        ? ''
+        : 'WHERE jobs.score_version = ? AND COALESCE(jobs.eligibility_passed, 1) = 1';
     return this.database
-      .prepare<[], JobListRow>(
+      .prepare<unknown[], JobListRow>(
         `SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.remote_type,
           jobs.salary_minimum, jobs.salary_maximum, jobs.score, jobs.recommendation,
           jobs.matched_families, jobs.status, jobs.first_seen_at, jobs.last_seen_at,
-          jobs.favorite, jobs.active,
+           jobs.favorite, jobs.active, jobs.verification_status,
+           jobs.eligibility_passed, jobs.eligibility_rejection,
+           jobs.work_arrangement, jobs.score_version,
           COALESCE(MIN(job_sources.provider_id), jobs.source_type) AS provider
-         FROM jobs LEFT JOIN job_sources ON job_sources.job_id = jobs.id
-         GROUP BY jobs.id ORDER BY jobs.first_seen_at DESC`,
+          FROM jobs LEFT JOIN job_sources ON job_sources.job_id = jobs.id
+          ${currentScoreFilter}
+          GROUP BY jobs.id ORDER BY jobs.first_seen_at DESC`,
       )
-      .all()
+      .all(...(scoreVersion === undefined ? [] : [scoreVersion]))
       .map(mapJobListItem);
   }
 
@@ -224,7 +244,9 @@ export class DashboardRepository {
         `SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.city, jobs.state,
           jobs.remote_type, jobs.employment_type, jobs.salary_minimum, jobs.salary_maximum,
           jobs.salary_text, jobs.score, jobs.recommendation, jobs.matched_families, jobs.status,
-          jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
+           jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
+           jobs.verification_status, jobs.eligibility_passed,
+           jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version,
           jobs.description, jobs.requirements, jobs.preferred_qualifications,
            jobs.posting_url, jobs.date_posted, jobs.clearance_requirement, jobs.notes,
            jobs.agency, jobs.department, jobs.grade_low, jobs.grade_high, jobs.pay_plan,
@@ -763,6 +785,12 @@ function mapJobListItem(row: JobListRow): JobListItem {
     provider: row.provider,
     favorite: Boolean(row.favorite),
     active: Boolean(row.active),
+    verificationStatus: row.verification_status,
+    eligibilityPassed:
+      row.eligibility_passed === null ? null : Boolean(row.eligibility_passed),
+    eligibilityRejection: row.eligibility_rejection,
+    workArrangement: row.work_arrangement,
+    scoreVersion: row.score_version,
   };
 }
 

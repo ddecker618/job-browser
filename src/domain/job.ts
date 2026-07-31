@@ -83,6 +83,8 @@ export interface Job {
   illinoisEligibility: string | null;
   scheduleClassification: string | null;
   verifiedAt: string | null;
+  scoreVersion: string | null;
+  scoreInputHash: string | null;
 }
 
 export type JobForScoring = Omit<
@@ -94,4 +96,6 @@ export type JobForScoring = Omit<
   | 'illinoisEligibility'
   | 'scheduleClassification'
   | 'verifiedAt'
+  | 'scoreVersion'
+  | 'scoreInputHash'
 >;

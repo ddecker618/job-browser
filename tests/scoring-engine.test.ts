@@ -6,6 +6,7 @@ import { scoreJob } from '../src/intelligence/scoringEngine.js';
 import type { ScoringConfig } from '../src/schemas/scoring-config.js';
 import { createJobFixture } from './helpers/job-fixture.js';
 import type { VerificationResult } from '../src/intelligence/verificationService.js';
+import { verifyPosting } from '../src/intelligence/verificationService.js';
 
 const analyzedAt = '2026-07-18T12:00:00.000Z';
 
@@ -261,5 +262,39 @@ describe('scoring engine', () => {
 
     expect(result.recommendationStatus).toBe('Verified Match');
     expect(result.verifiedStatus).toBe('verified');
+  });
+
+  it('hard-blocks an onsite job outside the commuting radius before skill scoring', () => {
+    const job = createJobFixture({
+      title: 'Solaris / Linux Systems Administrator',
+      normalizedTitle: 'solaris linux systems administrator',
+      company: 'Example Employer',
+      location: 'Columbia, MO',
+      city: 'Columbia',
+      state: 'MO',
+      remoteType: 'remote',
+      description:
+        'This is an onsite role located in Columbia, Missouri. Administer Linux systems and remote infrastructure.',
+      requirements: 'Linux required.',
+    });
+    const verification = verifyPosting(
+      `${job.title} at ${job.company}\nLocation: ${job.location ?? ''}\n${job.description ?? ''}`,
+      job.postingUrl,
+      200,
+    );
+    const result = scoreJob(
+      job,
+      loadCandidateProfile(),
+      loadScoringConfig(),
+      analyzedAt,
+      verification,
+    );
+
+    expect(verification.workArrangement).toBe('onsite');
+    expect(result.recommendationStatus).toBe('Hard No');
+    expect(result.eligibilityPassed).toBe(false);
+    expect(result.eligibilityRejection).toBe('location_outside_radius');
+    expect(result.overallScore).toBe(0);
+    expect(result.skills).toEqual([]);
   });
 });

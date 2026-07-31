@@ -59,6 +59,7 @@ export const jobSearchQuerySchema = z
     multipleSource: queryBoolean.optional(),
     matchedFamilies: trimmed.optional(),
     verificationStatus: z.enum(['verified', 'closed', 'unverified']).optional(),
+    includeIneligible: queryBoolean.optional(),
     page: queryInteger(1, 1_000_000, 1),
     pageSize: queryInteger(1, 100, 25),
     sort: z.enum(JOB_SEARCH_SORT_FIELDS).default('score'),

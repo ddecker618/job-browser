@@ -48,7 +48,10 @@ const configurationSchema = z.strictObject({
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
     .default(''),
-  datePosted: z.enum(['24h', 'week', 'month', 'any']).optional().default('any'),
+  datePosted: z
+    .enum(['24h', 'week', 'month', 'any'])
+    .optional()
+    .default('month'),
   maxResults: z.number().int().min(1).max(100).optional().default(50),
   fetchDetails: z.boolean().optional().default(true),
 });

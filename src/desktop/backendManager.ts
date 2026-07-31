@@ -24,6 +24,7 @@ export class BackendManager {
       backupDirectory: paths.backups,
       candidateProfilePath: paths.candidateProfile,
       scoringConfigPath: paths.scoringConfig,
+      profilePreferencesPath: paths.profilePreferences,
       resumeDirectory: paths.resumes,
       artifactDirectory: paths.diagnostics,
       clientDirectory: paths.client,

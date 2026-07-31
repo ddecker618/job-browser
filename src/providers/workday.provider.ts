@@ -98,8 +98,8 @@ const detailSchema = z.object({
 });
 
 export class WorkdayProvider extends BaseProvider {
-  public readonly id = 'workday';
-  public readonly name = 'Workday';
+  public readonly id: string = 'workday';
+  public readonly name: string = 'Workday';
   public readonly type = 'ats' as const;
   public readonly capabilities = {
     keywordSearch: true,

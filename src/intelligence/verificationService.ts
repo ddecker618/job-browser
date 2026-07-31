@@ -6,6 +6,7 @@ import type {
   IllinoisEligibility,
   EligibilityResult,
 } from '../domain/verification.js';
+import { classifyWorkArrangement } from '../domain/work-arrangement.js';
 import { nowUtc } from '../utilities/timestamps.js';
 
 export interface VerificationResult {
@@ -43,44 +44,6 @@ const CLOSED_INDICATORS = [
   /requisition\s+closed/i,
   /application\s+deadline\s+has\s+passed/i,
   /sorry,?\s+this\s+(position|job|requisition)\s+(has\s+)?(closed|filled|expired)/i,
-];
-
-const ONSITE_EVIDENCE = [
-  /this\s+is\s+not\s+a\s+remote\s+position/i,
-  /not\s+a\s+remote\s+(role|job|opportunity)/i,
-  /must\s+(?:live|reside|be\s+located)\s+within\s+(?:commuting\s+)?distance/i,
-  /must\s+report\s+to\s+(?:the\s+)?office/i,
-  /work\s+from\s+our\s+office/i,
-  /local\s+candidates?\s+only/i,
-  /on[- ]?site\s+(?:five|5)\s+days\s+per\s+week/i,
-  /in[- ]?office\s+(?:five|5)\s+days/i,
-  /relocation\s+(?:assistance\s+)?is\s+not\s+available/i,
-];
-
-const HYBRID_EVIDENCE = [
-  /\bhybrid\b/i,
-  /three\s+days?\s+(?:per\s+week|a\s+week|in\s+the\s+office)/i,
-  /two\s+days?\s+(?:per\s+week|a\s+week|in\s+the\s+office)/i,
-  /mix\s+of\s+(?:in[- ]?office|on[- ]?site)\s+and\s+remote/i,
-  /split\s+(?:week|time)\s+between/i,
-  /flexible\s+(?:remote|work\s+from\s+home)\s+(?:policy|arrangement)/i,
-  /some\s+(?:days?\s+)?in\s+(?:the\s+)?office/i,
-];
-
-const REMOTE_EVIDENCE = [
-  /\b(?:fully\s+)?remote\b(?!\s+(?:support|access|systems|monitoring|administration|troubleshooting|desktop|server|network|maintenance|diagnostics))/i,
-  /work\s+(?:from\s+)?home/i,
-  /telecommute/i,
-  /remote\s+(?:position|role|job|opportunity|work)/i,
-  /anywhere\s+in\s+(?:the\s+)?(?:us|united\s+states)/i,
-  /nationwide\s+remote/i,
-  /remote\s+first/i,
-  /100%\s+remote/i,
-  /fully\s+distributed/i,
-];
-
-const REMOTE_TECH_LANGUAGE = [
-  /\bremote\s+(support|access|systems|monitoring|administration|troubleshooting|desktop|server|network|maintenance|diagnostics)\b/i,
 ];
 
 const ILLINOIS_INCLUDED = [
@@ -242,42 +205,6 @@ export function verifyPosting(
     eligibility,
     extractedRequirements: requirements,
   };
-}
-
-function classifyWorkArrangement(text: string): {
-  arrangement: WorkArrangement;
-  evidence: string[];
-} {
-  const hasOnsite = findMatches(text, ONSITE_EVIDENCE).length > 0;
-  const hasTechLang = findMatches(text, REMOTE_TECH_LANGUAGE).length > 0;
-  const hasRemote = findMatches(text, REMOTE_EVIDENCE).length > 0;
-  const hasHybrid = findMatches(text, HYBRID_EVIDENCE).length > 0;
-
-  if (hasOnsite) {
-    return {
-      arrangement: 'onsite',
-      evidence: ['Strong onsite evidence found in posting'],
-    };
-  }
-  if (hasTechLang && !hasRemote) {
-    return {
-      arrangement: 'onsite',
-      evidence: [
-        'Remote language refers to technical support, not work arrangement',
-      ],
-    };
-  }
-  if (hasHybrid && hasRemote) {
-    return { arrangement: 'hybrid', evidence: ['Hybrid schedule indicated'] };
-  }
-  if (hasHybrid) {
-    return { arrangement: 'hybrid', evidence: ['Hybrid schedule indicated'] };
-  }
-  if (hasRemote) {
-    return { arrangement: 'remote', evidence: ['Remote work indicated'] };
-  }
-
-  return { arrangement: 'unknown', evidence: ['Work arrangement not stated'] };
 }
 
 function classifyIllinoisEligibility(

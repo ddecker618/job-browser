@@ -21,6 +21,10 @@ export interface ProviderCapabilities {
 
 export type ProviderConfiguration = Record<string, unknown>;
 
+export type SourceSearchCriteria = Omit<SearchRequest, 'queries'> & {
+  queries?: readonly string[] | undefined;
+};
+
 export interface ValidationResult {
   valid: boolean;
   message: string;
@@ -82,7 +86,7 @@ export interface ConfiguredSource {
   careersUrl: string | null;
   enabled: boolean;
   configuration: ProviderConfiguration;
-  searchCriteria: SearchRequest;
+  searchCriteria: SourceSearchCriteria;
   configurationStatus:
     | 'unvalidated'
     | 'valid'
@@ -105,7 +109,7 @@ export interface SourceInput {
   providerId: string;
   careersUrl: string | null;
   configuration: ProviderConfiguration;
-  searchCriteria: SearchRequest;
+  searchCriteria: SourceSearchCriteria;
   enabled: boolean;
   schedule: Omit<SourceSchedule, 'nextRunAt' | 'lastDueAt'>;
 }

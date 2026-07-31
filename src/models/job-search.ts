@@ -37,6 +37,7 @@ export interface JobSearchQuery {
   multipleSource?: boolean | undefined;
   matchedFamilies?: string | undefined;
   verificationStatus?: string | undefined;
+  includeIneligible?: boolean | undefined;
   page: number;
   pageSize: number;
   sort: JobSearchSortField;
@@ -70,6 +71,9 @@ export interface JobSearchItem {
   sources: JobSearchSource[];
   verificationStatus: string | null;
   eligibilityPassed: boolean | null;
+  eligibilityRejection: string | null;
+  workArrangement: string | null;
+  scoreVersion: string | null;
 }
 
 export interface JobSearchFacet {

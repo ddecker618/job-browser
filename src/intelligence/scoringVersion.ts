@@ -1,0 +1,1 @@
+export const SCORING_RULES_VERSION = '2026-07-28-location-eligibility-v3';

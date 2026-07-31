@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { ErrorState, LoadingState } from '../components/States.js';
+import { invalidateScoreQueries } from '../scoreCache.js';
 import type { SearchProfile, RoleFamily } from '../../config/search-profile.js';
 
 export function SearchProfilePage() {
@@ -11,11 +12,17 @@ export function SearchProfilePage() {
     queryFn: api.searchProfile,
   });
   const client = useQueryClient();
+  const [draft, setDraft] = useState<SearchProfile | null>(null);
   const save = useMutation({
     mutationFn: api.saveSearchProfile,
-    onSuccess: () => client.invalidateQueries({ queryKey: ['search-profile'] }),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['search-profile'] }),
+        invalidateScoreQueries(client),
+      ]);
+      setDraft(null);
+    },
   });
-  const [draft, setDraft] = useState<SearchProfile | null>(null);
   const profile = draft ?? query.data;
 
   if (query.isPending) return <LoadingState label="Loading search profile" />;
@@ -67,7 +74,6 @@ export function SearchProfilePage() {
 
   const handleSave = () => {
     if (draft) save.mutate(draft);
-    setDraft(null);
   };
 
   const totalEnabled =
@@ -102,6 +108,90 @@ export function SearchProfilePage() {
             <strong>Max queries per run:</strong> {profile?.maxQueriesPerRun}
           </span>
         </div>
+        <section className="form-panel search-profile-controls">
+          <div className="section-heading">
+            <span>01</span>
+            <div>
+              <h3>Discovery boundaries</h3>
+              <p>These values affect future provider searches and filtering.</p>
+            </div>
+          </div>
+          <div className="form-grid">
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={profile?.prioritizeRemote ?? false}
+                onChange={(event) =>
+                  profile &&
+                  setDraft({
+                    ...profile,
+                    prioritizeRemote: event.target.checked,
+                  })
+                }
+              />
+              Prioritize remote roles
+            </label>
+            <label>
+              Preferred location
+              <input
+                value={profile?.preferredLocation ?? ''}
+                onChange={(event) =>
+                  profile &&
+                  setDraft({
+                    ...profile,
+                    preferredLocation: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <label>
+              Max onsite distance (miles)
+              <input
+                type="number"
+                min="0"
+                value={profile?.maxOnsiteDistanceMiles ?? 0}
+                onChange={(event) =>
+                  profile &&
+                  setDraft({
+                    ...profile,
+                    maxOnsiteDistanceMiles: Number(event.target.value),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Max experience (years)
+              <input
+                type="number"
+                min="0"
+                value={profile?.maxExperienceYears ?? 0}
+                onChange={(event) =>
+                  profile &&
+                  setDraft({
+                    ...profile,
+                    maxExperienceYears: Number(event.target.value),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Max queries per run
+              <input
+                type="number"
+                min="1"
+                max="200"
+                value={profile?.maxQueriesPerRun ?? 1}
+                onChange={(event) =>
+                  profile &&
+                  setDraft({
+                    ...profile,
+                    maxQueriesPerRun: Number(event.target.value),
+                  })
+                }
+              />
+            </label>
+          </div>
+        </section>
         <div className="family-list">
           {profile?.families.map((family) => (
             <FamilyCard

@@ -3,10 +3,12 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../api.js';
+import { invalidateScoreQueries } from '../scoreCache.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { ErrorState, LoadingState } from '../components/States.js';
 import type { CandidateProfile } from '../../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../../schemas/scoring-config.js';
+import { EMPLOYMENT_TYPES } from '../../domain/job.js';
 
 interface ProfileForm {
   name: string;
@@ -22,6 +24,14 @@ interface ProfileForm {
   certifications: string;
   yearsOfExperience: string;
   education: string;
+  employmentTypes: string;
+  degreeRequired: boolean;
+  degreeInProgressOk: boolean;
+  maxTravelPercent: string;
+  noWeekends: boolean;
+  noOnCall: boolean;
+  noRotatingShifts: boolean;
+  noOvernightShifts: boolean;
   titleWeight: number;
   skillsWeight: number;
   certificationsWeight: number;
@@ -55,7 +65,12 @@ export function ProfilePage() {
       await api.saveScoring(scoring);
       return api.saveProfile(profile, rescore);
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: ['profile'] }),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['profile'] }),
+        invalidateScoreQueries(client),
+      ]);
+    },
   });
 
   if (data.isPending) return <LoadingState label="Loading candidate profile" />;
@@ -177,6 +192,46 @@ export function ProfilePage() {
               Desired salary target
               <input type="number" {...form.register('salaryTarget')} />
             </label>
+            <label className="span-2">
+              Employment types
+              <textarea
+                {...form.register('employmentTypes')}
+                placeholder="full-time, contract, or unknown; one per line"
+              />
+            </label>
+            <label>
+              Maximum travel (%)
+              <input
+                type="number"
+                min="0"
+                max="100"
+                {...form.register('maxTravelPercent')}
+              />
+            </label>
+            <label className="checkbox-field">
+              <input type="checkbox" {...form.register('degreeRequired')} />
+              Degree required
+            </label>
+            <label className="checkbox-field">
+              <input type="checkbox" {...form.register('degreeInProgressOk')} />
+              Degree in progress is acceptable
+            </label>
+            <label className="checkbox-field">
+              <input type="checkbox" {...form.register('noWeekends')} />
+              No weekends
+            </label>
+            <label className="checkbox-field">
+              <input type="checkbox" {...form.register('noOnCall')} />
+              No on-call
+            </label>
+            <label className="checkbox-field">
+              <input type="checkbox" {...form.register('noRotatingShifts')} />
+              No rotating shifts
+            </label>
+            <label className="checkbox-field">
+              <input type="checkbox" {...form.register('noOvernightShifts')} />
+              No overnight shifts
+            </label>
           </div>
         </section>
         <section className="form-panel">
@@ -271,6 +326,14 @@ function toForm(
           `${degree.name} | ${degree.institution} | ${degree.status} | ${degree.expectedCompletion ?? ''}`,
       )
       .join('\n'),
+    employmentTypes: profile.desiredEmploymentTypes.join('\n'),
+    degreeRequired: profile.degreeRequired,
+    degreeInProgressOk: profile.degreeInProgressOk,
+    maxTravelPercent: profile.maxTravelPercent?.toString() ?? '',
+    noWeekends: profile.noWeekends,
+    noOnCall: profile.noOnCall,
+    noRotatingShifts: profile.noRotatingShifts,
+    noOvernightShifts: profile.noOvernightShifts,
     titleWeight: scoring.weights.title,
     skillsWeight: scoring.weights.skills,
     certificationsWeight: scoring.weights.certifications,
@@ -313,6 +376,21 @@ function fromForm(
     yearsOfExperience: values.yearsOfExperience
       ? Number(values.yearsOfExperience)
       : null,
+    desiredEmploymentTypes: lines(values.employmentTypes).filter(
+      (value): value is CandidateProfile['desiredEmploymentTypes'][number] =>
+        EMPLOYMENT_TYPES.includes(
+          value as CandidateProfile['desiredEmploymentTypes'][number],
+        ),
+    ),
+    degreeRequired: values.degreeRequired,
+    degreeInProgressOk: values.degreeInProgressOk,
+    maxTravelPercent: values.maxTravelPercent
+      ? Number(values.maxTravelPercent)
+      : null,
+    noWeekends: values.noWeekends,
+    noOnCall: values.noOnCall,
+    noRotatingShifts: values.noRotatingShifts,
+    noOvernightShifts: values.noOvernightShifts,
     degrees: lines(values.education).map((value) => {
       const [
         name = value,

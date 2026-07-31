@@ -7,7 +7,7 @@ files:
   - dist/**/*
   - package.json
 asar: true
-npmRebuild: false
+npmRebuild: true
 asarUnpack:
   - node_modules/better-sqlite3/**/*
   - node_modules/playwright/**/*

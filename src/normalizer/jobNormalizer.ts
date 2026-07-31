@@ -41,6 +41,7 @@ export interface NormalizedJobInput {
   openingDate?: string | null;
   closingDate?: string | null;
   applicationUrls?: string[];
+  requisitionId?: string | null;
 }
 
 export function normalizeJob(input: NormalizedJobInput): NormalizedJob {
@@ -55,6 +56,9 @@ export function normalizeJob(input: NormalizedJobInput): NormalizedJob {
       title,
       location,
       postingUrl: input.postingUrl,
+      externalId: input.externalId,
+      employmentType: input.employmentType,
+      requisitionId: input.requisitionId,
     }),
     externalId: cleanNullable(input.externalId),
     title,

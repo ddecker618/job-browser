@@ -27,6 +27,8 @@ describe('provider registration', () => {
       'ashby',
       'bamboohr',
       'builtin',
+      'cisco',
+      'crowdstrike',
       'dice',
       'greenhouse',
       'icims',

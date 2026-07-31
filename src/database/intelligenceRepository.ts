@@ -9,11 +9,14 @@ import type {
 import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import { normalizeText } from '../utilities/normalization.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import type { VerificationResult } from '../intelligence/verificationService.js';
 
 interface PreviousRecommendationRow {
   overall_score: number;
   category_scores_json: string;
   recommendation_status: string;
+  score_version: string | null;
+  score_input_hash: string | null;
 }
 
 export class IntelligenceRepository {
@@ -42,25 +45,34 @@ export class IntelligenceRepository {
       );
   }
 
-  public startRun(profileId: string): string {
+  public startRun(profileId: string, scoreVersion: string): string {
     const runId = randomUUID();
     this.database
       .prepare(
         `INSERT INTO analysis_runs
-          (id, profile_id, status, started_at, completed_at, jobs_analyzed, error_message)
-         VALUES (?, ?, 'running', ?, NULL, 0, NULL)`,
+          (id, profile_id, status, started_at, completed_at, jobs_analyzed, error_message, score_version)
+         VALUES (?, ?, 'running', ?, NULL, 0, NULL, ?)`,
       )
-      .run(runId, profileId, nowUtc());
+      .run(runId, profileId, nowUtc(), scoreVersion);
     return runId;
   }
 
-  public saveIntelligence(profileId: string, result: JobIntelligence): void {
+  public saveIntelligence(
+    profileId: string,
+    result: JobIntelligence,
+    metadata: {
+      verification: VerificationResult;
+      scoreVersion: string;
+      scoreInputHash: string;
+    },
+  ): void {
     this.database.transaction(() => {
       const categoryScoresJson = JSON.stringify(result.categoryScores);
       const previous = this.database
         .prepare<[string, string], PreviousRecommendationRow>(
-          `SELECT overall_score, category_scores_json, recommendation_status
-           FROM recommendations WHERE job_id = ? AND profile_id = ?`,
+          `SELECT overall_score, category_scores_json, recommendation_status,
+              score_version, score_input_hash
+            FROM recommendations WHERE job_id = ? AND profile_id = ?`,
         )
         .get(result.jobId, profileId);
 
@@ -68,15 +80,18 @@ export class IntelligenceRepository {
         .prepare(
           `INSERT INTO recommendations (
             id, job_id, profile_id, overall_score, category_scores_json,
-            recommendation_status, explanations_json, missing_qualifications_json, analyzed_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(job_id, profile_id) DO UPDATE SET
+             recommendation_status, explanations_json, missing_qualifications_json,
+             analyzed_at, score_version, score_input_hash
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(job_id, profile_id) DO UPDATE SET
             overall_score = excluded.overall_score,
             category_scores_json = excluded.category_scores_json,
             recommendation_status = excluded.recommendation_status,
-            explanations_json = excluded.explanations_json,
-            missing_qualifications_json = excluded.missing_qualifications_json,
-            analyzed_at = excluded.analyzed_at`,
+             explanations_json = excluded.explanations_json,
+             missing_qualifications_json = excluded.missing_qualifications_json,
+             analyzed_at = excluded.analyzed_at,
+             score_version = excluded.score_version,
+             score_input_hash = excluded.score_input_hash`,
         )
         .run(
           randomUUID(),
@@ -88,20 +103,24 @@ export class IntelligenceRepository {
           JSON.stringify(result.explanations),
           JSON.stringify(result.missingQualifications),
           result.analyzedAt,
+          metadata.scoreVersion,
+          metadata.scoreInputHash,
         );
 
       if (
         previous === undefined ||
         previous.overall_score !== result.overallScore ||
         previous.category_scores_json !== categoryScoresJson ||
-        previous.recommendation_status !== result.recommendationStatus
+        previous.recommendation_status !== result.recommendationStatus ||
+        previous.score_version !== metadata.scoreVersion ||
+        previous.score_input_hash !== metadata.scoreInputHash
       ) {
         this.database
           .prepare(
             `INSERT INTO score_history (
               id, job_id, profile_id, overall_score, category_scores_json,
-              recommendation_status, analyzed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+             recommendation_status, analyzed_at, score_version
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             randomUUID(),
@@ -111,14 +130,17 @@ export class IntelligenceRepository {
             categoryScoresJson,
             result.recommendationStatus,
             result.analyzedAt,
+            metadata.scoreVersion,
           );
       }
 
       this.database
         .prepare(
           `UPDATE jobs SET score = ?, recommendation = ?, score_explanation = ?,
-            verification_status = ?, eligibility_passed = ?, eligibility_rejection = ?,
-            updated_at = ?
+             verification_status = ?, eligibility_passed = ?, eligibility_rejection = ?,
+             work_arrangement = ?, illinois_eligibility = ?, schedule_classification = ?,
+             verified_at = ?, remote_type = ?, score_version = ?, score_input_hash = ?,
+             updated_at = ?
            WHERE id = ?`,
         )
         .run(
@@ -128,6 +150,13 @@ export class IntelligenceRepository {
           result.verifiedStatus,
           result.eligibilityPassed ? 1 : 0,
           result.eligibilityRejection,
+          result.workArrangement ?? metadata.verification.workArrangement,
+          metadata.verification.illinoisEligibility,
+          metadata.verification.schedule.classification,
+          metadata.verification.evidence.verifiedAt,
+          result.workArrangement ?? metadata.verification.workArrangement,
+          metadata.scoreVersion,
+          metadata.scoreInputHash,
           result.analyzedAt,
           result.jobId,
         );
@@ -140,10 +169,10 @@ export class IntelligenceRepository {
   public completeRun(summary: AnalysisSummary): void {
     this.database
       .prepare(
-        `UPDATE analysis_runs SET status = 'succeeded', completed_at = ?, jobs_analyzed = ?
+        `UPDATE analysis_runs SET status = 'succeeded', completed_at = ?, jobs_analyzed = ?, score_version = ?
          WHERE id = ?`,
       )
-      .run(nowUtc(), summary.jobsAnalyzed, summary.runId);
+      .run(nowUtc(), summary.jobsAnalyzed, summary.scoreVersion, summary.runId);
   }
 
   public failRun(runId: string, errorMessage: string): void {

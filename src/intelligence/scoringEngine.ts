@@ -4,9 +4,11 @@ import type {
   JobIntelligence,
   RecommendationStatus,
 } from '../models/intelligence.js';
+import type { WorkArrangement } from '../domain/verification.js';
 import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import type { VerificationResult } from './verificationService.js';
+import { classifyCommute } from './locationEligibility.js';
 import { extractJobTerms, profileHasTerm } from '../skills/skillExtractor.js';
 import { normalizeText } from '../utilities/normalization.js';
 
@@ -27,12 +29,12 @@ export function scoreJob(
   analyzedAt = new Date().toISOString(),
   verification?: VerificationResult | null,
 ): JobIntelligence {
-  const terms = extractJobTerms(job, config);
   const explanations: string[] = [];
   const missingQualifications: string[] = [];
 
   const verificationResult = applyVerification(
     verification ?? null,
+    job,
     profile,
     config,
     explanations,
@@ -46,16 +48,24 @@ export function scoreJob(
       recommendationStatus: 'Hard No',
       explanations,
       missingQualifications,
-      skills: terms.skills,
-      certifications: terms.certifications,
+      skills: [],
+      certifications: [],
       analyzedAt,
       eligibilityPassed: false,
       eligibilityRejection: verificationResult.rejectionReason,
       verifiedStatus: verificationResult.verifiedStatus,
+      workArrangement: verificationResult.workArrangement,
     };
   }
 
-  const title = scoreTitle(job, profile, explanations);
+  const scoringJob =
+    verificationResult.workArrangement === null ||
+    verificationResult.workArrangement === 'unknown'
+      ? job
+      : { ...job, remoteType: verificationResult.workArrangement };
+  const terms = extractJobTerms(scoringJob, config);
+
+  const title = scoreTitle(scoringJob, profile, explanations);
   const skills = scoreTerms(
     terms.skills,
     config.skills,
@@ -72,17 +82,17 @@ export function scoreJob(
     explanations,
     missingQualifications,
   );
-  const location = scoreLocation(job, profile, explanations);
-  const remotePreference = scoreRemote(job, profile, explanations);
-  const salary = scoreSalary(job, profile, explanations);
+  const location = scoreLocation(scoringJob, profile, explanations);
+  const remotePreference = scoreRemote(scoringJob, profile, explanations);
+  const salary = scoreSalary(scoringJob, profile, explanations);
   const experience = scoreExperience(
-    job,
+    scoringJob,
     profile,
     explanations,
     missingQualifications,
   );
-  const employmentType = scoreEmploymentType(job, profile, explanations);
-  const recency = scoreRecency(job, config, analyzedAt, explanations);
+  const employmentType = scoreEmploymentType(scoringJob, profile, explanations);
+  const recency = scoreRecency(scoringJob, config, analyzedAt, explanations);
   const categoryScores: CategoryScores = {
     title,
     skills,
@@ -109,7 +119,7 @@ export function scoreJob(
       : overallScore;
 
   const recommendationStatus = recommend(
-    job,
+    scoringJob,
     profile,
     config,
     finalScore,
@@ -139,6 +149,7 @@ export function scoreJob(
     eligibilityPassed: verificationResult.eligibilityPassed,
     eligibilityRejection: verificationResult.rejectionReason,
     verifiedStatus: verificationResult.verifiedStatus,
+    workArrangement: verificationResult.workArrangement,
   };
 }
 
@@ -148,10 +159,12 @@ interface VerificationScoringResult {
   rejectionReason: JobIntelligence['eligibilityRejection'];
   verifiedStatus: JobIntelligence['verifiedStatus'];
   modifier: number | null;
+  workArrangement: WorkArrangement | null;
 }
 
 function applyVerification(
   verification: VerificationResult | null,
+  job: JobForScoring,
   profile: CandidateProfile,
   config: ScoringConfig,
   explanations: string[],
@@ -166,18 +179,25 @@ function applyVerification(
       rejectionReason: 'none',
       verifiedStatus: null,
       modifier: null,
+      workArrangement: null,
     };
   }
 
   let verifiedStatus: string | null = verification.evidence.status;
+  const workArrangement =
+    verification.workArrangement === 'unknown' &&
+    (job.remoteType === 'onsite' || job.remoteType === 'hybrid')
+      ? job.remoteType
+      : verification.workArrangement;
   if (verification.evidence.status === 'closed') {
     explanations.push('Posting is closed.');
     return {
-      hardBlock: false,
-      eligibilityPassed: true,
+      hardBlock: true,
+      eligibilityPassed: false,
       rejectionReason: 'closed',
       verifiedStatus: 'closed',
-      modifier: 0,
+      modifier: null,
+      workArrangement,
     };
   }
 
@@ -191,18 +211,58 @@ function applyVerification(
       rejectionReason: verification.eligibility.rejectionReason,
       verifiedStatus,
       modifier: null,
+      workArrangement,
     };
   }
 
-  if (verification.workArrangement === 'onsite') {
-    explanations.push('Onsite position at non-remote employer.');
+  if (verification.illinoisEligibility === 'excluded') {
+    explanations.push(
+      'Hard eligibility gate failed: Remote position explicitly excludes Illinois.',
+    );
     return {
-      hardBlock: false,
-      eligibilityPassed: true,
-      rejectionReason: 'location_outside_radius',
+      hardBlock: true,
+      eligibilityPassed: false,
+      rejectionReason: 'illinois_excluded',
       verifiedStatus,
-      modifier: 0.5,
+      modifier: null,
+      workArrangement,
     };
+  }
+
+  if (workArrangement === 'remote') {
+    const remoteEligibility =
+      verification.illinoisEligibility === 'eligible' ||
+      verification.illinoisEligibility === 'unrestricted'
+        ? 'eligible'
+        : verification.illinoisEligibility === 'unknown'
+          ? 'unknown'
+          : 'ineligible';
+    explanations.push(
+      `Remote position: commute_status=not_applicable, remote_eligibility=${remoteEligibility}, illinois_eligibility=${verification.illinoisEligibility}`,
+    );
+  } else if (workArrangement === 'onsite' || workArrangement === 'hybrid') {
+    const commute = classifyCommute(job, profile);
+    explanations.push(
+      `${workArrangement === 'onsite' ? 'Onsite' : 'Hybrid'} work arrangement: ${commute.evidence} commute_status=${commute.commuteStatus}`,
+    );
+    if (commute.locationStatus === 'ineligible') {
+      return {
+        hardBlock: true,
+        eligibilityPassed: false,
+        rejectionReason: 'location_outside_radius',
+        verifiedStatus,
+        modifier: null,
+        workArrangement,
+      };
+    }
+    if (commute.locationStatus === 'unknown') {
+      explanations.push(
+        'Location cannot be confirmed; retaining job with unknown location status.',
+      );
+    }
+    if (commute.status === 'within') {
+      explanations.push('Location eligibility gate passed.');
+    }
   }
 
   verifiedStatus = 'verified';
@@ -214,6 +274,7 @@ function applyVerification(
     rejectionReason: 'none',
     verifiedStatus,
     modifier: null,
+    workArrangement,
   };
 }
 

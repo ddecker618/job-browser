@@ -305,7 +305,7 @@ Every analysis run stores snapshots for top skills and certifications, common ti
 
 The version-controlled candidate profile is `config/candidate-profile.json`. It contains an ID, preferred locations, radii, remote preference, desired salary, certifications, degrees, skills, clearance eligibility, experience years, desired/excluded titles, and employment types. The loader validates it with Zod and reports the profile path when loading fails.
 
-Future profiles can use the same schema and be loaded by path. Values not present in the specification, including Dustin's desired salary, numeric experience, and clearance eligibility, are explicitly `null` or `unknown`; they were not invented. Radius values are configured, but exact distance is not claimed when a job lacks coordinates.
+Future profiles can use the same schema and be loaded by path. Neutral defaults are shipped for fresh installations; user-specific values remain in the local user-data directory. Radius values are configured, but exact distance is not claimed when a job lacks coordinates.
 
 Do not add passwords, protected demographic information, or other secrets to this file.
 

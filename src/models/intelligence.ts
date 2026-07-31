@@ -1,4 +1,7 @@
-import type { EligibilityRejectionReason } from '../domain/verification.js';
+import type {
+  EligibilityRejectionReason,
+  WorkArrangement,
+} from '../domain/verification.js';
 import type { ScoreCategoryName } from '../schemas/scoring-config.js';
 
 export const RECOMMENDATION_STATUSES = [
@@ -36,6 +39,7 @@ export interface JobIntelligence {
   eligibilityPassed: boolean;
   eligibilityRejection: EligibilityRejectionReason;
   verifiedStatus: string | null;
+  workArrangement: WorkArrangement | null;
 }
 
 export interface AnalysisSummary {
@@ -43,4 +47,5 @@ export interface AnalysisSummary {
   profileId: string;
   jobsAnalyzed: number;
   averageScore: number;
+  scoreVersion: string;
 }

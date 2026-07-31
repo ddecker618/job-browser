@@ -24,6 +24,7 @@ export interface DesktopPaths {
   backups: string;
   diagnostics: string;
   settings: string;
+  profilePreferences: string;
   candidateProfile: string;
   scoringConfig: string;
   runtimeSettings: string;
@@ -62,6 +63,7 @@ export function resolveDesktopPaths(input: DesktopPathInput): DesktopPaths {
     backups: resolve(root, 'backups'),
     diagnostics: resolve(root, 'diagnostics'),
     settings,
+    profilePreferences: resolve(settings, 'profile-preferences.json'),
     candidateProfile: resolve(settings, 'candidate-profile.json'),
     scoringConfig: resolve(settings, 'scoring-config.json'),
     runtimeSettings,

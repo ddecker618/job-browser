@@ -10,6 +10,9 @@ export interface FingerprintFields {
   title: string;
   location: string | null;
   postingUrl: string | null;
+  externalId?: string | null | undefined;
+  employmentType?: string | null | undefined;
+  requisitionId?: string | null | undefined;
 }
 
 export interface FingerprintOptions {
@@ -20,14 +23,31 @@ export function generateJobFingerprint(
   fields: FingerprintFields,
   options: FingerprintOptions = {},
 ): string {
-  const identity = [
+  const identity: string[] = [
     normalizeText(fields.company),
     normalizeText(fields.title),
     fields.location === null ? '' : normalizeText(fields.location),
   ];
 
-  if (options.includePostingUrl === true) {
+  if (
+    fields.employmentType !== null &&
+    fields.employmentType !== undefined &&
+    fields.employmentType !== 'unknown'
+  ) {
+    identity.push(normalizeText(fields.employmentType));
+  }
+
+  const includeUrl = options.includePostingUrl ?? true;
+  if (includeUrl && fields.postingUrl !== null) {
     identity.push(canonicalizePostingUrl(fields.postingUrl) ?? '');
+  }
+
+  if (fields.externalId !== null && fields.externalId !== undefined) {
+    identity.push(fields.externalId);
+  }
+
+  if (fields.requisitionId !== null && fields.requisitionId !== undefined) {
+    identity.push(fields.requisitionId);
   }
 
   return createHash('sha256').update(identity.join('\u001f')).digest('hex');

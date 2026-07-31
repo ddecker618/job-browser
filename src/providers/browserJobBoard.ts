@@ -5,8 +5,11 @@ import type {
   RemoteType,
   SeniorityLevel,
 } from '../domain/job.js';
+import type { QueryDiagnostics } from '../models/discovery.js';
+import { classifyWorkArrangement } from '../domain/work-arrangement.js';
 import { htmlToText } from '../utils/html.js';
 import { log } from '../logging/logger.js';
+import { nowUtc } from '../utilities/timestamps.js';
 import {
   closeBrowserSession,
   launchBrowserSession,
@@ -35,9 +38,13 @@ export interface BrowserSearchOptions<T extends BrowserJobRecord> {
   providerName: string;
   profileDir: string;
   keepBrowserOpen: boolean;
-  maxResults: number;
+  maxResults?: number;
+  maxResultsPerQuery?: number;
+  maxUniqueResults?: number;
+  maxQueriesPerProvider?: number;
   queries: readonly string[];
-  buildSearchUrl: (query: string) => string;
+  queryLocations?: readonly string[];
+  buildSearchUrl: (query: string, location?: string) => string;
   waitForResults?: (page: Page) => Promise<void>;
   extractCards: (page: Page) => Promise<readonly T[]>;
   enrichCard: (page: Page, card: T) => Promise<T>;
@@ -45,16 +52,32 @@ export interface BrowserSearchOptions<T extends BrowserJobRecord> {
   isCancelled?: () => boolean;
   securityTimeout?: number;
   goBackAfterEnrich?: boolean;
+  queryTimeoutMs?: number;
+}
+
+export interface BrowserSearchResult<T extends BrowserJobRecord> {
+  records: T[];
+  queryDiagnostics: QueryDiagnostics[];
+  completedQueries: number;
+  failedQueries: number;
+  truncatedQueries: number;
+  plannedQueries: number;
+  complete: boolean;
 }
 
 export async function runBrowserSearch<T extends BrowserJobRecord>(
   options: BrowserSearchOptions<T>,
-): Promise<T[]> {
+): Promise<BrowserSearchResult<T>> {
   const checkCancelled = (): void => {
     if (options.signal?.aborted === true || options.isCancelled?.() === true) {
       throw new Error(`${options.providerName} search cancelled`);
     }
   };
+
+  const maxUniqueResults = options.maxUniqueResults ?? 200;
+  const maxResultsPerQuery = options.maxResultsPerQuery ?? 50;
+  const maxQueriesPerProvider = options.maxQueriesPerProvider ?? 20;
+  const queryTimeoutMs = options.queryTimeoutMs ?? 120_000;
 
   checkCancelled();
   const { page } = await launchBrowserSession({
@@ -63,54 +86,156 @@ export async function runBrowserSearch<T extends BrowserJobRecord>(
   });
   const keepBrowserOpen = options.keepBrowserOpen;
 
+  const queriesToExecute = options.queries.slice(0, maxQueriesPerProvider);
+  const queryLocations = options.queryLocations ?? [];
+
   try {
-    const collected: T[] = [];
+    const allUnique: T[] = [];
     const seen = new Set<string>();
+    const diagnostics: QueryDiagnostics[] = [];
+    let completedQueries = 0;
+    let failedQueries = 0;
+    let truncatedQueries = 0;
 
-    for (const query of options.queries) {
+    for (let qi = 0; qi < queriesToExecute.length; qi++) {
       checkCancelled();
-      const url = options.buildSearchUrl(query);
-      log('info', `${options.providerName}: searching for "${query}"`);
-      await navigateWithRetry(page, url, { retries: 3 });
-      await waitForSecurityChallenge(
-        page,
-        options.providerName,
-        options.securityTimeout,
-      );
-      await options.waitForResults?.(page);
-      await page.waitForTimeout(2_000);
 
-      let staleScrolls = 0;
-      while (collected.length < options.maxResults && staleScrolls < 3) {
-        checkCancelled();
-        const cards = await options.extractCards(page);
-        const previousCount = collected.length;
-        for (const card of cards) {
-          const key =
-            card.jobId ??
-            card.postingUrl ??
-            `${card.company ?? ''}-${card.title ?? ''}`;
-          if (key && !seen.has(key)) {
-            seen.add(key);
-            collected.push(card);
-            if (collected.length >= options.maxResults) break;
+      const query = queriesToExecute[qi] ?? '';
+      const queryLocation = queryLocations[qi] ?? '';
+      if (query === '') {
+        failedQueries++;
+        continue;
+      }
+      const queryStarted = nowUtc();
+
+      log('info', `${options.providerName}: searching for "${query}"`);
+      const url = options.buildSearchUrl(query, queryLocation);
+      const queryStartMs = Date.now();
+      let terminationReason: QueryDiagnostics['terminationReason'] =
+        'exhausted_results';
+      const queryErrors: string[] = [];
+      const newCards: T[] = [];
+      let dedupedCount = 0;
+
+      try {
+        await navigateWithRetry(page, url, { retries: 3 });
+        await waitForSecurityChallenge(
+          page,
+          options.providerName,
+          options.securityTimeout,
+        );
+        await options.waitForResults?.(page);
+        await page.waitForTimeout(2_000);
+
+        let staleScrolls = 0;
+        while (newCards.length < maxResultsPerQuery && staleScrolls < 3) {
+          checkCancelled();
+
+          if (Date.now() - queryStartMs > queryTimeoutMs) {
+            terminationReason = 'timeout';
+            queryErrors.push(
+              `Query exceeded ${String(queryTimeoutMs)}ms timeout`,
+            );
+            break;
           }
+
+          const cards = await options.extractCards(page);
+          const previousCount = newCards.length;
+          for (const card of cards) {
+            const key =
+              card.jobId ??
+              card.postingUrl ??
+              `${card.company ?? ''}-${card.title ?? ''}`;
+            if (key && !seen.has(key)) {
+              seen.add(key);
+              newCards.push(card);
+              if (newCards.length >= maxResultsPerQuery) {
+                terminationReason = 'per_query_limit';
+                break;
+              }
+            } else if (key && seen.has(key)) {
+              dedupedCount++;
+            }
+          }
+
+          if (newCards.length >= maxResultsPerQuery) break;
+
+          if (allUnique.length + newCards.length >= maxUniqueResults) {
+            terminationReason = 'global_unique_limit';
+            break;
+          }
+
+          await page.evaluate(() =>
+            window.scrollBy(0, Math.max(window.innerHeight, 800)),
+          );
+          await page.waitForTimeout(1_500);
+          staleScrolls =
+            newCards.length === previousCount ? staleScrolls + 1 : 0;
         }
 
-        if (collected.length >= options.maxResults) break;
-        await page.evaluate(() =>
-          window.scrollBy(0, Math.max(window.innerHeight, 800)),
+        if (staleScrolls >= 3 && newCards.length < maxResultsPerQuery) {
+          terminationReason = 'exhausted_results';
+        }
+
+        for (const card of newCards) {
+          allUnique.push(card);
+        }
+
+        if (
+          allUnique.length >= maxUniqueResults &&
+          qi < queriesToExecute.length - 1
+        ) {
+          log(
+            'info',
+            `${options.providerName}: global unique limit reached after ${String(qi + 1)} queries`,
+          );
+        }
+
+        completedQueries++;
+        if (newCards.length >= maxResultsPerQuery) {
+          truncatedQueries++;
+        }
+      } catch (error) {
+        failedQueries++;
+        terminationReason =
+          error instanceof Error && error.message.includes('cancelled')
+            ? 'cancelled'
+            : 'provider_error';
+        const message = error instanceof Error ? error.message : String(error);
+        queryErrors.push(message);
+        log(
+          'warn',
+          `${options.providerName}: query "${query}" failed: ${message}`,
         );
-        await page.waitForTimeout(1_500);
-        staleScrolls =
-          collected.length === previousCount ? staleScrolls + 1 : 0;
       }
 
-      if (collected.length >= options.maxResults) break;
+      if (
+        allUnique.length >= maxUniqueResults &&
+        qi < queriesToExecute.length - 1
+      ) {
+        log(
+          'info',
+          `${options.providerName}: halting further queries at global unique limit of ${String(maxUniqueResults)}`,
+        );
+      }
+
+      diagnostics.push({
+        provider: options.providerName,
+        searchTerm: query,
+        location: queryLocation,
+        requestStarted: queryStarted,
+        requestCompleted: nowUtc(),
+        rawResultsReturned: newCards.length + dedupedCount,
+        uniqueResultsRetained: newCards.length,
+        duplicatesRemoved: dedupedCount,
+        errors: queryErrors,
+        durationMs: Date.now() - queryStartMs,
+        terminationReason,
+      });
     }
 
     const enriched: T[] = [];
-    for (const card of collected.slice(0, options.maxResults)) {
+    for (const card of allUnique) {
       checkCancelled();
       if (card.postingUrl === null) {
         enriched.push(card);
@@ -140,7 +265,16 @@ export async function runBrowserSearch<T extends BrowserJobRecord>(
       }
     }
 
-    return enriched;
+    return {
+      records: enriched,
+      queryDiagnostics: diagnostics,
+      completedQueries,
+      failedQueries,
+      truncatedQueries,
+      plannedQueries: queriesToExecute.length,
+      complete:
+        failedQueries === 0 && completedQueries === queriesToExecute.length,
+    };
   } finally {
     if (!keepBrowserOpen) await closeBrowserSession().catch(() => undefined);
   }
@@ -382,12 +516,7 @@ export function parseSalaryText(text: string | null): {
 }
 
 export function inferRemoteType(text: string | null): RemoteType {
-  const normalized = (text ?? '').toLowerCase();
-  if (normalized.includes('hybrid')) return 'hybrid';
-  if (/remote|work from home|telecommute|anywhere/.test(normalized))
-    return 'remote';
-  if (/on[- ]?site|onsite/.test(normalized)) return 'onsite';
-  return 'unknown';
+  return classifyWorkArrangement(text ?? '').arrangement;
 }
 
 export function inferEmploymentType(text: string | null): EmploymentType {

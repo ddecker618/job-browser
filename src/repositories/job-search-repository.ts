@@ -30,6 +30,9 @@ interface JobRow {
   active: number;
   verification_status: string | null;
   eligibility_passed: number | null;
+  eligibility_rejection: string | null;
+  work_arrangement: string | null;
+  score_version: string | null;
 }
 
 interface SourceRow {
@@ -51,6 +54,7 @@ interface FacetRow {
 
 export interface JobSearchRepositoryOptions {
   forceFallback?: boolean;
+  getScoreVersion?: (() => string) | undefined;
 }
 
 const SORT_COLUMNS = {
@@ -70,11 +74,14 @@ export class JobSearchRepository {
     private readonly database: JobDatabase,
     options: JobSearchRepositoryOptions = {},
   ) {
+    this.getScoreVersion = options.getScoreVersion;
     this.searchMode =
       options.forceFallback === true || !this.provisionFts()
         ? 'indexed'
         : 'fts5';
   }
+
+  private readonly getScoreVersion: (() => string) | undefined;
 
   public search(query: JobSearchQuery): JobSearchResponse {
     const { sql: filterSql, parameters } = this.filters(query);
@@ -94,8 +101,9 @@ export class JobSearchRepository {
          SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.remote_type,
            jobs.salary_minimum, jobs.salary_maximum, jobs.score, jobs.recommendation,
            jobs.matched_families, jobs.status, jobs.first_seen_at, jobs.last_verified_at,
-    jobs.materially_updated_at, jobs.closing_date, jobs.favorite, jobs.active,
-       jobs.verification_status, jobs.eligibility_passed
+           jobs.materially_updated_at, jobs.closing_date, jobs.favorite, jobs.active,
+           jobs.verification_status, jobs.eligibility_passed,
+           jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version
           FROM filtered_jobs JOIN jobs ON jobs.id = filtered_jobs.id
          ORDER BY ${sortColumn} IS NULL ASC, ${sortColumn} ${direction}, jobs.id ASC
          LIMIT ? OFFSET ?`,
@@ -120,6 +128,14 @@ export class JobSearchRepository {
   } {
     const clauses: string[] = [];
     const parameters: unknown[] = [];
+    const scoreVersion = this.getScoreVersion?.();
+    if (scoreVersion !== undefined) {
+      clauses.push('jobs.score_version = ?');
+      parameters.push(scoreVersion);
+    }
+    if (query.includeIneligible !== true) {
+      clauses.push('COALESCE(jobs.eligibility_passed, 1) = 1');
+    }
     if (query.q !== undefined) {
       const tokens = tokenize(query.q);
       if (this.searchMode === 'fts5' && tokens.length > 0) {
@@ -492,5 +508,8 @@ function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
     verificationStatus: row.verification_status,
     eligibilityPassed:
       row.eligibility_passed === null ? null : Boolean(row.eligibility_passed),
+    eligibilityRejection: row.eligibility_rejection,
+    workArrangement: row.work_arrangement,
+    scoreVersion: row.score_version,
   };
 }

@@ -384,6 +384,25 @@ export class JobRepository {
       .map(mapJob);
   }
 
+  public refreshMatchedFamilies(): void {
+    const rows = this.database
+      .prepare<[], { id: string; title: string }>('SELECT id, title FROM jobs')
+      .all();
+    const update = this.database.prepare(
+      'UPDATE jobs SET matched_families = ?, updated_at = ? WHERE id = ?',
+    );
+    const timestamp = nowUtc();
+    this.database.transaction(() => {
+      for (const row of rows) {
+        update.run(
+          computeMatchedFamilies(this.database, row.title),
+          timestamp,
+          row.id,
+        );
+      }
+    })();
+  }
+
   private resolveIdentity(
     job: NormalizedJob,
     sourceId: string,
@@ -616,9 +635,11 @@ export class JobRepository {
           discovery_count = discovery_count + 1,
           materially_updated_at = CASE WHEN @materiallyUpdated = 1 THEN @lastSeenAt ELSE materially_updated_at END,
           active = 1, removed_at = NULL,
-          provider_confidence = COALESCE(@providerConfidence, provider_confidence),
-          matched_families = @matchedFamilies,
-          updated_at = @updatedAt
+           provider_confidence = COALESCE(@providerConfidence, provider_confidence),
+           matched_families = @matchedFamilies,
+           score_version = CASE WHEN @materiallyUpdated = 1 THEN NULL ELSE score_version END,
+           score_input_hash = CASE WHEN @materiallyUpdated = 1 THEN NULL ELSE score_input_hash END,
+           updated_at = @updatedAt
          WHERE id = @jobId`,
       )
       .run({
@@ -998,6 +1019,8 @@ function mapJob(row: Record<string, unknown>): Job {
     illinoisEligibility: nullableString(row['illinois_eligibility']),
     scheduleClassification: nullableString(row['schedule_classification']),
     verifiedAt: nullableString(row['verified_at']),
+    scoreVersion: nullableString(row['score_version']),
+    scoreInputHash: nullableString(row['score_input_hash']),
   };
 }
 
@@ -1076,15 +1099,20 @@ function hashDiagnostic(value: string): string {
 }
 
 let _cachedProfile: SearchProfile | null = null;
+let _cachedProfileJson: string | null | undefined;
 
 function loadSearchProfile(database: JobDatabase): SearchProfile {
-  if (_cachedProfile !== null) return _cachedProfile;
   const row = database
     .prepare<
       [],
       { setting_value_json: string } | undefined
     >(`SELECT setting_value_json FROM app_settings WHERE setting_key = 'searchProfile'`)
     .get();
+  const profileJson = row?.setting_value_json ?? null;
+  if (_cachedProfile !== null && _cachedProfileJson === profileJson) {
+    return _cachedProfile;
+  }
+  _cachedProfileJson = profileJson;
   if (row === undefined) {
     _cachedProfile = DEFAULT_SEARCH_PROFILE;
     return _cachedProfile;

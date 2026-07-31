@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../api.js';
 import { ErrorState, LoadingState } from './States.js';
+import { invalidateScoreQueries } from '../scoreCache.js';
 
 export function JobDetailPanel({
   jobId,
@@ -23,9 +24,8 @@ export function JobDetailPanel({
   const invalidate = async () => {
     await Promise.all([
       client.invalidateQueries({ queryKey: ['job', jobId] }),
-      client.invalidateQueries({ queryKey: ['jobs'] }),
-      client.invalidateQueries({ queryKey: ['dashboard'] }),
       client.invalidateQueries({ queryKey: ['source-control-center'] }),
+      invalidateScoreQueries(client),
     ]);
   };
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -83,14 +83,21 @@ export function JobDetailPanel({
               </p>
               <div className="detail-badges">
                 <span className="score-badge">
-                  {job.data.score?.toFixed(0) ?? '—'} score
+                  {job.data.score?.toFixed(1) ?? '—'} score
                 </span>
                 <span className="recommendation-badge">
                   {job.data.recommendation ?? 'Unscored'}
                 </span>
+                <span>{job.data.workArrangement ?? job.data.remoteType}</span>
                 <span>{job.data.status}</span>
               </div>
             </div>
+            {job.data.eligibilityPassed === false ? (
+              <p className="eligibility-warning" role="alert">
+                Ineligible:{' '}
+                {job.data.eligibilityRejection ?? 'eligibility gate failed'}.
+              </p>
+            ) : null}
             <div className="action-strip">
               <button
                 onClick={() => changeStatus('applied')}

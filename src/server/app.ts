@@ -21,6 +21,7 @@ import type { AtsDetectionResult } from '../models/source-management.js';
 import type { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
 import type { CredentialResolver } from '../discovery/credentialResolver.js';
 import { IntelligenceEngine } from '../intelligence/intelligenceEngine.js';
+import { createScoreVersion } from '../intelligence/scoreIdentity.js';
 import type { AppSettings } from '../models/dashboard.js';
 import { providerRegistry } from '../providers/providerRegistry.js';
 import {
@@ -30,6 +31,11 @@ import {
 import { JobRepository } from '../repositories/job-repository.js';
 import { JobSearchRepository } from '../repositories/job-search-repository.js';
 import { SourceRepository } from '../repositories/source-repository.js';
+import {
+  loadUnifiedLegacyPreferences,
+  saveUnifiedProfilePreferences,
+} from '../preferences/profilePreferencesRuntime.js';
+import type { LegacyPreferences } from '../preferences/profilePreferencesAdapters.js';
 import { extractResume } from '../resumes/resumeService.js';
 import {
   candidateProfileSchema,
@@ -47,6 +53,7 @@ import { enforceLoopbackRequest } from './loopbackSecurity.js';
 export interface AppOptions {
   candidateProfilePath?: string;
   scoringConfigPath?: string;
+  profilePreferencesPath?: string;
   resumeDirectory?: string;
   artifactDirectory?: string;
   onSettingsSaved?: (settings: AppSettings) => void;
@@ -70,14 +77,24 @@ export function createApp(
   options: AppOptions = {},
 ): express.Express {
   const app = express();
-  const repository = new DashboardRepository(database);
+  const profilePath = options.candidateProfilePath;
+  const scoringPath = options.scoringConfigPath;
+  const profilePreferencesPath = options.profilePreferencesPath;
+  const getCurrentScoreVersion = () =>
+    createScoreVersion(
+      loadCandidateProfile(profilePath, profilePreferencesPath),
+      loadScoringConfig(scoringPath, profilePreferencesPath),
+    );
+  const repository = new DashboardRepository(database, {
+    getScoreVersion: getCurrentScoreVersion,
+  });
   const jobRepository = new JobRepository(database);
-  const jobSearchRepository = new JobSearchRepository(database);
+  const jobSearchRepository = new JobSearchRepository(database, {
+    getScoreVersion: () => getCurrentScoreVersion(),
+  });
   const sourceRepository =
     options.sourceRepository ?? new SourceRepository(database);
   const coordinator = options.coordinator;
-  const profilePath = options.candidateProfilePath;
-  const scoringPath = options.scoringConfigPath;
   const resumeDirectory =
     options.resumeDirectory ?? resolve(process.cwd(), 'data', 'resumes');
   mkdirSync(resumeDirectory, { recursive: true });
@@ -95,6 +112,10 @@ export function createApp(
 
   app.use(express.json({ limit: '2mb' }));
   app.use('/api', enforceLoopbackRequest);
+  app.use('/api', (_request, response, next) => {
+    response.setHeader('Cache-Control', 'no-store, max-age=0');
+    next();
+  });
 
   app.get('/api/health', (_request, response) =>
     response.json({ status: 'ok' }),
@@ -113,6 +134,12 @@ export function createApp(
     const job = repository.getJob(request.params.id);
     if (job === null)
       return void response.status(404).json({ error: 'Job not found' });
+    if (job.scoreVersion !== getCurrentScoreVersion()) {
+      return void response.status(409).json({
+        error: 'Job score is awaiting reprocessing',
+        scoreVersion: job.scoreVersion,
+      });
+    }
     response.json(job);
   });
   app.patch('/api/jobs/:id/status', (request, response) => {
@@ -330,8 +357,8 @@ export function createApp(
 
   app.get('/api/profile', (_request, response) =>
     response.json({
-      profile: loadCandidateProfile(profilePath),
-      scoring: loadScoringConfig(scoringPath),
+      profile: loadCandidateProfile(profilePath, profilePreferencesPath),
+      scoring: loadScoringConfig(scoringPath, profilePreferencesPath),
     }),
   );
   app.put('/api/profile', (request, response) => {
@@ -345,12 +372,11 @@ export function createApp(
       profilePath ?? resolve(process.cwd(), 'config', 'candidate-profile.json'),
       body.profile,
     );
-    const summary = body.rescore
-      ? new IntelligenceEngine(database).analyze(
-          body.profile,
-          loadScoringConfig(scoringPath),
-        )
-      : null;
+    saveUnified({ candidateProfile: body.profile });
+    const summary = new IntelligenceEngine(database).analyze(
+      body.profile,
+      loadScoringConfig(scoringPath, profilePreferencesPath),
+    );
     response.json({ profile: body.profile, analysis: summary });
   });
   app.put('/api/scoring', (request, response) => {
@@ -359,7 +385,12 @@ export function createApp(
       scoringPath ?? resolve(process.cwd(), 'config', 'scoring-config.json'),
       scoring,
     );
-    response.json(scoring);
+    saveUnified({ scoringConfig: scoring });
+    const analysis = new IntelligenceEngine(database).analyze(
+      loadCandidateProfile(profilePath, profilePreferencesPath),
+      scoring,
+    );
+    response.json({ scoring, analysis });
   });
 
   app.get('/api/resumes', (_request, response) =>
@@ -373,12 +404,12 @@ export function createApp(
         response.status(400).json({ error: 'Resume file is required' });
         return;
       }
-      const profile = loadCandidateProfile(profilePath);
+      const profile = loadCandidateProfile(profilePath, profilePreferencesPath);
       const extraction = await extractResume(
         request.file.path,
         request.file.originalname,
         profile,
-        loadScoringConfig(scoringPath),
+        loadScoringConfig(scoringPath, profilePreferencesPath),
       );
       const resume = repository.addResume({
         displayName:
@@ -427,7 +458,7 @@ export function createApp(
     const resume = repository.getResume(request.params.id);
     if (resume === null)
       return void response.status(404).json({ error: 'Resume not found' });
-    const profile = loadCandidateProfile(profilePath);
+    const profile = loadCandidateProfile(profilePath, profilePreferencesPath);
     const mergedProfile: CandidateProfile = {
       ...profile,
       skills: [...new Set([...profile.skills, ...resume.extractedSkills])],
@@ -441,7 +472,7 @@ export function createApp(
     response.json(
       new IntelligenceEngine(database).analyze(
         mergedProfile,
-        loadScoringConfig(scoringPath),
+        loadScoringConfig(scoringPath, profilePreferencesPath),
       ),
     );
   });
@@ -471,19 +502,21 @@ export function createApp(
   app.get('/api/sources', (_request, response) =>
     response.json(repository.listSources()),
   );
-  app.get('/api/settings', (_request, response) =>
-    response.json(
-      repository.getSettings(
-        defaultSettings(
-          resumeDirectory,
-          options.artifactDirectory ?? resolve(process.cwd(), 'artifacts'),
-        ),
+  app.get('/api/settings', (_request, response) => {
+    const settings = repository.getSettings(
+      defaultSettings(
+        resumeDirectory,
+        options.artifactDirectory ?? resolve(process.cwd(), 'artifacts'),
       ),
-    ),
-  );
+    );
+    const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
+    if (unified !== null) settings.targetRoles = [...unified.sourceQueryRoles];
+    response.json(settings);
+  });
   app.put('/api/settings', (request, response) => {
     const settings = settingsSchema.parse(request.body);
     repository.saveSettings(settings);
+    saveUnified({ sourceQueryRoles: settings.targetRoles });
     if (settings.targetRoles.length > 0) {
       sourceRepository.cascadeTargetRoles(settings.targetRoles);
     }
@@ -491,6 +524,11 @@ export function createApp(
     response.json(settings);
   });
   app.get('/api/search-profile', (_request, response) => {
+    const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
+    if (unified !== null) {
+      response.json(unified.searchProfile);
+      return;
+    }
     const raw = repository.getSetting('searchProfile');
     if (raw === null) return response.json(DEFAULT_SEARCH_PROFILE);
     try {
@@ -503,8 +541,14 @@ export function createApp(
   app.put('/api/search-profile', (request, response) => {
     const profile = searchProfileSchema.parse(request.body);
     repository.saveSetting('searchProfile', JSON.stringify(profile));
+    saveUnified({ searchProfile: profile });
     sourceRepository.cascadeSearchProfile(profile);
-    response.json(profile);
+    jobRepository.refreshMatchedFamilies();
+    const analysis = new IntelligenceEngine(database).analyze(
+      loadCandidateProfile(profilePath, profilePreferencesPath),
+      loadScoringConfig(scoringPath, profilePreferencesPath),
+    );
+    response.json({ profile, analysis });
   });
   app.get('/api/saved-filters', (_request, response) =>
     response.json(repository.listSavedFilters()),
@@ -554,7 +598,7 @@ export function createApp(
       (proposal) => proposal.status === 'approved',
     );
     if (approved.length === 0) return;
-    const profile = loadCandidateProfile(profilePath);
+    const profile = loadCandidateProfile(profilePath, profilePreferencesPath);
     const skills = new Set(profile.skills);
     const certifications = new Set(profile.certifications);
     for (const proposal of approved) {
@@ -569,6 +613,60 @@ export function createApp(
         certifications: [...certifications],
       },
     );
+    saveUnified({
+      candidateProfile: {
+        ...profile,
+        skills: [...skills],
+        certifications: [...certifications],
+      },
+    });
+  }
+
+  function saveUnified(overrides: Partial<LegacyPreferences>): void {
+    if (profilePreferencesPath === undefined) return;
+    const current = loadUnifiedLegacyPreferences(profilePreferencesPath) ?? {
+      candidateProfile: loadCandidateProfile(profilePath),
+      searchProfile: loadLegacySearchProfile(),
+      sourceQueryRoles: loadLegacyTargetRoles(),
+      scoringConfig: loadScoringConfig(scoringPath),
+    };
+    saveUnifiedProfilePreferences(profilePreferencesPath, {
+      ...current,
+      ...overrides,
+    });
+  }
+
+  function loadLegacySearchProfile() {
+    const raw = repository.getSetting('searchProfile');
+    if (raw === null) return DEFAULT_SEARCH_PROFILE;
+    try {
+      return searchProfileSchema.parse(JSON.parse(raw));
+    } catch {
+      return DEFAULT_SEARCH_PROFILE;
+    }
+  }
+
+  function loadLegacyTargetRoles(): string[] {
+    const raw = repository.getSetting('targetRoles');
+    if (raw !== null) {
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        if (
+          Array.isArray(parsed) &&
+          parsed.length > 0 &&
+          parsed.every((role): role is string => typeof role === 'string')
+        )
+          return parsed;
+      } catch {
+        // Use neutral defaults below.
+      }
+    }
+    return [
+      'Systems Administrator',
+      'Network Administrator',
+      'SOC Analyst',
+      'Technical Support Engineer',
+    ];
   }
 }
 
@@ -584,10 +682,10 @@ const settingsSchema = z.strictObject({
     .array(z.string().trim().min(1))
     .min(1)
     .default([
-      'systems administrator',
-      'network administrator',
-      'network analyst',
-      'SOC analyst',
+      'Systems Administrator',
+      'Network Administrator',
+      'SOC Analyst',
+      'Technical Support Engineer',
     ]),
 });
 
@@ -604,10 +702,10 @@ function defaultSettings(
     resumeDirectory,
     artifactDirectory,
     targetRoles: [
-      'systems administrator',
-      'network administrator',
-      'network analyst',
-      'SOC analyst',
+      'Systems Administrator',
+      'Network Administrator',
+      'SOC Analyst',
+      'Technical Support Engineer',
     ],
   };
 }

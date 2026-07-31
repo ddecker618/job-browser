@@ -16,6 +16,20 @@ All notable changes to this project will be documented in this file.
 - Production build, strict typecheck, ESLint, provider fixtures, provider registration, unpacked Electron packaging, and packaged Electron smoke pass.
 - Full suite passes: 48 test files and 311 tests.
 
+## [1.0.6] — 2026-07-28
+
+### Fixed
+
+- Classify explicit onsite and hybrid postings ahead of generic technical remote terminology.
+- Reject onsite and hybrid jobs outside the configured commute radius before scoring.
+- Reprocess stale persisted scores when scoring rules or candidate settings change.
+- Exclude ineligible or stale scores from default job search results.
+- Invalidate frontend score caches when ranking inputs change.
+
+### Verification
+
+- Full verification passes: 50 test files and 334 tests.
+
 ## [1.0.0] — 2026-07-25
 
 Initial release.

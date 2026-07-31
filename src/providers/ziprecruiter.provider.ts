@@ -58,7 +58,10 @@ const configurationSchema = z.strictObject({
     .enum(['remote', 'hybrid', 'onsite', ''])
     .optional()
     .default(''),
-  datePosted: z.enum(['24h', 'week', 'month', 'any']).optional().default('any'),
+  datePosted: z
+    .enum(['24h', 'week', 'month', 'any'])
+    .optional()
+    .default('month'),
   maxResults: z.number().int().min(1).max(100).optional().default(50),
   browserProfileDir: z.string().optional(),
   keepBrowserOpen: z.boolean().optional().default(true),
@@ -157,11 +160,11 @@ export class ZipRecruiterProvider extends BaseProvider {
 
     const configuration = configurationSchema.parse(search.configuration ?? {});
     const queries = resolveQueries(configuration, search.request);
-    const maxResults = Math.min(
+    const maxResultsPerQuery = Math.min(
       configuration.maxResults,
       Math.max(1, search.request.limit),
     );
-    const records = await runBrowserSearch<ZipRecruiterJob>({
+    const result = await runBrowserSearch<ZipRecruiterJob>({
       providerName: this.name,
       profileDir: resolve(
         process.cwd(),
@@ -170,14 +173,15 @@ export class ZipRecruiterProvider extends BaseProvider {
       keepBrowserOpen: configuration.keepBrowserOpen,
       goBackAfterEnrich: true,
       securityTimeout: 300_000,
-      maxResults,
-      queries: queries.map((query) => query.keywords),
+      maxResultsPerQuery,
+      queries: queries.map((q) => q.keywords),
+      queryLocations: queries.map((q) => q.location),
       waitForResults: waitForZipRecruiterResults,
-      buildSearchUrl: (query) => {
+      buildSearchUrl: (query, location) => {
         const matchingQuery = queries.find((item) => item.keywords === query);
         return buildSearchUrl(
           query,
-          matchingQuery?.location ?? configuration.location,
+          location ?? matchingQuery?.location ?? configuration.location,
           configuration,
         );
       },
@@ -186,13 +190,19 @@ export class ZipRecruiterProvider extends BaseProvider {
       signal: search.signal,
       isCancelled: () => this.cancelRequested,
     });
+    const filtered = result.records.filter((record) =>
+      matchesRequest(record, search.request),
+    );
     return {
-      records: records.filter((record) =>
-        matchesRequest(record, search.request),
-      ),
+      records: filtered,
       rejected: 0,
-      truncated: records.length >= maxResults,
-      complete: records.length < maxResults,
+      truncated: result.completedQueries > 0 && result.truncatedQueries > 0,
+      complete: result.complete,
+      queryDiagnostics: result.queryDiagnostics,
+      plannedQueries: result.plannedQueries,
+      completedQueries: result.completedQueries,
+      failedQueries: result.failedQueries,
+      truncatedQueries: result.truncatedQueries,
     };
   }
 

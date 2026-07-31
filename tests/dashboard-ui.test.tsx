@@ -22,6 +22,7 @@ import { JobsPage } from '../src/client/pages/JobsPage.js';
 import { ProfilePage } from '../src/client/pages/ProfilePage.js';
 import { ResumesPage } from '../src/client/pages/ResumesPage.js';
 import { SettingsPage } from '../src/client/pages/SettingsPage.js';
+import { SCORING_RULES_VERSION } from '../src/intelligence/scoringVersion.js';
 
 vi.mock('react-chartjs-2', () => ({
   Bar: () => <div data-testid="bar-chart" />,
@@ -162,7 +163,7 @@ describe('dashboard UI', () => {
 
   it('restores saved filters and virtualizes a large server page', async () => {
     localStorage.setItem(
-      'job-browser-filters',
+      `job-browser-filters:${SCORING_RULES_VERSION}`,
       JSON.stringify({ provider: 'usajobs', active: 'active' }),
     );
     const calls: string[] = [];
@@ -212,7 +213,7 @@ describe('dashboard UI', () => {
     renderPage(<ProfilePage />);
     const name = await screen.findByLabelText('Profile name');
     await user.clear(name);
-    await user.type(name, 'Dustin Updated');
+    await user.type(name, 'Example Updated');
     await user.click(screen.getByRole('button', { name: 'Save profile' }));
 
     await waitFor(() =>

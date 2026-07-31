@@ -73,7 +73,10 @@ const linkedInConfigurationSchema = z.strictObject({
     .optional()
     .default(''),
   distance: z.number().int().min(0).max(100).optional().default(25),
-  datePosted: z.enum(['24h', 'week', 'month', 'any']).optional().default('any'),
+  datePosted: z
+    .enum(['24h', 'week', 'month', 'any'])
+    .optional()
+    .default('month'),
   experienceLevel: z.string().optional().default(''),
   employmentType: z.string().optional().default(''),
   maxResults: z.number().int().min(1).max(100).optional().default(50),

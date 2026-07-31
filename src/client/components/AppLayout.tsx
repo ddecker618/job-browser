@@ -81,7 +81,7 @@ export function AppLayout() {
           <div className="topbar-actions">
             <kbd>/</kbd>
             <span>Quick search</span>
-            <div className="avatar" aria-label="Dustin Decker profile">
+            <div className="avatar" aria-label="Candidate profile">
               DD
             </div>
           </div>

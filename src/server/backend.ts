@@ -16,6 +16,7 @@ import { log } from '../logging/logger.js';
 import { createApp, type AppOptions } from './app.js';
 import { providerRegistry } from '../providers/providerRegistry.js';
 import { SourceRepository } from '../repositories/source-repository.js';
+import { JobRepository } from '../repositories/job-repository.js';
 import { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
 import { DiscoveryScheduler } from '../discovery/discoveryScheduler.js';
 import { unavailableCredentialResolver } from '../discovery/credentialResolver.js';
@@ -119,15 +120,31 @@ export async function startBackend(
         ziprecruiter.setBrowserProfileDir(options.ziprecruiterProfile);
       }
     }
-    const sourceRepository = new SourceRepository(database);
+    const sourceRepository = new SourceRepository(
+      database,
+      options.profilePreferencesPath,
+    );
     sourceRepository.reconcileProviders(providerRegistry.list());
     if (options.seedDefaultSources === true) {
       sourceRepository.ensureDefaultSources();
     }
     sourceRepository.recoverInterruptedRuns();
+    new JobRepository(database).refreshMatchedFamilies();
+    const currentProfile = loadCandidateProfile(options.candidateProfilePath);
+    const currentScoring = loadScoringConfig(options.scoringConfigPath);
+    const reprocessed = new IntelligenceEngine(
+      database,
+      options.logger ?? logger,
+    ).reprocessIfStale(currentProfile, currentScoring);
+    if (reprocessed !== null) {
+      logger('info', 'Stale job scores reprocessed', { ...reprocessed });
+    }
     const coordinator = new DiscoveryCoordinator(database, providerRegistry, {
       credentialResolver:
         options.credentialResolver ?? unavailableCredentialResolver,
+      ...(options.profilePreferencesPath === undefined
+        ? {}
+        : { profilePreferencesPath: options.profilePreferencesPath }),
       analyze: () =>
         new IntelligenceEngine(database).analyze(
           loadCandidateProfile(options.candidateProfilePath),

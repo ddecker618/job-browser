@@ -10,6 +10,7 @@ import { DiscoveryRunPanel } from '../components/DiscoveryRunPanel.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { SourceEditor } from '../components/SourceEditor.js';
 import { EmptyState, ErrorState, LoadingState } from '../components/States.js';
+import { invalidateScoreQueries } from '../scoreCache.js';
 
 export function SourcesPage() {
   const client = useQueryClient();
@@ -32,11 +33,17 @@ export function SourcesPage() {
   };
   const runSource = useMutation({
     mutationFn: api.runSource,
-    onSettled: refresh,
+    onSettled: async () => {
+      refresh();
+      await invalidateScoreQueries(client);
+    },
   });
   const runAll = useMutation({
     mutationFn: api.runAllSources,
-    onSettled: refresh,
+    onSettled: async () => {
+      refresh();
+      await invalidateScoreQueries(client);
+    },
   });
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>

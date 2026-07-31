@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from 'playwright';
 import { log } from '../logging/logger.js';
 import { BaseProvider } from './baseProvider.js';
+import type { QueryDiagnostics } from '../models/discovery.js';
 import type {
   DiscoveryOptions,
   ProviderFetchResult,
@@ -18,6 +19,7 @@ import type {
 } from '../models/source-management.js';
 import { normalizeJob } from '../normalizer/jobNormalizer.js';
 import type { NormalizedJob } from '../schemas/normalized-job.js';
+import { nowUtc } from '../utilities/timestamps.js';
 import { loadJsonFixture } from '../utils/fixtureLoader.js';
 import {
   launchBrowserSession,
@@ -52,7 +54,10 @@ const configurationSchema = z.strictObject({
     .optional()
     .default(''),
   distance: z.number().int().min(0).max(100).optional().default(25),
-  datePosted: z.enum(['24h', 'week', 'month', 'any']).optional().default('any'),
+  datePosted: z
+    .enum(['24h', 'week', 'month', 'any'])
+    .optional()
+    .default('month'),
   maxResults: z.number().int().min(1).max(100).optional().default(50),
   browserProfileDir: z.string().optional(),
   keepBrowserOpen: z.boolean().optional().default(false),
@@ -204,7 +209,8 @@ export class DiceProvider extends BaseProvider {
       process.cwd(),
       config.browserProfileDir ?? this.resolveBrowserProfileDir(),
     );
-    const maxResults = config.maxResults;
+    const maxResultsPerQuery = config.maxResults;
+    const maxUniqueResults = 200;
     const keepBrowserOpen = config.keepBrowserOpen;
 
     if (!profileDir)
@@ -242,10 +248,23 @@ export class DiceProvider extends BaseProvider {
       checkCancelled();
 
       const queries = this.resolveQueries(config);
-      const allJobs: DiceRawJob[] = [];
+      const allUnique: DiceRawJob[] = [];
+      const seen = new Set<string>();
+      const diagnostics: QueryDiagnostics[] = [];
+      let completedQueries = 0;
+      let failedQueries = 0;
+      let truncatedQueries = 0;
 
       for (const q of queries) {
         checkCancelled();
+
+        const queryStarted = nowUtc();
+        const queryStartMs = Date.now();
+        let terminationReason: QueryDiagnostics['terminationReason'] =
+          'exhausted_results';
+        const queryErrors: string[] = [];
+        const queryCards: DiceRawJob[] = [];
+        let dedupedCount = 0;
 
         const url = this.buildSearchUrl(q.keywords, q.location, {
           remoteFilter: q.remoteFilter ?? '',
@@ -254,22 +273,82 @@ export class DiceProvider extends BaseProvider {
         } as DiceConfiguration);
 
         log('info', `Dice: searching for "${q.keywords}"`);
-        await navigateWithRetry(page, url, { retries: 3 });
-        await page.waitForTimeout(3000);
+        try {
+          await navigateWithRetry(page, url, { retries: 3 });
+          await page.waitForTimeout(3000);
 
-        const cards = await this.collectCards(page, maxResults, checkCancelled);
-        allJobs.push(...cards);
+          const cards = await this.collectCards(
+            page,
+            maxResultsPerQuery,
+            checkCancelled,
+          );
+          for (const card of cards) {
+            const key =
+              card.jobId ??
+              card.postingUrl ??
+              `${card.company ?? ''}-${card.title ?? ''}`;
+            if (key && !seen.has(key)) {
+              seen.add(key);
+              queryCards.push(card);
+            } else if (key && seen.has(key)) {
+              dedupedCount++;
+            }
+          }
+
+          if (queryCards.length >= maxResultsPerQuery) {
+            terminationReason = 'per_query_limit';
+            truncatedQueries++;
+          }
+
+          for (const card of queryCards) {
+            allUnique.push(card);
+          }
+
+          if (allUnique.length >= maxUniqueResults) {
+            terminationReason = 'global_unique_limit';
+          }
+
+          completedQueries++;
+        } catch (error) {
+          failedQueries++;
+          terminationReason =
+            error instanceof Error && error.message.includes('cancelled')
+              ? 'cancelled'
+              : 'provider_error';
+          const message =
+            error instanceof Error ? error.message : String(error);
+          queryErrors.push(message);
+          log('warn', `Dice: query "${q.keywords}" failed: ${message}`);
+        }
+
         log(
           'info',
-          `Dice: found ${String(cards.length)} jobs for "${q.keywords}"`,
+          `Dice: found ${String(queryCards.length)} unique jobs for "${q.keywords}"`,
         );
+
+        diagnostics.push({
+          provider: this.name,
+          searchTerm: q.keywords,
+          location: q.location,
+          requestStarted: queryStarted,
+          requestCompleted: nowUtc(),
+          rawResultsReturned:
+            queryCards.length + dedupedCount + queryCards.length,
+          uniqueResultsRetained: queryCards.length,
+          duplicatesRemoved: dedupedCount,
+          errors: queryErrors,
+          durationMs: Date.now() - queryStartMs,
+          terminationReason,
+        });
+
+        if (allUnique.length >= maxUniqueResults) break;
       }
 
       checkCancelled();
 
       const enriched = await this.enrichWithDetails(
         page,
-        allJobs,
+        allUnique,
         checkCancelled,
       );
 
@@ -289,8 +368,13 @@ export class DiceProvider extends BaseProvider {
       return {
         records,
         rejected: 0,
-        truncated: allJobs.length > maxResults,
-        complete: allJobs.length <= maxResults,
+        truncated: truncatedQueries > 0,
+        complete: failedQueries === 0 && completedQueries === queries.length,
+        queryDiagnostics: diagnostics,
+        plannedQueries: queries.length,
+        completedQueries,
+        failedQueries,
+        truncatedQueries,
       };
     } catch (error) {
       await closeBrowserSession().catch(() => undefined);

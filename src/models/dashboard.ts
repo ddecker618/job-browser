@@ -39,6 +39,11 @@ export interface JobListItem {
   provider: string;
   favorite: boolean;
   active: boolean;
+  verificationStatus: string | null;
+  eligibilityPassed: boolean | null;
+  eligibilityRejection: string | null;
+  workArrangement: string | null;
+  scoreVersion: string | null;
 }
 
 export interface JobSourceView {

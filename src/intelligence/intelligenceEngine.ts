@@ -7,11 +7,9 @@ import { JobRepository } from '../repositories/job-repository.js';
 import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import { createScoreInputHash, createScoreVersion } from './scoreIdentity.js';
 import { scoreJob } from './scoringEngine.js';
-import {
-  verifyPosting,
-  type VerificationResult,
-} from './verificationService.js';
+import { verifyPosting } from './verificationService.js';
 
 export class IntelligenceEngine {
   private readonly intelligenceRepository: IntelligenceRepository;
@@ -32,7 +30,11 @@ export class IntelligenceEngine {
     config: ScoringConfig,
   ): AnalysisSummary {
     this.intelligenceRepository.saveProfile(profile);
-    const runId = this.intelligenceRepository.startRun(profile.id);
+    const scoreVersion = createScoreVersion(profile, config);
+    const runId = this.intelligenceRepository.startRun(
+      profile.id,
+      scoreVersion,
+    );
     const analyzedAt = nowUtc();
     this.writeLog('info', 'Analysis run started', {
       runId,
@@ -52,8 +54,16 @@ export class IntelligenceEngine {
           analyzedAt,
           verification,
         );
-        this.intelligenceRepository.saveIntelligence(profile.id, intelligence);
-        this.saveVerification(job.id, verification);
+        this.intelligenceRepository.saveIntelligence(profile.id, intelligence, {
+          verification,
+          scoreVersion,
+          scoreInputHash: createScoreInputHash(
+            job,
+            profile,
+            config,
+            verification,
+          ),
+        });
         totalScore += intelligence.overallScore;
       }
       const summary: AnalysisSummary = {
@@ -64,6 +74,7 @@ export class IntelligenceEngine {
           jobs.length === 0
             ? 0
             : Math.round((totalScore / jobs.length) * 10) / 10,
+        scoreVersion,
       };
       this.analytics.generate(runId, profile.id, analyzedAt);
       this.intelligenceRepository.completeRun(summary);
@@ -84,33 +95,20 @@ export class IntelligenceEngine {
     }
   }
 
-  private saveVerification(
-    jobId: string,
-    verification: VerificationResult,
-  ): void {
-    const status = verification.evidence.status;
-    this.database
-      .prepare(
-        `UPDATE jobs SET
-           verification_status = ?,
-           eligibility_passed = ?,
-           eligibility_rejection = ?,
-           work_arrangement = ?,
-           illinois_eligibility = ?,
-           schedule_classification = ?,
-           verified_at = ?
-         WHERE id = ?`,
-      )
-      .run(
-        status,
-        verification.eligibility.passed ? 1 : 0,
-        verification.eligibility.rejectionReason,
-        verification.workArrangement,
-        verification.illinoisEligibility,
-        verification.schedule.classification,
-        verification.evidence.verifiedAt,
-        jobId,
-      );
+  public reprocessIfStale(
+    profile: CandidateProfile,
+    config: ScoringConfig,
+  ): AnalysisSummary | null {
+    const scoreVersion = createScoreVersion(profile, config);
+    const staleActiveJobs =
+      this.database
+        .prepare<[string], { count: number }>(
+          `SELECT COUNT(*) AS count FROM jobs
+         WHERE active = 1 AND (score_version IS NULL OR score_version <> ?)`,
+        )
+        .get(scoreVersion)?.count ?? 0;
+    if (staleActiveJobs === 0) return null;
+    return this.analyze(profile, config);
   }
 }
 

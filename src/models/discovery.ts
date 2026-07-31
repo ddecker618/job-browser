@@ -1,8 +1,10 @@
 export interface SearchRequest {
   query: string;
+  queries?: readonly string[];
   location: string | null;
   remoteOnly: boolean;
   limit: number;
+  maxAgeDays?: number | null;
 }
 
 export interface DiscoveryOptions {
@@ -30,12 +32,38 @@ export interface ProviderSearch {
   configuration?: Record<string, unknown>;
 }
 
+export interface QueryDiagnostics {
+  provider: string;
+  searchTerm: string;
+  location: string;
+  requestStarted: string;
+  requestCompleted: string;
+  rawResultsReturned: number;
+  uniqueResultsRetained: number;
+  duplicatesRemoved: number;
+  errors: string[];
+  durationMs: number;
+  terminationReason:
+    | 'exhausted_results'
+    | 'per_query_limit'
+    | 'global_unique_limit'
+    | 'request_budget'
+    | 'timeout'
+    | 'provider_error'
+    | 'cancelled';
+}
+
 export interface ProviderFetchResult {
   records: readonly unknown[];
   rejected: number;
   truncated: boolean;
   complete: boolean;
   unfilteredCount?: number;
+  queryDiagnostics?: QueryDiagnostics[];
+  plannedQueries?: number;
+  completedQueries?: number;
+  failedQueries?: number;
+  truncatedQueries?: number;
 }
 
 export interface DiscoverySummary {
