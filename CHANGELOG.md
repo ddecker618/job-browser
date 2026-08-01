@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.10] — 2026-08-01
+
+### Fixed
+
+- Sources that find zero jobs are no longer reported as failed. A discovery run with no open positions (or where every position was filtered out) now completes as a successful run with a notice such as "No open positions found" or "No jobs matched current filters", instead of throwing and being recorded as a failure. Empty runs no longer inflate `failure_count`, set `last_failure`, or flip source health to failed. A filter-mismatch run does not complete a snapshot (existing jobs stay active), while a genuinely empty board still completes its snapshot so removed jobs deactivate as expected.
+- "Discovery was interrupted when Job Browser stopped" is now a distinct non-failure run state. Interrupted runs (the app shut down mid-discovery) are recorded with the new `interrupted` status instead of `failed`, no longer increment failure counts, and no longer mark the source as failed. Migration `015_interrupted_run_status.sql` rebuilds the `runs` table to allow the new status (preserving run data and run references from `job_sources`, `job_observations`, and `identity_conflict_diagnostics`) and reclassifies existing runs that were marked failed only for this reason.
+
+### Changed
+
+- Discovery run history now renders `interrupted` runs with a neutral amber badge instead of a red failure badge.
+
+### Verification
+
+- Full suite passes: 58 test files and 398 tests, strict typecheck green, ESLint clean (0 errors).
+
 ## [1.0.9] — 2026-08-01
 
 ### Changed
