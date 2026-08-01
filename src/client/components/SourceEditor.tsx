@@ -8,7 +8,6 @@ import type {
   SourceInput,
   ValidationResult,
 } from '../../models/source-management.js';
-import { desktopBridge } from '../desktop.js';
 
 interface SourceEditorProps {
   providers: ProviderDescriptor[];
@@ -62,7 +61,6 @@ export function SourceEditor({
   const [detection, setDetection] = useState<AtsDetectionResult | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const bridge = desktopBridge();
 
   const updateConfiguration = (key: string, value: unknown) => {
     setConfiguration((current) => ({ ...current, [key]: value }));
@@ -71,10 +69,19 @@ export function SourceEditor({
   const validate = async () => {
     setBusy(true);
     try {
-      const result = await onValidate(
+      const derived = configurationFor(
         providerId,
-        configurationFor(providerId, configuration, careersUrl, employer),
+        configuration,
+        careersUrl,
+        employer,
       );
+      const guidance = missingConfigGuidance(providerId, derived);
+      if (guidance !== null) {
+        setValidation(null);
+        setMessage(guidance);
+        return;
+      }
+      const result = await onValidate(providerId, derived);
       setValidation(result);
       if (!result.valid) {
         if (result.failureCategory === 'legacy_portal') {
@@ -235,12 +242,17 @@ export function SourceEditor({
           <input
             type="url"
             value={careersUrl}
+            placeholder="https://careers.example.com"
             onChange={(event) => {
               setCareersUrl(event.target.value);
               setValidation(null);
             }}
           />
         </label>
+        <span className="field-note span-2">
+          Enter the employer’s public careers page. It is used to detect the
+          ATS and auto-fill the source configuration.
+        </span>
         {source === undefined ? (
           <div className="card-actions span-2">
             <button
@@ -337,9 +349,6 @@ export function SourceEditor({
           </label>
         ) : null}
       </div>
-      {providerId === 'usajobs' ? (
-        <UsaJobsCredentials bridge={bridge} setMessage={setMessage} />
-      ) : null}
       {detection === null ? null : (
         <div className="source-preview" aria-label="ATS detection result">
           <strong>
@@ -745,20 +754,207 @@ function ProviderFields({
     );
   if (providerId === 'usajobs')
     return (
-      <>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          gridColumn: '1 / -1',
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: '0.95rem',
+            marginBottom: '0.25rem',
+          }}
+        >
+          Search terms
+        </div>
+        {(() => {
+          const queries: { keywords: string }[] = (
+            Array.isArray(configuration['queries'])
+              ? (configuration['queries'] as Record<string, unknown>[])
+              : []
+          ).map((q) => ({
+            keywords: typeof q['keywords'] === 'string' ? q['keywords'] : '',
+          }));
+          if (queries.length === 0)
+            queries.push({
+              keywords: textValue(configuration['searchKeywords']),
+            });
+          return queries.map((q, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                gap: '0.5rem',
+                alignItems: 'center',
+                padding: '0.5rem',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                background: 'var(--background-secondary, rgba(0,0,0,0.02))',
+              }}
+            >
+              <input
+                value={q.keywords}
+                onChange={(e) => {
+                  const updated = [...queries];
+                  updated[i] = { keywords: e.target.value };
+                  update('queries', updated);
+                  update('searchKeywords', e.target.value);
+                }}
+                placeholder="systems administrator"
+                style={{
+                  flex: 1,
+                  padding: '0.4rem',
+                  borderRadius: '4px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--foreground)',
+                }}
+              />
+              {queries.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = queries.filter((_, j) => j !== i);
+                    update('queries', updated);
+                    if (updated.length > 0)
+                      update('searchKeywords', updated[0]?.keywords ?? '');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: '1px solid #dc3545',
+                    color: '#dc3545',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    padding: '0.25rem 0.5rem',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ));
+        })()}
+        <button
+          type="button"
+          onClick={() => {
+            const existing: Record<string, unknown>[] = Array.isArray(
+              configuration['queries'],
+            )
+              ? (configuration['queries'] as Record<string, unknown>[])
+              : [
+                  {
+                    keywords:
+                      configuration['searchKeywords'] ??
+                      'systems administrator',
+                  },
+                ];
+            update('queries', [...existing, { keywords: '' }]);
+          }}
+          style={{
+            background: 'none',
+            border: '1px dashed var(--border)',
+            color: 'var(--foreground)',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            padding: '0.4rem 0.75rem',
+            fontSize: '0.85rem',
+            opacity: 0.7,
+          }}
+        >
+          + Add search term
+        </button>
         <label>
-          Results per page
+          Search location
+          <input
+            value={textValue(configuration['location'])}
+            onChange={(event) => update('location', event.target.value)}
+            placeholder="Remote or Amarillo, TX"
+          />
+        </label>
+        <label>
+          Workplace type
+          <select
+            value={textValue(configuration['remoteFilter'])}
+            onChange={(event) =>
+              update('remoteFilter', event.target.value || '')
+            }
+          >
+            <option value="">Any</option>
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="onsite">On-site</option>
+          </select>
+        </label>
+        <label>
+          Date posted
+          <select
+            value={textValue(configuration['datePosted']) || 'any'}
+            onChange={(event) => update('datePosted', event.target.value)}
+          >
+            <option value="any">Any time</option>
+            <option value="24h">Past 24 hours</option>
+            <option value="week">Past week</option>
+            <option value="month">Past month</option>
+          </select>
+        </label>
+        <label>
+          Maximum results
           <input
             type="number"
             min={1}
-            max={500}
-            value={Number(configuration['resultsPerPage'] ?? 50)}
+            max={100}
+            value={Number(configuration['maxResults'] ?? 50)}
             onChange={(event) =>
-              update('resultsPerPage', Number(event.target.value))
+              update('maxResults', Number(event.target.value))
             }
           />
         </label>
-      </>
+        <label className="checkbox-field">
+          <input
+            type="checkbox"
+            checked={Boolean(configuration['keepBrowserOpen'] ?? true)}
+            onChange={(event) =>
+              update('keepBrowserOpen', event.target.checked)
+            }
+          />{' '}
+          Keep browser open after search
+        </label>
+        <div
+          className="source-editor-warning"
+          style={{
+            padding: '0.75rem',
+            borderRadius: '4px',
+            background: 'var(--warning-bg, #fff3cd)',
+            border: '1px solid var(--warning-border, #ffc107)',
+            fontSize: '0.85rem',
+            lineHeight: '1.4',
+          }}
+        >
+          <strong>USAJOBS provider notice:</strong>
+          <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.25rem' }}>
+            <li>
+              Discovery opens a visible browser window and signs you in with
+              your existing login.gov account.
+            </li>
+            <li>
+              The first run asks you to agree and complete login.gov sign-in
+              (including MFA). Your session is saved locally.
+            </li>
+            <li>
+              Search results load even without signing in, but signing in keeps
+              your profile available for applications you open.
+            </li>
+            <li>
+              Your login.gov password is never stored by this application.
+            </li>
+          </ul>
+        </div>
+      </div>
     );
   if (
     providerId === 'builtin' ||
@@ -1352,78 +1548,95 @@ function configurationFor(
       'cisco',
       'crowdstrike',
     ].includes(providerId)
-  )
-    return {
+  ) {
+    const next: Record<string, unknown> = {
       ...current,
       ...(employer.trim() ? { company: employer.trim() } : {}),
     };
+    if (providerId === 'icims') {
+      const portalUrl = textValue(next['portalUrl']).trim();
+      if (portalUrl === '') {
+        const origin = originOf(careersUrl);
+        if (origin !== null) next['portalUrl'] = origin;
+      }
+    }
+    if (providerId === 'smartrecruiters') {
+      const companyIdentifier = textValue(
+        next['companyIdentifier'],
+      ).trim();
+      if (companyIdentifier === '') {
+        const slug = smartRecruitersSlug(careersUrl);
+        if (slug !== null) next['companyIdentifier'] = slug;
+      }
+    }
+    return next;
+  }
   return current;
 }
 
-function UsaJobsCredentials({
-  bridge,
-  setMessage,
-}: {
-  bridge: ReturnType<typeof desktopBridge>;
-  setMessage: (value: string) => void;
-}) {
-  const [email, setEmail] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  if (bridge === null)
-    return (
-      <p className="source-error">
-        USAJOBS live discovery requires the installed desktop application.
-      </p>
-    );
-  return (
-    <div className="credential-panel">
-      <strong>USAJOBS credentials</strong>
-      <p>
-        Encrypted for your Windows account. They are never stored in SQLite.
-      </p>
-      <div className="form-grid">
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <label>
-          API key
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-          />
-        </label>
-      </div>
-      <div className="card-actions">
-        <button
-          type="button"
-          onClick={() =>
-            void bridge.setUsaJobsCredentials({ email, apiKey }).then(() => {
-              setApiKey('');
-              setMessage('USAJOBS credentials saved securely.');
-            })
-          }
-        >
-          Save credentials
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            void bridge
-              .clearUsaJobsCredentials()
-              .then(() => setMessage('USAJOBS credentials cleared.'))
-          }
-        >
-          Clear
-        </button>
-      </div>
-    </div>
-  );
+function missingConfigGuidance(
+  providerId: string,
+  configuration: Record<string, unknown>,
+): string | null {
+  if (providerId === 'icims' && textValue(configuration['portalUrl']).trim() === '')
+    return 'Enter the iCIMS portal URL (the employer’s public careers page) or type it in the iCIMS portal URL field, then validate again.';
+  if (
+    providerId === 'smartrecruiters' &&
+    textValue(configuration['companyIdentifier']).trim() === ''
+  )
+    return 'Enter the SmartRecruiters company identifier (e.g. "continental" from jobs.smartrecruiters.com/continental) or the employer’s public careers URL, then validate again.';
+  if (providerId === 'greenhouse' && textValue(configuration['boardToken']).trim() === '')
+    return 'Enter the Greenhouse board token (e.g. "stripe" from boards.greenhouse.io/stripe), then validate again.';
+  if (providerId === 'lever' && textValue(configuration['site']).trim() === '')
+    return 'Enter the Lever site (e.g. "acme" from jobs.lever.co/acme), then validate again.';
+  if (providerId === 'bamboohr' && textValue(configuration['companyDomain']).trim() === '')
+    return 'Enter the BambooHR company domain (e.g. "g2" from g2.bamboohr.com), then validate again.';
+  if (providerId === 'recruitee' && textValue(configuration['origin']).trim() === '')
+    return 'Enter the Recruitee origin URL (e.g. https://bunq.recruitee.com), then validate again.';
+  if (providerId === 'teamtailor' && textValue(configuration['feedUrl']).trim() === '')
+    return 'Enter the Teamtailor RSS feed URL (e.g. https://company.teamtailor.com/jobs.rss), then validate again.';
+  if (providerId === 'workable' && textValue(configuration['subdomain']).trim() === '')
+    return 'Enter the Workable account subdomain (e.g. "huggingface" from apply.workable.com/huggingface), then validate again.';
+  return null;
+}
+
+function originOf(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  const withScheme = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  try {
+    return new URL(withScheme).origin;
+  } catch {
+    return null;
+  }
+}
+
+function smartRecruitersSlug(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  const withScheme = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  try {
+    const url = new URL(withScheme);
+    const host = url.hostname.toLowerCase();
+    if (
+      host !== 'jobs.smartrecruiters.com' &&
+      host !== 'careers.smartrecruiters.com'
+    )
+      return null;
+    const slug = url.pathname.split('/').find(Boolean);
+    if (slug === undefined || slug === '') return null;
+    try {
+      return decodeURIComponent(slug);
+    } catch {
+      return slug;
+    }
+  } catch {
+    return null;
+  }
 }
 
 function textValue(value: unknown): string {

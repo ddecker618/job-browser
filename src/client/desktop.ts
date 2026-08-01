@@ -27,6 +27,8 @@ export interface DesktopBridge {
     apiKey: string;
   }): Promise<{ configured: boolean; available: boolean }>;
   clearUsaJobsCredentials(): Promise<void>;
+  getUsaJobsProfilePath(): Promise<string>;
+  clearUsaJobsSession(): Promise<{ cleared: boolean }>;
   onStartupProgress(callback: (stage: string) => void): void;
   onStartupFailure(callback: (payload: Record<string, string>) => void): void;
 }

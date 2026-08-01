@@ -45,9 +45,10 @@ describe('source management API', () => {
         'ziprecruiter',
         'dice',
         'indeed',
+        'usajobs',
       ]),
     );
-    expect(control.sources).toHaveLength(5);
+    expect(control.sources).toHaveLength(6);
     expect(
       control.sources
         .filter((source) => source.enabled)

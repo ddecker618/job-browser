@@ -39,6 +39,7 @@ export interface DesktopPaths {
   indeedProfile: string;
   wellfoundProfile: string;
   ziprecruiterProfile: string;
+  usaJobsProfile: string;
 }
 
 export function resolveDesktopPaths(input: DesktopPathInput): DesktopPaths {
@@ -84,6 +85,7 @@ export function resolveDesktopPaths(input: DesktopPathInput): DesktopPaths {
     indeedProfile: resolve(root, 'indeed-profile'),
     wellfoundProfile: resolve(root, 'wellfound-profile'),
     ziprecruiterProfile: resolve(root, 'ziprecruiter-profile'),
+    usaJobsProfile: resolve(root, 'usajobs-profile'),
   };
 }
 
@@ -104,6 +106,7 @@ export function initializeDesktopPaths(
     paths.indeedProfile,
     paths.wellfoundProfile,
     paths.ziprecruiterProfile,
+    paths.usaJobsProfile,
   ]) {
     mkdirSync(directory, { recursive: true });
   }

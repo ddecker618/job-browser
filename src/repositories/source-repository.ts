@@ -758,6 +758,35 @@ const DEFAULT_SOURCES = [
       maxAgeDays: 30,
     },
   },
+  {
+    id: 'provider:usajobs',
+    employer: 'USAJOBS',
+    displayName: 'USAJOBS (browser)',
+    providerId: 'usajobs',
+    careersUrl: 'https://www.usajobs.gov/',
+    enabled: false,
+    configuration: {
+      searchKeywords: 'systems administrator',
+      location: '',
+      remoteFilter: '',
+      datePosted: 'any',
+      maxResults: 50,
+      keepBrowserOpen: true,
+      queries: [
+        { keywords: 'systems administrator', location: '' },
+        { keywords: 'network administrator', location: '' },
+        { keywords: 'network analyst', location: '' },
+        { keywords: 'SOC analyst', location: '' },
+      ],
+    },
+    searchCriteria: {
+      query: 'systems administrator',
+      location: null,
+      remoteOnly: false,
+      limit: 50,
+      maxAgeDays: 30,
+    },
+  },
 ] as const;
 
 type DefaultSource = (typeof DEFAULT_SOURCES)[number];

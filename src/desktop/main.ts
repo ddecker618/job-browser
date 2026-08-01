@@ -160,6 +160,30 @@ async function startDesktop(): Promise<void> {
       return { cleared: false };
     }
   });
+  ipcMain.handle('desktop:get-usajobs-profile-path', (event) => {
+    ensureTrustedSender(event);
+    return paths.usaJobsProfile;
+  });
+  ipcMain.handle('desktop:clear-usajobs-session', async (event) => {
+    ensureTrustedSender(event);
+    const { rmSync } = await import('node:fs');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const { join } = await import('node:path');
+    try {
+      const entries = await import('node:fs/promises').then((m) =>
+        m.readdir(paths.usaJobsProfile),
+      );
+      for (const entry of entries) {
+        rmSync(join(paths.usaJobsProfile, entry), {
+          recursive: true,
+          force: true,
+        });
+      }
+      return { cleared: true };
+    } catch {
+      return { cleared: false };
+    }
+  });
 
   await runStartup();
   recordSmokeStage('startup-finished');
@@ -286,7 +310,13 @@ async function runDesktopSmoke(): Promise<void> {
         throw new Error(`Enabled starter source was not seeded: ${providerId}`);
       }
     }
-    for (const providerId of ['wellfound', 'ziprecruiter', 'dice', 'indeed']) {
+    for (const providerId of [
+      'wellfound',
+      'ziprecruiter',
+      'dice',
+      'indeed',
+      'usajobs',
+    ]) {
       if (!hasSource(sourceControl, providerId, false)) {
         throw new Error(
           `Disabled browser source was not seeded: ${providerId}`,

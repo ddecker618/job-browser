@@ -41,6 +41,7 @@ export class BackendManager {
       indeedProfile: paths.indeedProfile,
       wellfoundProfile: paths.wellfoundProfile,
       ziprecruiterProfile: paths.ziprecruiterProfile,
+      usaJobsProfile: paths.usaJobsProfile,
       onSettingsSaved: (settings) =>
         saveRuntimeDatabase(paths.runtimeSettings, settings.databaseLocation),
     });

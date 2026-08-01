@@ -1,0 +1,53 @@
+{
+  "records": [
+    {
+      "jobId": "815000001",
+      "title": "Network Administrator",
+      "agency": "Veterans Health Administration",
+      "department": "Department of Veterans Affairs",
+      "location": "Amarillo, TX",
+      "dateText": "Posted 7/31/26 · Apply by 8/14/26",
+      "salaryText": "$82,764 - $107,590 Per Year",
+      "workSchedule": "Full-time",
+      "appointmentType": "Permanent",
+      "postingUrl": "https://www.usajobs.gov/job/815000001",
+      "description": "Provides network administration for the Amarillo VA Health Care System.",
+      "detailPairs": [
+        { "label": "Salary", "value": "$82,764 - $107,590 Per Year" },
+        { "label": "Pay scale & grade", "value": "GS 11" },
+        { "label": "Remote job", "value": "No" },
+        { "label": "Telework eligible", "value": "Yes" },
+        { "label": "Work schedule", "value": "Full-time" },
+        { "label": "Appointment type", "value": "Permanent" }
+      ],
+      "detailText": "Network Administrator\nDepartment of Veterans Affairs\nVeterans Health Administration\nSummary\nProvides network administration for the Amarillo VA Health Care System.",
+      "applyUrls": ["https://www.usajobs.gov/apply/815000001"]
+    },
+    {
+      "jobId": "815000002",
+      "title": "IT Specialist (SysAdmin)",
+      "agency": "U.S. Cyber Command",
+      "department": "Department of Defense",
+      "location": "Remote",
+      "dateText": "Posted this month",
+      "salaryText": "$117,962 - $181,216 Per Year",
+      "workSchedule": "Full-time",
+      "appointmentType": "Permanent",
+      "postingUrl": "https://www.usajobs.gov/job/815000002",
+      "description": "System administration for cyber mission teams.",
+      "detailPairs": [
+        { "label": "Salary", "value": "$117,962 - $181,216 Per Year" },
+        { "label": "Pay scale & grade", "value": "GS 13-14" },
+        { "label": "Remote job", "value": "Yes" },
+        { "label": "Telework eligible", "value": "No" },
+        { "label": "Work schedule", "value": "Full-time" },
+        { "label": "Appointment type", "value": "Permanent" }
+      ],
+      "detailText": "IT Specialist (SysAdmin)\nDepartment of Defense\nU.S. Cyber Command\nSummary\nSystem administration for cyber mission teams.",
+      "applyUrls": ["https://www.usajobs.gov/apply/815000002"]
+    }
+  ],
+  "rejected": 0,
+  "truncated": false,
+  "complete": true
+}

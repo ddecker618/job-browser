@@ -28,6 +28,7 @@ import { DiceProvider } from '../providers/dice.provider.js';
 import { IndeedProvider } from '../providers/indeed.provider.js';
 import { WellfoundProvider } from '../providers/wellfound.provider.js';
 import { ZipRecruiterProvider } from '../providers/ziprecruiter.provider.js';
+import { UsaJobsProvider } from '../providers/usajobs.provider.js';
 
 export interface BackendOptions extends AppOptions {
   databasePath?: string;
@@ -46,6 +47,7 @@ export interface BackendOptions extends AppOptions {
   indeedProfile?: string;
   wellfoundProfile?: string;
   ziprecruiterProfile?: string;
+  usaJobsProfile?: string;
 }
 
 export interface BackendHandle {
@@ -118,6 +120,12 @@ export async function startBackend(
       const ziprecruiter = providerRegistry.get('ziprecruiter');
       if (ziprecruiter instanceof ZipRecruiterProvider) {
         ziprecruiter.setBrowserProfileDir(options.ziprecruiterProfile);
+      }
+    }
+    if (options.usaJobsProfile) {
+      const usajobs = providerRegistry.get('usajobs');
+      if (usajobs instanceof UsaJobsProvider) {
+        usajobs.setBrowserProfileDir(options.usaJobsProfile);
       }
     }
     const sourceRepository = new SourceRepository(

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.8] — 2026-07-31
+
+### Fixed
+
+- USAJOBS discovery returned zero jobs ("No open positions found") even when the public search page showed results. The search results extractor treated the always-present, hidden `#no-search-results` element as "no results", so card collection aborted on the first page. `noResults` is now derived from the actual extracted card count, and the card date parsing supports the new "Open MM/DD/YYYY to MM/DD/YYYY" format (falling back to the legacy "Posted … · Apply by …" format).
+- The Add Source form now explains what the "Public careers URL" field is for and shows an actionable validation message when a required configuration value (such as the iCIMS portal URL or SmartRecruiters company identifier) is missing, instead of an opaque ATS detection error.
+
+### Added
+
+- Regression tests for the USAJOBS search results extractor (jsdom) covering the hidden no-results element and the new date format.
+
+### Verification
+
+- Full suite passes: 58 test files and 393 tests, strict typecheck green.
+
 ## [1.0.7] — 2026-07-31
 
 ### Added

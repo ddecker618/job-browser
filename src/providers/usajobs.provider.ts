@@ -1,507 +1,741 @@
 import { fileURLToPath } from 'node:url';
 
 import { z } from 'zod';
+import type { Page } from 'playwright';
 
-import type { EmploymentType, RemoteType } from '../domain/job.js';
 import type {
   DiscoveryOptions,
   ProviderFetchResult,
   ProviderSearch,
   SearchRequest,
+  QueryDiagnostics,
 } from '../models/discovery.js';
 import type {
+  ProviderCapabilities,
   ProviderConfiguration,
-  ProviderHealthResult,
+  ProviderType,
   ValidationResult,
 } from '../models/source-management.js';
 import { normalizeJob } from '../normalizer/jobNormalizer.js';
 import type { NormalizedJob } from '../schemas/normalized-job.js';
-import { loadJsonFixture } from '../utils/fixtureLoader.js';
-import { htmlToText } from '../utils/html.js';
-import { BaseProvider, ProviderFetchError } from './baseProvider.js';
+import { nowUtc } from '../utilities/timestamps.js';
+import { log } from '../logging/logger.js';
+import { BaseProvider } from './baseProvider.js';
 import {
-  providerHttpClient,
-  type ProviderHttpClient,
-} from './providerHttpClient.js';
+  launchBrowserSession,
+  closeBrowserSession,
+  navigateWithRetry,
+} from './linkedIn/browserSession.js';
+import { ensureUsaJobsLogin } from './usajobs/browserSession.js';
+import { extractSearchPage } from './usajobs/searchResultExtractor.js';
+import { extractJobDetail } from './usajobs/jobDetailExtractor.js';
+import { parseSalaryText, toIsoDate } from './browserJobBoard.js';
 
-const ENDPOINT = 'https://data.usajobs.gov/api/Search';
-const MAX_PAGE = 500;
-const MAX_RESULTS_PER_PAGE = 500;
-const MAX_PAGE_COUNT = 10;
 const DEFAULT_FIXTURE_PATH = fileURLToPath(
-  new URL('../fixtures/usajobs-search-response.json', import.meta.url),
+  new URL('../fixtures/usajobs-browser-fixture.json', import.meta.url),
 );
 
+const MAX_PAGES_PER_QUERY = 25;
+const MAX_DETAILS = 60;
+const MAX_UNIQUE_RESULTS = 200;
+
+const usajobsQuerySchema = z.strictObject({
+  keywords: z.string().trim().min(1, 'Keywords are required'),
+  location: z.string().optional().default(''),
+});
+
 const configurationSchema = z.strictObject({
-  page: z
-    .number({ message: 'Page must be a number' })
-    .int()
-    .min(1, 'Page must be at least 1')
-    .max(MAX_PAGE, `Page cannot exceed ${String(MAX_PAGE)}`)
-    .optional(),
-  resultsPerPage: z
-    .number({ message: 'Results per page must be a number' })
-    .int()
-    .min(1, 'Results per page must be at least 1')
-    .max(
-      MAX_RESULTS_PER_PAGE,
-      `Results per page cannot exceed ${String(MAX_RESULTS_PER_PAGE)}`,
-    )
-    .optional(),
-  pageCount: z
-    .number({ message: 'Page count must be a number' })
-    .int()
-    .min(1, 'Page count must be at least 1')
-    .max(MAX_PAGE_COUNT, `Page count cannot exceed ${String(MAX_PAGE_COUNT)}`)
-    .optional(),
+  searchKeywords: z.string().trim().min(1).default('systems administrator'),
+  location: z.string().optional().default(''),
+  queries: z
+    .array(usajobsQuerySchema)
+    .optional()
+    .default([
+      { keywords: 'systems administrator', location: '' },
+      { keywords: 'network administrator', location: '' },
+      { keywords: 'network analyst', location: '' },
+      { keywords: 'SOC analyst', location: '' },
+    ]),
+  remoteFilter: z
+    .enum(['remote', 'hybrid', 'onsite', ''])
+    .optional()
+    .default(''),
+  datePosted: z.enum(['24h', 'week', 'month', 'any']).optional().default('any'),
+  maxResults: z.number().int().min(1).max(100).optional().default(50),
+  browserProfileDir: z.string().optional(),
+  keepBrowserOpen: z.boolean().optional().default(false),
+  debugMode: z.boolean().optional().default(false),
 });
 
-const namedValueSchema = z.object({
-  Name: z.string().nullable().optional(),
-  Code: z.string().nullable().optional(),
-});
+type UsaJobsConfiguration = z.infer<typeof configurationSchema>;
 
-const locationSchema = z.object({
-  LocationName: z.string().nullable().optional(),
-  CityName: z.string().nullable().optional(),
-  CountrySubDivisionCode: z.string().nullable().optional(),
-});
+interface ResolvedQuery {
+  keywords: string;
+  location: string;
+}
 
-const remunerationSchema = z.object({
-  MinimumRange: z.union([z.string(), z.number()]).nullable().optional(),
-  MaximumRange: z.union([z.string(), z.number()]).nullable().optional(),
-  RateIntervalCode: z.string().nullable().optional(),
-  Description: z.string().nullable().optional(),
-});
-
-const detailsSchema = z.object({
-  JobSummary: z.string().nullable().optional(),
-  LowGrade: z.string().nullable().optional(),
-  HighGrade: z.string().nullable().optional(),
-  TeleworkEligible: z.boolean().nullable().optional(),
-  RemoteIndicator: z.boolean().nullable().optional(),
-});
-
-const descriptorSchema = z.object({
-  PositionID: z.string().trim().min(1),
-  PositionTitle: z.string().trim().min(1),
-  PositionURI: z.url(),
-  ApplyURI: z.array(z.url()).optional(),
-  PositionLocationDisplay: z.string().nullable().optional(),
-  PositionLocation: z.array(locationSchema).optional(),
-  OrganizationName: z.string().trim().min(1),
-  DepartmentName: z.string().nullable().optional(),
-  JobGrade: z.array(namedValueSchema).optional(),
-  PositionSchedule: z.array(namedValueSchema).optional(),
-  PositionOfferingType: z.array(namedValueSchema).optional(),
-  PositionRemuneration: z.array(remunerationSchema).optional(),
-  QualificationSummary: z.string().nullable().optional(),
-  PublicationStartDate: z.string().nullable().optional(),
-  ApplicationCloseDate: z.string().nullable().optional(),
-  UserArea: z
-    .object({
-      Details: detailsSchema.optional(),
-    })
-    .optional(),
-});
-
-const responseSchema = z.object({
-  SearchResult: z.object({
-    SearchResultItems: z.array(z.unknown()),
-    SearchResultCountAll: z.number().int().nonnegative().optional(),
-  }),
-});
-const resultItemSchema = z.object({
-  MatchedObjectDescriptor: descriptorSchema,
-});
-
-type UsaJobsJob = z.infer<typeof descriptorSchema>;
-
-interface RequestContext {
-  headers: Readonly<Record<string, string>>;
-  pageCount: number;
-  signal?: AbortSignal;
+interface UsaJobsRawJob {
+  jobId: string;
+  title: string;
+  agency: string;
+  department: string;
+  location: string;
+  dateText: string;
+  salaryText: string | null;
+  workSchedule: string | null;
+  appointmentType: string | null;
+  postingUrl: string;
+  description: string | null;
+  detailPairs: { label: string; value: string }[];
+  detailText: string;
+  applyUrls: string[];
 }
 
 export class UsaJobsProvider extends BaseProvider {
   public readonly id = 'usajobs';
   public readonly name = 'USAJOBS';
-  public readonly type = 'government' as const;
-  public readonly capabilities = {
+  public readonly type: ProviderType = 'government';
+  public readonly capabilities: ProviderCapabilities = {
     keywordSearch: true,
     locationSearch: true,
     remoteFilter: true,
     pagination: true,
     compensation: true,
-    requiresCredentials: true,
+    requiresCredentials: false,
     structuredPreview: false,
-  } as const;
+    interactiveBrowser: true,
+  };
 
-  readonly #requestContexts = new WeakMap<ProviderSearch, RequestContext>();
+  private browserProfileDir: string | null = null;
+  private cancelRequested = false;
 
-  public constructor(
-    private readonly http: ProviderHttpClient = providerHttpClient,
-  ) {
-    super();
+  public setBrowserProfileDir(dir: string): void {
+    this.browserProfileDir = dir;
   }
 
-  public override validateConfiguration(
+  private resolveBrowserProfileDir(): string {
+    return (
+      this.browserProfileDir ??
+      process.env['JOB_BROWSER_USAJOBS_PROFILE'] ??
+      resolveProfileDefault()
+    );
+  }
+
+  private resolveQueries(config: UsaJobsConfiguration): ResolvedQuery[] {
+    if (config.queries.length > 0) {
+      return config.queries.map((q) => ({
+        keywords: q.keywords,
+        location: q.location || config.location,
+      }));
+    }
+    return [
+      {
+        keywords: config.searchKeywords,
+        location: config.location || '',
+      },
+    ];
+  }
+
+  public requestCancel(): void {
+    this.cancelRequested = true;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  public override async validateConfiguration(
     configuration: ProviderConfiguration,
   ): Promise<ValidationResult> {
     const parsed = configurationSchema.safeParse(configuration);
-    if (!parsed.success) {
-      return Promise.resolve({
-        valid: false,
-        message:
-          parsed.error.issues[0]?.message ?? 'Invalid USAJOBS configuration',
-        normalizedConfiguration: null,
-        preview: null,
-      });
-    }
-
-    return Promise.resolve({
-      valid: true,
-      message: 'USAJOBS configuration is valid',
-      normalizedConfiguration: parsed.data,
-      preview: null,
-    });
-  }
-
-  public override async healthCheck(
-    options: DiscoveryOptions,
-  ): Promise<ProviderHealthResult> {
-    const validation = await this.validateConfiguration(
-      options.configuration ?? {},
-    );
-    if (!validation.valid) {
-      return {
-        status: 'failed',
-        message: validation.message,
-        checkedAt: new Date().toISOString(),
-      };
-    }
-    if (!options.fixtureOnly && readCredentials(options.credentials) === null) {
-      return {
-        status: 'credentials-required',
-        message: 'USAJOBS email and API key credentials are required',
-        checkedAt: new Date().toISOString(),
-      };
-    }
     return {
-      status: 'healthy',
-      message: 'Configuration and credentials are valid',
-      checkedAt: new Date().toISOString(),
+      valid: parsed.success,
+      message: parsed.success
+        ? 'USAJOBS configuration is valid'
+        : `USAJOBS configuration error: ${parsed.error.message}`,
+      normalizedConfiguration: parsed.success
+        ? (parsed.data as unknown as Record<string, unknown>)
+        : null,
+      preview: null,
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   public async search(
     request: SearchRequest,
     options: DiscoveryOptions,
   ): Promise<ProviderSearch> {
-    const validation = await this.validateConfiguration(
-      options.configuration ?? {},
-    );
-    if (!validation.valid) {
-      throw new Error(`Invalid USAJOBS configuration: ${validation.message}`);
-    }
+    const rawConfiguration = options.configuration ?? {};
+    const config = this.parseConfig(rawConfiguration);
+    const firstQuery = config.queries[0] ?? {
+      keywords:
+        typeof rawConfiguration['searchKeywords'] === 'string'
+          ? rawConfiguration['searchKeywords']
+          : request.query.trim(),
+      location:
+        typeof rawConfiguration['location'] === 'string'
+          ? rawConfiguration['location']
+          : (request.location ?? ''),
+    };
 
-    const configuration = configurationSchema.parse(
-      validation.normalizedConfiguration ?? {},
-    );
-    const endpoint = new URL(ENDPOINT);
-    const keyword = request.query.trim();
-    const location = request.location?.trim() ?? '';
-    if (keyword.length > 0) endpoint.searchParams.set('Keyword', keyword);
-    if (location.length > 0)
-      endpoint.searchParams.set('LocationName', location);
-    if (request.remoteOnly)
-      endpoint.searchParams.set('RemoteIndicator', 'true');
-    endpoint.searchParams.set('Page', String(configuration.page ?? 1));
-    endpoint.searchParams.set(
-      'ResultsPerPage',
-      String(
-        Math.max(
-          1,
-          Math.min(
-            configuration.resultsPerPage ?? request.limit,
-            request.limit,
-            MAX_RESULTS_PER_PAGE,
-          ),
-        ),
-      ),
-    );
-
-    const search: ProviderSearch = {
+    return {
       request,
-      target: endpoint.toString(),
+      target: this.buildSearchUrl(firstQuery.keywords, firstQuery.location),
       fixturePath: options.fixtureOnly
         ? (options.fixturePath ?? DEFAULT_FIXTURE_PATH)
         : null,
       ...(options.signal === undefined ? {} : { signal: options.signal }),
+      configuration: config as unknown as Record<string, unknown>,
     };
-
-    if (!options.fixtureOnly) {
-      const credentials = readCredentials(options.credentials);
-      if (credentials === null) {
-        throw new Error('USAJOBS email and API key credentials are required');
-      }
-      const context: RequestContext = {
-        pageCount: configuration.pageCount ?? MAX_PAGE_COUNT,
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': credentials.email,
-          'Authorization-Key': credentials.apiKey,
-        },
-      };
-      if (options.signal !== undefined) context.signal = options.signal;
-      this.#requestContexts.set(search, context);
-    }
-
-    return search;
   }
 
   public async fetch(search: ProviderSearch): Promise<ProviderFetchResult> {
-    if (search.fixturePath !== null) {
-      return parsePage(
-        loadJsonFixture(search.fixturePath),
-        search.request.limit,
-        search.request.limit,
-      );
-    }
-    const context = this.#requestContexts.get(search);
-    if (context === undefined) {
-      throw new ProviderFetchError(
-        'USAJOBS request credentials are unavailable',
-      );
-    }
-    const target = new URL(search.target);
-    const firstPage = Number(target.searchParams.get('Page') ?? '1');
-    const configurationPageCount = Math.min(
-      context.pageCount,
-      MAX_PAGE - firstPage + 1,
-    );
-    const records: unknown[] = [];
-    let rejected = 0;
-    let complete = false;
-    try {
-      for (let offset = 0; offset < configurationPageCount; offset += 1) {
-        target.searchParams.set('Page', String(firstPage + offset));
-        const response = await this.http.request(target, {
-          provider: this.name,
-          signal: context.signal ?? search.signal,
-          headers: context.headers,
-        });
-        const page = parsePage(
-          response.json(),
-          search.request.limit - records.length,
-          Number(target.searchParams.get('ResultsPerPage') ?? '1'),
-        );
-        records.push(...page.records);
-        rejected += page.rejected;
-        if (page.complete || records.length >= search.request.limit) {
-          complete = page.complete;
-          break;
-        }
-      }
-    } finally {
-      this.#requestContexts.delete(search);
-    }
-    return {
-      records,
-      rejected,
-      truncated: !complete || records.length >= search.request.limit,
-      complete,
+    this.cancelRequested = false;
+    if (search.fixturePath !== null) return this.fetchFixture();
+
+    const config = search.configuration as unknown as UsaJobsConfiguration;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!config) throw new Error('USAJOBS configuration is missing');
+
+    const profileDir = this.resolveBrowserProfileDir();
+    const maxResultsPerQuery = config.maxResults;
+    const keepBrowserOpen = config.keepBrowserOpen;
+
+    const signal = search.signal;
+    const checkCancelled = (): void => {
+      if (this.cancelRequested || signal?.aborted)
+        throw new Error('USAJOBS search cancelled');
     };
+
+    checkCancelled();
+
+    try {
+      const { page } = await launchBrowserSession({
+        profileDir,
+        headless: false,
+      });
+      checkCancelled();
+
+      const loggedIn = await ensureUsaJobsLogin(page, 300_000);
+      if (!loggedIn) {
+        log(
+          'warn',
+          'USAJOBS login not completed; continuing with public search results',
+        );
+      }
+
+      checkCancelled();
+
+      const queries = this.resolveQueries(config);
+      const remoteOnly =
+        config.remoteFilter === 'remote' || search.request.remoteOnly;
+      const allUnique: UsaJobsRawJob[] = [];
+      const seen = new Set<string>();
+      const diagnostics: QueryDiagnostics[] = [];
+      let completedQueries = 0;
+      let failedQueries = 0;
+      let truncatedQueries = 0;
+
+      for (const q of queries) {
+        checkCancelled();
+
+        const queryStarted = nowUtc();
+        const queryStartMs = Date.now();
+        let terminationReason: QueryDiagnostics['terminationReason'] =
+          'exhausted_results';
+        const queryErrors: string[] = [];
+        const queryCards: UsaJobsRawJob[] = [];
+        let dedupedCount = 0;
+
+        const url = this.buildSearchUrl(q.keywords, q.location);
+
+        log('info', `USAJOBS: searching for "${q.keywords}"`);
+        try {
+          await navigateWithRetry(page, url, { retries: 3 });
+          await page.waitForTimeout(5000);
+
+          const cards = await this.collectCards(
+            page,
+            maxResultsPerQuery,
+            remoteOnly,
+            checkCancelled,
+          );
+          for (const card of cards) {
+            const key = card.jobId || card.postingUrl;
+            if (key && !seen.has(key)) {
+              seen.add(key);
+              queryCards.push(card);
+            } else if (key && seen.has(key)) {
+              dedupedCount++;
+            }
+          }
+
+          if (queryCards.length >= maxResultsPerQuery) {
+            terminationReason = 'per_query_limit';
+            truncatedQueries++;
+          }
+
+          for (const card of queryCards) {
+            allUnique.push(card);
+          }
+
+          if (allUnique.length >= MAX_UNIQUE_RESULTS) {
+            terminationReason = 'global_unique_limit';
+          }
+
+          completedQueries++;
+        } catch (error) {
+          failedQueries++;
+          terminationReason =
+            error instanceof Error && error.message.includes('cancelled')
+              ? 'cancelled'
+              : 'provider_error';
+          const message =
+            error instanceof Error ? error.message : String(error);
+          queryErrors.push(message);
+          log('warn', `USAJOBS: query "${q.keywords}" failed: ${message}`);
+        }
+
+        log(
+          'info',
+          `USAJOBS: found ${String(queryCards.length)} unique jobs for "${q.keywords}"`,
+        );
+
+        diagnostics.push({
+          provider: this.name,
+          searchTerm: q.keywords,
+          location: q.location,
+          requestStarted: queryStarted,
+          requestCompleted: nowUtc(),
+          rawResultsReturned:
+            queryCards.length + dedupedCount + queryCards.length,
+          uniqueResultsRetained: queryCards.length,
+          duplicatesRemoved: dedupedCount,
+          errors: queryErrors,
+          durationMs: Date.now() - queryStartMs,
+          terminationReason,
+        });
+
+        if (allUnique.length >= MAX_UNIQUE_RESULTS) break;
+      }
+
+      checkCancelled();
+
+      const enriched = await this.enrichWithDetails(
+        page,
+        allUnique,
+        checkCancelled,
+      );
+
+      if (!keepBrowserOpen) {
+        await closeBrowserSession().catch(() => undefined);
+      }
+
+      const records = enriched.map((job) => ({
+        ...job,
+        providerId: this.id,
+        providerName: this.name,
+        searchQuery: search.request,
+        discoveredAt: new Date().toISOString(),
+        source: 'USAJOBS',
+      }));
+
+      return {
+        records,
+        rejected: 0,
+        truncated: truncatedQueries > 0,
+        complete: failedQueries === 0 && completedQueries === queries.length,
+        queryDiagnostics: diagnostics,
+        plannedQueries: queries.length,
+        completedQueries,
+        failedQueries,
+        truncatedQueries,
+      };
+    } catch (error) {
+      await closeBrowserSession().catch(() => undefined);
+      if (
+        error instanceof Error &&
+        error.message === 'USAJOBS search cancelled'
+      ) {
+        return { records: [], rejected: 0, truncated: false, complete: false };
+      }
+      throw error;
+    }
   }
 
   public normalize(rawJob: unknown, discoveredAt: string): NormalizedJob {
-    const raw = descriptorSchema.parse(rawJob);
-    const details = raw.UserArea?.Details;
-    const location = firstLocation(raw);
-    const remuneration = raw.PositionRemuneration?.[0];
-    const salaryMinimum = parseAmount(remuneration?.MinimumRange);
-    const salaryMaximum = parseAmount(remuneration?.MaximumRange);
-    const grades = parseGrades(
-      raw.JobGrade ?? [],
-      details?.LowGrade,
-      details?.HighGrade,
-    );
-    const schedule = firstName(raw.PositionSchedule);
-    const appointmentType = firstName(raw.PositionOfferingType);
-    const openingDate = parseDate(raw.PublicationStartDate);
-    const closingDate = parseDate(raw.ApplicationCloseDate);
+    const job = rawJob as Record<string, unknown>;
+    const title = typeof job['title'] === 'string' ? job['title'] : '';
+    const agency = typeof job['agency'] === 'string' ? job['agency'] : '';
+    const department =
+      typeof job['department'] === 'string' ? job['department'] : null;
+    const location =
+      typeof job['location'] === 'string' ? job['location'] : null;
+    const externalId = typeof job['jobId'] === 'string' ? job['jobId'] : null;
+    const postingUrl =
+      typeof job['postingUrl'] === 'string' ? job['postingUrl'] : null;
+    const salaryText =
+      typeof job['salaryText'] === 'string' ? job['salaryText'] : null;
+    const workSchedule =
+      typeof job['workSchedule'] === 'string' ? job['workSchedule'] : null;
+    const appointmentType =
+      typeof job['appointmentType'] === 'string'
+        ? job['appointmentType']
+        : null;
+    const description =
+      typeof job['description'] === 'string' ? job['description'] : null;
+    const dateText = typeof job['dateText'] === 'string' ? job['dateText'] : '';
+    const detailPairs = Array.isArray(job['detailPairs'])
+      ? (job['detailPairs'] as { label: string; value: string }[])
+      : [];
+    const detailText =
+      typeof job['detailText'] === 'string' ? job['detailText'] : '';
+    const applyUrls = Array.isArray(job['applyUrls'])
+      ? (job['applyUrls'] as string[])
+      : [];
+
+    const salary = parseSalaryText(salaryText);
+    const remoteJob = pairValue(detailPairs, 'Remote job');
+    const teleworkEligible = pairValue(detailPairs, 'Telework eligible');
+    const grade = parseGrade(pairValue(detailPairs, 'Pay scale & grade'));
+    const city = location?.includes(',')
+      ? (location.split(',')[0]?.trim() ?? null)
+      : null;
+    const state = location?.includes(',')
+      ? (location.split(',')[1]?.trim() ?? null)
+      : null;
+    const openingDate =
+      parseDatePart(dateText, 'Posted') ?? parseDatePart(dateText, 'Open');
+    const closingDate =
+      parseDatePart(dateText, 'Apply by') ??
+      parseDatePart(dateText, 'to') ??
+      pairValue(detailPairs, 'Close date') ??
+      parseDatePart(detailText, 'Apply by');
 
     return normalizeJob({
-      externalId: raw.PositionID,
-      title: raw.PositionTitle,
-      company: raw.OrganizationName,
-      location: location.name,
-      city: location.city,
-      state: location.state,
-      remoteType: inferRemoteType(
-        details?.RemoteIndicator,
-        details?.TeleworkEligible,
-      ),
-      employmentType: inferEmploymentType(schedule, appointmentType),
-      salaryMinimum,
-      salaryMaximum,
-      salaryText: formatSalary(salaryMinimum, salaryMaximum, remuneration),
-      description: cleanHtml(details?.JobSummary),
-      requirements: cleanHtml(raw.QualificationSummary),
+      externalId,
+      title: title || 'Untitled Position',
+      company: agency || 'Unknown Agency',
+      location,
+      city,
+      state,
+      remoteType: inferRemoteType(remoteJob, teleworkEligible),
+      employmentType: inferEmploymentType(workSchedule, appointmentType),
+      salaryMinimum: salary.minimum,
+      salaryMaximum: salary.maximum,
+      salaryText,
+      description,
+      requirements: null,
       preferredQualifications: null,
-      postingUrl: raw.PositionURI,
+      postingUrl,
       providerId: this.id,
       providerName: this.name,
       datePosted: openingDate,
       discoveredAt,
-      agency: raw.OrganizationName,
-      department: clean(raw.DepartmentName),
-      gradeLow: grades.low,
-      gradeHigh: grades.high,
-      payPlan: grades.payPlan,
+      agency: agency || null,
+      department,
+      gradeLow: grade.low,
+      gradeHigh: grade.high,
+      payPlan: grade.payPlan,
       appointmentType,
-      workSchedule: schedule,
-      teleworkEligible: details?.TeleworkEligible ?? null,
+      workSchedule,
+      teleworkEligible: parseYesNo(teleworkEligible),
       openingDate,
       closingDate,
-      applicationUrls: raw.ApplyURI ?? [],
+      applicationUrls: applyUrls,
     });
   }
-}
 
-function parsePage(
-  payload: unknown,
-  limit: number,
-  pageSize: number,
-): ProviderFetchResult {
-  const parsed = responseSchema.safeParse(payload);
-  if (!parsed.success)
-    throw new ProviderFetchError('USAJOBS returned an invalid response');
-  const items = parsed.data.SearchResult.SearchResultItems;
-  const valid = items.flatMap((item) => {
-    const result = resultItemSchema.safeParse(item);
-    return result.success ? [result.data.MatchedObjectDescriptor] : [];
-  });
-  const records = valid.slice(0, Math.max(0, limit));
-  const total = parsed.data.SearchResult.SearchResultCountAll;
-  return {
-    records,
-    rejected: items.length - valid.length,
-    truncated: valid.length > records.length,
-    complete:
-      items.length < pageSize || (total !== undefined && items.length >= total),
-  };
-}
+  private async collectCards(
+    page: Page,
+    maxResults: number,
+    remoteOnly: boolean,
+    checkCancelled: () => void,
+  ): Promise<UsaJobsRawJob[]> {
+    try {
+      await page.waitForSelector(
+        '#search-results .page-section, #no-search-results',
+        {
+          timeout: 20_000,
+        },
+      );
+    } catch {
+      return [];
+    }
 
-function readCredentials(
-  credentials: DiscoveryOptions['credentials'],
-): { email: string; apiKey: string } | null {
-  const email = clean(
-    credentials?.['email'] ??
-      credentials?.['userAgent'] ??
-      credentials?.['User-Agent'],
-  );
-  const apiKey = clean(
-    credentials?.['apiKey'] ??
-      credentials?.['authorizationKey'] ??
-      credentials?.['Authorization-Key'],
-  );
-  if (
-    email === null ||
-    apiKey === null ||
-    !z.email().safeParse(email).success
-  ) {
-    return null;
+    const jobs: UsaJobsRawJob[] = [];
+    const seenIds = new Set<string>();
+    let pageNumber = 1;
+
+    while (jobs.length < maxResults && pageNumber <= MAX_PAGES_PER_QUERY) {
+      checkCancelled();
+
+      const data = await extractSearchPage(page);
+
+      if (data.noResults && jobs.length === 0) break;
+
+      for (const card of data.cards) {
+        if (remoteOnly && !/remote/i.test(card.location)) continue;
+        const id = card.id;
+        if (id && !seenIds.has(id)) {
+          seenIds.add(id);
+          jobs.push({
+            jobId: id,
+            title: card.title,
+            agency: card.agency,
+            department: card.department,
+            location: card.location,
+            dateText: card.dateText,
+            salaryText: card.salaryText,
+            workSchedule: card.workSchedule,
+            appointmentType: card.appointmentType,
+            postingUrl: absolutePostingUrl(card.href),
+            description: null,
+            detailPairs: [],
+            detailText: '',
+            applyUrls: [],
+          });
+        }
+      }
+
+      if (jobs.length >= maxResults || !data.hasNext) break;
+
+      const firstHref = data.cards[0]?.href ?? '';
+      const clicked = await clickNextPage(page).catch(() => false);
+      if (!clicked) break;
+
+      const swapped = await waitForPageSwap(page, firstHref, 15_000).catch(
+        () => false,
+      );
+      if (!swapped) break;
+
+      pageNumber++;
+    }
+
+    return jobs;
   }
-  return { email, apiKey };
+
+  private async enrichWithDetails(
+    page: Page,
+    jobs: UsaJobsRawJob[],
+    checkCancelled: () => void,
+  ): Promise<UsaJobsRawJob[]> {
+    const toEnrich = jobs.slice(0, MAX_DETAILS);
+    for (const job of toEnrich) {
+      checkCancelled();
+
+      if (!job.postingUrl) continue;
+
+      try {
+        await page.goto(job.postingUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: 30_000,
+        });
+        await page.waitForTimeout(2500);
+
+        const detail = await extractJobDetail(page);
+        job.description = summaryFromText(detail.text) ?? job.description;
+        job.detailPairs = detail.pairs;
+        job.detailText = detail.text;
+        job.applyUrls = detail.applyLinks;
+
+        await page
+          .goBack({ waitUntil: 'domcontentloaded' })
+          .catch(() => undefined);
+        await page.waitForTimeout(1500);
+        await new Promise((r) => setTimeout(r, 500 + Math.random() * 1000));
+      } catch {
+        // skip detail loading failures
+      }
+    }
+    return jobs;
+  }
+
+  private buildSearchUrl(keywords: string, location: string): string {
+    const url = new URL('https://www.usajobs.gov/Search/Results');
+    url.searchParams.set('k', keywords);
+    if (location.trim()) url.searchParams.set('l', location.trim());
+    url.searchParams.set('p', '1');
+    return url.toString();
+  }
+
+  private parseConfig(
+    configuration: Record<string, unknown>,
+  ): UsaJobsConfiguration {
+    return configurationSchema.parse(configuration);
+  }
+
+  private fetchFixture(): ProviderFetchResult {
+    const now = new Date();
+    return {
+      records: [
+        {
+          jobId: '815000001',
+          title: 'Network Administrator',
+          agency: 'Veterans Health Administration',
+          department: 'Department of Veterans Affairs',
+          location: 'Amarillo, TX',
+          dateText: `Posted ${monthDay(now)} · Apply by ${monthDay(addDays(now, 14))}`,
+          salaryText: '$82,764 - $107,590 Per Year',
+          workSchedule: 'Full-time',
+          appointmentType: 'Permanent',
+          postingUrl: 'https://www.usajobs.gov/job/815000001',
+          description:
+            'Provides network administration for the Amarillo VA Health Care System.',
+          detailPairs: [
+            { label: 'Salary', value: '$82,764 - $107,590 Per Year' },
+            { label: 'Pay scale & grade', value: 'GS 11' },
+            { label: 'Remote job', value: 'No' },
+            { label: 'Telework eligible', value: 'Yes' },
+            { label: 'Work schedule', value: 'Full-time' },
+            { label: 'Appointment type', value: 'Permanent' },
+          ],
+          detailText: [
+            'Network Administrator',
+            'Department of Veterans Affairs',
+            'Veterans Health Administration',
+            'Summary',
+            'Provides network administration for the Amarillo VA Health Care System.',
+          ].join('\n'),
+          applyUrls: ['https://www.usajobs.gov/apply/815000001'],
+        },
+        {
+          jobId: '815000002',
+          title: 'IT Specialist (SysAdmin)',
+          agency: 'U.S. Cyber Command',
+          department: 'Department of Defense',
+          location: 'Remote',
+          dateText: 'Posted this month',
+          salaryText: '$117,962 - $181,216 Per Year',
+          workSchedule: 'Full-time',
+          appointmentType: 'Permanent',
+          postingUrl: 'https://www.usajobs.gov/job/815000002',
+          description: 'System administration for cyber mission teams.',
+          detailPairs: [
+            { label: 'Salary', value: '$117,962 - $181,216 Per Year' },
+            { label: 'Pay scale & grade', value: 'GS 13-14' },
+            { label: 'Remote job', value: 'Yes' },
+            { label: 'Telework eligible', value: 'No' },
+            { label: 'Work schedule', value: 'Full-time' },
+            { label: 'Appointment type', value: 'Permanent' },
+          ],
+          detailText: [
+            'IT Specialist (SysAdmin)',
+            'Department of Defense',
+            'U.S. Cyber Command',
+            'Summary',
+            'System administration for cyber mission teams.',
+          ].join('\n'),
+          applyUrls: ['https://www.usajobs.gov/apply/815000002'],
+        },
+      ],
+      rejected: 0,
+      truncated: false,
+      complete: true,
+      queryDiagnostics: [],
+      plannedQueries: 1,
+      completedQueries: 1,
+      failedQueries: 0,
+      truncatedQueries: 0,
+    };
+  }
 }
 
-function firstLocation(raw: UsaJobsJob): {
-  name: string | null;
-  city: string | null;
-  state: string | null;
+function resolveProfileDefault(): string {
+  return 'usajobs-profile';
+}
+
+function absolutePostingUrl(href: string): string {
+  if (!href) return '';
+  if (/^https?:\/\//i.test(href)) return href;
+  return `https://www.usajobs.gov${href}`;
+}
+
+async function clickNextPage(page: Page): Promise<boolean> {
+  try {
+    await page.click('#page-m-next', { timeout: 5000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function waitForPageSwap(
+  page: Page,
+  previousFirstHref: string,
+  timeoutMs: number,
+): Promise<boolean> {
+  try {
+    await page.waitForFunction(
+      (prev: string) => {
+        const link = document.querySelector(
+          '#search-results h2 a[href*="/job/"]',
+        );
+        if (!link) return false;
+        return (link.getAttribute('href') ?? '') !== prev;
+      },
+      previousFirstHref,
+      { timeout: timeoutMs },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function pairValue(
+  pairs: { label: string; value: string }[],
+  labelPrefix: string,
+): string | null {
+  const lower = labelPrefix.toLowerCase();
+  const match = pairs.find((pair) =>
+    pair.label.toLowerCase().startsWith(lower),
+  );
+  return match ? clean(match.value) : null;
+}
+
+function parseGrade(value: string | null): {
+  payPlan: string | null;
+  low: string | null;
+  high: string | null;
 } {
-  const location = raw.PositionLocation?.[0];
+  if (!value) return { payPlan: null, low: null, high: null };
+  const match = /^([A-Za-z]+)\s*(\d+)\s*(?:[-–]\s*(\d+))?/.exec(value);
+  if (!match) return { payPlan: null, low: null, high: null };
   return {
-    name: clean(raw.PositionLocationDisplay) ?? clean(location?.LocationName),
-    city: clean(location?.CityName),
-    state: clean(location?.CountrySubDivisionCode),
+    payPlan: match[1]?.toUpperCase() ?? null,
+    low: match[2] ?? null,
+    high: match[3] ?? match[2] ?? null,
   };
 }
 
-function parseGrades(
-  grades: readonly z.infer<typeof namedValueSchema>[],
-  lowGrade: string | null | undefined,
-  highGrade: string | null | undefined,
-): { low: string | null; high: string | null; payPlan: string | null } {
-  const codes = grades
-    .map((grade) => clean(grade.Code))
-    .filter((code) => code !== null);
-  const parsed = codes.map((code) => /^(.*?)[- ]?(\d+[A-Za-z]?)$/.exec(code));
-  const firstCode = codes[0] ?? null;
-  const firstParsed = parsed[0];
-  const lastCode = codes.at(-1) ?? null;
-  const lastParsed = parsed.at(-1);
-  return {
-    low:
-      clean(lowGrade) ??
-      firstParsed?.[2] ??
-      (firstCode !== null && /^\d+[A-Za-z]?$/.test(firstCode)
-        ? firstCode
-        : null),
-    high:
-      clean(highGrade) ??
-      lastParsed?.[2] ??
-      (lastCode !== null && /^\d+[A-Za-z]?$/.test(lastCode) ? lastCode : null),
-    payPlan:
-      clean(firstParsed?.[1]?.replace(/[- ]+$/, '')) ??
-      (firstCode !== null && /[A-Za-z]/.test(firstCode) ? firstCode : null),
-  };
-}
-
-function firstName(
-  values: readonly z.infer<typeof namedValueSchema>[] | undefined,
+function parseDatePart(
+  text: string | null,
+  label: 'Posted' | 'Apply by' | 'Open' | 'to',
 ): string | null {
-  return clean(values?.[0]?.Name) ?? clean(values?.[0]?.Code);
-}
-
-function parseAmount(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined) return null;
-  const parsed =
-    typeof value === 'number' ? value : Number(value.replaceAll(',', ''));
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-}
-
-function formatSalary(
-  minimum: number | null,
-  maximum: number | null,
-  remuneration: z.infer<typeof remunerationSchema> | undefined,
-): string | null {
-  if (minimum === null && maximum === null)
-    return clean(remuneration?.Description);
-  const singleAmount = minimum ?? maximum;
-  const range =
-    minimum !== null && maximum !== null
-      ? `$${minimum.toLocaleString('en-US')} - $${maximum.toLocaleString('en-US')}`
-      : `$${singleAmount === null ? '' : singleAmount.toLocaleString('en-US')}`;
-  const rate = clean(remuneration?.RateIntervalCode);
-  return rate === null ? range : `${range} ${rate}`;
+  if (!text) return null;
+  const relative = toIsoDate(text);
+  const re = new RegExp(`${label}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})`, 'i');
+  const match = text.match(re);
+  if (!match?.[1]) return relative;
+  const [month, day, year] = match[1].split('/');
+  const yy = Number(year);
+  const fullYear = yy < 100 ? 2000 + yy : yy;
+  const date = new Date(Date.UTC(fullYear, Number(month) - 1, Number(day)));
+  return Number.isNaN(date.getTime()) ? relative : date.toISOString();
 }
 
 function inferRemoteType(
-  remote: boolean | null | undefined,
-  telework: boolean | null | undefined,
-): RemoteType {
-  if (remote === true) return 'remote';
-  if (telework === true) return 'hybrid';
-  if (remote === false || telework === false) return 'onsite';
+  remoteJob: string | null,
+  telework: string | null,
+): NormalizedJob['remoteType'] {
+  if (remoteJob !== null && /^yes/i.test(remoteJob)) return 'remote';
+  if (telework !== null && /^yes/i.test(telework)) return 'hybrid';
+  if (remoteJob !== null || telework !== null) return 'onsite';
   return 'unknown';
 }
 
 function inferEmploymentType(
   schedule: string | null,
   appointmentType: string | null,
-): EmploymentType {
+): NormalizedJob['employmentType'] {
   const value = `${schedule ?? ''} ${appointmentType ?? ''}`.toLowerCase();
   if (value.includes('part time') || value.includes('part-time'))
     return 'part-time';
@@ -513,21 +747,40 @@ function inferEmploymentType(
   return 'unknown';
 }
 
-function parseDate(value: string | null | undefined): string | null {
-  if (value === null || value === undefined) return null;
-  const timestamp = Date.parse(value);
-  return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString();
+function parseYesNo(value: string | null): boolean | null {
+  if (value === null) return null;
+  if (/^yes/i.test(value)) return true;
+  if (/^no/i.test(value)) return false;
+  return null;
 }
 
-function cleanHtml(value: string | null | undefined): string | null {
-  const cleaned = clean(value);
-  return cleaned === null ? null : clean(htmlToText(cleaned));
+function summaryFromText(text: string): string | null {
+  if (!text) return null;
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const index = lines.findIndex((line) => line.toLowerCase() === 'summary');
+  if (index === -1) return null;
+  const after = lines
+    .slice(index + 1)
+    .find((line) => !/^[A-Z]/.test(line) && line.length > 0);
+  return after ?? null;
 }
 
-function clean(value: string | null | undefined): string | null {
-  if (value === null || value === undefined) return null;
+function clean(value: string): string | null {
   const cleaned = value.trim();
   return cleaned.length === 0 ? null : cleaned;
+}
+
+function monthDay(date: Date): string {
+  return `${String(date.getMonth() + 1)}/${String(date.getDate())}/${String(date.getFullYear())}`;
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
 }
 
 export { UsaJobsProvider as USAJobsProvider };

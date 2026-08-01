@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -59,6 +59,47 @@ describe('sources control center', () => {
     );
   });
 
+  it('derives SmartRecruiters companyIdentifier from the careers URL on Validate', async () => {
+    mockApi();
+    renderPage();
+    await screen.findByText('Example USAJOBS');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Add source' }));
+    await user.selectOptions(screen.getByLabelText('Provider'), [
+      'smartrecruiters',
+    ]);
+    await user.type(
+      screen.getByLabelText('Public careers URL'),
+      'https://jobs.smartrecruiters.com/acmecorp',
+    );
+    await user.type(screen.getByLabelText('Employer'), 'Acme Corp');
+    const editor = screen.getByRole('region', { name: 'Source editor' });
+    await user.click(
+      within(editor).getByRole('button', { name: 'Validate' }),
+    );
+
+    expect(
+      await screen.findByText(/Validation succeeded .*Source is ready to save/),
+    ).toBeInTheDocument();
+  });
+
+  it('shows a helpful message when the careers URL is missing', async () => {
+    mockApi();
+    renderPage();
+    await screen.findByText('Example USAJOBS');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Add source' }));
+    await user.selectOptions(screen.getByLabelText('Provider'), ['icims']);
+    await user.type(screen.getByLabelText('Employer'), 'Acme Corp');
+    const editor = screen.getByRole('region', { name: 'Source editor' });
+    await user.click(
+      within(editor).getByRole('button', { name: 'Validate' }),
+    );
+    expect(
+      await screen.findByText(/Enter the iCIMS portal URL/),
+    ).toBeInTheDocument();
+  });
+
   it('shows the empty state without configured sources', async () => {
     mockApi([]);
     renderPage();
@@ -99,7 +140,7 @@ function renderPage() {
 function mockApi(sources: unknown[] = [sourceFixture()]) {
   vi.stubGlobal(
     'fetch',
-    vi.fn((input: string | URL | Request) => {
+    vi.fn((input: string | URL | Request, init?: RequestInit) => {
       const path =
         typeof input === 'string'
           ? input
@@ -141,7 +182,46 @@ function mockApi(sources: unknown[] = [sourceFixture()]) {
               credentialStatus: { configured: true, available: true },
               supportState: 'supported',
             },
+            {
+              id: 'icims',
+              name: 'iCIMS',
+              type: 'ats',
+              capabilities: {
+                keywordSearch: true,
+                locationSearch: true,
+                remoteFilter: true,
+                pagination: true,
+                compensation: false,
+                requiresCredentials: false,
+                structuredPreview: false,
+              },
+              credentialStatus: { configured: true, available: true },
+              supportState: 'supported',
+            },
           ]),
+        );
+      }
+      if (path.endsWith('/api/sources/validate')) {
+        const rawBody =
+          typeof init?.body === 'string'
+            ? init.body
+            : '{"providerId":"","configuration":{}}';
+        const body = JSON.parse(rawBody) as {
+          providerId: string;
+          configuration: Record<string, unknown>;
+        };
+        const identifier = body.configuration['companyIdentifier'];
+        const valid =
+          typeof identifier === 'string' && identifier.trim().length > 0;
+        return Promise.resolve(
+          response({
+            valid,
+            message: valid
+              ? 'SmartRecruiters configuration is valid'
+              : 'Company identifier must be a string',
+            normalizedConfiguration: body.configuration,
+            preview: null,
+          }),
         );
       }
       if (path.endsWith('/api/sources/detect')) {

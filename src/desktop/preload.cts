@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld('jobBrowserDesktop', {
     ipcRenderer.invoke('desktop:get-linkedin-profile-path'),
   clearLinkedInSession: () =>
     ipcRenderer.invoke('desktop:clear-linkedin-session'),
+  getUsaJobsProfilePath: () =>
+    ipcRenderer.invoke('desktop:get-usajobs-profile-path'),
+  clearUsaJobsSession: () =>
+    ipcRenderer.invoke('desktop:clear-usajobs-session'),
   onStartupProgress: (callback: (stage: string) => void) => {
     ipcRenderer.on('desktop:startup-progress', (_event, stage: string) =>
       callback(stage),
