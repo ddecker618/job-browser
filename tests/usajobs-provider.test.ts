@@ -1,28 +1,29 @@
+import type { Browser, BrowserContext, Page } from 'playwright';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/providers/linkedIn/browserSession.js', () => ({
-  launchBrowserSession: vi.fn(async () => ({
+  launchBrowserSession: vi.fn(() => ({
     page: {
-      waitForTimeout: vi.fn(async () => undefined),
-      goto: vi.fn(async () => undefined),
-      goBack: vi.fn(async () => undefined),
+      waitForTimeout: vi.fn(() => undefined),
+      goto: vi.fn(() => undefined),
+      goBack: vi.fn(() => undefined),
       url: vi.fn(() => 'https://www.usajobs.gov/Search/Results?k=test'),
-      waitForSelector: vi.fn(async () => true),
-      click: vi.fn(async () => undefined),
-      waitForFunction: vi.fn(async () => true),
-    } as unknown as import('playwright').Page,
-    context: {} as any,
+      waitForSelector: vi.fn(() => true),
+      click: vi.fn(() => undefined),
+      waitForFunction: vi.fn(() => true),
+    } as unknown as Page,
+    context: {} as BrowserContext,
     profileDir: '/mock/profile',
-    persistentContext: {} as any,
-    underlyingBrowser: {} as any,
+    persistentContext: {} as BrowserContext,
+    underlyingBrowser: {} as Browser,
   })),
-  closeBrowserSession: vi.fn(async () => undefined),
-  navigateWithRetry: vi.fn(async () => undefined),
-  takeDiagnosticScreenshot: vi.fn(async () => undefined),
+  closeBrowserSession: vi.fn(() => Promise.resolve(undefined)),
+  navigateWithRetry: vi.fn(() => Promise.resolve(undefined)),
+  takeDiagnosticScreenshot: vi.fn(() => Promise.resolve(undefined)),
 }));
 
 vi.mock('../src/providers/usajobs/browserSession.js', () => ({
-  ensureUsaJobsLogin: vi.fn(async () => false),
+  ensureUsaJobsLogin: vi.fn(() => false),
 }));
 
 vi.mock('../src/providers/usajobs/searchResultExtractor.js', () => ({
@@ -63,6 +64,37 @@ const rawFixtureRecord = {
     'Network Administrator\nDepartment of Veterans Affairs\nVeterans Health Administration\nSummary\nProvides network administration for the Amarillo VA.',
   applyUrls: ['https://www.usajobs.gov/apply/815000001'],
 };
+
+interface RawJob {
+  jobId: string;
+  title: string;
+  agency: string;
+  department: string;
+  location: string;
+  dateText: string;
+  salaryText: string | null;
+  workSchedule: string | null;
+  appointmentType: string | null;
+  postingUrl: string;
+  description: string | null;
+  detailPairs: { label: string; value: string }[];
+  detailText: string;
+  applyUrls: string[];
+}
+
+interface UsaJobsPrivateApi {
+  collectCards: (
+    page: Page,
+    maxResults: number,
+    remoteOnly: boolean,
+    checkCancelled: () => void,
+  ) => Promise<RawJob[]>;
+  enrichWithDetails: (
+    page: Page,
+    jobs: RawJob[],
+    checkCancelled: () => void,
+  ) => Promise<RawJob[]>;
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -139,7 +171,7 @@ describe('UsaJobsProvider', () => {
     expect(job.description).toContain('network administration');
   });
 
-  it('normalizes a remote job without telework as remote', async () => {
+  it('normalizes a remote job without telework as remote', () => {
     const provider = new UsaJobsProvider();
     const job = provider.normalize(
       {
@@ -172,12 +204,14 @@ describe('UsaJobsProvider', () => {
 
   it('all queries complete returns complete=true', async () => {
     const provider = new UsaJobsProvider();
-    vi.spyOn(provider as any, 'collectCards').mockResolvedValue([
-      rawFixtureRecord,
-    ]);
-    vi.spyOn(provider as any, 'enrichWithDetails').mockImplementation(
-      async (_page: unknown, ...args: unknown[]) => args[0],
-    );
+    vi.spyOn(
+      provider as unknown as UsaJobsPrivateApi,
+      'collectCards',
+    ).mockResolvedValue([rawFixtureRecord]);
+    vi.spyOn(
+      provider as unknown as UsaJobsPrivateApi,
+      'enrichWithDetails',
+    ).mockImplementation((_page, jobs) => Promise.resolve(jobs));
     const result = await provider.fetch(makeSearch());
     expect(result.complete).toBe(true);
     expect(result.completedQueries).toBe(4);
@@ -187,14 +221,20 @@ describe('UsaJobsProvider', () => {
   it('one failing query returns complete=false', async () => {
     const provider = new UsaJobsProvider();
     let callCount = 0;
-    vi.spyOn(provider as any, 'collectCards').mockImplementation(async () => {
+    vi.spyOn(
+      provider as unknown as UsaJobsPrivateApi,
+      'collectCards',
+    ).mockImplementation(() => {
       callCount++;
-      if (callCount === 2) throw new Error('Collect failed');
-      return [{ ...rawFixtureRecord, jobId: `job-${callCount}` }];
+      if (callCount === 2) return Promise.reject(new Error('Collect failed'));
+      return Promise.resolve([
+        { ...rawFixtureRecord, jobId: `job-${String(callCount)}` },
+      ]);
     });
-    vi.spyOn(provider as any, 'enrichWithDetails').mockImplementation(
-      async (_page: unknown, ...args: unknown[]) => args[0],
-    );
+    vi.spyOn(
+      provider as unknown as UsaJobsPrivateApi,
+      'enrichWithDetails',
+    ).mockImplementation((_page, jobs) => Promise.resolve(jobs));
     const result = await provider.fetch(makeSearch());
     expect(result.complete).toBe(false);
     expect(result.completedQueries).toBe(3);
@@ -204,18 +244,24 @@ describe('UsaJobsProvider', () => {
   it('duplicates are consolidated across queries', async () => {
     const provider = new UsaJobsProvider();
     let callCount = 0;
-    vi.spyOn(provider as any, 'collectCards').mockImplementation(async () => {
+    vi.spyOn(
+      provider as unknown as UsaJobsPrivateApi,
+      'collectCards',
+    ).mockImplementation(() => {
       callCount++;
-      return [
+      return Promise.resolve([
         rawFixtureRecord,
-        { ...rawFixtureRecord, jobId: `unique-${callCount}` },
-      ];
+        { ...rawFixtureRecord, jobId: `unique-${String(callCount)}` },
+      ]);
     });
-    vi.spyOn(provider as any, 'enrichWithDetails').mockImplementation(
-      async (_page: unknown, ...args: unknown[]) => args[0],
-    );
+    vi.spyOn(
+      provider as unknown as UsaJobsPrivateApi,
+      'enrichWithDetails',
+    ).mockImplementation((_page, jobs) => Promise.resolve(jobs));
     const result = await provider.fetch(makeSearch());
-    const uniqueIds = new Set(result.records.map((r: any) => r.jobId));
+    const uniqueIds = new Set(
+      result.records.map((r) => (r as { jobId?: string }).jobId),
+    );
     expect(uniqueIds.size).toBe(result.records.length);
     expect(uniqueIds.has('815000001')).toBe(true);
   });
@@ -262,7 +308,7 @@ describe('UsaJobsProvider', () => {
         },
       }),
     );
-    const ids = result.records.map((r: any) => r.jobId);
+    const ids = result.records.map((r) => (r as { jobId?: string }).jobId);
     expect(ids).toContain('remote-job');
     expect(ids).not.toContain('onsite-job');
   });

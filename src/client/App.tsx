@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router';
 
 import { AppLayout } from './components/AppLayout.js';
 import { LoadingState } from './components/States.js';

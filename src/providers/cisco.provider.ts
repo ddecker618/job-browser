@@ -20,7 +20,7 @@ export class CiscoProvider extends WorkdayProvider {
     company: 'Cisco',
   };
 
-  public override async validateConfiguration(
+  public override validateConfiguration(
     configuration: ProviderConfiguration,
   ): Promise<ValidationResult> {
     const merged = {
@@ -28,12 +28,12 @@ export class CiscoProvider extends WorkdayProvider {
       ...configuration,
     };
     const origin = new URL(merged.origin).origin;
-    return {
+    return Promise.resolve({
       valid: true,
       message: `${this.name} configuration is valid`,
       normalizedConfiguration: { ...merged, origin },
       preview: null,
-    };
+    });
   }
 
   public override search(

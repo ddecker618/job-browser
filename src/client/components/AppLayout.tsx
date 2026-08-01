@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router';
 import { desktopBridge } from '../desktop.js';
 import { api } from '../api.js';
 import { NotificationManager } from './NotificationManager.js';

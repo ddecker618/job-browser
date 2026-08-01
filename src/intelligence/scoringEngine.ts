@@ -234,9 +234,7 @@ function applyVerification(
       verification.illinoisEligibility === 'eligible' ||
       verification.illinoisEligibility === 'unrestricted'
         ? 'eligible'
-        : verification.illinoisEligibility === 'unknown'
-          ? 'unknown'
-          : 'ineligible';
+        : 'unknown';
     explanations.push(
       `Remote position: commute_status=not_applicable, remote_eligibility=${remoteEligibility}, illinois_eligibility=${verification.illinoisEligibility}`,
     );

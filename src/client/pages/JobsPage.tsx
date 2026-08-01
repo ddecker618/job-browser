@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 
 import type { JobSearchQuery } from '../../models/job-search.js';
 import { api } from '../api.js';

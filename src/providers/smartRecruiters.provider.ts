@@ -99,7 +99,7 @@ function normalizeCompanyIdentifier(value: string): string {
       host !== 'careers.smartrecruiters.com'
     )
       return value;
-    const slug = url.pathname.split('/').filter(Boolean)[0];
+    const slug = url.pathname.split('/').find(Boolean);
     return slug === undefined ? '' : decodeURIComponent(slug);
   } catch {
     return value;

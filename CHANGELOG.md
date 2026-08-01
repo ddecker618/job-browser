@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.9] — 2026-08-01
+
+### Changed
+
+- Upgraded dependencies to clear GitHub Dependabot advisories (22 alerts down to 0): `react-router-dom@7` replaced with `react-router@8.3.0` (fixes the React Server Components CSRF bypass advisory); removed the unused `@modelcontextprotocol/sdk` (drops the vulnerable `@hono/node-server` and its Windows serve-static path traversal); bumped `electron-builder` to 26.15.3, `vitest` to 4.1.10, `tsx` to 4.23.1, and `sharp` to 0.35.3. Added npm `overrides` pinning `brace-expansion` to patched releases (1.1.17 / 2.1.3) so transitive tooling deps no longer resolve vulnerable versions.
+- Migrated the client's React Router imports from `react-router-dom` to `react-router` (v8 packages everything under the main entry).
+
+### Fixed
+
+- Cleared the 133 pre-existing ESLint errors across `src/intelligence/scoringEngine.ts`, `src/providers/cisco.provider.ts`, `src/providers/crowdstrike.provider.ts`, `src/providers/smartRecruiters.provider.ts`, and the dice-completion, query-budget, usajobs-provider, and discovery-coordinator test suites: removed needless `async`/`any`, replaced `filter()[0]` with `find()`, wrapped numeric template interpolations, and dropped unused variables. No runtime behavior changes.
+
+### Verification
+
+- ESLint clean (0 errors), strict typecheck green, full suite passes: 58 test files and 393 tests, `npm audit` reports 0 vulnerabilities.
+
 ## [1.0.8] — 2026-07-31
 
 ### Fixed

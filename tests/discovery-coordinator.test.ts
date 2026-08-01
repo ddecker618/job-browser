@@ -36,7 +36,7 @@ describe('discovery coordinator', () => {
     runMigrations(database);
     const registry = new ProviderRegistry();
     registry.register(new AshbyProvider());
-    const sources = prepareAshbySource(database, registry);
+    prepareAshbySource(database, registry);
     const coordinator = new DiscoveryCoordinator(database, registry, {
       credentialResolver: unavailableCredentialResolver,
     });
@@ -62,7 +62,7 @@ describe('discovery coordinator', () => {
     runMigrations(database);
     const registry = new ProviderRegistry();
     registry.register(new AshbyProvider());
-    const sources = prepareAshbySource(database, registry);
+    prepareAshbySource(database, registry);
     const coordinator = new DiscoveryCoordinator(database, registry, {
       credentialResolver: unavailableCredentialResolver,
     });
@@ -194,9 +194,7 @@ describe('discovery coordinator', () => {
     expect(sources.get('provider:ashby')?.schedule.nextRunAt).toBe(dueAt);
     sources.setEnabled('provider:ashby', true);
     await coordinator.runSource('provider:ashby', 'scheduled');
-    expect(sources.get('provider:ashby')?.schedule.nextRunAt).not.toBe(
-      dueAt,
-    );
+    expect(sources.get('provider:ashby')?.schedule.nextRunAt).not.toBe(dueAt);
     await coordinator.stop();
   });
 
