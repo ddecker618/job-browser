@@ -254,6 +254,32 @@ export class DiscoveryStore {
     })();
   }
 
+  public interruptRun(
+    providerId: string,
+    sourceId: string,
+    runId: string,
+    details: FailedRunDetails,
+  ): void {
+    const completedAt = nowUtc();
+    this.database.transaction(() => {
+      this.database
+        .prepare(
+          `UPDATE runs SET
+            status = 'interrupted', completed_at = ?, error_message = ?,
+            execution_time_ms = ?, stack_trace = ?, html_snapshot_path = ?
+           WHERE id = ?`,
+        )
+        .run(
+          completedAt,
+          details.errorMessage,
+          details.executionTimeMs,
+          details.stackTrace,
+          details.htmlSnapshotPath,
+          runId,
+        );
+    })();
+  }
+
   public failRun(
     providerId: string,
     sourceId: string,

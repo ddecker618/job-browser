@@ -59,6 +59,7 @@ export interface ProviderFetchResult {
   truncated: boolean;
   complete: boolean;
   unfilteredCount?: number;
+  emptyNotice?: string | null;
   queryDiagnostics?: QueryDiagnostics[];
   plannedQueries?: number;
   completedQueries?: number;
@@ -85,4 +86,5 @@ export interface DiscoverySummary {
   retryCount: number;
   jobsFailed: number;
   executionTimeMs: number;
+  emptyNotice?: string | null;
 }

@@ -138,7 +138,7 @@ describe('source repository', () => {
     expect(repository.recoverInterruptedRuns()).toBe(1);
     expect(repository.recentRuns()[0]).toMatchObject({
       id: run.runId,
-      status: 'failed',
+      status: 'interrupted',
       error: 'Discovery was interrupted when Job Browser stopped',
     });
   });

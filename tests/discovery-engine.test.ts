@@ -6,8 +6,10 @@ import type { LogLevel } from '../src/logging/logger.js';
 import { ProviderRegistry } from '../src/providers/providerRegistry.js';
 import { BuiltInProvider } from '../src/providers/builtin.provider.js';
 import type {
+  DiscoveryOptions,
   ProviderFetchResult,
   ProviderSearch,
+  SearchRequest,
 } from '../src/models/discovery.js';
 import { JobRepository } from '../src/repositories/job-repository.js';
 import { createTestDatabase } from './helpers/test-database.js';
@@ -55,7 +57,11 @@ describe('DiscoveryEngine', () => {
   afterEach(() => database.close());
 
   it('inserts fixture jobs and records provider/run metadata and metrics', async () => {
-    const summary = await createEngine().run('builtin', request(), fixtureOptions());
+    const summary = await createEngine().run(
+      'builtin',
+      request(),
+      fixtureOptions(),
+    );
 
     expect(summary).toMatchObject({
       providerId: 'builtin',
@@ -155,7 +161,11 @@ describe('DiscoveryEngine', () => {
       )
       .run();
 
-    await createEngine().run('builtin', request(), fixtureOptions('configured'));
+    await createEngine().run(
+      'builtin',
+      request(),
+      fixtureOptions('configured'),
+    );
 
     expect(
       database
@@ -222,7 +232,11 @@ describe('DiscoveryEngine', () => {
     registry.register(provider);
     const engine = createEngine();
     await engine.run('builtin', request(), fixtureOptions('source:primary'));
-    const attached = await engine.run('builtin', request(), fixtureOptions('source:secondary'));
+    const attached = await engine.run(
+      'builtin',
+      request(),
+      fixtureOptions('source:secondary'),
+    );
     expect(attached.crossSourceMerges).toBe(1);
 
     provider.empty = true;
@@ -239,6 +253,130 @@ describe('DiscoveryEngine', () => {
         >('SELECT COUNT(*) AS inactive FROM jobs WHERE active = 0')
         .get()?.inactive,
     ).toBe(0);
+  });
+
+  it('records an empty live discovery run as succeeded instead of failed', async () => {
+    const provider = new EmptyLiveProvider();
+    registry = new ProviderRegistry();
+    registry.register(provider);
+    const summary = await createEngine().run('builtin', request(), {
+      fixtureOnly: false,
+    });
+
+    expect(summary).toMatchObject({
+      providerId: 'builtin',
+      jobsFound: 0,
+      jobsInserted: 0,
+      jobsFailed: 0,
+      emptyNotice: 'No open positions found',
+      completeSnapshot: true,
+    });
+    const runRow = database
+      .prepare<
+        [string],
+        Pick<RunRow, 'status' | 'jobs_discovered' | 'complete_snapshot'>
+      >('SELECT status, jobs_discovered, complete_snapshot FROM runs WHERE id = ?')
+      .get(summary.runId);
+    expect(runRow).toEqual({
+      status: 'succeeded',
+      jobs_discovered: 0,
+      complete_snapshot: 1,
+    });
+    expect(
+      database
+        .prepare<
+          [],
+          { failure_count: number; last_failure: string | null }
+        >("SELECT failure_count, last_failure FROM provider_metadata WHERE provider_id = 'builtin'")
+        .get(),
+    ).toEqual({ failure_count: 0, last_failure: null });
+    expect(
+      database
+        .prepare<
+          [],
+          { failure_count: number; last_failure: string | null }
+        >("SELECT failure_count, last_failure FROM sources WHERE id = 'provider:builtin'")
+        .get(),
+    ).toEqual({ failure_count: 0, last_failure: null });
+  });
+
+  it('records a filter-mismatch live run as succeeded without completing a snapshot', async () => {
+    const provider = new EmptyLiveProvider();
+    provider.unfilteredCount = 5;
+    registry = new ProviderRegistry();
+    registry.register(provider);
+    const summary = await createEngine().run('builtin', request(), {
+      fixtureOnly: false,
+    });
+
+    expect(summary).toMatchObject({
+      emptyNotice: 'No jobs matched current filters',
+      completeSnapshot: false,
+    });
+    const runRow = database
+      .prepare<
+        [string],
+        { status: string; complete_snapshot: number }
+      >('SELECT status, complete_snapshot FROM runs WHERE id = ?')
+      .get(summary.runId);
+    expect(runRow).toEqual({ status: 'succeeded', complete_snapshot: 0 });
+  });
+
+  it('prefers the provider-supplied empty notice', async () => {
+    const provider = new EmptyLiveProvider();
+    provider.notice = 'Board responded but has no matching roles';
+    registry = new ProviderRegistry();
+    registry.register(provider);
+    const summary = await createEngine().run('builtin', request(), {
+      fixtureOnly: false,
+    });
+
+    expect(summary.emptyNotice).toBe(
+      'Board responded but has no matching roles',
+    );
+  });
+
+  it('records an aborted live run as interrupted without counting a failure', async () => {
+    const controller = new AbortController();
+    const provider = new AbortableProvider();
+    registry = new ProviderRegistry();
+    registry.register(provider);
+    const runPromise = createEngine().run('builtin', request(), {
+      fixtureOnly: false,
+      signal: controller.signal,
+    });
+    await provider.started;
+    controller.abort();
+
+    await expect(runPromise).rejects.toThrow(
+      'Discovery was interrupted when Job Browser stopped',
+    );
+    const runRow = database
+      .prepare<
+        [],
+        { status: string; error_message: string | null }
+      >('SELECT status, error_message FROM runs ORDER BY started_at DESC LIMIT 1')
+      .get();
+    expect(runRow).toEqual({
+      status: 'interrupted',
+      error_message: 'Discovery was interrupted when Job Browser stopped',
+    });
+    expect(
+      database
+        .prepare<
+          [],
+          { failure_count: number; last_failure: string | null }
+        >("SELECT failure_count, last_failure FROM provider_metadata WHERE provider_id = 'builtin'")
+        .get(),
+    ).toEqual({ failure_count: 0, last_failure: null });
+    expect(
+      database
+        .prepare<
+          [],
+          { failure_count: number; last_failure: string | null }
+        >("SELECT failure_count, last_failure FROM sources WHERE id = 'provider:builtin'")
+        .get(),
+    ).toEqual({ failure_count: 0, last_failure: null });
   });
 
   function createEngine(): DiscoveryEngine {
@@ -282,6 +420,57 @@ class SnapshotBuiltInProvider extends BuiltInProvider {
       complete: this.complete,
       truncated: !this.complete,
     };
+  }
+}
+
+class EmptyLiveProvider extends BuiltInProvider {
+  public unfilteredCount = 0;
+  public notice: string | null = null;
+
+  public override search(request: SearchRequest): Promise<ProviderSearch> {
+    return Promise.resolve({
+      request,
+      target: 'https://builtin.com/jobs',
+      fixturePath: null,
+    });
+  }
+
+  public override fetch(): Promise<ProviderFetchResult> {
+    return Promise.resolve({
+      records: [],
+      rejected: 0,
+      truncated: false,
+      complete: true,
+      unfilteredCount: this.unfilteredCount,
+      emptyNotice: this.notice,
+    });
+  }
+}
+
+class AbortableProvider extends BuiltInProvider {
+  private resolveStarted!: () => void;
+  public readonly started = new Promise<void>((resolve) => {
+    this.resolveStarted = resolve;
+  });
+
+  public override search(
+    request: SearchRequest,
+    options: DiscoveryOptions,
+  ): Promise<ProviderSearch> {
+    this.resolveStarted();
+    return new Promise((_resolve, reject) => {
+      options.signal?.addEventListener(
+        'abort',
+        () => {
+          reject(
+            options.signal?.reason instanceof Error
+              ? options.signal.reason
+              : new Error('Discovery aborted'),
+          );
+        },
+        { once: true },
+      );
+    });
   }
 }
 

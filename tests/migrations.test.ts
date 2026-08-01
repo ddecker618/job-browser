@@ -56,6 +56,7 @@ describe('migration runner', () => {
       '012_verification_columns.sql',
       '013_scoring_version_and_backfill.sql',
       '014_legacy_remote_ok_sources.sql',
+      '015_interrupted_run_status.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -185,6 +186,7 @@ describe('migration runner', () => {
       '012_verification_columns.sql',
       '013_scoring_version_and_backfill.sql',
       '014_legacy_remote_ok_sources.sql',
+      '015_interrupted_run_status.sql',
     ]);
     expect(
       database
@@ -323,6 +325,7 @@ describe('migration runner', () => {
       '012_verification_columns.sql',
       '013_scoring_version_and_backfill.sql',
       '014_legacy_remote_ok_sources.sql',
+      '015_interrupted_run_status.sql',
     ]);
 
     const remaining = database

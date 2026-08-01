@@ -347,14 +347,23 @@ export class LeverProvider extends BaseProvider {
 
     if (finalImportedCount === 0) {
       if (rawJobCount === 0) {
-        throw new Error(
-          'Lever board responded successfully but currently has no open positions.',
-        );
+        return {
+          records: [],
+          rejected,
+          truncated: false,
+          complete: true,
+          unfilteredCount: 0,
+          emptyNotice: 'No open positions found',
+        };
       }
-      if (parsedJobCount === 0) {
-        throw new Error('Lever response parsing failed.');
-      }
-      throw new Error('No jobs matched the configured filters.');
+      return {
+        records: [],
+        rejected,
+        truncated: false,
+        complete: true,
+        unfilteredCount: parsedJobCount,
+        emptyNotice: 'No jobs matched current filters',
+      };
     }
 
     return {

@@ -27,7 +27,15 @@ export function DiscoveryRunPanel({ runs }: { runs: DiscoveryRunView[] }) {
                 {run.jobsInserted} new · {run.duplicatesMerged} merged
               </span>
               {run.error === null ? null : (
-                <span className="source-error">{run.error}</span>
+                <span
+                  className={
+                    run.status === 'interrupted'
+                      ? 'source-note'
+                      : 'source-error'
+                  }
+                >
+                  {run.error}
+                </span>
               )}
             </div>
           ))}

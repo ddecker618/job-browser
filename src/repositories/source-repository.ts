@@ -561,7 +561,7 @@ export class SourceRepository {
     const timestamp = nowUtc();
     return this.database
       .prepare(
-        `UPDATE runs SET status = 'failed', completed_at = ?,
+        `UPDATE runs SET status = 'interrupted', completed_at = ?,
           error_message = 'Discovery was interrupted when Job Browser stopped'
          WHERE status IN ('pending', 'running')`,
       )

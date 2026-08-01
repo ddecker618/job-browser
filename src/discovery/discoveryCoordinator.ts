@@ -229,24 +229,28 @@ export class DiscoveryCoordinator {
           summaries.push(summary);
         }
         completedSuccessfully = true;
+        const lastSummary = summaries[summaries.length - 1];
         this.sources.setHealth(
           source.id,
           'healthy',
-          'Latest discovery completed successfully',
+          lastSummary?.emptyNotice ?? 'Latest discovery completed successfully',
         );
       } catch (error) {
-        const translated = translateError(error);
-        if (!runStarted)
-          this.store.recordPreflightFailure(source, sourceId, trigger, error);
-        if (source !== null) {
-          const credentialsRequired = translated.startsWith('Authentication');
-          this.sources.setHealth(
-            source.id,
-            credentialsRequired ? 'credentials-required' : 'failed',
-            translated,
-          );
+        const interrupted = controller.signal.aborted;
+        if (!interrupted) {
+          const translated = translateError(error);
+          if (!runStarted)
+            this.store.recordPreflightFailure(source, sourceId, trigger, error);
+          if (source !== null) {
+            const credentialsRequired = translated.startsWith('Authentication');
+            this.sources.setHealth(
+              source.id,
+              credentialsRequired ? 'credentials-required' : 'failed',
+              translated,
+            );
+          }
+          this.statusValue.lastError = translated;
         }
-        this.statusValue.lastError = translated;
       } finally {
         this.activeController = null;
         if (completedSuccessfully && trigger === 'scheduled' && source !== null)

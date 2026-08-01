@@ -44,14 +44,13 @@ export class DiscoveryEngine {
       const search = await provider.search(request, options);
       const fetchResult = await provider.fetch(search);
       const rawJobs = fetchResult.records;
-      if (rawJobs.length === 0 && !options.fixtureOnly) {
-        const unfiltered = fetchResult.unfilteredCount ?? 0;
-        if (unfiltered > 0) {
-          throw new Error('No jobs matched current filters');
-        } else {
-          throw new Error('No open positions found');
-        }
-      }
+      const emptyNotice =
+        rawJobs.length === 0 && !options.fixtureOnly
+          ? (fetchResult.emptyNotice ??
+            ((fetchResult.unfilteredCount ?? 0) > 0
+              ? 'No jobs matched current filters'
+              : 'No open positions found'))
+          : null;
       let jobsInserted = 0;
       let rediscoveries = 0;
       let crossSourceMerges = 0;
@@ -89,6 +88,7 @@ export class DiscoveryEngine {
       }
 
       const completeSnapshot =
+        emptyNotice !== 'No jobs matched current filters' &&
         fetchResult.complete &&
         !fetchResult.truncated &&
         fetchResult.rejected === 0 &&
@@ -113,19 +113,44 @@ export class DiscoveryEngine {
         retryCount: 0,
         jobsFailed,
         executionTimeMs: elapsedMilliseconds(started),
+        emptyNotice,
       };
       this.store.completeRun(summary);
-      this.writeLog('info', 'Discovery run completed', {
-        provider: provider.id,
-        ...summary,
-        searchParameters: request,
-        fetchTruncated: fetchResult.truncated,
-        fetchComplete: fetchResult.complete,
-      });
+      this.writeLog(
+        emptyNotice === null ? 'info' : 'warn',
+        emptyNotice === null
+          ? 'Discovery run completed'
+          : 'Discovery run completed with no results',
+        {
+          provider: provider.id,
+          ...summary,
+          searchParameters: request,
+          fetchTruncated: fetchResult.truncated,
+          fetchComplete: fetchResult.complete,
+        },
+      );
       return summary;
     } catch (error) {
       const executionTimeMs = elapsedMilliseconds(started);
       const details = errorContext(error);
+      if (options.signal?.aborted === true) {
+        this.store.interruptRun(provider.id, run.sourceId, run.runId, {
+          executionTimeMs,
+          errorMessage: 'Discovery was interrupted when Job Browser stopped',
+          stackTrace: null,
+          htmlSnapshotPath: null,
+        });
+        this.writeLog('warn', 'Discovery run interrupted', {
+          provider: provider.id,
+          runId: run.runId,
+          executionTimeMs,
+          searchParameters: request,
+          ...details,
+        });
+        throw new Error('Discovery was interrupted when Job Browser stopped', {
+          cause: error,
+        });
+      }
       this.store.failRun(provider.id, run.sourceId, run.runId, {
         executionTimeMs,
         errorMessage: details.error,

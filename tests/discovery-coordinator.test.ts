@@ -212,6 +212,85 @@ describe('discovery coordinator', () => {
     expect(provider.aborted).toBe(true);
     await expect(running).resolves.toEqual([]);
     expect(coordinator.status().running).toBe(false);
+    const runRow = database
+      .prepare<
+        [],
+        { status: string; error_message: string | null }
+      >('SELECT status, error_message FROM runs ORDER BY started_at DESC LIMIT 1')
+      .get();
+    expect(runRow).toEqual({
+      status: 'interrupted',
+      error_message: 'Discovery was interrupted when Job Browser stopped',
+    });
+    expect(
+      database
+        .prepare<
+          [],
+          { failure_count: number; last_failure: string | null }
+        >("SELECT failure_count, last_failure FROM sources WHERE id = 'provider:ashby'")
+        .get(),
+    ).toEqual({ failure_count: 0, last_failure: null });
+    expect(
+      database
+        .prepare<
+          [],
+          { health_status: string }
+        >("SELECT health_status FROM sources WHERE id = 'provider:ashby'")
+        .get()?.health_status,
+    ).not.toBe('failed');
+  });
+
+  it('keeps a source healthy with a notice when discovery finds no jobs', async () => {
+    const database = createDatabase();
+    const registry = new ProviderRegistry();
+    registry.register(new EmptyResultsProvider());
+    const sources = new SourceRepository(database);
+    sources.reconcileProviders(registry.list());
+    const created = sources.create(
+      {
+        displayName: 'Empty',
+        employer: 'Empty',
+        providerId: 'empty',
+        careersUrl: null,
+        configuration: {},
+        searchCriteria: {
+          query: 'security',
+          location: null,
+          remoteOnly: true,
+          limit: 10,
+        },
+        enabled: true,
+        schedule: { enabled: false, cadence: 'manual', dailyLocalTime: null },
+      },
+      'valid',
+    );
+    const coordinator = createCoordinator(database, registry);
+
+    await coordinator.runSource(created.id, 'manual-source');
+
+    expect(sources.get(created.id)).toMatchObject({
+      healthStatus: 'healthy',
+      healthMessage: 'No open positions found',
+      failureCount: 0,
+      lastFailure: null,
+    });
+    expect(
+      database
+        .prepare<
+          [],
+          { count: number }
+        >("SELECT COUNT(*) AS count FROM runs WHERE status = 'failed'")
+        .get()?.count,
+    ).toBe(0);
+    expect(
+      database
+        .prepare<
+          [],
+          { count: number }
+        >("SELECT COUNT(*) AS count FROM runs WHERE status = 'succeeded'")
+        .get()?.count,
+    ).toBe(1);
+    await coordinator.stop();
   });
 });
 
@@ -313,6 +392,44 @@ class FixtureAshbyProvider extends AshbyProvider {
     options: DiscoveryOptions,
   ): Promise<ProviderSearch> {
     return super.search(request, { ...options, fixtureOnly: true });
+  }
+}
+
+class EmptyResultsProvider extends BaseProvider {
+  public readonly id = 'empty';
+  public readonly name = 'Empty';
+  public readonly type = 'job-board' as const;
+  public readonly capabilities = {
+    keywordSearch: true,
+    locationSearch: true,
+    remoteFilter: true,
+    pagination: false,
+    compensation: false,
+    requiresCredentials: false,
+    structuredPreview: true,
+  } as const;
+
+  public search(request: SearchRequest): Promise<ProviderSearch> {
+    return Promise.resolve({
+      request,
+      target: 'https://example.com/jobs',
+      fixturePath: null,
+    });
+  }
+
+  public fetch(): Promise<ProviderFetchResult> {
+    return Promise.resolve({
+      records: [],
+      rejected: 0,
+      truncated: false,
+      complete: true,
+      unfilteredCount: 0,
+      emptyNotice: 'No open positions found',
+    });
+  }
+
+  public normalize(): NormalizedJob {
+    throw new Error('EmptyResultsProvider never returns records');
   }
 }
 

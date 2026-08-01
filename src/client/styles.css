@@ -1020,6 +1020,13 @@ kbd {
 .health-badge.failed i {
   background: var(--red);
 }
+.health-badge.interrupted i {
+  background: var(--amber);
+}
+.source-note {
+  grid-column: 2/-1;
+  color: var(--muted);
+}
 .source-card dl {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
