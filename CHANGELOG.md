@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.11] — 2026-08-01
+
+### Fixed
+
+- Startup no longer hangs for several seconds while migration `015_interrupted_run_status.sql` applies to a large database. The migration's deferred foreign-key cleanup rescanned the full `job_observations` table for every deleted run (~18s on a database with ~10k observations), freezing the app long enough for Windows to flag it as unresponsive and close it before the migration could commit. Temporary indexes on the referencing columns keep those lookups index-driven, cutting the migration to ~1.4s. The app now starts and completes the upgrade normally.
+
+### Verification
+
+- Full suite passes: 58 test files and 398 tests, strict typecheck green, ESLint clean (0 errors). Verified against a copy of the real database: 709 runs, 9,780 observations, 969 source references, and 21 diagnostics all preserved with zero foreign-key violations; the migration applies in ~1.4s.
+
 ## [1.0.10] — 2026-08-01
 
 ### Fixed

@@ -31,6 +31,17 @@ WHERE last_seen_run_id IS NOT NULL;
 
 PRAGMA defer_foreign_keys = ON;
 
+-- The ON DELETE SET NULL actions fired by DROP TABLE runs below are deferred
+-- until defer_foreign_keys is switched off again, at which point SQLite must
+-- locate every child row for each deleted run. Without an index on the
+-- referencing columns each lookup rescans the entire child table, which is
+-- pathologically slow on large databases (the migration took ~18s on a
+-- database with ~10k observations). The temporary indexes below keep those
+-- lookups index-driven; they are dropped once the rebuild completes.
+CREATE INDEX _tmp_runs_fk_job_observations ON job_observations(run_id);
+CREATE INDEX _tmp_runs_fk_diagnostics ON identity_conflict_diagnostics(run_id);
+CREATE INDEX _tmp_runs_fk_sources ON job_sources(last_seen_run_id);
+
 CREATE TABLE runs_new (
   id TEXT PRIMARY KEY,
   source_id TEXT REFERENCES sources(id) ON DELETE SET NULL,
@@ -129,4 +140,7 @@ UPDATE runs SET status = 'interrupted'
  WHERE status = 'failed'
    AND error_message = 'Discovery was interrupted when Job Browser stopped';
 
+DROP INDEX _tmp_runs_fk_job_observations;
+DROP INDEX _tmp_runs_fk_diagnostics;
+DROP INDEX _tmp_runs_fk_sources;
 DROP TABLE _runs_fk_backup;
