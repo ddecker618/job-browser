@@ -21,7 +21,6 @@ config/scoring-config.json
 SESSION_HANDOFF.md
 
 artifacts/
-screenshots/
 snapshots/
 logs/
 
