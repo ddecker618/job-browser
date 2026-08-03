@@ -43,6 +43,7 @@ const DEFAULT_TARGET_ROLES = [
 const BROWSER_PROFILE_DIRECTORIES = [
   'linkedin-profile',
   'dice-profile',
+  'handshake-profile',
   'indeed-profile',
   'wellfound-profile',
   'ziprecruiter-profile',

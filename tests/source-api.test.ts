@@ -44,11 +44,12 @@ describe('source management API', () => {
         'wellfound',
         'ziprecruiter',
         'dice',
+        'handshake',
         'indeed',
         'usajobs',
       ]),
     );
-    expect(control.sources).toHaveLength(6);
+    expect(control.sources).toHaveLength(7);
     expect(
       control.sources
         .filter((source) => source.enabled)
@@ -84,6 +85,7 @@ describe('source management API', () => {
         'builtin',
         'linkedin',
         'dice',
+        'handshake',
         'wellfound',
         'ziprecruiter',
       ]),

@@ -74,9 +74,7 @@ describe('sources control center', () => {
     );
     await user.type(screen.getByLabelText('Employer'), 'Acme Corp');
     const editor = screen.getByRole('region', { name: 'Source editor' });
-    await user.click(
-      within(editor).getByRole('button', { name: 'Validate' }),
-    );
+    await user.click(within(editor).getByRole('button', { name: 'Validate' }));
 
     expect(
       await screen.findByText(/Validation succeeded .*Source is ready to save/),
@@ -92,12 +90,25 @@ describe('sources control center', () => {
     await user.selectOptions(screen.getByLabelText('Provider'), ['icims']);
     await user.type(screen.getByLabelText('Employer'), 'Acme Corp');
     const editor = screen.getByRole('region', { name: 'Source editor' });
-    await user.click(
-      within(editor).getByRole('button', { name: 'Validate' }),
-    );
+    await user.click(within(editor).getByRole('button', { name: 'Validate' }));
     expect(
       await screen.findByText(/Enter the iCIMS portal URL/),
     ).toBeInTheDocument();
+  });
+
+  it('explains the first-run Handshake login and session behavior', async () => {
+    mockApi();
+    renderPage();
+    await screen.findByText('Example USAJOBS');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Add source' }));
+    await user.selectOptions(screen.getByLabelText('Provider'), ['handshake']);
+
+    expect(screen.getByText('Handshake provider notice:')).toBeInTheDocument();
+    expect(
+      screen.getByText(/choose your school and complete its SSO\/MFA flow/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Work arrangement')).toBeInTheDocument();
   });
 
   it('shows the empty state without configured sources', async () => {
@@ -181,6 +192,23 @@ function mockApi(sources: unknown[] = [sourceFixture()]) {
               },
               credentialStatus: { configured: true, available: true },
               supportState: 'supported',
+            },
+            {
+              id: 'handshake',
+              name: 'Handshake',
+              type: 'job-board',
+              capabilities: {
+                keywordSearch: true,
+                locationSearch: false,
+                remoteFilter: true,
+                pagination: true,
+                compensation: true,
+                requiresCredentials: false,
+                structuredPreview: false,
+                interactiveBrowser: true,
+              },
+              credentialStatus: { configured: true, available: true },
+              supportState: 'supported-with-configuration',
             },
             {
               id: 'icims',

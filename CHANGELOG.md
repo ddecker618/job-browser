@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Added a Handshake browser provider with a dedicated persistent profile, first-run school/SSO/MFA login, multi-query job search, remote/hybrid/on-site filters, explicit pagination, GraphQL response parsing, salary and closing-date normalization, and a disabled starter source. The application never collects Handshake credentials and reuses only the locally stored browser session.
+
+### Verification
+
+- Full suite passes: 60 test files and 409 tests, strict typecheck green, ESLint clean, touched-file formatting clean, and Electron desktop smoke test passed.
+
 ## [1.0.11] — 2026-08-01
 
 ### Fixed

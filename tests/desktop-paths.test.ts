@@ -39,6 +39,8 @@ describe('desktop paths', () => {
     initializeDesktopPaths(paths, defaults);
 
     expect(paths.database).toBe(join(root, 'data', 'jobs.sqlite'));
+    expect(paths.handshakeProfile).toBe(join(root, 'handshake-profile'));
+    expect(existsSync(paths.handshakeProfile)).toBe(true);
     expect(readFileSync(paths.candidateProfile, 'utf8')).toBe(
       '{"custom":true}',
     );

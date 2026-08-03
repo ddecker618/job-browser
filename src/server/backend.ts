@@ -25,6 +25,7 @@ import { loadCandidateProfile } from '../config/candidate-profile.js';
 import { loadScoringConfig } from '../config/scoring-config.js';
 import { LinkedInProvider } from '../providers/linkedIn.provider.js';
 import { DiceProvider } from '../providers/dice.provider.js';
+import { HandshakeProvider } from '../providers/handshake.provider.js';
 import { IndeedProvider } from '../providers/indeed.provider.js';
 import { WellfoundProvider } from '../providers/wellfound.provider.js';
 import { ZipRecruiterProvider } from '../providers/ziprecruiter.provider.js';
@@ -44,6 +45,7 @@ export interface BackendOptions extends AppOptions {
   seedDefaultSources?: boolean;
   linkedinProfile?: string;
   diceProfile?: string;
+  handshakeProfile?: string;
   indeedProfile?: string;
   wellfoundProfile?: string;
   ziprecruiterProfile?: string;
@@ -102,6 +104,12 @@ export async function startBackend(
       const dice = providerRegistry.get('dice');
       if (dice instanceof DiceProvider) {
         dice.setBrowserProfileDir(options.diceProfile);
+      }
+    }
+    if (options.handshakeProfile) {
+      const handshake = providerRegistry.get('handshake');
+      if (handshake instanceof HandshakeProvider) {
+        handshake.setBrowserProfileDir(options.handshakeProfile);
       }
     }
     if (options.indeedProfile) {

@@ -9,6 +9,7 @@ logs/
 playwright-report/
 test-results/
 dice-profile/
+handshake-profile/
 wellfound-profile/
 ziprecruiter-profile/
 package-lock.json

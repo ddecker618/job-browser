@@ -1,0 +1,70 @@
+{
+  "data": {
+    "jobSearch": {
+      "totalCount": 2,
+      "pageInfo": {
+        "hasNextPage": false
+      },
+      "edges": [
+        {
+          "node": {
+            "job": {
+              "id": "hs-1001",
+              "title": "Junior Security Operations Analyst",
+              "description": "<p>Monitor SIEM alerts and document security incidents.</p>",
+              "createdAt": "2026-07-28T14:00:00.000Z",
+              "expirationDate": "2026-08-28T23:59:59.000Z",
+              "employer": {
+                "name": "Fixture Security"
+              },
+              "remote": true,
+              "hybrid": false,
+              "onSite": false,
+              "workLocationType": "REMOTE",
+              "locations": [
+                {
+                  "label": "Remote - United States"
+                }
+              ],
+              "employmentType": "FULL_TIME",
+              "salaryRange": {
+                "minimumAmount": 6000000,
+                "maximumAmount": 7500000,
+                "currency": "USD",
+                "salaryType": "per year"
+              },
+              "jobApplySetting": {
+                "externalUrl": "https://careers.example.com/jobs/hs-1001"
+              }
+            }
+          }
+        },
+        {
+          "node": {
+            "job": {
+              "id": "hs-1002",
+              "title": "Network Operations Analyst",
+              "description": "Support network monitoring and incident escalation.",
+              "createdAt": "2026-07-29T14:00:00.000Z",
+              "expirationDate": "2026-08-29T23:59:59.000Z",
+              "employer": {
+                "name": "Fixture Infrastructure"
+              },
+              "remote": false,
+              "hybrid": true,
+              "onSite": false,
+              "workLocationType": "HYBRID",
+              "locations": [
+                {
+                  "city": "St. Louis",
+                  "state": "MO"
+                }
+              ],
+              "jobType": "FULL_TIME"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

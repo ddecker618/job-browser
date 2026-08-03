@@ -250,8 +250,8 @@ export function SourceEditor({
           />
         </label>
         <span className="field-note span-2">
-          Enter the employer’s public careers page. It is used to detect the
-          ATS and auto-fill the source configuration.
+          Enter the employer’s public careers page. It is used to detect the ATS
+          and auto-fill the source configuration.
         </span>
         {source === undefined ? (
           <div className="card-actions span-2">
@@ -276,13 +276,15 @@ export function SourceEditor({
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <label>
-          Location
-          <input
-            value={location}
-            onChange={(event) => setLocation(event.target.value)}
-          />
-        </label>
+        {providerId === 'handshake' ? null : (
+          <label>
+            Location
+            <input
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+            />
+          </label>
+        )}
         <label>
           Maximum jobs
           <input
@@ -293,14 +295,16 @@ export function SourceEditor({
             onChange={(event) => setLimit(Number(event.target.value))}
           />
         </label>
-        <label className="checkbox-field">
-          <input
-            type="checkbox"
-            checked={remoteOnly}
-            onChange={(event) => setRemoteOnly(event.target.checked)}
-          />{' '}
-          Remote only
-        </label>
+        {providerId === 'handshake' ? null : (
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={remoteOnly}
+              onChange={(event) => setRemoteOnly(event.target.checked)}
+            />{' '}
+            Remote only
+          </label>
+        )}
         <label className="checkbox-field">
           <input
             type="checkbox"
@@ -1315,7 +1319,7 @@ function ProviderFields({
         </div>
       </div>
     );
-  if (providerId === 'dice')
+  if (providerId === 'dice' || providerId === 'handshake')
     return (
       <div
         style={{
@@ -1431,16 +1435,18 @@ function ProviderFields({
         >
           + Add search term
         </button>
+        {providerId === 'dice' ? (
+          <label>
+            Location
+            <input
+              value={textValue(configuration['location'])}
+              onChange={(e) => update('location', e.target.value)}
+              placeholder="San Francisco, CA"
+            />
+          </label>
+        ) : null}
         <label>
-          Location
-          <input
-            value={textValue(configuration['location'])}
-            onChange={(e) => update('location', e.target.value)}
-            placeholder="San Francisco, CA"
-          />
-        </label>
-        <label>
-          Remote
+          {providerId === 'handshake' ? 'Work arrangement' : 'Remote'}
           <select
             value={textValue(configuration['remoteFilter'])}
             onChange={(e) => update('remoteFilter', e.target.value || '')}
@@ -1455,28 +1461,36 @@ function ProviderFields({
           >
             <option value="">Any</option>
             <option value="remote">Remote only</option>
+            {providerId === 'handshake' ? (
+              <>
+                <option value="hybrid">Hybrid only</option>
+                <option value="onsite">On-site only</option>
+              </>
+            ) : null}
           </select>
         </label>
-        <label>
-          Date posted
-          <select
-            value={textValue(configuration['datePosted'])}
-            onChange={(e) => update('datePosted', e.target.value || 'any')}
-            style={{
-              padding: '0.4rem',
-              borderRadius: '4px',
-              border: '1px solid var(--border)',
-              background: 'var(--background)',
-              color: 'var(--foreground)',
-              marginTop: '0.25rem',
-            }}
-          >
-            <option value="any">Any time</option>
-            <option value="24h">Past 24 hours</option>
-            <option value="week">Past week</option>
-            <option value="month">Past month</option>
-          </select>
-        </label>
+        {providerId === 'dice' ? (
+          <label>
+            Date posted
+            <select
+              value={textValue(configuration['datePosted'])}
+              onChange={(e) => update('datePosted', e.target.value || 'any')}
+              style={{
+                padding: '0.4rem',
+                borderRadius: '4px',
+                border: '1px solid var(--border)',
+                background: 'var(--background)',
+                color: 'var(--foreground)',
+                marginTop: '0.25rem',
+              }}
+            >
+              <option value="any">Any time</option>
+              <option value="24h">Past 24 hours</option>
+              <option value="week">Past week</option>
+              <option value="month">Past month</option>
+            </select>
+          </label>
+        ) : null}
         <label>
           Maximum results
           <input
@@ -1506,12 +1520,34 @@ function ProviderFields({
             lineHeight: '1.4',
           }}
         >
-          <strong>Dice provider notice:</strong>
+          <strong>
+            {providerId === 'handshake'
+              ? 'Handshake provider notice:'
+              : 'Dice provider notice:'}
+          </strong>
           <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.25rem' }}>
             <li>
               This provider opens a visible browser window for manual login.
             </li>
-            <li>Your Dice password is never stored by this application.</li>
+            {providerId === 'handshake' ? (
+              <>
+                <li>
+                  On the first run, choose your school and complete its SSO/MFA
+                  flow. Later runs reuse the saved session.
+                </li>
+                <li>
+                  Plain-text location filtering is not supported because
+                  Handshake uses internal location IDs. Your candidate-profile
+                  location eligibility and ranking still apply after discovery.
+                </li>
+                <li>
+                  Your Handshake or school password is never stored by this
+                  application.
+                </li>
+              </>
+            ) : (
+              <li>Your Dice password is never stored by this application.</li>
+            )}
             <li>Browser profile (cookies, session) is stored locally only.</li>
           </ul>
         </div>
@@ -1561,9 +1597,7 @@ function configurationFor(
       }
     }
     if (providerId === 'smartrecruiters') {
-      const companyIdentifier = textValue(
-        next['companyIdentifier'],
-      ).trim();
+      const companyIdentifier = textValue(next['companyIdentifier']).trim();
       if (companyIdentifier === '') {
         const slug = smartRecruitersSlug(careersUrl);
         if (slug !== null) next['companyIdentifier'] = slug;
@@ -1578,24 +1612,42 @@ function missingConfigGuidance(
   providerId: string,
   configuration: Record<string, unknown>,
 ): string | null {
-  if (providerId === 'icims' && textValue(configuration['portalUrl']).trim() === '')
+  if (
+    providerId === 'icims' &&
+    textValue(configuration['portalUrl']).trim() === ''
+  )
     return 'Enter the iCIMS portal URL (the employer’s public careers page) or type it in the iCIMS portal URL field, then validate again.';
   if (
     providerId === 'smartrecruiters' &&
     textValue(configuration['companyIdentifier']).trim() === ''
   )
     return 'Enter the SmartRecruiters company identifier (e.g. "continental" from jobs.smartrecruiters.com/continental) or the employer’s public careers URL, then validate again.';
-  if (providerId === 'greenhouse' && textValue(configuration['boardToken']).trim() === '')
+  if (
+    providerId === 'greenhouse' &&
+    textValue(configuration['boardToken']).trim() === ''
+  )
     return 'Enter the Greenhouse board token (e.g. "stripe" from boards.greenhouse.io/stripe), then validate again.';
   if (providerId === 'lever' && textValue(configuration['site']).trim() === '')
     return 'Enter the Lever site (e.g. "acme" from jobs.lever.co/acme), then validate again.';
-  if (providerId === 'bamboohr' && textValue(configuration['companyDomain']).trim() === '')
+  if (
+    providerId === 'bamboohr' &&
+    textValue(configuration['companyDomain']).trim() === ''
+  )
     return 'Enter the BambooHR company domain (e.g. "g2" from g2.bamboohr.com), then validate again.';
-  if (providerId === 'recruitee' && textValue(configuration['origin']).trim() === '')
+  if (
+    providerId === 'recruitee' &&
+    textValue(configuration['origin']).trim() === ''
+  )
     return 'Enter the Recruitee origin URL (e.g. https://bunq.recruitee.com), then validate again.';
-  if (providerId === 'teamtailor' && textValue(configuration['feedUrl']).trim() === '')
+  if (
+    providerId === 'teamtailor' &&
+    textValue(configuration['feedUrl']).trim() === ''
+  )
     return 'Enter the Teamtailor RSS feed URL (e.g. https://company.teamtailor.com/jobs.rss), then validate again.';
-  if (providerId === 'workable' && textValue(configuration['subdomain']).trim() === '')
+  if (
+    providerId === 'workable' &&
+    textValue(configuration['subdomain']).trim() === ''
+  )
     return 'Enter the Workable account subdomain (e.g. "huggingface" from apply.workable.com/huggingface), then validate again.';
   return null;
 }

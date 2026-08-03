@@ -2,24 +2,24 @@
 
 Job Browser is a local application for discovering, deduplicating, analyzing, and tracking realistic job opportunities. It runs as a Windows desktop application or as a local Node.js/Express dashboard over the same SQLite-backed services.
 
-Discovery supports Greenhouse, Lever, Ashby, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. LinkedIn, Dice, Wellfound, and ZipRecruiter are visible-browser connectors and must never bypass a CAPTCHA, security check, login control, or site policy. There is no automatic application submission or AI-generated application answer workflow.
+Discovery supports Greenhouse, Lever, Ashby, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Handshake, Indeed, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. LinkedIn, Dice, Handshake, Indeed, USAJOBS, Wellfound, and ZipRecruiter are visible-browser connectors and must never bypass a CAPTCHA, security check, login control, or site policy. There is no automatic application submission or AI-generated application answer workflow.
 
 ## Screenshots
 
 The dashboard runs as a Windows desktop application or a local web dashboard.
 
-| | |
-| --- | --- |
-| ![Dashboard](screenshots/dashboard.png) | ![Jobs](screenshots/jobs.png) |
+|                                         |                                     |
+| --------------------------------------- | ----------------------------------- |
+| ![Dashboard](screenshots/dashboard.png) | ![Jobs](screenshots/jobs.png)       |
 | ![Analytics](screenshots/analytics.png) | ![Sources](screenshots/sources.png) |
-| ![Profile](screenshots/profile.png) | ![Resumes](screenshots/resumes.png) |
+| ![Profile](screenshots/profile.png)     | ![Resumes](screenshots/resumes.png) |
 
 Screenshots use clearly fictional fixture data.
 
 ## Safety Boundaries
 
 - Never submit job applications automatically.
-- Never store job-board passwords. USAJOBS API credentials are the only credentials stored by the application and are encrypted by the desktop operating-system vault. Browser connectors use local Chromium profiles only.
+- Never store job-board passwords. Browser connectors retain only local Chromium profiles (cookies and sessions); any provider API credentials are encrypted by the desktop operating-system vault.
 - Never bypass CAPTCHAs, security checks, login controls, robots policies, or access controls. Stop a connector when the site requires an unresolved challenge or prohibits the requested method.
 - Never make demographic or disclosure decisions.
 - Keep future employer connectors isolated and limited to approved public sources.
@@ -63,7 +63,7 @@ The desktop application:
 - Uses an isolated, sandboxed renderer with no Node.js integration.
 - Stops the HTTP server and closes SQLite before exiting.
 - Runs enabled discovery schedules only while the desktop application is open; scheduling is disabled by default.
-- Seeds a small starter source set on desktop startup without overwriting existing sources: Built In is enabled for public discovery, while Wellfound, ZipRecruiter, Dice, and Indeed are preconfigured but disabled because they use visible browser sessions. Login providers such as LinkedIn and Dice remain available through Add source when the user is ready.
+- Seeds a small starter source set on desktop startup without overwriting existing sources: Built In is enabled for public discovery, while Wellfound, ZipRecruiter, Dice, Handshake, Indeed, and USAJOBS are preconfigured but disabled because they use visible browser sessions. LinkedIn remains available through Add source when the user is ready.
 
 Installed data is stored under Electron's per-user `Job Browser` application-data directory, separate from the installation directory. It contains `data/jobs.sqlite`, resumes, settings, logs, diagnostics, and timestamped backups. Development Electron runs use `data/desktop-dev`. The Settings page shows the exact active paths and provides Open Folder, Create Backup, Copy Diagnostics, and Restart actions.
 
@@ -172,25 +172,27 @@ No registry, discovery-engine, database, or CLI switch statement needs modificat
 
 Built-in providers:
 
-| Provider        | Source configuration                                    | Network behavior                                        |
-| --------------- | ------------------------------------------------------- | ------------------------------------------------------- |
-| Greenhouse      | Board token and optional company name                   | Public Greenhouse job-board API                         |
-| Lever           | Site slug and optional company name                     | Public Lever postings API                               |
-| Ashby           | Board name and optional company name                    | Public Ashby job-board API                              |
-| Workday         | HTTPS origin, tenant, site, and optional company name   | Public Workday CXS endpoint                             |
-| USAJOBS         | Optional page size; email and API key stored separately | Official USAJOBS Search API                             |
-| Structured data | Public HTTPS feed or careers-page URL                   | Bounded JSON-LD, JSON, RSS, or Atom fetch               |
+| Provider        | Source configuration                                                        | Network behavior                                        |
+| --------------- | --------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Greenhouse      | Board token and optional company name                                       | Public Greenhouse job-board API                         |
+| Lever           | Site slug and optional company name                                         | Public Lever postings API                               |
+| Ashby           | Board name and optional company name                                        | Public Ashby job-board API                              |
+| Workday         | HTTPS origin, tenant, site, and optional company name                       | Public Workday CXS endpoint                             |
+| USAJOBS         | Search terms, filters, and local browser profile                            | Visible Chromium search session; login.gov supported    |
+| Structured data | Public HTTPS feed or careers-page URL                                       | Bounded JSON-LD, JSON, RSS, or Atom fetch               |
 | SmartRecruiters | Company identifier or `jobs.`/`careers.` careers URL, optional company name | Public SmartRecruiters Posting API                      |
-| BambooHR        | BambooHR company subdomain and company name             | Public BambooHR careers endpoints                       |
-| Recruitee       | Public careers origin and optional company name         | Public Recruitee careers JSON endpoint                  |
-| Teamtailor      | Public jobs RSS URL and company name                    | Public Teamtailor RSS feed                              |
-| Workable        | Account subdomain and optional company name             | Public Workable account API                             |
-| iCIMS           | Modern careers portal origin and optional company name  | Public iCIMS/Jibe `/api/jobs` endpoint                  |
-| Built In        | Search terms and optional location                      | Public HTML cards and JSON-LD detail pages              |
-| LinkedIn Jobs   | Search terms, filters, and local browser profile        | Visible Chromium search session                         |
-| Dice            | Search terms, filters, and local browser profile        | Visible Chromium search session; authorization required |
-| Wellfound       | Search terms, filters, and local browser profile        | Visible Chromium search session                         |
-| ZipRecruiter    | Search terms, filters, and local browser profile        | Visible Chromium search session                         |
+| BambooHR        | BambooHR company subdomain and company name                                 | Public BambooHR careers endpoints                       |
+| Recruitee       | Public careers origin and optional company name                             | Public Recruitee careers JSON endpoint                  |
+| Teamtailor      | Public jobs RSS URL and company name                                        | Public Teamtailor RSS feed                              |
+| Workable        | Account subdomain and optional company name                                 | Public Workable account API                             |
+| iCIMS           | Modern careers portal origin and optional company name                      | Public iCIMS/Jibe `/api/jobs` endpoint                  |
+| Built In        | Search terms and optional location                                          | Public HTML cards and JSON-LD detail pages              |
+| LinkedIn Jobs   | Search terms, filters, and local browser profile                            | Visible Chromium search session                         |
+| Dice            | Search terms, filters, and local browser profile                            | Visible Chromium search session; authorization required |
+| Handshake       | Search terms, work arrangement, and local browser profile                   | Visible Chromium session; school/SSO login required     |
+| Indeed          | Search terms, filters, and local browser profile                            | Visible Chromium search session                         |
+| Wellfound       | Search terms, filters, and local browser profile                            | Visible Chromium search session                         |
+| ZipRecruiter    | Search terms, filters, and local browser profile                            | Visible Chromium search session                         |
 
 The Sources editor can inspect a public careers URL and suggest a supported provider configuration. Detection uses hostname patterns, redirect destinations, page metadata, structured links, and bounded non-executing HTML inspection. It never executes scripts. The suggestion is not applied until the user confirms it, and a newly saved source remains disabled until explicitly enabled.
 
@@ -205,13 +207,14 @@ Provider configuration:
 - Workable: enter the account subdomain from `apply.workable.com/<subdomain>`.
 - iCIMS: enter the HTTPS origin of a modern iCIMS/Jibe careers portal exposing `/api/jobs`. Legacy server-rendered iCIMS portals are not supported by this connector.
 - Built In: enter search terms and an optional location; public job cards and detail-page JSON-LD are fetched over HTTPS.
-- LinkedIn, Dice, Wellfound, and ZipRecruiter: the source editor opens a visible browser for the configured search and keeps it open by default while the session is available. The user must complete any permitted site login or security check manually; passwords are not collected by the application. Uncheck `Keep browser open after search` when the browser should close after the run.
+- LinkedIn, Dice, Handshake, Indeed, USAJOBS, Wellfound, and ZipRecruiter: the source editor opens a visible browser for the configured search and keeps it open by default while the session is available. The user must complete any permitted site login or security check manually; passwords are not collected by the application. Handshake's first run waits up to five minutes for school selection, SSO, and MFA, then reuses the saved local session. Uncheck `Keep browser open after search` when the browser should close after the run.
 
 All provider requests use a shared bounded client with mandatory timeouts, caller cancellation, public-address validation, DNS pinning, redirect and response-size limits, content-type checks, low concurrency, and sanitized errors. HTTP 429, 502, 503, and 504 responses receive at most two bounded retries; `Retry-After` is honored up to five seconds. Automated tests always use deterministic fixtures and injected transports rather than external requests.
 
 Provider-specific limits:
 
 - SmartRecruiters reads at most five 100-item pages and fetches details for at most 100 selected jobs.
+- Handshake reads at most 40 25-item pages per query, retains at most 100 results per query, and caps one provider run at 200 unique jobs.
 - iCIMS reads at most ten 50-item pages (500 records) from the public careers feed.
 - BambooHR accepts at most 500 board records and fetches details for at most 100 selected jobs.
 - Recruitee accepts at most 500 offers from one public careers response.
@@ -300,8 +303,8 @@ Every analysis run stores snapshots for top skills and certifications, common ti
 | `npm run db:migrate`             | Apply pending SQL migrations                      |
 | `npm run db:seed`                | Apply migrations and seed known applications      |
 | `npm run db:setup`               | Set up migrations and known applications          |
-| `npm run discover`               | Run discovery against all enabled sources      |
-| `npm run discover:test`          | Run discovery using provider fixtures only     |
+| `npm run discover`               | Run discovery against all enabled sources         |
+| `npm run discover:test`          | Run discovery using provider fixtures only        |
 | `npm run analyze`                | Analyze all jobs currently in the database        |
 | `npm run analyze:test`           | Discover fixtures and run analysis offline        |
 | `npm run verify`                 | Run format check, lint, typecheck, and tests      |

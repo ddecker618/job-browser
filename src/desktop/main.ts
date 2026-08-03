@@ -293,7 +293,12 @@ async function runDesktopSmoke(): Promise<void> {
       throw new Error('Desktop provider endpoint failed');
     }
     const providers: unknown = await providersResponse.json();
-    for (const providerId of ['builtin', 'wellfound', 'ziprecruiter']) {
+    for (const providerId of [
+      'builtin',
+      'handshake',
+      'wellfound',
+      'ziprecruiter',
+    ]) {
       if (!hasProvider(providers, providerId)) {
         throw new Error(`Packaged provider was not loaded: ${providerId}`);
       }
@@ -314,6 +319,7 @@ async function runDesktopSmoke(): Promise<void> {
       'wellfound',
       'ziprecruiter',
       'dice',
+      'handshake',
       'indeed',
       'usajobs',
     ]) {

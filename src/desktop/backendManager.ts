@@ -38,6 +38,7 @@ export class BackendManager {
       seedDefaultSources: true,
       linkedinProfile: paths.linkedinProfile,
       diceProfile: paths.diceProfile,
+      handshakeProfile: paths.handshakeProfile,
       indeedProfile: paths.indeedProfile,
       wellfoundProfile: paths.wellfoundProfile,
       ziprecruiterProfile: paths.ziprecruiterProfile,

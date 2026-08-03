@@ -31,6 +31,7 @@ describe('provider registration', () => {
       'crowdstrike',
       'dice',
       'greenhouse',
+      'handshake',
       'icims',
       'indeed',
       'lever',

@@ -730,6 +730,33 @@ const DEFAULT_SOURCES = [
     },
   },
   {
+    id: 'provider:handshake',
+    employer: 'Handshake',
+    displayName: 'Handshake (browser)',
+    providerId: 'handshake',
+    careersUrl: 'https://app.joinhandshake.com/job-search',
+    enabled: false,
+    configuration: {
+      searchKeywords: 'systems administrator',
+      remoteFilter: '',
+      maxResults: 50,
+      keepBrowserOpen: true,
+      queries: [
+        { keywords: 'systems administrator', location: '' },
+        { keywords: 'network administrator', location: '' },
+        { keywords: 'network analyst', location: '' },
+        { keywords: 'SOC analyst', location: '' },
+      ],
+    },
+    searchCriteria: {
+      query: 'systems administrator',
+      location: null,
+      remoteOnly: false,
+      limit: 50,
+      maxAgeDays: 30,
+    },
+  },
+  {
     id: 'provider:indeed',
     employer: 'Indeed',
     displayName: 'Indeed (browser)',
