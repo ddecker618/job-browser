@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -59,16 +59,48 @@ describe('local resume parsing', () => {
     expect(result.parsingStatus).toBe('parsed');
     expect(result.skills).toContain('Splunk');
   });
+
+  it('rejects traversal and prefix-collision paths outside the resume directory', async () => {
+    const base = temporaryDirectory();
+    const resumeDirectory = join(base, 'resumes');
+    const prefixCollisionDirectory = join(base, 'resumes-archive');
+    mkdirSync(resumeDirectory);
+    mkdirSync(prefixCollisionDirectory);
+
+    const traversalPath = join(resumeDirectory, '..', 'outside.txt');
+    const prefixCollisionPath = join(prefixCollisionDirectory, 'outside.txt');
+    writeFileSync(traversalPath, 'Splunk');
+    writeFileSync(prefixCollisionPath, 'Linux');
+
+    for (const path of [traversalPath, prefixCollisionPath]) {
+      const result = await parse(path, resumeDirectory);
+      expect(result.parsingStatus).toBe('failed');
+      expect(result.parsingError).toBe(
+        'Resume storage path must remain inside the configured resume directory',
+      );
+    }
+  });
 });
 
 function temporary(filename: string): string {
-  if (!directory)
-    directory = mkdtempSync(join(tmpdir(), 'job-browser-resume-'));
-  return join(directory, filename);
+  const root = temporaryDirectory();
+  return join(root, filename);
 }
 
-function parse(path: string) {
-  return extractResume(path, path, loadCandidateProfile(), loadScoringConfig());
+function temporaryDirectory(): string {
+  if (!directory)
+    directory = mkdtempSync(join(tmpdir(), 'job-browser-resume-'));
+  return directory;
+}
+
+function parse(path: string, resumeDirectory = directory) {
+  return extractResume(
+    path,
+    path,
+    loadCandidateProfile(),
+    loadScoringConfig(),
+    resumeDirectory,
+  );
 }
 
 function minimalPdf(text: string): Buffer {

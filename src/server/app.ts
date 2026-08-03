@@ -36,7 +36,10 @@ import {
   saveUnifiedProfilePreferences,
 } from '../preferences/profilePreferencesRuntime.js';
 import type { LegacyPreferences } from '../preferences/profilePreferencesAdapters.js';
-import { extractResume } from '../resumes/resumeService.js';
+import {
+  extractResume,
+  resolveResumeStoragePath,
+} from '../resumes/resumeService.js';
 import {
   candidateProfileSchema,
   type CandidateProfile,
@@ -410,6 +413,7 @@ export function createApp(
         request.file.originalname,
         profile,
         loadScoringConfig(scoringPath, profilePreferencesPath),
+        resumeDirectory,
       );
       const resume = repository.addResume({
         displayName:
@@ -449,9 +453,13 @@ export function createApp(
   app.delete('/api/resumes/:id', (request, response) => {
     const id = request.params.id;
     const storagePath = repository.getResumeStoragePath(id);
+    const resolvedStoragePath =
+      storagePath === null
+        ? null
+        : resolveResumeStoragePath(resumeDirectory, storagePath);
     repository.deleteResume(id);
-    if (storagePath !== null && existsSync(storagePath))
-      unlinkSync(storagePath);
+    if (resolvedStoragePath !== null && existsSync(resolvedStoragePath))
+      unlinkSync(resolvedStoragePath);
     response.status(204).end();
   });
   app.post('/api/resumes/:id/rescore', (request, response) => {

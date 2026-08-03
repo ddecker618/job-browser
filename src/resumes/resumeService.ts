@@ -1,14 +1,11 @@
-import { extname } from 'node:path';
-import { readFile, readFileSync } from 'node:fs';
-import { promisify } from 'node:util';
+import { extname, resolve, sep } from 'node:path';
+import { readFile } from 'node:fs/promises';
 
 import mammoth from 'mammoth';
 
 import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import { normalizeText } from '../utilities/normalization.js';
-
-const readFileAsync = promisify(readFile);
 
 export interface ResumeExtraction {
   parsingStatus: 'parsed' | 'pending' | 'failed';
@@ -24,16 +21,22 @@ export async function extractResume(
   originalFilename: string,
   profile: CandidateProfile,
   config: ScoringConfig,
+  resumeDirectory: string,
 ): Promise<ResumeExtraction> {
   const extension = extname(originalFilename).toLowerCase();
   try {
+    const resolvedStoragePath = resolveResumeStoragePath(
+      resumeDirectory,
+      storagePath,
+    );
+    const contents = await readFile(resolvedStoragePath);
     let text: string;
     if (['.txt', '.md'].includes(extension)) {
-      text = readFileSync(storagePath, 'utf8');
+      text = contents.toString('utf8');
     } else if (extension === '.docx') {
-      text = (await mammoth.extractRawText({ path: storagePath })).value;
+      text = (await mammoth.extractRawText({ buffer: contents })).value;
     } else if (extension === '.pdf') {
-      text = await extractPdfText(storagePath);
+      text = await extractPdfText(new Uint8Array(contents));
       if (text.trim().length === 0) {
         throw new Error(
           'No extractable PDF text was found. Scanned PDFs require OCR, which is not supported.',
@@ -74,9 +77,23 @@ export async function extractResume(
   }
 }
 
-async function extractPdfText(path: string): Promise<string> {
+export function resolveResumeStoragePath(
+  resumeDirectory: string,
+  storagePath: string,
+): string {
+  const root = resolve(resumeDirectory);
+  const candidate = resolve(storagePath);
+  const rootPrefix = root.endsWith(sep) ? root : `${root}${sep}`;
+  if (!candidate.startsWith(rootPrefix)) {
+    throw new Error(
+      'Resume storage path must remain inside the configured resume directory',
+    );
+  }
+  return candidate;
+}
+
+async function extractPdfText(data: Uint8Array): Promise<string> {
   const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const data = new Uint8Array(await readFileAsync(path));
   const document = await getDocument({ data, useSystemFonts: true }).promise;
   const pages: string[] = [];
   try {
