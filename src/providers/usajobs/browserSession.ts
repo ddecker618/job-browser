@@ -20,6 +20,17 @@ export function isUsaJobsAuthenticationUrl(url: string): boolean {
   }
 }
 
+export function isUsaJobsAcknowledgementUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === 'https:' && parsed.hostname === 'login.usajobs.gov'
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isUsaJobsLoggedIn(page: Page): boolean {
   try {
     const url = page.url();
@@ -62,7 +73,7 @@ export async function waitForUsaJobsLogin(
       return true;
     }
 
-    if (page.url().includes('login.usajobs.gov')) {
+    if (isUsaJobsAcknowledgementUrl(page.url())) {
       try {
         await page.click('a[href*="/account/acknowledgement"]', {
           timeout: 500,
