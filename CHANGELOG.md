@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.13] — 2026-08-02
+
+### Fixed
+
+- Removed generated JavaScript from the Electron desktop smoke-test navigation. Smoke routes are now restricted to an explicit allowlist and loaded directly on the current loopback origin, eliminating the remaining code-construction injection finding.
+- Added independent per-minute request limits for API traffic and client file delivery. Excess requests receive HTTP 429 responses with `Retry-After`, bounding database and filesystem work while leaving generous capacity for normal desktop use.
+
+### Verification
+
+- Full suite passes: 63 test files and 420 tests, strict typecheck green, ESLint clean, touched-file formatting clean, `npm audit` reports zero vulnerabilities, and the Electron desktop smoke test passed. CodeQL confirms all seven originally reported alerts are fixed and no alerts remain open.
+
 ## [1.0.12] — 2026-08-02
 
 ### Added
