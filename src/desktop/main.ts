@@ -21,6 +21,7 @@ import {
   type DesktopPaths,
 } from './paths.js';
 import { WindowManager } from './windowManager.js';
+import { loadDesktopSmokeRoute } from './smokeNavigation.js';
 
 app.setName('Job Browser');
 if (process.env['JOB_BROWSER_SMOKE_USER_DATA']) {
@@ -277,13 +278,13 @@ async function runDesktopSmoke(): Promise<void> {
 
     await assertPageText(window.webContents, 'Opportunity command center');
     recordSmokeStage('asserting-jobs');
-    await clickRoute(window.webContents, '/jobs');
+    await loadDesktopSmokeRoute(window.webContents, '/jobs');
     await assertPageText(window.webContents, 'OPPORTUNITY INVENTORY');
     recordSmokeStage('asserting-sources');
-    await clickRoute(window.webContents, '/sources');
+    await loadDesktopSmokeRoute(window.webContents, '/sources');
     await assertPageText(window.webContents, 'DISCOVERY CONTROL');
     recordSmokeStage('asserting-settings');
-    await clickRoute(window.webContents, '/settings');
+    await loadDesktopSmokeRoute(window.webContents, '/settings');
     await assertPageText(window.webContents, 'Desktop application');
     if (!(await fetch(`${handle.url}/api/health`)).ok) {
       throw new Error('Desktop backend health endpoint failed');
@@ -390,13 +391,4 @@ async function assertPageText(
   throw new Error(
     `Desktop page did not render expected text: ${expected}. Rendered: ${body.slice(0, 500)}`,
   );
-}
-
-async function clickRoute(contents: WebContents, route: string): Promise<void> {
-  const clicked = (await contents.executeJavaScript(
-    `(() => { const link = document.querySelector('a[href=${JSON.stringify(route)}]'); if (!link) return false; link.click(); return true; })()`,
-    true,
-  )) as unknown;
-  if (clicked !== true)
-    throw new Error(`Desktop navigation link was not found: ${route}`);
 }
