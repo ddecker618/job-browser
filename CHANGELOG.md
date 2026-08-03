@@ -2,15 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.0.12] — 2026-08-02
 
 ### Added
 
 - Added a Handshake browser provider with a dedicated persistent profile, first-run school/SSO/MFA login, multi-query job search, remote/hybrid/on-site filters, explicit pagination, GraphQL response parsing, salary and closing-date normalization, and a disabled starter source. The application never collects Handshake credentials and reuses only the locally stored browser session.
 
+### Fixed
+
+- Replaced the USAJOBS login acknowledgement URL substring check with exact HTTPS hostname validation, preventing attacker-controlled lookalike hosts from being trusted.
+- Replaced LinkedIn diagnostic HTML's regular-expression script filtering with `parse5` document parsing so malformed or whitespace-variant script tags are removed safely.
+- Confined resume reads and deletions to the configured resume directory, consolidated parsing into one validated file read, and blocked traversal and directory-prefix collision paths.
+
 ### Verification
 
-- Full suite passes: 60 test files and 409 tests, strict typecheck green, ESLint clean, touched-file formatting clean, and Electron desktop smoke test passed.
+- Full suite passes: 62 test files and 416 tests, strict typecheck green, ESLint clean, touched-file formatting clean, and Electron desktop smoke test passed. CodeQL confirms four security alerts fixed.
 
 ## [1.0.11] — 2026-08-01
 
