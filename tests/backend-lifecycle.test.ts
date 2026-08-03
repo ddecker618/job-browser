@@ -1,11 +1,15 @@
 import { createServer } from 'node:net';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { startBackend, type BackendHandle } from '../src/server/backend.js';
+import {
+  startBackend,
+  type BackendHandle,
+  type BackendOptions,
+} from '../src/server/backend.js';
 
 const directories: string[] = [];
 const handles: BackendHandle[] = [];
@@ -30,7 +34,7 @@ describe('backend lifecycle', () => {
   it('preserves existing database records and avoids conventional-port collisions', async () => {
     const directory = temporary();
     const databasePath = join(directory, 'jobs.sqlite');
-    const first = await backend(directory, databasePath);
+    const first = await backend(directory, { databasePath });
     first.database.exec(
       "CREATE TABLE preservation_marker (value TEXT); INSERT INTO preservation_marker VALUES ('kept')",
     );
@@ -41,7 +45,7 @@ describe('backend lifecycle', () => {
       occupied.listen(4173, '127.0.0.1', resolve),
     );
     try {
-      const second = await backend(directory, databasePath);
+      const second = await backend(directory, { databasePath });
       handles.push(second);
       expect(new URL(second.url).port).not.toBe('4173');
       expect(
@@ -56,14 +60,43 @@ describe('backend lifecycle', () => {
       occupied.close();
     }
   });
+
+  it('rate-limits API and client file requests independently', async () => {
+    const directory = temporary();
+    const clientDirectory = join(directory, 'client');
+    mkdirSync(clientDirectory);
+    writeFileSync(
+      join(clientDirectory, 'index.html'),
+      '<main>Job Browser</main>',
+    );
+    const handle = await backend(directory, {
+      clientDirectory,
+      apiRequestsPerMinute: 2,
+      clientRequestsPerMinute: 2,
+    });
+    handles.push(handle);
+
+    expect((await fetch(`${handle.url}/api/health`)).status).toBe(200);
+    expect((await fetch(`${handle.url}/api/health`)).status).toBe(200);
+    const limitedApiResponse = await fetch(`${handle.url}/api/health`);
+    expect(limitedApiResponse.status).toBe(429);
+    expect(
+      Number(limitedApiResponse.headers.get('retry-after')),
+    ).toBeGreaterThan(0);
+
+    expect((await fetch(`${handle.url}/jobs`)).status).toBe(200);
+    expect((await fetch(`${handle.url}/sources`)).status).toBe(200);
+    const limitedClientResponse = await fetch(`${handle.url}/settings`);
+    expect(limitedClientResponse.status).toBe(429);
+    expect(
+      Number(limitedClientResponse.headers.get('retry-after')),
+    ).toBeGreaterThan(0);
+  });
 });
 
-async function backend(
-  directory: string,
-  databasePath = join(directory, 'jobs.sqlite'),
-) {
+async function backend(directory: string, options: BackendOptions = {}) {
   return startBackend({
-    databasePath,
+    databasePath: join(directory, 'jobs.sqlite'),
     backupDirectory: join(directory, 'backups'),
     candidateProfilePath: join(
       process.cwd(),
@@ -75,6 +108,7 @@ async function backend(
     clientDirectory: join(process.cwd(), 'dist', 'client'),
     host: '127.0.0.1',
     port: 0,
+    ...options,
   });
 }
 

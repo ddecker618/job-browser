@@ -2,6 +2,7 @@ import type { Server } from 'node:http';
 import { resolve } from 'node:path';
 
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 
 import { createDatabaseBackup } from '../db/backup.js';
 import { openDatabase, type JobDatabase } from '../db/database.js';
@@ -50,6 +51,7 @@ export interface BackendOptions extends AppOptions {
   wellfoundProfile?: string;
   ziprecruiterProfile?: string;
   usaJobsProfile?: string;
+  clientRequestsPerMinute?: number;
 }
 
 export interface BackendHandle {
@@ -187,6 +189,15 @@ export async function startBackend(
     } else {
       const clientDirectory =
         options.clientDirectory ?? resolve(process.cwd(), 'dist', 'client');
+      app.use(
+        rateLimit({
+          windowMs: 60_000,
+          limit: options.clientRequestsPerMinute ?? 1_200,
+          standardHeaders: 'draft-8',
+          legacyHeaders: false,
+          message: { error: 'Too many client requests; retry in one minute' },
+        }),
+      );
       app.use(express.static(clientDirectory));
       app.use((_request, response) =>
         response.sendFile(resolve(clientDirectory, 'index.html')),

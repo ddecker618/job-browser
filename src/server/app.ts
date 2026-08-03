@@ -7,6 +7,7 @@ import express, {
   type Request,
   type Response,
 } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import multer from 'multer';
 import { z } from 'zod';
 
@@ -63,6 +64,7 @@ export interface AppOptions {
   coordinator?: DiscoveryCoordinator;
   sourceRepository?: SourceRepository;
   credentialResolver?: CredentialResolver;
+  apiRequestsPerMinute?: number;
   atsDetector?: (
     url: string,
     options?: AtsDetectorOptions,
@@ -115,6 +117,16 @@ export function createApp(
 
   app.use(express.json({ limit: '2mb' }));
   app.use('/api', enforceLoopbackRequest);
+  app.use(
+    '/api',
+    rateLimit({
+      windowMs: 60_000,
+      limit: options.apiRequestsPerMinute ?? 600,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+      message: { error: 'Too many API requests; retry in one minute' },
+    }),
+  );
   app.use('/api', (_request, response, next) => {
     response.setHeader('Cache-Control', 'no-store, max-age=0');
     next();
