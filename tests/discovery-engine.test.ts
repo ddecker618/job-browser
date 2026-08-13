@@ -12,6 +12,8 @@ import type {
   SearchRequest,
 } from '../src/models/discovery.js';
 import { JobRepository } from '../src/repositories/job-repository.js';
+import { lifecycleFromEvidence } from '../src/domain/job-lifecycle.js';
+import type { NormalizedJob } from '../src/schemas/normalized-job.js';
 import { createTestDatabase } from './helpers/test-database.js';
 
 interface IdRow {
@@ -188,19 +190,19 @@ describe('DiscoveryEngine', () => {
     provider.complete = false;
     await engine.run('builtin', request(), fixtureOptions());
     await engine.run('builtin', request(), fixtureOptions());
-    expect(lifecycle(database, first.sourceId)).toEqual({
+    expect(lifecycle(database, first.sourceId)).toMatchObject({
       active: 1,
       consecutive_snapshot_misses: 0,
     });
 
     provider.complete = true;
     await engine.run('builtin', request(), fixtureOptions());
-    expect(lifecycle(database, first.sourceId)).toEqual({
+    expect(lifecycle(database, first.sourceId)).toMatchObject({
       active: 1,
       consecutive_snapshot_misses: 1,
     });
     await engine.run('builtin', request(), fixtureOptions());
-    expect(lifecycle(database, first.sourceId)).toEqual({
+    expect(lifecycle(database, first.sourceId)).toMatchObject({
       active: 0,
       consecutive_snapshot_misses: 2,
     });
@@ -212,7 +214,7 @@ describe('DiscoveryEngine', () => {
 
     provider.empty = false;
     await engine.run('builtin', request(), fixtureOptions());
-    expect(lifecycle(database, first.sourceId)).toEqual({
+    expect(lifecycle(database, first.sourceId)).toMatchObject({
       active: 1,
       consecutive_snapshot_misses: 0,
     });
@@ -253,6 +255,149 @@ describe('DiscoveryEngine', () => {
         >('SELECT COUNT(*) AS inactive FROM jobs WHERE active = 0')
         .get()?.inactive,
     ).toBe(0);
+  });
+
+  it('expires trusted closing evidence across sources and reactivates without duplication', async () => {
+    const provider = new SnapshotBuiltInProvider();
+    registry = new ProviderRegistry();
+    registry.register(provider);
+    const engine = createEngine();
+
+    provider.closingDate = '2020-01-01T00:00:00.000Z';
+    provider.closingDatePrecision = 'date';
+    await engine.run('builtin', request(), fixtureOptions('source:expired'));
+    expect(lifecycle(database, 'source:expired')).toMatchObject({
+      active: 0,
+      lifecycle_reason: 'closing-date-expired',
+    });
+
+    provider.closingDate = null;
+    provider.closingDatePrecision = null;
+    expect(
+      (
+        await engine.run(
+          'builtin',
+          request(),
+          fixtureOptions('source:active'),
+        )
+      ).crossSourceMerges,
+    ).toBe(1);
+    expect(canonicalLifecycle(database)).toEqual({
+      active: 1,
+      lifecycle_reason: 'active',
+    });
+
+    provider.closingDate = '2020-01-01T00:00:00.000Z';
+    provider.closingDatePrecision = 'date';
+    await engine.run('builtin', request(), fixtureOptions('source:active'));
+    expect(canonicalLifecycle(database)?.active).toBe(0);
+
+    provider.closingDate = '2099-01-01T00:00:00.000Z';
+    await engine.run('builtin', request(), fixtureOptions('source:active'));
+    expect(canonicalLifecycle(database)?.active).toBe(1);
+    provider.closingDate = null;
+    provider.closingDatePrecision = null;
+    await engine.run('builtin', request(), fixtureOptions('source:active'));
+    expect(canonicalLifecycle(database)?.active).toBe(1);
+    expect(new JobRepository(database).countJobs()).toBe(1);
+    expect(
+      database
+        .prepare<[], CountRow>('SELECT COUNT(*) AS count FROM job_observations')
+        .get()?.count,
+    ).toBe(5);
+  });
+
+  it('keeps a date-only closing day active through the entire UTC date', () => {
+    const evidence = {
+      closingDate: '2026-08-12T00:00:00.000Z',
+      closingDatePrecision: 'date' as const,
+      providerLifecycleStatus: 'unknown' as const,
+    };
+    expect(
+      lifecycleFromEvidence(evidence, '2026-08-12T23:59:59.999Z'),
+    ).toEqual({ active: true, reason: 'active' });
+    expect(
+      lifecycleFromEvidence(evidence, '2026-08-13T00:00:00.000Z'),
+    ).toEqual({ active: false, reason: 'closing-date-expired' });
+    expect(
+      lifecycleFromEvidence(
+        {
+          closingDate: null,
+          closingDatePrecision: null,
+          providerLifecycleStatus: 'unknown',
+        },
+        '2099-01-01T00:00:00.000Z',
+      ),
+    ).toEqual({ active: true, reason: 'active' });
+  });
+
+  it('preserves application, snapshot, Company, and provenance evidence when a Job expires', async () => {
+    const provider = new SnapshotBuiltInProvider();
+    registry = new ProviderRegistry();
+    registry.register(provider);
+    provider.closingDate = '2020-01-01T00:00:00.000Z';
+    provider.closingDatePrecision = 'date';
+    await createEngine().run('builtin', request(), fixtureOptions());
+    const jobId = database
+      .prepare<[], IdRow>('SELECT id FROM jobs LIMIT 1')
+      .get()!.id;
+    new JobRepository(database).changeStatus(jobId, {
+      status: 'applied',
+      changedBy: 'test',
+      reason: 'Retain historical application',
+    });
+    database.exec(`
+      INSERT INTO resume_snapshots (
+        id, source_resume_id, live_resume_id, content_hash, storage_key,
+        original_filename, mime_type, extension, size_bytes, parser_version,
+        normalization_version, parsing_status, parsing_error, reuse_key, created_at
+      ) VALUES (
+        'snapshot-expiry', 'resume-source', NULL, '${'a'.repeat(64)}',
+        'aa/expiry.txt', 'resume.txt', 'text/plain', '.txt', 4, 'parser-v1',
+        'normalization-v1', 'parsed', NULL, NULL, '2026-08-12T00:00:00.000Z'
+      );
+    `);
+    database
+      .prepare(
+        `UPDATE applications SET submitted_resume_snapshot_id = ? WHERE job_id = ?`,
+      )
+      .run('snapshot-expiry', jobId);
+
+    expect(canonicalLifecycle(database)?.active).toBe(0);
+    expect(
+      database
+        .prepare<
+          [string, string, string, string],
+          {
+            applications: number;
+            events: number;
+            snapshots: number;
+            observations: number;
+            company_assignments: number;
+          }
+        >(
+          `SELECT
+            (SELECT COUNT(*) FROM applications WHERE job_id = ?) AS applications,
+            (SELECT COUNT(*) FROM application_history WHERE job_id = ?) AS events,
+            (SELECT COUNT(*) FROM resume_snapshots WHERE id = 'snapshot-expiry') AS snapshots,
+            (SELECT COUNT(*) FROM job_observations WHERE job_id = ?) AS observations,
+            (SELECT COUNT(*) FROM job_company_assignments WHERE job_id = ?) AS company_assignments`,
+        )
+        .get(jobId, jobId, jobId, jobId),
+    ).toEqual({
+      applications: 1,
+      events: 1,
+      snapshots: 1,
+      observations: 1,
+      company_assignments: 1,
+    });
+    expect(
+      database
+        .prepare<[string], { status: string }>(
+          'SELECT status FROM applications WHERE job_id = ?',
+        )
+        .get(jobId)?.status,
+    ).toBe('applied');
   });
 
   it('records an empty live discovery run as succeeded instead of failed', async () => {
@@ -409,6 +554,16 @@ function fixtureOptions(sourceId?: string) {
 class SnapshotBuiltInProvider extends BuiltInProvider {
   public complete = true;
   public empty = false;
+  public closingDate: string | null = null;
+  public closingDatePrecision: 'date' | 'instant' | null = null;
+
+  public override normalize(rawJob: unknown, discoveredAt: string): NormalizedJob {
+    return {
+      ...super.normalize(rawJob, discoveredAt),
+      closingDate: this.closingDate,
+      closingDatePrecision: this.closingDatePrecision,
+    };
+  }
 
   public override async fetch(
     search: ProviderSearch,
@@ -478,7 +633,19 @@ function lifecycle(database: JobDatabase, sourceId: string) {
   return database
     .prepare<
       [string],
-      { active: number; consecutive_snapshot_misses: number }
-    >(`SELECT active, consecutive_snapshot_misses FROM job_sources WHERE source_id = ? LIMIT 1`)
+      {
+        active: number;
+        consecutive_snapshot_misses: number;
+        lifecycle_reason: string;
+      }
+    >(`SELECT active, consecutive_snapshot_misses, lifecycle_reason FROM job_sources WHERE source_id = ? LIMIT 1`)
     .get(sourceId);
+}
+
+function canonicalLifecycle(database: JobDatabase) {
+  return database
+    .prepare<[], { active: number; lifecycle_reason: string }>(
+      'SELECT active, lifecycle_reason FROM jobs LIMIT 1',
+    )
+    .get();
 }

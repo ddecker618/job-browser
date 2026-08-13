@@ -439,6 +439,7 @@ export class UsaJobsProvider extends BaseProvider {
       teleworkEligible: parseYesNo(teleworkEligible),
       openingDate,
       closingDate,
+      closingDatePrecision: closingDate === null ? null : 'date',
       applicationUrls: applyUrls,
     });
   }

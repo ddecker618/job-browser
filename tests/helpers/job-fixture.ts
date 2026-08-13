@@ -55,6 +55,8 @@ export function createJobFixture(
     teleworkEligible: null,
     openingDate: null,
     closingDate: null,
+    closingDatePrecision: null,
+    providerLifecycleStatus: 'unknown',
     applicationUrls: [],
     firstSeenAt: '2026-07-18T12:00:00.000Z',
     lastSeenAt: '2026-07-18T12:00:00.000Z',

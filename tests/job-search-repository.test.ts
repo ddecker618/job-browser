@@ -165,6 +165,35 @@ describe('JobSearchRepository', () => {
     expect(result.searchMode).toBe('indexed');
   });
 
+  it('defaults to current opportunities and exposes retained history explicitly', () => {
+    const current = insertJob({ title: 'Current role' });
+    const removed = insertJob({ title: 'Removed role' });
+    const expiredStatus = insertJob({ title: 'Expired workflow role' });
+    database
+      .prepare(
+        `UPDATE jobs SET active = 0, lifecycle_reason = 'snapshot-missing',
+           removed_at = '2026-08-01T00:00:00.000Z' WHERE id = ?`,
+      )
+      .run(removed);
+    database
+      .prepare("UPDATE jobs SET status = 'expired' WHERE id = ?")
+      .run(expiredStatus);
+    const repository = new JobSearchRepository(database, { forceFallback: true });
+
+    expect(repository.search(parse()).items.map((job) => job.id)).toEqual([
+      current,
+    ]);
+    const history = repository.search(parse({ active: 'removed' })).items;
+    expect(history.map((job) => job.id).sort()).toEqual(
+      [removed, expiredStatus].sort(),
+    );
+    expect(history.find((job) => job.id === removed)).toMatchObject({
+      lifecycleReason: 'snapshot-missing',
+      removedAt: '2026-08-01T00:00:00.000Z',
+    });
+    expect(repository.search(parse({ active: 'all' })).total).toBe(3);
+  });
+
   it('uses stable tie ordering across pages with no duplicate or omission', () => {
     const ids = [
       '00000000-0000-4000-8000-000000000005',

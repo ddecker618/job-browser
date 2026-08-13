@@ -56,6 +56,7 @@ export const sourcePatchSchema = sourceInputSchema.partial();
 
 export const discoverySettingsSchema = z.strictObject({
   schedulerEnabled: z.boolean(),
+  employerDiscoveryEnabled: z.boolean(),
 });
 
 export const atsDetectionRequestSchema = z.strictObject({

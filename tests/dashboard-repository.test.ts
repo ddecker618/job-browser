@@ -17,11 +17,12 @@ describe('DashboardRepository', () => {
   let database: JobDatabase;
   let dashboard: DashboardRepository;
   let jobId: string;
+  let sourceId: string;
 
   beforeEach(() => {
     database = createTestDatabase();
     dashboard = new DashboardRepository(database);
-    const sourceId = insertTestSource(database);
+    sourceId = insertTestSource(database);
     const job = createJobFixture({
       title: 'Cybersecurity Analyst',
       normalizedTitle: 'cybersecurity analyst',
@@ -51,6 +52,8 @@ describe('DashboardRepository', () => {
     expect(dashboard.listJobs()).toHaveLength(1);
     const detail = dashboard.getJob(jobId);
     expect(detail?.title).toBe('Cybersecurity Analyst');
+    expect(detail?.existingApplicationId).toBeNull();
+    expect(detail?.sources[0]?.sourceLabel).toBe('Example Employer');
     expect(detail?.skills).toEqual(
       expect.arrayContaining(['Splunk', 'SIEM', 'Linux']),
     );
@@ -82,6 +85,30 @@ describe('DashboardRepository', () => {
     };
     dashboard.saveSettings({ ...defaults, defaultSearch: 'security' });
     expect(dashboard.getSettings(defaults).defaultSearch).toBe('security');
+  });
+
+  it('exposes the existing Application ID from Job detail', () => {
+    new JobRepository(database).changeStatus(jobId, {
+      status: 'applied',
+      changedBy: 'dashboard',
+      changedAt: '2026-08-01T00:00:00.000Z',
+    });
+    const applicationId = database
+      .prepare<
+        [string],
+        { id: string }
+      >('SELECT id FROM applications WHERE job_id = ?')
+      .get(jobId)?.id;
+    expect(dashboard.getJob(jobId)?.existingApplicationId).toBe(applicationId);
+  });
+
+  it('falls back to the Source provider when Job-source provider is null', () => {
+    database
+      .prepare('UPDATE sources SET provider_id = ? WHERE id = ?')
+      .run('fallback-provider', sourceId);
+    expect(dashboard.getJob(jobId)?.sources[0]?.providerId).toBe(
+      'fallback-provider',
+    );
   });
 
   it('manages resume metadata, proposals, and saved filters', () => {

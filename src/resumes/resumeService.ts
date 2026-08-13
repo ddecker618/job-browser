@@ -7,11 +7,20 @@ import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import { normalizeText } from '../utilities/normalization.js';
 
+export interface ExtractedTermDetail {
+  label: string;
+  rawLabel: string;
+  matchedBy: 'name' | 'alias';
+}
+
 export interface ResumeExtraction {
   parsingStatus: 'parsed' | 'pending' | 'failed';
   parsingError: string | null;
+  normalizedText: string;
   skills: string[];
   certifications: string[];
+  skillTerms: ExtractedTermDetail[];
+  certificationTerms: ExtractedTermDetail[];
   proposedSkills: string[];
   proposedCertifications: string[];
 }
@@ -23,31 +32,37 @@ export async function extractResume(
   config: ScoringConfig,
   resumeDirectory: string,
 ): Promise<ResumeExtraction> {
-  const extension = extname(originalFilename).toLowerCase();
   try {
     const resolvedStoragePath = resolveResumeStoragePath(
       resumeDirectory,
       storagePath,
     );
-    const contents = await readFile(resolvedStoragePath);
-    let text: string;
-    if (['.txt', '.md'].includes(extension)) {
-      text = contents.toString('utf8');
-    } else if (extension === '.docx') {
-      text = (await mammoth.extractRawText({ buffer: contents })).value;
-    } else if (extension === '.pdf') {
-      text = await extractPdfText(new Uint8Array(contents));
-      if (text.trim().length === 0) {
-        throw new Error(
-          'No extractable PDF text was found. Scanned PDFs require OCR, which is not supported.',
-        );
-      }
-    } else {
-      throw new Error(`Unsupported resume format: ${extension || 'unknown'}`);
-    }
+    return await extractResumeFromPath(
+      resolvedStoragePath,
+      originalFilename,
+      profile,
+      config,
+    );
+  } catch (error) {
+    return failedExtraction(error);
+  }
+}
+
+export async function extractResumeFromPath(
+  storagePath: string,
+  originalFilename: string,
+  profile: CandidateProfile,
+  config: ScoringConfig,
+): Promise<ResumeExtraction> {
+  try {
+    const contents = await readFile(storagePath);
+    const text = await extractText(contents, originalFilename);
     const normalized = normalizeText(text);
-    const skills = matchingTerms(normalized, config.skills);
-    const certifications = matchingTerms(normalized, config.certifications);
+    const skills = matchingTermDetails(normalized, config.skills);
+    const certifications = matchingTermDetails(
+      normalized,
+      config.certifications,
+    );
     const currentSkills = new Set(profile.skills.map(normalizeText));
     const currentCertifications = new Set(
       profile.certifications.map(normalizeText),
@@ -55,25 +70,22 @@ export async function extractResume(
     return {
       parsingStatus: 'parsed',
       parsingError: null,
-      skills,
-      certifications,
-      proposedSkills: skills.filter(
-        (skill) => !currentSkills.has(normalizeText(skill)),
-      ),
-      proposedCertifications: certifications.filter(
-        (certification) =>
-          !currentCertifications.has(normalizeText(certification)),
-      ),
+      normalizedText: normalized,
+      skills: skills.map((term) => term.label),
+      certifications: certifications.map((term) => term.label),
+      skillTerms: skills,
+      certificationTerms: certifications,
+      proposedSkills: skills
+        .map((term) => term.label)
+        .filter((skill) => !currentSkills.has(normalizeText(skill))),
+      proposedCertifications: certifications
+        .map((term) => term.label)
+        .filter(
+          (certification) => !currentCertifications.has(normalizeText(certification)),
+        ),
     };
   } catch (error) {
-    return {
-      parsingStatus: 'failed',
-      parsingError: error instanceof Error ? error.message : String(error),
-      skills: [],
-      certifications: [],
-      proposedSkills: [],
-      proposedCertifications: [],
-    };
+    return failedExtraction(error);
   }
 }
 
@@ -90,6 +102,29 @@ export function resolveResumeStoragePath(
     );
   }
   return candidate;
+}
+
+async function extractText(
+  contents: Buffer,
+  originalFilename: string,
+): Promise<string> {
+  const extension = extname(originalFilename).toLowerCase();
+  if (['.txt', '.md'].includes(extension)) {
+    return contents.toString('utf8');
+  }
+  if (extension === '.docx') {
+    return (await mammoth.extractRawText({ buffer: contents })).value;
+  }
+  if (extension === '.pdf') {
+    const text = await extractPdfText(new Uint8Array(contents));
+    if (text.trim().length === 0) {
+      throw new Error(
+        'No extractable PDF text was found. Scanned PDFs require OCR, which is not supported.',
+      );
+    }
+    return text;
+  }
+  throw new Error(`Unsupported resume format: ${extension || 'unknown'}`);
 }
 
 async function extractPdfText(data: Uint8Array): Promise<string> {
@@ -114,15 +149,45 @@ async function extractPdfText(data: Uint8Array): Promise<string> {
   return pages.join('\n');
 }
 
-function matchingTerms(
+function matchingTermDetails(
   text: string,
   catalog: readonly { name: string; aliases: readonly string[] }[],
-): string[] {
-  return catalog
-    .filter((entry) =>
-      [entry.name, ...entry.aliases].some((alias) =>
-        text.includes(normalizeText(alias)),
-      ),
-    )
-    .map((entry) => entry.name);
+): ExtractedTermDetail[] {
+  const found: ExtractedTermDetail[] = [];
+  for (const entry of catalog) {
+    const nameMatch = text.includes(normalizeText(entry.name));
+    if (nameMatch) {
+      found.push({
+        label: entry.name,
+        rawLabel: normalizeText(entry.name),
+        matchedBy: 'name',
+      });
+      continue;
+    }
+    for (const alias of entry.aliases) {
+      if (text.includes(normalizeText(alias))) {
+        found.push({
+          label: entry.name,
+          rawLabel: normalizeText(alias),
+          matchedBy: 'alias',
+        });
+        break;
+      }
+    }
+  }
+  return found;
+}
+
+function failedExtraction(error: unknown): ResumeExtraction {
+  return {
+    parsingStatus: 'failed',
+    parsingError: error instanceof Error ? error.message : String(error),
+    normalizedText: '',
+    skills: [],
+    certifications: [],
+    skillTerms: [],
+    certificationTerms: [],
+    proposedSkills: [],
+    proposedCertifications: [],
+  };
 }

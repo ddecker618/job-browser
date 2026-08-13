@@ -339,6 +339,7 @@ export class HandshakeProvider extends BaseProvider {
       discoveredAt,
       seniorityLevel: inferSeniority(job.title),
       closingDate: toIsoDate(job.closingDate),
+      closingDatePrecision: job.closingDate === null ? null : 'instant',
       applicationUrls: job.applicationUrls,
     });
   }

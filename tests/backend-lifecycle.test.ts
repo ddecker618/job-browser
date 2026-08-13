@@ -1,5 +1,13 @@
 import { createServer } from 'node:net';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,13 +18,22 @@ import {
   type BackendHandle,
   type BackendOptions,
 } from '../src/server/backend.js';
+import { DatabaseRecoveryError, openDatabase } from '../src/db/database.js';
+import { DEFAULT_MIGRATIONS_DIRECTORY } from '../src/db/migration-runner.js';
+import { leaveCommittedWal } from './helpers/wal-fixture.js';
 
 const directories: string[] = [];
 const handles: BackendHandle[] = [];
 afterEach(async () => {
   for (const handle of handles.splice(0)) await handle.stop();
-  for (const directory of directories.splice(0))
-    rmSync(directory, { recursive: true, force: true });
+  for (const directory of directories.splice(0)) {
+    rmSync(directory, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 50,
+    });
+  }
 });
 
 describe('backend lifecycle', () => {
@@ -59,6 +76,106 @@ describe('backend lifecycle', () => {
     } finally {
       occupied.close();
     }
+  });
+
+  it('recovers WAL data before pre-migration backup and migration', async () => {
+    const directory = temporary();
+    const databasePath = join(directory, 'jobs.sqlite');
+    const migrationsDirectory = join(directory, 'migrations');
+    mkdirSync(migrationsDirectory);
+    for (const filename of readdirSync(DEFAULT_MIGRATIONS_DIRECTORY)) {
+      if (/^\d+_.+\.sql$/.test(filename)) {
+        copyFileSync(
+          join(DEFAULT_MIGRATIONS_DIRECTORY, filename),
+          join(migrationsDirectory, filename),
+        );
+      }
+    }
+
+    const first = await backend(directory, {
+      databasePath,
+      migrationsDirectory,
+    });
+    first.database.exec(
+      "CREATE TABLE recovery_marker (value TEXT NOT NULL); INSERT INTO recovery_marker VALUES ('main-file')",
+    );
+    await first.stop();
+    writeFileSync(
+      join(migrationsDirectory, '999_milestone_8_1_test.sql'),
+      'CREATE TABLE milestone_8_1_test (id TEXT PRIMARY KEY);',
+    );
+    leaveCommittedWal(databasePath);
+
+    const phases: string[] = [];
+    const second = await backend(directory, {
+      databasePath,
+      migrationsDirectory,
+      backupBeforeMigrations: true,
+      onStartupProgress: (phase) => phases.push(phase),
+    });
+    handles.push(second);
+
+    expect(phases).toEqual([
+      'checking-database',
+      'backing-up-database',
+      'applying-database-updates',
+      'starting-local-service',
+    ]);
+    expect(second.pendingMigrations).toEqual(['999_milestone_8_1_test.sql']);
+    expect(second.migrationBackupPath).not.toBeNull();
+    expect(existsSync(second.migrationBackupPath!)).toBe(true);
+    expect(
+      second.database
+        .prepare<
+          [],
+          { value: string }
+        >('SELECT value FROM recovery_marker ORDER BY rowid DESC LIMIT 1')
+        .get()?.value,
+    ).toBe('wal-only');
+    expect(
+      second.database
+        .prepare<
+          [],
+          { count: number }
+        >("SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'milestone_8_1_test'")
+        .get()?.count,
+    ).toBe(1);
+
+    const backup = openDatabase(second.migrationBackupPath!);
+    expect(
+      backup
+        .prepare<
+          [],
+          { value: string }
+        >('SELECT value FROM recovery_marker ORDER BY rowid DESC LIMIT 1')
+        .get()?.value,
+    ).toBe('wal-only');
+    backup.close();
+  });
+
+  it('stops before backup or migration when recovery fails', async () => {
+    const directory = temporary();
+    const databasePath = join(directory, 'jobs.sqlite');
+    const quarantineDirectory = join(directory, 'quarantine');
+    const phases: string[] = [];
+    writeFileSync(databasePath, Buffer.alloc(4096, 0xa5));
+
+    let failure: unknown;
+    try {
+      await backend(directory, {
+        databasePath,
+        databaseQuarantineDirectory: quarantineDirectory,
+        backupBeforeMigrations: true,
+        onStartupProgress: (phase) => phases.push(phase),
+      });
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toBeInstanceOf(DatabaseRecoveryError);
+    expect((failure as DatabaseRecoveryError).quarantine).toBeDefined();
+    expect(phases).toEqual(['checking-database']);
+    expect(existsSync(join(directory, 'backups'))).toBe(false);
   });
 
   it('rate-limits API and client file requests independently', async () => {

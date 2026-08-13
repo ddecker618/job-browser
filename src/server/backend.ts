@@ -1,25 +1,41 @@
 import type { Server } from 'node:http';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 
 import { createDatabaseBackup } from '../db/backup.js';
-import { openDatabase, type JobDatabase } from '../db/database.js';
+import {
+  createPersistenceSetBackup,
+  listBackups,
+  type BackupMetadata,
+  type PersistenceSetPaths,
+} from '../db/persistenceSetBackup.js';
+import {
+  defaultDatabasePath,
+  openDatabase,
+  type JobDatabase,
+} from '../db/database.js';
 import {
   DEFAULT_MIGRATIONS_DIRECTORY,
   listPendingMigrations,
   runMigrations,
 } from '../db/migration-runner.js';
 import { seedKnownApplications } from '../db/seeds/known-applications.js';
+import { seedEmployerRegistry } from '../db/seeds/employerRegistry.js';
 import type { LogWriter } from '../logging/logger.js';
 import { log } from '../logging/logger.js';
 import { createApp, type AppOptions } from './app.js';
 import { providerRegistry } from '../providers/providerRegistry.js';
 import { SourceRepository } from '../repositories/source-repository.js';
 import { JobRepository } from '../repositories/job-repository.js';
+import { JobLifecycleRepository } from '../repositories/job-lifecycle-repository.js';
 import { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
 import { DiscoveryScheduler } from '../discovery/discoveryScheduler.js';
+import { EmployerDiscoveryService } from '../discovery/employerDiscoveryService.js';
+import { CareerSiteHealthService } from '../discovery/careerSiteHealthService.js';
+import { EmployerRepository } from '../repositories/employerRepository.js';
+import { EmployerDiscoveryIntelligenceService } from '../discovery/employerDiscoveryIntelligenceService.js';
 import { unavailableCredentialResolver } from '../discovery/credentialResolver.js';
 import { IntelligenceEngine } from '../intelligence/intelligenceEngine.js';
 import { loadCandidateProfile } from '../config/candidate-profile.js';
@@ -52,7 +68,15 @@ export interface BackendOptions extends AppOptions {
   ziprecruiterProfile?: string;
   usaJobsProfile?: string;
   clientRequestsPerMinute?: number;
+  databaseQuarantineDirectory?: string;
+  onStartupProgress?: (phase: BackendStartupPhase) => void;
 }
+
+export type BackendStartupPhase =
+  | 'checking-database'
+  | 'backing-up-database'
+  | 'applying-database-updates'
+  | 'starting-local-service';
 
 export interface BackendHandle {
   database: JobDatabase;
@@ -62,6 +86,7 @@ export interface BackendHandle {
   migrationBackupPath: string | null;
   coordinator: DiscoveryCoordinator;
   backup(): Promise<string>;
+  listBackups(): BackupMetadata[];
   stop(): Promise<void>;
 }
 
@@ -69,31 +94,64 @@ export async function startBackend(
   options: BackendOptions = {},
 ): Promise<BackendHandle> {
   const logger = options.logger ?? log;
-  const database = openDatabase(options.databasePath);
+  const databasePath = options.databasePath ?? defaultDatabasePath();
+  const quarantineDirectory =
+    options.databaseQuarantineDirectory ??
+    (databasePath === ':memory:'
+      ? undefined
+      : resolve(dirname(databasePath), 'quarantine', 'database'));
+  let database: JobDatabase | undefined;
   let server: Server | undefined;
   try {
-    const quickCheck = database.pragma('quick_check', { simple: true });
-    if (quickCheck !== 'ok')
-      throw new Error(`SQLite integrity check failed: ${String(quickCheck)}`);
+    options.onStartupProgress?.('checking-database');
+    database = openDatabase(
+      databasePath,
+      quarantineDirectory === undefined
+        ? {}
+        : { quarantineDirectory: quarantineDirectory },
+    );
+    const activeDatabase = database;
     const migrationsDirectory =
       options.migrationsDirectory ?? DEFAULT_MIGRATIONS_DIRECTORY;
     const pendingMigrations = listPendingMigrations(
       database,
       migrationsDirectory,
     );
+    const persistenceSetPaths: PersistenceSetPaths | null =
+      options.backupDirectory !== undefined &&
+      options.resumeDirectory !== undefined &&
+      options.snapshotDirectory !== undefined &&
+      options.candidateProfilePath !== undefined &&
+      options.scoringConfigPath !== undefined
+        ? {
+            databasePath,
+            resumeDirectory: options.resumeDirectory,
+            snapshotDirectory: options.snapshotDirectory,
+            candidateProfilePath: options.candidateProfilePath,
+            scoringConfigPath: options.scoringConfigPath,
+            ...(options.profilePreferencesPath === undefined
+              ? {}
+              : { profilePreferencesPath: options.profilePreferencesPath }),
+            backupDirectory: options.backupDirectory,
+          }
+        : null;
     let migrationBackupPath: string | null = null;
     if (
       pendingMigrations.length > 0 &&
       options.backupBeforeMigrations === true &&
       options.backupDirectory !== undefined
     ) {
+      options.onStartupProgress?.('backing-up-database');
       migrationBackupPath = await createDatabaseBackup(
         database,
         options.backupDirectory,
         'pre-migration',
       );
     }
+    options.onStartupProgress?.('applying-database-updates');
     runMigrations(database, migrationsDirectory);
+    seedEmployerRegistry(database);
+    options.onStartupProgress?.('starting-local-service');
     seedKnownApplications(database);
     await providerRegistry.loadProviders();
     if (options.linkedinProfile) {
@@ -147,6 +205,11 @@ export async function startBackend(
       sourceRepository.ensureDefaultSources();
     }
     sourceRepository.recoverInterruptedRuns();
+    const jobLifecycle = new JobLifecycleRepository(database);
+    const lifecycleReconciliation = jobLifecycle.reconcileKnownClosures();
+    if (lifecycleReconciliation.changed > 0) {
+      logger('info', 'Known job closures reconciled', lifecycleReconciliation);
+    }
     new JobRepository(database).refreshMatchedFamilies();
     const currentProfile = loadCandidateProfile(options.candidateProfilePath);
     const currentScoring = loadScoringConfig(options.scoringConfigPath);
@@ -164,20 +227,47 @@ export async function startBackend(
         ? {}
         : { profilePreferencesPath: options.profilePreferencesPath }),
       analyze: () =>
-        new IntelligenceEngine(database).analyze(
+        new IntelligenceEngine(activeDatabase).analyze(
           loadCandidateProfile(options.candidateProfilePath),
           loadScoringConfig(options.scoringConfigPath),
         ),
     });
+    const employerRepository = new EmployerRepository(database);
+    const employerDiscoveryIntelligence =
+      new EmployerDiscoveryIntelligenceService(database);
+    const employerDiscoveryService = new EmployerDiscoveryService(
+      employerRepository,
+      sourceRepository,
+      providerRegistry,
+      coordinator,
+      options.credentialResolver ?? unavailableCredentialResolver,
+      employerDiscoveryIntelligence,
+    );
+    const careerSiteHealthService = new CareerSiteHealthService(
+      employerRepository,
+      employerDiscoveryService,
+    );
     const scheduler =
       options.enableScheduler === true
-        ? new DiscoveryScheduler(sourceRepository, coordinator)
+        ? new DiscoveryScheduler(
+            sourceRepository,
+            coordinator,
+            30_000,
+            employerDiscoveryService,
+            undefined,
+            careerSiteHealthService,
+            jobLifecycle,
+          )
         : null;
     scheduler?.start();
     const app = createApp(database, {
       ...options,
       coordinator,
       sourceRepository,
+      employerRepository,
+      employerDiscoveryService,
+      careerSiteHealthService,
+      employerDiscoveryIntelligence,
     });
     if (options.development === true) {
       const { createServer } = await import('vite');
@@ -216,16 +306,23 @@ export async function startBackend(
     logger('info', 'Backend started', { url, pendingMigrations });
     let stopped = false;
     return {
-      database,
+      database: activeDatabase,
       server,
       url,
       pendingMigrations,
       migrationBackupPath,
       coordinator,
       backup: async () => {
-        if (options.backupDirectory === undefined)
+        if (persistenceSetPaths === null)
           throw new Error('Backup directory is not configured');
-        return createDatabaseBackup(database, options.backupDirectory);
+        const result = await createPersistenceSetBackup(
+          activeDatabase,
+          persistenceSetPaths,
+        );
+        return result.backupId;
+      },
+      listBackups: () => {
+        return listBackups(activeDatabase);
       },
       stop: async () => {
         if (stopped) return;
@@ -237,13 +334,31 @@ export async function startBackend(
             error === undefined ? resolveStop() : reject(error),
           );
         });
-        database.pragma('wal_checkpoint(TRUNCATE)');
-        database.close();
+        try {
+          activeDatabase.pragma('wal_checkpoint(TRUNCATE)');
+        } finally {
+          if (activeDatabase.open) activeDatabase.close();
+        }
       },
     };
   } catch (error) {
     if (server !== undefined) server.close();
-    if (database.open) database.close();
+    if (database?.open === true) database.close();
     throw error;
   }
 }
+
+export {
+  restorePersistenceSet,
+  verifyBackupSet,
+  loadBackupManifest,
+  dryRunRestore,
+  listBackups as listBackupMetadata,
+  type BackupManifest,
+  type BackupMetadata,
+  type PersistenceSetPaths,
+  type RestoreResult,
+  type RestoreDryRunReport,
+  type FileRole,
+  type BackupFileRecord,
+} from '../db/persistenceSetBackup.js';

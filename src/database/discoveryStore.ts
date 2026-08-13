@@ -10,6 +10,7 @@ import type {
 import type { ConfiguredSource } from '../models/source-management.js';
 import type { JobProvider } from '../providers/baseProvider.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import { JobLifecycleRepository } from '../repositories/job-lifecycle-repository.js';
 
 export interface DiscoveryRun {
   runId: string;
@@ -328,7 +329,7 @@ export class DiscoveryStore {
     this.database
       .prepare(
         `UPDATE job_sources SET consecutive_snapshot_misses = 0,
-           active = 1, removed_at = NULL
+           active = active
          WHERE source_id = ? AND last_seen_run_id = ?`,
       )
       .run(sourceId, runId);
@@ -337,23 +338,24 @@ export class DiscoveryStore {
         `UPDATE job_sources SET
            consecutive_snapshot_misses = consecutive_snapshot_misses + 1,
            active = CASE WHEN consecutive_snapshot_misses + 1 >= 2 THEN 0 ELSE active END,
+           lifecycle_reason = CASE
+             WHEN consecutive_snapshot_misses + 1 >= 2
+               AND lifecycle_reason NOT IN ('closing-date-expired', 'provider-closed')
+             THEN 'snapshot-missing' ELSE lifecycle_reason END,
            removed_at = CASE WHEN consecutive_snapshot_misses + 1 >= 2
              THEN COALESCE(removed_at, ?) ELSE removed_at END
          WHERE source_id = ? AND (last_seen_run_id IS NULL OR last_seen_run_id <> ?)`,
       )
       .run(verifiedAt, sourceId, runId);
-    this.database
-      .prepare(
-        `UPDATE jobs SET
-           active = CASE WHEN EXISTS (
-             SELECT 1 FROM job_sources WHERE job_sources.job_id = jobs.id AND job_sources.active = 1
-           ) THEN 1 ELSE 0 END,
-           removed_at = CASE WHEN EXISTS (
-             SELECT 1 FROM job_sources WHERE job_sources.job_id = jobs.id AND job_sources.active = 1
-           ) THEN NULL ELSE COALESCE(removed_at, ?) END
-         WHERE id IN (SELECT job_id FROM job_sources WHERE source_id = ?)`,
+    const lifecycle = new JobLifecycleRepository(this.database);
+    const affected = this.database
+      .prepare<[string], { job_id: string }>(
+        'SELECT DISTINCT job_id FROM job_sources WHERE source_id = ?',
       )
-      .run(verifiedAt, sourceId);
+      .all(sourceId);
+    for (const row of affected) {
+      lifecycle.recomputeCanonical(row.job_id, verifiedAt);
+    }
     this.database
       .prepare(
         `UPDATE sources SET last_complete_snapshot_at = ?, updated_at = ? WHERE id = ?`,

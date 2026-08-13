@@ -42,7 +42,7 @@ export class IntelligenceEngine {
     });
 
     try {
-      const jobs = this.jobRepository.listJobs();
+      const jobs = this.jobRepository.listCurrentJobs();
       let totalScore = 0;
       for (const job of jobs) {
         const jobText = buildJobTextForVerification(job);
@@ -104,7 +104,8 @@ export class IntelligenceEngine {
       this.database
         .prepare<[string], { count: number }>(
           `SELECT COUNT(*) AS count FROM jobs
-         WHERE active = 1 AND (score_version IS NULL OR score_version <> ?)`,
+         WHERE active = 1 AND status <> 'expired'
+           AND (score_version IS NULL OR score_version <> ?)`,
         )
         .get(scoreVersion)?.count ?? 0;
     if (staleActiveJobs === 0) return null;

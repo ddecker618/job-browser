@@ -392,12 +392,17 @@ export function JobsPage() {
             value={filters.closingSoon}
             onChange={(value) => updateFilter('closingSoon', value)}
           />
-          <FacetSelect
-            label="Active state"
-            value={filters.active}
-            options={facets.activeStates}
-            onChange={(value) => updateFilter('active', value)}
-          />
+          <label>
+            Opportunity view
+            <select
+              value={filters.active}
+              onChange={(event) => updateFilter('active', event.target.value)}
+            >
+              <option value="">Current</option>
+              <option value="removed">Inactive / expired history</option>
+              <option value="all">All retained</option>
+            </select>
+          </label>
           <BooleanFilter
             label="Multiple sources"
             value={filters.multipleSource}
@@ -545,7 +550,11 @@ export function JobsPage() {
                         {isClosingSoon(job.closingDate) ? (
                           <i>Closing soon</i>
                         ) : null}
-                        {job.active ? null : <i className="removed">Removed</i>}
+                        {job.active && job.status !== 'expired' ? null : (
+                          <i className="removed">
+                            {lifecycleLabel(job.lifecycleReason)}
+                          </i>
+                        )}
                       </span>
                       <small>{formatDate(job.firstSeenAt)}</small>
                     </td>
@@ -589,6 +598,13 @@ export function JobsPage() {
 }
 
 type SetSearchParams = ReturnType<typeof useSearchParams>[1];
+
+function lifecycleLabel(reason: string): string {
+  if (reason === 'closing-date-expired') return 'Expired';
+  if (reason === 'provider-closed') return 'Closed';
+  if (reason === 'snapshot-missing') return 'No longer listed';
+  return 'Inactive';
+}
 
 function FacetSelect({
   label,

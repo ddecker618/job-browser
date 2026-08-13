@@ -21,6 +21,7 @@ import type {
   RecommendationStatus,
 } from '../models/intelligence.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import type { JobLifecycleReason } from '../domain/job-lifecycle.js';
 
 interface CountRow {
   value: number;
@@ -54,6 +55,9 @@ interface JobListRow {
   provider: string;
   favorite: number;
   active: number;
+  lifecycle_reason: JobLifecycleReason;
+  last_verified_at: string | null;
+  removed_at: string | null;
   verification_status: string | null;
   eligibility_passed: number | null;
   eligibility_rejection: string | null;
@@ -62,6 +66,7 @@ interface JobListRow {
 }
 
 interface JobDetailRow extends JobListRow {
+  existing_application_id: string | null;
   city: string | null;
   state: string | null;
   employment_type: string;
@@ -92,6 +97,7 @@ interface JobDetailRow extends JobListRow {
 
 interface JobSourceRow {
   source_id: string;
+  source_label: string;
   provider_id: string | null;
   posting_url: string | null;
   external_id: string | null;
@@ -181,12 +187,15 @@ export class DashboardRepository {
     return {
       totalJobs: this.scalar('SELECT COUNT(*) AS value FROM jobs'),
       newJobsToday: this.scalar(
-        'SELECT COUNT(*) AS value FROM jobs WHERE substr(first_seen_at, 1, 10) = ?',
+        `SELECT COUNT(*) AS value FROM jobs
+          WHERE active = 1 AND status <> 'expired'
+            AND substr(first_seen_at, 1, 10) = ?`,
         today,
       ),
       strongMatches: this.scalar(
         `SELECT COUNT(*) AS value FROM jobs
-         WHERE recommendation IN ('Apply Immediately', 'Strong Match')`,
+         WHERE recommendation IN ('Apply Immediately', 'Strong Match')
+           AND active = 1 AND status <> 'expired'`,
       ),
       appliedJobs: this.scalar(
         `SELECT COUNT(*) AS value FROM jobs
@@ -199,16 +208,23 @@ export class DashboardRepository {
         "SELECT COUNT(*) AS value FROM jobs WHERE status = 'expired' OR active = 0",
       ),
       verifiedMatches: this.scalar(
-        "SELECT COUNT(*) AS value FROM jobs WHERE verification_status = 'verified' AND eligibility_passed = 1",
+        `SELECT COUNT(*) AS value FROM jobs
+          WHERE verification_status = 'verified' AND eligibility_passed = 1
+            AND active = 1 AND status <> 'expired'`,
       ),
-      averageMatchScore: this.scalar('SELECT AVG(score) AS value FROM jobs'),
+      averageMatchScore: this.scalar(
+        "SELECT AVG(score) AS value FROM jobs WHERE active = 1 AND status <> 'expired'",
+      ),
       topEmployer: this.text(
-        `SELECT company AS value FROM jobs GROUP BY normalized_company
+        `SELECT company AS value FROM jobs
+          WHERE active = 1 AND status <> 'expired' GROUP BY normalized_company
          ORDER BY COUNT(*) DESC, company LIMIT 1`,
       ),
       topSkill: this.text(
         `SELECT skills.name AS value FROM job_skills
          JOIN skills ON skills.id = job_skills.skill_id
+         JOIN jobs ON jobs.id = job_skills.job_id
+         WHERE jobs.active = 1 AND jobs.status <> 'expired'
          GROUP BY skills.id ORDER BY SUM(job_skills.frequency) DESC, skills.name LIMIT 1`,
       ),
       recentActivity: this.getRecentActivity(),
@@ -226,7 +242,8 @@ export class DashboardRepository {
         `SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.remote_type,
           jobs.salary_minimum, jobs.salary_maximum, jobs.score, jobs.recommendation,
           jobs.matched_families, jobs.status, jobs.first_seen_at, jobs.last_seen_at,
-           jobs.favorite, jobs.active, jobs.verification_status,
+            jobs.favorite, jobs.active, jobs.lifecycle_reason, jobs.last_verified_at,
+            jobs.removed_at, jobs.verification_status,
            jobs.eligibility_passed, jobs.eligibility_rejection,
            jobs.work_arrangement, jobs.score_version,
           COALESCE(MIN(job_sources.provider_id), jobs.source_type) AS provider
@@ -244,7 +261,8 @@ export class DashboardRepository {
         `SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.city, jobs.state,
           jobs.remote_type, jobs.employment_type, jobs.salary_minimum, jobs.salary_maximum,
           jobs.salary_text, jobs.score, jobs.recommendation, jobs.matched_families, jobs.status,
-           jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
+            jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
+            jobs.lifecycle_reason, jobs.last_verified_at, jobs.removed_at,
            jobs.verification_status, jobs.eligibility_passed,
            jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version,
           jobs.description, jobs.requirements, jobs.preferred_qualifications,
@@ -253,8 +271,10 @@ export class DashboardRepository {
            jobs.appointment_type, jobs.work_schedule, jobs.telework_eligible,
            jobs.opening_date, jobs.closing_date, jobs.application_urls_json,
           jobs.source_type AS provider, recommendations.category_scores_json,
-          recommendations.explanations_json, recommendations.missing_qualifications_json,
-          recommendations.recommendation_status
+           recommendations.explanations_json, recommendations.missing_qualifications_json,
+           recommendations.recommendation_status,
+           (SELECT applications.id FROM applications WHERE applications.job_id = jobs.id)
+             AS existing_application_id
          FROM jobs
          LEFT JOIN recommendations ON recommendations.job_id = jobs.id
          WHERE jobs.id = ? ORDER BY recommendations.analyzed_at DESC LIMIT 1`,
@@ -264,12 +284,21 @@ export class DashboardRepository {
 
     const sources = this.database
       .prepare<[string], JobSourceRow>(
-        `SELECT source_id, provider_id, posting_url, external_id, first_seen_at, last_seen_at
-         FROM job_sources WHERE job_id = ? ORDER BY first_seen_at`,
+        `SELECT job_sources.source_id,
+                COALESCE(sources.display_name, sources.employer) AS source_label,
+                COALESCE(job_sources.provider_id, sources.provider_id) AS provider_id,
+                job_sources.posting_url,
+                job_sources.external_id, job_sources.first_seen_at,
+                job_sources.last_seen_at
+           FROM job_sources
+           JOIN sources ON sources.id = job_sources.source_id
+          WHERE job_sources.job_id = ?
+          ORDER BY job_sources.first_seen_at`,
       )
       .all(jobId)
       .map<JobSourceView>((source) => ({
         sourceId: source.source_id,
+        sourceLabel: source.source_label,
         providerId: source.provider_id,
         postingUrl: source.posting_url,
         externalId: source.external_id,
@@ -294,6 +323,7 @@ export class DashboardRepository {
 
     return {
       ...mapJobListItem(row),
+      existingApplicationId: row.existing_application_id,
       city: row.city,
       state: row.state,
       employmentType: row.employment_type,
@@ -564,21 +594,27 @@ export class DashboardRepository {
       topSkills: this.metrics(
         `SELECT skills.name AS label, SUM(job_skills.frequency) AS value
          FROM job_skills JOIN skills ON skills.id = job_skills.skill_id
+         JOIN jobs ON jobs.id = job_skills.job_id
+         WHERE jobs.active = 1 AND jobs.status <> 'expired'
          GROUP BY skills.id ORDER BY value DESC LIMIT 10`,
       ),
       topCertifications: this.metrics(
         `SELECT certifications.name AS label, COUNT(*) AS value
          FROM job_certifications
          JOIN certifications ON certifications.id = job_certifications.certification_id
+         JOIN jobs ON jobs.id = job_certifications.job_id
+         WHERE jobs.active = 1 AND jobs.status <> 'expired'
          GROUP BY certifications.id ORDER BY value DESC LIMIT 10`,
       ),
       topEmployers: this.metrics(
         `SELECT company AS label, COUNT(*) AS value FROM jobs
+         WHERE active = 1 AND status <> 'expired'
          GROUP BY normalized_company ORDER BY value DESC LIMIT 10`,
       ),
       jobsByLocation: this.metrics(
         `SELECT COALESCE(location, 'Unknown') AS label, COUNT(*) AS value
-         FROM jobs GROUP BY location ORDER BY value DESC LIMIT 10`,
+         FROM jobs WHERE active = 1 AND status <> 'expired'
+         GROUP BY location ORDER BY value DESC LIMIT 10`,
       ),
       jobsByScore: this.metrics(
         `SELECT CASE
@@ -587,11 +623,13 @@ export class DashboardRepository {
            WHEN score >= 40 THEN '40-59'
            WHEN score IS NULL THEN 'Unscored'
            ELSE '0-39' END AS label, COUNT(*) AS value
-         FROM jobs GROUP BY label ORDER BY label`,
+         FROM jobs WHERE active = 1 AND status <> 'expired'
+         GROUP BY label ORDER BY label`,
       ),
       recommendationDistribution: this.metrics(
         `SELECT COALESCE(recommendation, 'Unscored') AS label, COUNT(*) AS value
-         FROM jobs GROUP BY recommendation ORDER BY value DESC`,
+         FROM jobs WHERE active = 1 AND status <> 'expired'
+         GROUP BY recommendation ORDER BY value DESC`,
       ),
       jobsOverTime: this.metrics(
         `SELECT substr(first_seen_at, 1, 10) AS label, COUNT(*) AS value
@@ -601,7 +639,8 @@ export class DashboardRepository {
         `SELECT AVG(CASE
            WHEN salary_minimum IS NOT NULL AND salary_maximum IS NOT NULL
              THEN (salary_minimum + salary_maximum) / 2
-           ELSE COALESCE(salary_maximum, salary_minimum) END) AS value FROM jobs`,
+           ELSE COALESCE(salary_maximum, salary_minimum) END) AS value FROM jobs
+          WHERE active = 1 AND status <> 'expired'`,
       ),
     };
   }
@@ -785,6 +824,9 @@ function mapJobListItem(row: JobListRow): JobListItem {
     provider: row.provider,
     favorite: Boolean(row.favorite),
     active: Boolean(row.active),
+    lifecycleReason: row.lifecycle_reason,
+    lastVerifiedAt: row.last_verified_at,
+    removedAt: row.removed_at,
     verificationStatus: row.verification_status,
     eligibilityPassed:
       row.eligibility_passed === null ? null : Boolean(row.eligibility_passed),

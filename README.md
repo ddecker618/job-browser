@@ -51,7 +51,7 @@ The default database is `data/job-browser.sqlite`. Set `JOB_BROWSER_DB_PATH` to 
 
 ## Windows Desktop Application
 
-Install with `release/Job-Browser-Setup-1.0.9.exe`. The current-user NSIS installer creates Desktop and Start Menu shortcuts and does not delete application data during uninstall. The unpacked executable is `release/win-unpacked/Job Browser.exe`.
+Install with `release/Job-Browser-Setup-1.0.14.exe` (249,829,699 bytes; SHA-256 `037201DDFBA09EDEF9A5AB5EFD0BC1290A9D199513157AC0FEAC96930AC15785`). The current-user NSIS installer creates Desktop and Start Menu shortcuts and does not delete application data during uninstall. The unpacked executable is `release/win-unpacked/Job Browser.exe`.
 
 The desktop application:
 
@@ -100,21 +100,24 @@ The production server serves the route-split Vite bundle from `dist/client`. Set
 
 ## Dashboard Navigation
 
-| Route        | Purpose                                                                                |
-| ------------ | -------------------------------------------------------------------------------------- |
-| `/`          | Summary cards, match health, market signals, and recent activity                       |
-| `/jobs`      | Instant search, filters, saved views, sorting, pagination, and job details             |
-| `/profile`   | Candidate profile and scoring-weight editor with optional rescoring                    |
-| `/resumes`   | Resume upload, metadata, default selection, proposals, and resume-based rescoring      |
-| `/analytics` | Skills, certifications, employers, scores, recommendations, and timeline charts        |
-| `/sources`   | Configure sources, validate them, run discovery, schedule searches, and inspect health |
-| `/settings`  | Local paths, scheduler master switch, theme, search defaults, and logging level        |
+| Route                          | Purpose                                                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| `/`                            | Summary cards, match health, market signals, and recent activity                       |
+| `/jobs`                        | Instant search, filters, saved views, sorting, pagination, and job details             |
+| `/applications`                | Application status/Company filters, opaque pagination, and recent activity             |
+| `/applications/:applicationId` | Copied context, summary notes, and correction-aware timeline                           |
+| `/profile`                     | Candidate profile and scoring-weight editor with optional rescoring                    |
+| `/resumes`                     | Resume upload, metadata, default selection, proposals, and resume-based rescoring      |
+| `/analytics`                   | Skills, certifications, employers, scores, recommendations, and timeline charts        |
+| `/sources`                     | Configure sources, validate them, run discovery, schedule searches, and inspect health |
+| `/employers`                   | Employer registry, CareerSite health, and explainable Discovery Intelligence           |
+| `/settings`                    | Local paths, scheduler master switch, theme, search defaults, and logging level        |
 
-The dashboard is dark by default, keyboard navigable, responsive, and backed by TanStack Query. Jobs use server-backed pagination, sorting, facets, and optional FTS5 search with an indexed fallback. Job filter state is preserved in the URL and local storage, and named saved filters are stored in SQLite. Normal actions use the API instead of direct database access.
+The dashboard is dark by default, keyboard navigable, responsive, and backed by TanStack Query. Jobs use server-backed pagination, sorting, facets, and optional FTS5 search with an indexed fallback. Current Jobs exclude proven inactive or expired opportunities; an Opportunity view exposes retained history and all retained records with explicit lifecycle reasons. Job filter state is preserved in the URL and local storage, and named saved filters are stored in SQLite. Applications support Applied confirmation from the Jobs workflow and Job detail panel, richer lifecycle and Note events, replacement/Void corrections, exact or date-only occurrence entry, and a complete immutable audit timeline. Normal actions use the API instead of direct database access.
 
-Job workflow changes use the existing audited status repository. Profile rescoring uses the intelligence engine, and all manual, scheduled, fixture, and CLI discovery uses `DiscoveryCoordinator`. The dashboard does not reimplement those rules.
+Job workflow changes use the existing audited status repository. Dedicated Application commands use the validated Application service and canonical event-derived projection while retaining dashboard and coarse Job-status compatibility. Profile rescoring uses the intelligence engine, and all manual, scheduled, fixture, and CLI discovery uses `DiscoveryCoordinator`. The dashboard does not reimplement those rules.
 
-TXT, Markdown, text-based PDF, and DOCX resumes are parsed locally using the configured skill/certification catalog. Scanned/image-only PDFs fail with a clear OCR-not-supported message. No resume content is sent to an external parser or AI service. Database-location setting changes are stored and apply after restart.
+TXT, Markdown, text-based PDF, and DOCX resumes are parsed locally using the configured skill/certification catalog. Scanned/image-only PDFs fail with a clear OCR-not-supported message. No resume content is sent to an external parser or AI service. Database-location setting changes are stored and apply after restart. Packaged desktop databases must remain outside the replaceable application installation directory; per-user data and external custom locations are supported.
 
 ## Architecture
 
@@ -135,17 +138,18 @@ Search Request
 
 Responsibilities are separated by directory:
 
-| Directory        | Responsibility                                                          |
-| ---------------- | ----------------------------------------------------------------------- |
-| `src/discovery`  | Pipeline orchestration and command entry point                          |
-| `src/providers`  | Provider contract, automatic registry, source-specific implementation   |
-| `src/normalizer` | Conversion into the shared normalized job schema                        |
-| `src/database`   | Discovery-run, provider, and source persistence                         |
-| `src/models`     | Provider-neutral application, run, metadata, and request models         |
-| `src/utils`      | Fingerprints, fixtures, HTML cleanup, and failure artifacts             |
-| `src/fixtures`   | Version-controlled provider responses for offline tests                 |
-| `src/server`     | Shared Express application and web/Electron backend lifecycle           |
-| `src/desktop`    | Secure Electron lifecycle, paths, startup, preload, and window handling |
+| Directory          | Responsibility                                                          |
+| ------------------ | ----------------------------------------------------------------------- |
+| `src/discovery`    | Pipeline orchestration and command entry point                          |
+| `src/providers`    | Provider contract, automatic registry, source-specific implementation   |
+| `src/normalizer`   | Conversion into the shared normalized job schema                        |
+| `src/database`     | Discovery-run, provider, and source persistence                         |
+| `src/models`       | Provider-neutral application, run, metadata, and request models         |
+| `src/utils`        | Fingerprints, fixtures, HTML cleanup, and failure artifacts             |
+| `src/fixtures`     | Version-controlled provider responses for offline tests                 |
+| `src/applications` | Validated Application Management service and transaction boundary       |
+| `src/server`       | Shared Express application and web/Electron backend lifecycle           |
+| `src/desktop`      | Secure Electron lifecycle, paths, startup, preload, and window handling |
 
 `DiscoveryCoordinator` owns source validation, credential injection, run serialization, and health updates. `DiscoveryEngine` knows only the `JobProvider` interface and does not branch on provider IDs. A provider owns its search construction, fetch behavior, raw-data interpretation, and normalization; shared validation and persistence come from `BaseProvider`.
 
@@ -225,6 +229,15 @@ Structured-data URLs reject file, loopback, link-local, and private-network targ
 USAJOBS credentials are configured from the Sources page in the desktop application. Electron encrypts them with `safeStorage` (Windows DPAPI); they never enter SQLite, source configuration, logs, diagnostics, fixtures, or API responses. Web-only mode can view USAJOBS source state but cannot manage desktop credentials.
 
 Schedules support manual, 6-hour, 12-hour, 24-hour, and daily local-time cadences. The Settings master switch and each source schedule are disabled by default. The scheduler runs sources sequentially only while the desktop app is open, does not catch up missed runs at startup, and does not continue in the background after exit.
+
+Employer Discovery uses the separate deterministic
+`employer-discovery-intelligence-v1` policy to prioritize supported CareerSites
+from retained local evidence. Recently active sites use a 6-hour cadence, normal
+or degraded sites use 24 hours, and stable sites with known zero recent activity
+use 72 hours. Retirement, health, backoff, credentials, Source configuration,
+and existing security restrictions always override priority. The Employers page
+shows the actual evidence and reasons; no AI service, telemetry, or external
+analytics is used.
 
 ## Running Discovery
 
@@ -339,8 +352,8 @@ Core tables:
 | `job_sources`                            | Source URLs, external IDs, and raw source JSON   |
 | `job_observations`                       | Immutable raw records for every observation      |
 | `job_status_history`                     | Immutable audit records for status transitions   |
-| `application_history`                    | Application milestones and notes                 |
-| `applications`                           | One durable application aggregate per job        |
+| `application_history`                    | Append-only Application event and Note ledger    |
+| `applications`                           | Current event-derived projection, one per Job    |
 | `provider_metadata`                      | Provider health and execution metadata           |
 | `candidate_profiles`                     | Profile configuration used by analysis           |
 | `analysis_runs`                          | Analysis lifecycle and processed-job count       |
@@ -350,7 +363,7 @@ Core tables:
 | `certifications`, `job_certifications`   | Requested certifications and links               |
 | `analytics`                              | Per-run aggregate metric snapshots               |
 
-Status changes must use `JobRepository.changeStatus`. It updates the job and writes its audit record in one transaction. Application milestones also write `application_history` records.
+Direct Job workflow changes use `JobRepository.changeStatus`; it updates the Job and its audit record transactionally while retaining Application compatibility. Dedicated Application lifecycle and correction commands use `ApplicationService`, which appends `application_history`, reprojects `applications`, and applies post-fold Job compatibility in one transaction.
 
 Incoming duplicate observations never overwrite the canonical workflow status. This protects an `applied` job from being changed back to `new`.
 
@@ -362,7 +375,7 @@ Search runs store provider ID, serialized search parameters, execution time, ins
 
 Migration files live in `src/db/migrations` and use immutable numeric names such as `001_initial_schema.sql`, `002_discovery_engine.sql`, and `003_job_intelligence.sql`.
 
-Phase 7 adds `007_expanded_discovery.sql` for discovery accounting, posting verification and removal, provider confidence, source snapshot state, identity-conflict diagnostics, source archival state, and search indexes. `008_job_search_salary.sql` adds the preserved salary-search index. Migration tests upgrade a populated Phase 6 database and verify existing jobs, sources, statuses, applications, and history remain intact.
+Phase 7 adds `007_expanded_discovery.sql` for discovery accounting, posting verification and removal, provider confidence, source snapshot state, identity-conflict diagnostics, source archival state, and search indexes. `008_job_search_salary.sql` adds the preserved salary-search index. The current checked-in migration head is `026_explicit_job_lifecycle.sql`, which adds explicit retained availability reasons and normalized source/observation closing evidence without manufacturing legacy expiry. Migration tests preserve existing Jobs, Sources, statuses, Applications, events, snapshots, Company identity, and history.
 
 The migration runner:
 

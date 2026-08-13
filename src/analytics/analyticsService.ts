@@ -30,8 +30,9 @@ export class AnalyticsService {
              FROM job_skills
              JOIN skills ON skills.id = job_skills.skill_id
              JOIN jobs ON jobs.id = job_skills.job_id
-             LEFT JOIN recommendations ON recommendations.job_id = jobs.id
-               AND recommendations.profile_id = ?
+              LEFT JOIN recommendations ON recommendations.job_id = jobs.id
+                AND recommendations.profile_id = ?
+              WHERE jobs.active = 1 AND jobs.status <> 'expired'
              GROUP BY skills.id ORDER BY value DESC, key LIMIT 25`,
           )
           .all(profileId),
@@ -49,8 +50,9 @@ export class AnalyticsService {
              FROM job_certifications
              JOIN certifications ON certifications.id = job_certifications.certification_id
              JOIN jobs ON jobs.id = job_certifications.job_id
-             LEFT JOIN recommendations ON recommendations.job_id = jobs.id
-               AND recommendations.profile_id = ?
+              LEFT JOIN recommendations ON recommendations.job_id = jobs.id
+                AND recommendations.profile_id = ?
+              WHERE jobs.active = 1 AND jobs.status <> 'expired'
              GROUP BY certifications.id ORDER BY value DESC, key LIMIT 25`,
           )
           .all(profileId),
@@ -61,7 +63,8 @@ export class AnalyticsService {
         profileId,
         'common_title',
         `SELECT title AS key, COUNT(*) AS value, COUNT(DISTINCT company) AS employer_count,
-           AVG(score) AS average_score FROM jobs GROUP BY normalized_title
+           AVG(score) AS average_score FROM jobs
+          WHERE active = 1 AND status <> 'expired' GROUP BY normalized_title
          ORDER BY value DESC, key LIMIT 25`,
         generatedAt,
       );
@@ -70,7 +73,8 @@ export class AnalyticsService {
         profileId,
         'active_employer',
         `SELECT company AS key, COUNT(*) AS value, 1 AS employer_count,
-           AVG(score) AS average_score FROM jobs WHERE active = 1 GROUP BY normalized_company
+           AVG(score) AS average_score FROM jobs
+          WHERE active = 1 AND status <> 'expired' GROUP BY normalized_company
          ORDER BY value DESC, key LIMIT 25`,
         generatedAt,
       );
@@ -85,7 +89,7 @@ export class AnalyticsService {
              WHEN salary_minimum IS NOT NULL AND salary_maximum IS NOT NULL
                THEN (salary_minimum + salary_maximum) / 2
              ELSE COALESCE(salary_maximum, salary_minimum)
-           END) AS value FROM jobs`,
+            END) AS value FROM jobs WHERE active = 1 AND status <> 'expired'`,
         ),
         generatedAt,
       );
@@ -106,7 +110,9 @@ export class AnalyticsService {
         'new_jobs_today',
         generatedAt.slice(0, 10),
         this.scalar(
-          'SELECT COUNT(*) AS value FROM jobs WHERE substr(first_seen_at, 1, 10) = ?',
+          `SELECT COUNT(*) AS value FROM jobs
+            WHERE active = 1 AND status <> 'expired'
+              AND substr(first_seen_at, 1, 10) = ?`,
           generatedAt.slice(0, 10),
         ),
         generatedAt,

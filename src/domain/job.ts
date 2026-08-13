@@ -1,4 +1,5 @@
 import type { JobStatus } from './job-status.js';
+import type { JobLifecycleReason } from './job-lifecycle.js';
 
 export const REMOTE_TYPES = ['onsite', 'hybrid', 'remote', 'unknown'] as const;
 export const EMPLOYMENT_TYPES = [
@@ -33,6 +34,7 @@ export interface Job {
   normalizedTitle: string;
   company: string;
   normalizedCompany: string;
+  companyId: string | null;
   location: string | null;
   city: string | null;
   state: string | null;
@@ -68,6 +70,7 @@ export interface Job {
   providerConfidence?: number | null;
   matchedFamilies?: string | null;
   active: boolean;
+  lifecycleReason: JobLifecycleReason;
   clearanceRequirement: string | null;
   sponsorshipAvailable: boolean | null;
   estimatedExperienceYears: number | null;
@@ -89,6 +92,7 @@ export interface Job {
 
 export type JobForScoring = Omit<
   Job,
+  | 'companyId'
   | 'verificationStatus'
   | 'eligibilityPassed'
   | 'eligibilityRejection'
@@ -98,4 +102,5 @@ export type JobForScoring = Omit<
   | 'verifiedAt'
   | 'scoreVersion'
   | 'scoreInputHash'
+  | 'lifecycleReason'
 >;

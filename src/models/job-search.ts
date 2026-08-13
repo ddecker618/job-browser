@@ -33,7 +33,7 @@ export interface JobSearchQuery {
   newlyDiscovered?: boolean | undefined;
   materiallyUpdated?: boolean | undefined;
   closingSoon?: boolean | undefined;
-  active?: 'active' | 'removed' | undefined;
+  active?: 'active' | 'removed' | 'all' | undefined;
   multipleSource?: boolean | undefined;
   matchedFamilies?: string | undefined;
   verificationStatus?: string | undefined;
@@ -68,6 +68,13 @@ export interface JobSearchItem {
   closingDate: string | null;
   favorite: boolean;
   active: boolean;
+  lifecycleReason:
+    | 'active'
+    | 'snapshot-missing'
+    | 'closing-date-expired'
+    | 'provider-closed'
+    | 'unknown';
+  removedAt: string | null;
   sources: JobSearchSource[];
   verificationStatus: string | null;
   eligibilityPassed: boolean | null;

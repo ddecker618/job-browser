@@ -1,9 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router';
 
 import { api } from '../api.js';
+import { AppliedCreationDialog } from './AppliedCreationDialog.js';
+import { getFocusableElements } from './Dialog.js';
 import { ErrorState, LoadingState } from './States.js';
 import { invalidateScoreQueries } from '../scoreCache.js';
+
+function lifecycleDetailLabel(reason: string): string {
+  if (reason === 'closing-date-expired') return 'Expired after closing date';
+  if (reason === 'provider-closed') return 'Closed by provider';
+  if (reason === 'snapshot-missing') return 'No longer listed';
+  return 'Inactive, reason unknown';
+}
 
 export function JobDetailPanel({
   jobId,
@@ -13,14 +23,27 @@ export function JobDetailPanel({
   onClose: () => void;
 }) {
   const client = useQueryClient();
+  const drawerRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const job = useQuery({
     queryKey: ['job', jobId],
     queryFn: () => api.job(jobId),
   });
   const [notes, setNotes] = useState('');
+  const [showAppliedDialog, setShowAppliedDialog] = useState(false);
   useEffect(() => {
     if (job.data !== undefined) setNotes(job.data.notes ?? '');
   }, [job.data]);
+  useEffect(() => {
+    const previousFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    closeButtonRef.current?.focus();
+    return () => {
+      if (previousFocus?.isConnected === true) previousFocus.focus();
+    };
+  }, []);
   const invalidate = async () => {
     await Promise.all([
       client.invalidateQueries({ queryKey: ['job', jobId] }),
@@ -57,11 +80,47 @@ export function JobDetailPanel({
       className="drawer-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !showAppliedDialog) {
+          onClose();
+        }
       }}
     >
-      <aside className="job-drawer" aria-label="Job details" aria-modal="true">
+      <aside
+        ref={drawerRef}
+        className="job-drawer"
+        role="dialog"
+        aria-label="Job details"
+        aria-modal="true"
+        aria-hidden={showAppliedDialog ? 'true' : undefined}
+        inert={showAppliedDialog}
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          if (showAppliedDialog) return;
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            onClose();
+            return;
+          }
+          if (event.key !== 'Tab') return;
+          const focusable = getFocusableElements(drawerRef.current);
+          if (focusable.length === 0) {
+            event.preventDefault();
+            drawerRef.current?.focus();
+            return;
+          }
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
+      >
         <button
+          ref={closeButtonRef}
           className="icon-button drawer-close"
           onClick={onClose}
           aria-label="Close job details"
@@ -90,6 +149,11 @@ export function JobDetailPanel({
                 </span>
                 <span>{job.data.workArrangement ?? job.data.remoteType}</span>
                 <span>{job.data.status}</span>
+                {job.data.active && job.data.status !== 'expired' ? null : (
+                  <span className="removed">
+                    {lifecycleDetailLabel(job.data.lifecycleReason)}
+                  </span>
+                )}
               </div>
             </div>
             {job.data.eligibilityPassed === false ? (
@@ -99,14 +163,20 @@ export function JobDetailPanel({
               </p>
             ) : null}
             <div className="action-strip">
-              <button
-                onClick={() => changeStatus('applied')}
-                disabled={updateStatus.isPending}
-              >
-                {updateStatus.isPending && updateStatus.variables === 'applied'
-                  ? 'Applying…'
-                  : 'Mark applied'}
-              </button>
+              {job.data.existingApplicationId === null ? (
+                <button onClick={() => setShowAppliedDialog(true)}>
+                  Mark applied
+                </button>
+              ) : (
+                <Link
+                  className="button"
+                  to={`/applications/${encodeURIComponent(
+                    job.data.existingApplicationId,
+                  )}`}
+                >
+                  View application
+                </Link>
+              )}
               <button
                 onClick={() => changeStatus('ignored', true)}
                 disabled={updateStatus.isPending}
@@ -208,8 +278,16 @@ export function JobDetailPanel({
                 </div>
                 <div>
                   <dt>Last verified</dt>
-                  <dd>{formatDate(job.data.lastSeenAt)}</dd>
+                  <dd>
+                    {formatDate(job.data.lastVerifiedAt ?? job.data.lastSeenAt)}
+                  </dd>
                 </div>
+                {job.data.removedAt == null ? null : (
+                  <div>
+                    <dt>Inactive since</dt>
+                    <dd>{formatDate(job.data.removedAt)}</dd>
+                  </div>
+                )}
                 <div>
                   <dt>Clearance</dt>
                   <dd>{job.data.clearanceRequirement ?? 'Not listed'}</dd>
@@ -260,17 +338,21 @@ export function JobDetailPanel({
               </p>
             </section>
             <section className="detail-section">
-              <h3>Notes</h3>
+              <h3>Job notes</h3>
+              <p>
+                Notes about this retained Job. These are separate from
+                Application summary notes and timeline Note events.
+              </p>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                placeholder="Add application notes…"
+                placeholder="Add notes about this Job…"
               />
               <button
                 className="button"
                 onClick={() => update.mutate({ notes })}
               >
-                Save notes
+                Save Job notes
               </button>
             </section>
             <section className="detail-section">
@@ -334,6 +416,12 @@ export function JobDetailPanel({
           </>
         )}
       </aside>
+      {job.data === undefined || !showAppliedDialog ? null : (
+        <AppliedCreationDialog
+          job={job.data}
+          onClose={() => setShowAppliedDialog(false)}
+        />
+      )}
     </div>
   );
 }

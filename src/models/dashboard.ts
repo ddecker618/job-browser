@@ -1,5 +1,6 @@
 import type { JobStatus } from '../domain/job-status.js';
 import type { CategoryScores, RecommendationStatus } from './intelligence.js';
+import type { JobLifecycleReason } from '../domain/job-lifecycle.js';
 
 export interface DashboardSummary {
   totalJobs: number;
@@ -39,6 +40,9 @@ export interface JobListItem {
   provider: string;
   favorite: boolean;
   active: boolean;
+  lifecycleReason: JobLifecycleReason;
+  lastVerifiedAt: string | null;
+  removedAt: string | null;
   verificationStatus: string | null;
   eligibilityPassed: boolean | null;
   eligibilityRejection: string | null;
@@ -48,6 +52,7 @@ export interface JobListItem {
 
 export interface JobSourceView {
   sourceId: string;
+  sourceLabel: string;
   providerId: string | null;
   postingUrl: string | null;
   externalId: string | null;
@@ -56,6 +61,7 @@ export interface JobSourceView {
 }
 
 export interface JobDetail extends JobListItem {
+  existingApplicationId: string | null;
   city: string | null;
   state: string | null;
   employmentType: string;

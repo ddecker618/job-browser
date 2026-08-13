@@ -229,4 +229,6 @@ export interface SourceControlCenter {
   recentRuns: DiscoveryRunView[];
   discovery: DiscoveryStatus | null;
   schedulerEnabled: boolean;
+  employerDiscoveryEnabled: boolean;
+  employerDiscoveryLastEvaluatedAt: string | null;
 }

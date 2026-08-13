@@ -6,6 +6,10 @@ import type {
   SeniorityLevel,
 } from '../domain/job.js';
 import type { NormalizedJob } from '../schemas/normalized-job.js';
+import type {
+  ClosingDatePrecision,
+  ProviderLifecycleStatus,
+} from '../domain/job-lifecycle.js';
 import { generateJobFingerprint } from '../utils/fingerprint.js';
 import { normalizeText } from '../utilities/normalization.js';
 
@@ -40,6 +44,8 @@ export interface NormalizedJobInput {
   teleworkEligible?: boolean | null;
   openingDate?: string | null;
   closingDate?: string | null;
+  closingDatePrecision?: ClosingDatePrecision | null;
+  providerLifecycleStatus?: ProviderLifecycleStatus;
   applicationUrls?: string[];
   requisitionId?: string | null;
 }
@@ -90,6 +96,8 @@ export function normalizeJob(input: NormalizedJobInput): NormalizedJob {
     teleworkEligible: input.teleworkEligible ?? null,
     openingDate: input.openingDate ?? null,
     closingDate: input.closingDate ?? null,
+    closingDatePrecision: input.closingDatePrecision ?? null,
+    providerLifecycleStatus: input.providerLifecycleStatus ?? 'unknown',
     applicationUrls: input.applicationUrls ?? [],
     firstSeenAt: input.discoveredAt,
     lastSeenAt: input.discoveredAt,

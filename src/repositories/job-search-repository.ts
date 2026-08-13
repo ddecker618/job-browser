@@ -28,6 +28,8 @@ interface JobRow {
   closing_date: string | null;
   favorite: number;
   active: number;
+  lifecycle_reason: JobSearchItem['lifecycleReason'];
+  removed_at: string | null;
   verification_status: string | null;
   eligibility_passed: number | null;
   eligibility_rejection: string | null;
@@ -101,7 +103,8 @@ export class JobSearchRepository {
          SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.remote_type,
            jobs.salary_minimum, jobs.salary_maximum, jobs.score, jobs.recommendation,
            jobs.matched_families, jobs.status, jobs.first_seen_at, jobs.last_verified_at,
-           jobs.materially_updated_at, jobs.closing_date, jobs.favorite, jobs.active,
+            jobs.materially_updated_at, jobs.closing_date, jobs.favorite, jobs.active,
+            jobs.lifecycle_reason, jobs.removed_at,
            jobs.verification_status, jobs.eligibility_passed,
            jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version
           FROM filtered_jobs JOIN jobs ON jobs.id = filtered_jobs.id
@@ -130,7 +133,11 @@ export class JobSearchRepository {
     const parameters: unknown[] = [];
     const scoreVersion = this.getScoreVersion?.();
     if (scoreVersion !== undefined) {
-      clauses.push('jobs.score_version = ?');
+      clauses.push(
+        query.active === 'removed'
+          ? "(jobs.active = 0 OR jobs.status = 'expired' OR jobs.score_version = ?)"
+          : 'jobs.score_version = ?',
+      );
       parameters.push(scoreVersion);
     }
     if (query.includeIneligible !== true) {
@@ -248,9 +255,10 @@ export class JobSearchRepository {
         "jobs.closing_date IS NOT NULL AND jobs.closing_date >= date('now') AND jobs.closing_date < date('now', '+14 days')";
       clauses.push(query.closingSoon ? `(${closing})` : `NOT (${closing})`);
     }
-    if (query.active !== undefined) {
-      clauses.push('jobs.active = ?');
-      parameters.push(query.active === 'active' ? 1 : 0);
+    if (query.active === 'removed') {
+      clauses.push("(jobs.active = 0 OR jobs.status = 'expired')");
+    } else if (query.active !== 'all') {
+      clauses.push("jobs.active = 1 AND jobs.status <> 'expired'");
     }
     if (query.multipleSource !== undefined) {
       const multiple = `EXISTS (
@@ -504,6 +512,8 @@ function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
     closingDate: row.closing_date,
     favorite: Boolean(row.favorite),
     active: Boolean(row.active),
+    lifecycleReason: row.lifecycle_reason,
+    removedAt: row.removed_at,
     sources,
     verificationStatus: row.verification_status,
     eligibilityPassed:

@@ -6,6 +6,10 @@ import {
   SENIORITY_LEVELS,
 } from '../domain/job.js';
 import { JOB_STATUSES } from '../domain/job-status.js';
+import type {
+  ClosingDatePrecision,
+  ProviderLifecycleStatus,
+} from '../domain/job-lifecycle.js';
 
 const utcTimestampSchema = z.iso
   .datetime({ offset: true })
@@ -45,6 +49,13 @@ export const normalizedJobSchema = z
     teleworkEligible: z.boolean().nullable(),
     openingDate: utcTimestampSchema.nullable(),
     closingDate: utcTimestampSchema.nullable(),
+    closingDatePrecision: z
+      .custom<ClosingDatePrecision>()
+      .pipe(z.enum(['date', 'instant']))
+      .nullable(),
+    providerLifecycleStatus: z
+      .custom<ProviderLifecycleStatus>()
+      .pipe(z.enum(['open', 'closed', 'unknown'])),
     applicationUrls: z.array(z.url()),
     firstSeenAt: utcTimestampSchema,
     lastSeenAt: utcTimestampSchema,

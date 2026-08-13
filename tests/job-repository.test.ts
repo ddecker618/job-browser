@@ -1,6 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { JobDatabase } from '../src/db/database.js';
+import type { Application } from '../src/models/application.js';
+import { ApplicationRepository } from '../src/repositories/application-repository.js';
 import { JobRepository } from '../src/repositories/job-repository.js';
 import { SmartRecruitersProvider } from '../src/providers/smartRecruiters.provider.js';
 import { createJobFixture } from './helpers/job-fixture.js';
@@ -20,7 +22,10 @@ describe('JobRepository', () => {
     sourceId = insertTestSource(database);
   });
 
-  afterEach(() => database.close());
+  afterEach(() => {
+    vi.useRealTimers();
+    database.close();
+  });
 
   it('inserts and retrieves a normalized job using parameterized values', () => {
     const job = createJobFixture({
@@ -45,6 +50,274 @@ describe('JobRepository', () => {
       "Security Analyst's Assistant",
     );
     expect(repository.countJobs()).toBe(1);
+  });
+
+  it('marks a Job applied with one effective event and a folded Application projection', () => {
+    const jobId = insertNewJob();
+    const changedAt = '2026-02-01T00:00:00.000Z';
+
+    expect(
+      repository.changeStatus(jobId, {
+        status: 'applied',
+        changedBy: 'user',
+        changedAt,
+      }),
+    ).toBe(true);
+
+    expect(repository.getStatus(jobId)).toBe('applied');
+    expect(
+      database
+        .prepare<
+          [string],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM applications WHERE job_id = ?')
+        .get(jobId)?.count,
+    ).toBe(1);
+    expect(
+      database
+        .prepare<[string], { count: number }>(
+          `SELECT COUNT(*) AS count FROM application_effective_events
+           WHERE job_id = ? AND event_type = 'applied'`,
+        )
+        .get(jobId)?.count,
+    ).toBe(1);
+    expect(persistedProjection(jobId)).toMatchObject({
+      status: 'applied',
+      appliedAt: changedAt,
+      appliedAtPrecision: 'exact',
+      lastEventAt: changedAt,
+    });
+    expect(
+      new ApplicationRepository(database).findByJobId(jobId),
+    ).toMatchObject({
+      titleAtApplication: 'Security Analyst',
+      companyAtApplication: 'Example Employer',
+      locationAtApplication: 'Example City, EX',
+      applicationUrl: null,
+      sourceId: null,
+      providerId: null,
+      sourceLabel: null,
+    });
+    expectProjectionEquivalent(jobId);
+  });
+
+  it('folds every existing coarse Application transition from its event ledger', () => {
+    const jobId = insertNewJob();
+    const transitions = [
+      ['applied', '2026-02-01T00:00:00.000Z'],
+      ['interview', '2026-03-01T00:00:00.000Z'],
+      ['offer', '2026-04-01T00:00:00.000Z'],
+      ['rejected', '2026-05-01T00:00:00.000Z'],
+    ] as const;
+
+    for (const [status, changedAt] of transitions) {
+      expect(
+        repository.changeStatus(jobId, {
+          status,
+          changedBy: 'user',
+          changedAt,
+        }),
+      ).toBe(true);
+      expectProjectionEquivalent(jobId);
+    }
+
+    expect(repository.getStatus(jobId)).toBe('rejected');
+    expect(persistedProjection(jobId).status).toBe('rejected');
+    expect(
+      database
+        .prepare<[string], { event_type: string; resulting_status: string }>(
+          `SELECT event_type, resulting_status FROM application_history
+           WHERE job_id = ? ORDER BY occurred_at_sort, recorded_at_sort, id`,
+        )
+        .all(jobId),
+    ).toEqual([
+      { event_type: 'applied', resulting_status: 'applied' },
+      { event_type: 'interview', resulting_status: 'interview' },
+      { event_type: 'offer', resulting_status: 'offer' },
+      { event_type: 'rejected', resulting_status: 'rejected' },
+    ]);
+  });
+
+  it('does not append or change the Application projection for a Job-status no-op', () => {
+    const jobId = insertNewJob();
+    repository.changeStatus(jobId, {
+      status: 'applied',
+      changedBy: 'user',
+      changedAt: '2026-02-01T00:00:00.000Z',
+    });
+    const applicationRepository = new ApplicationRepository(database);
+    const before = applicationRepository.findByJobId(jobId);
+    const eventCountBefore = applicationEventCount(jobId);
+
+    expect(
+      repository.changeStatus(jobId, {
+        status: 'applied',
+        changedBy: 'user',
+        changedAt: '2026-03-01T00:00:00.000Z',
+      }),
+    ).toBe(false);
+
+    expect(applicationEventCount(jobId)).toBe(eventCountBefore);
+    expect(applicationRepository.findByJobId(jobId)).toEqual(before);
+    expectProjectionEquivalent(jobId);
+  });
+
+  it('keeps repeated backdated Applied writes equivalent to a fresh event fold', () => {
+    const jobId = insertNewJob();
+    vi.useFakeTimers();
+
+    vi.setSystemTime('2026-06-01T00:00:00.000Z');
+    repository.changeStatus(jobId, {
+      status: 'applied',
+      changedBy: 'user',
+      changedAt: '2026-03-10T00:00:00.000Z',
+    });
+    expectProjectionEquivalent(jobId);
+
+    vi.setSystemTime('2026-06-02T00:00:00.000Z');
+    repository.changeStatus(jobId, {
+      status: 'interview',
+      changedBy: 'user',
+      changedAt: '2026-04-10T00:00:00.000Z',
+    });
+    expectProjectionEquivalent(jobId);
+
+    vi.setSystemTime('2026-06-03T00:00:00.000Z');
+    repository.changeStatus(jobId, {
+      status: 'applied',
+      changedBy: 'user',
+      changedAt: '2026-02-10T00:00:00.000Z',
+    });
+
+    const beforeReproject = persistedProjection(jobId);
+    expect(repository.getStatus(jobId)).toBe('interview');
+    expect(beforeReproject).toEqual({
+      status: 'interview',
+      appliedAt: '2026-02-10T00:00:00.000Z',
+      appliedAtPrecision: 'exact',
+      lastEventAt: '2026-04-10T00:00:00.000Z',
+      lastRecordedAt: '2026-06-03T00:00:00.000Z',
+    });
+    expect(
+      database
+        .prepare<
+          [string],
+          { recorded_at: string | null }
+        >('SELECT MAX(recorded_at_sort) AS recorded_at FROM application_history WHERE job_id = ?')
+        .get(jobId)?.recorded_at,
+    ).toBe(beforeReproject.lastRecordedAt);
+    expectProjectionEquivalent(jobId);
+  });
+
+  it('derives compatibility from the post-fold status and preserves Application summary notes', () => {
+    const jobId = insertNewJob();
+    repository.changeStatus(jobId, {
+      status: 'applied',
+      changedBy: 'user',
+      changedAt: '2026-03-01T00:00:00.000Z',
+      reason: 'Applied reason',
+    });
+    repository.changeStatus(jobId, {
+      status: 'interview',
+      changedBy: 'user',
+      changedAt: '2026-04-01T00:00:00.000Z',
+      reason: 'Interview reason',
+    });
+    const application = new ApplicationRepository(database).findByJobId(jobId);
+    if (application === null) throw new Error('Expected Application');
+    database
+      .prepare(
+        `UPDATE jobs
+            SET title = 'Changed current title', company = 'Changed current company',
+                location = 'Changed current location'
+          WHERE id = ?`,
+      )
+      .run(jobId);
+    database
+      .prepare('UPDATE applications SET notes = ? WHERE id = ?')
+      .run('Mutable summary remains', application.id);
+    const historyBefore = repository.getStatusHistory(jobId).length;
+    const eventsBefore = applicationEventCount(jobId);
+
+    expect(
+      repository.changeStatus(jobId, {
+        status: 'offer',
+        changedBy: 'user',
+        changedAt: '2026-02-01T00:00:00.000Z',
+        reason: 'Backdated offer reason',
+      }),
+    ).toBe(true);
+
+    expect(repository.getStatus(jobId)).toBe('interview');
+    expect(repository.getStatusHistory(jobId)).toHaveLength(historyBefore);
+    expect(applicationEventCount(jobId)).toBe(eventsBefore + 1);
+    expect(
+      new ApplicationRepository(database).findByJobId(jobId),
+    ).toMatchObject({
+      status: 'interview',
+      notes: 'Mutable summary remains',
+      titleAtApplication: 'Security Analyst',
+      companyAtApplication: 'Example Employer',
+      locationAtApplication: 'Example City, EX',
+    });
+    expect(
+      database
+        .prepare<
+          [string],
+          { notes: string | null }
+        >("SELECT notes FROM application_history WHERE job_id = ? AND event_type = 'offer'")
+        .get(jobId)?.notes,
+    ).toBe('Backdated offer reason');
+    expectProjectionEquivalent(jobId);
+  });
+
+  it('does not synchronize Job status from a winning Legacy State Imported event', () => {
+    const jobId = insertNewJob();
+    database
+      .prepare(
+        `INSERT INTO applications (
+          id, job_id, status, title_at_application, company_at_application,
+          location_at_application, legacy_provenance, created_at, updated_at
+        ) VALUES (
+          'compatibility-migrated-application', ?, 'offer', 'Migrated title',
+          'Migrated company', 'Migrated location', 'legacy:test',
+          '2025-01-01T00:00:00.000Z', '2025-01-01T00:00:00.000Z'
+        )`,
+      )
+      .run(jobId);
+    database
+      .prepare(
+        `INSERT INTO application_history (
+          id, application_id, job_id, event_type, resulting_status,
+          occurred_at, occurred_at_sort, occurrence_precision, recorded_at_sort,
+          notes, source, created_at
+        ) VALUES (
+          'compatibility-imported-status', 'compatibility-migrated-application', ?,
+          'legacy_state_imported', 'offer', NULL, NULL, 'unknown',
+          '2025-01-02T00:00:00.000Z', 'Imported status', 'migration',
+          '2025-01-02T00:00:00.000Z'
+        )`,
+      )
+      .run(jobId);
+    const historyBefore = repository.getStatusHistory(jobId).length;
+    const eventsBefore = applicationEventCount(jobId);
+
+    expect(
+      repository.changeStatus(jobId, {
+        status: 'rejected',
+        changedBy: 'user',
+        changedAt: '2020-01-01T00:00:00.000Z',
+        reason: 'Backdated compatibility fact',
+      }),
+    ).toBe(true);
+
+    expect(new ApplicationRepository(database).findByJobId(jobId)?.status).toBe(
+      'offer',
+    );
+    expect(repository.getStatus(jobId)).toBe('new');
+    expect(repository.getStatusHistory(jobId)).toHaveLength(historyBefore);
+    expect(applicationEventCount(jobId)).toBe(eventsBefore + 1);
+    expectProjectionEquivalent(jobId);
   });
 
   it('persists BaseProvider confidence for migration 007 fields', () => {
@@ -295,4 +568,44 @@ describe('JobRepository', () => {
         .get(first.id),
     ).toMatchObject({ external_id: first.externalId });
   });
+
+  function insertNewJob(): string {
+    const job = createJobFixture({ status: 'new' });
+    repository.upsertObservation({ job, sourceId, rawData: job });
+    return job.id;
+  }
+
+  function applicationEventCount(jobId: string): number {
+    return (
+      database
+        .prepare<
+          [string],
+          { count: number }
+        >('SELECT COUNT(*) AS count FROM application_history WHERE job_id = ?')
+        .get(jobId)?.count ?? 0
+    );
+  }
+
+  function persistedProjection(jobId: string): ReturnType<typeof projectionOf> {
+    return projectionOf(new ApplicationRepository(database).findByJobId(jobId));
+  }
+
+  function expectProjectionEquivalent(jobId: string): void {
+    const applicationRepository = new ApplicationRepository(database);
+    const before = projectionOf(applicationRepository.findByJobId(jobId));
+    const rebuilt = projectionOf(applicationRepository.reproject(jobId));
+    expect(rebuilt).toEqual(before);
+  }
 });
+
+function projectionOf(application: Application | null) {
+  if (application === null)
+    throw new Error('Expected an Application projection');
+  return {
+    status: application.status,
+    appliedAt: application.appliedAt,
+    appliedAtPrecision: application.appliedAtPrecision,
+    lastEventAt: application.lastEventAt,
+    lastRecordedAt: application.lastRecordedAt,
+  };
+}

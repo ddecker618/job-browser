@@ -45,9 +45,18 @@ const options = {
 } as const;
 
 export function AnalyticsPage() {
+  const now = new Date();
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 12, now.getUTCDate()),
+  ).toISOString();
+  const end = now.toISOString();
   const analytics = useQuery({
     queryKey: ['analytics'],
     queryFn: api.analytics,
+  });
+  const outcomes = useQuery({
+    queryKey: ['application-outcomes', start, end],
+    queryFn: () => api.outcomeAnalytics(start, end),
   });
   if (analytics.isPending)
     return <LoadingState label="Loading market analytics" />;
@@ -85,6 +94,37 @@ export function AnalyticsPage() {
           <strong>{data.topSkills.length}</strong>
         </article>
       </div>
+      {outcomes.data !== undefined ? (
+        <section className="panel">
+          <h3>Application outcomes</h3>
+          <p>
+            {outcomes.data.definition} · {outcomes.data.applications.cohortSize}{' '}
+            Applications · last 12 months
+          </p>
+          <div className="analytics-kpis">
+            {outcomes.data.applications.everReached
+              .slice(0, 4)
+              .map((metric) => (
+                <article key={metric.key}>
+                  <span>Ever reached {metric.label}</span>
+                  <strong>
+                    {metric.rate === null
+                      ? 'No sample'
+                      : `${String(Math.round(metric.rate * 100))}%`}
+                  </strong>
+                  <small>
+                    {metric.numerator}/{metric.denominator}
+                    {metric.smallSample ? ' · small sample' : ''}
+                  </small>
+                </article>
+              ))}
+          </div>
+          <p>
+            Unknown Company: {outcomes.data.unknownCompanyCount} · Unknown
+            qualifications: {outcomes.data.unknownQualificationCount}
+          </p>
+        </section>
+      ) : null}
       <section className="chart-grid">
         <ChartPanel title="Top requested skills">
           <Bar data={chartData(data.topSkills, 'Jobs')} options={options} />

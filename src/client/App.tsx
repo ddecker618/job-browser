@@ -19,6 +19,16 @@ const JobsPage = lazy(() =>
     default: module.JobsPage,
   })),
 );
+const ApplicationsPage = lazy(() =>
+  import('./pages/ApplicationsPage.js').then((module) => ({
+    default: module.ApplicationsPage,
+  })),
+);
+const ApplicationDetailPage = lazy(() =>
+  import('./pages/ApplicationDetailPage.js').then((module) => ({
+    default: module.ApplicationDetailPage,
+  })),
+);
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage.js').then((module) => ({
     default: module.ProfilePage,
@@ -44,6 +54,11 @@ const SourcesPage = lazy(() =>
     default: module.SourcesPage,
   })),
 );
+const EmployersPage = lazy(() =>
+  import('./pages/EmployersPage.js').then((module) => ({
+    default: module.EmployersPage,
+  })),
+);
 
 export function App() {
   return (
@@ -52,10 +67,16 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="jobs" element={<JobsPage />} />
+          <Route path="applications" element={<ApplicationsPage />} />
+          <Route
+            path="applications/:applicationId"
+            element={<ApplicationDetailPage />}
+          />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="resumes" element={<ResumesPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="sources" element={<SourcesPage />} />
+          <Route path="employers" element={<EmployersPage />} />
           <Route path="search-profile" element={<SearchProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

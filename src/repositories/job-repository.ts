@@ -2,10 +2,16 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import type { JobDatabase } from '../db/database.js';
 import type { ApplicationEventType } from '../domain/application-history.js';
-import { APPLICATION_EVENT_TYPES } from '../domain/application-history.js';
+import {
+  APPLICATION_EVENT_TYPES,
+  resultingStatusForEventType,
+} from '../domain/application-history.js';
+import { type ApplicationStatus } from '../domain/application-status.js';
 import type { Job } from '../domain/job.js';
 import { JOB_STATUSES, type JobStatus } from '../domain/job-status.js';
 import type { JobStatusHistory } from '../domain/job-status-history.js';
+import { lifecycleFromEvidence } from '../domain/job-lifecycle.js';
+import type { Application } from '../models/application.js';
 import {
   normalizedJobSchema,
   type NormalizedJob,
@@ -21,6 +27,9 @@ import {
   searchProfileSchema,
   type SearchProfile,
 } from '../config/search-profile.js';
+import { ApplicationRepository } from './application-repository.js';
+import { CompanyRepository } from './company-repository.js';
+import { JobLifecycleRepository } from './job-lifecycle-repository.js';
 
 interface JobIdRow {
   id: string;
@@ -28,6 +37,12 @@ interface JobIdRow {
 
 interface JobStatusRow {
   status: JobStatus;
+}
+
+interface JobApplicationContextRow {
+  title: string;
+  company: string;
+  location: string | null;
 }
 
 interface JobSourceIdentityRow extends JobIdRow {
@@ -122,6 +137,8 @@ export class JobRepository {
     const rawDataJson = serializeRawData(observation.rawData);
     const contentHash = postingContentHash(job);
     const providerConfidence = observation.providerConfidence ?? null;
+    const observedAt = nowUtc();
+    const lifecycle = lifecycleFromEvidence(job, observedAt);
 
     return this.database.transaction(() => {
       const identity = this.resolveIdentity(
@@ -160,7 +177,7 @@ export class JobRepository {
           ...job,
           fingerprint,
           normalizedLocation: normalizeLocation(job.location),
-          active: 1,
+          active: Number(lifecycle.active),
           sponsorshipAvailable:
             job.sponsorshipAvailable === null
               ? null
@@ -174,6 +191,12 @@ export class JobRepository {
           providerConfidence,
           matchedFamilies: computeMatchedFamilies(this.database, job.title),
         });
+        new CompanyRepository(this.database).assignJob(
+          jobId,
+          job.company,
+          'ingestion-exact',
+          timestamp,
+        );
         this.insertStatusHistory(
           jobId,
           null,
@@ -183,13 +206,21 @@ export class JobRepository {
           'Initial status',
         );
         if (APPLICATION_STATUSES.has(job.status)) {
-          this.insertApplicationEvent(
+          const application = this.insertApplicationEvent(
             jobId,
             job.status,
             timestamp,
             'ingestion',
             'Initial status',
           );
+          if (application !== null) {
+            this.syncApplicationStatus(
+              jobId,
+              timestamp,
+              'ingestion',
+              'Initial status',
+            );
+          }
         }
         this.insertJobSource(
           jobId,
@@ -227,9 +258,7 @@ export class JobRepository {
           );
         } else if (association !== null) {
           materiallyUpdated =
-            !identityConflict &&
-            association.content_hash !== null &&
-            association.content_hash !== contentHash;
+            !identityConflict && association.content_hash !== contentHash;
           this.updateJobSource(
             association.id,
             job,
@@ -259,6 +288,10 @@ export class JobRepository {
         observation.providerId ?? null,
         job,
         rawDataJson,
+      );
+      new JobLifecycleRepository(this.database).recomputeCanonical(
+        jobId,
+        observedAt,
       );
       return {
         jobId,
@@ -294,6 +327,23 @@ export class JobRepository {
         return false;
       }
 
+      if (APPLICATION_STATUSES.has(change.status)) {
+        const application = this.insertApplicationEvent(
+          jobId,
+          change.status,
+          changedAt,
+          change.changedBy,
+          reason,
+        );
+        if (application === null) {
+          throw new Error(
+            `Unable to rebuild Application projection for Job ${jobId}`,
+          );
+        }
+        this.syncApplicationStatus(jobId, changedAt, change.changedBy, reason);
+        return true;
+      }
+
       this.database
         .prepare('UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?')
         .run(change.status, changedAt, jobId);
@@ -305,17 +355,45 @@ export class JobRepository {
         change.changedBy,
         reason,
       );
-      if (APPLICATION_STATUSES.has(change.status)) {
-        this.insertApplicationEvent(
-          jobId,
-          change.status,
-          changedAt,
-          change.changedBy,
-          reason,
-        );
-      }
       return true;
     })();
+  }
+
+  /**
+   * Synchronizes only the coarse Job compatibility projection. The caller owns
+   * the surrounding Application event transaction.
+   */
+  public syncApplicationStatus(
+    jobId: string,
+    changedAt: string,
+    changedBy: string,
+    reason: string | null = null,
+  ): boolean {
+    assertUtcTimestamp(changedAt, 'changedAt');
+    const coarseStatus = new ApplicationRepository(
+      this.database,
+    ).findPostFoldJobCompatibilityStatus(jobId);
+    if (coarseStatus === null) return false;
+    const row = this.database
+      .prepare<[string], JobStatusRow>('SELECT status FROM jobs WHERE id = ?')
+      .get(jobId);
+    if (row === undefined) {
+      throw new Error(`Cannot synchronize status: job ${jobId} does not exist`);
+    }
+    if (row.status === coarseStatus) return false;
+
+    this.database
+      .prepare('UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?')
+      .run(coarseStatus, changedAt, jobId);
+    this.insertStatusHistory(
+      jobId,
+      row.status,
+      coarseStatus,
+      changedAt,
+      changedBy,
+      reason,
+    );
+    return true;
   }
 
   public getStatus(jobId: string): JobStatus | null {
@@ -380,6 +458,17 @@ export class JobRepository {
         [],
         Record<string, unknown>
       >('SELECT * FROM jobs ORDER BY first_seen_at DESC, id')
+      .all()
+      .map(mapJob);
+  }
+
+  public listCurrentJobs(): Job[] {
+    return this.database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT * FROM jobs
+          WHERE active = 1 AND status <> 'expired'
+          ORDER BY first_seen_at DESC, id`,
+      )
       .all()
       .map(mapJob);
   }
@@ -594,6 +683,12 @@ export class JobRepository {
     materiallyUpdated: boolean,
   ): void {
     const timestamp = nowUtc();
+    const previous = this.database
+      .prepare<
+        [string],
+        { company: string }
+      >('SELECT company FROM jobs WHERE id = ?')
+      .get(jobId);
     this.database
       .prepare(
         `UPDATE jobs SET
@@ -634,7 +729,6 @@ export class JobRepository {
           last_verified_at = CASE WHEN @lastSeenAt > COALESCE(last_verified_at, '') THEN @lastSeenAt ELSE last_verified_at END,
           discovery_count = discovery_count + 1,
           materially_updated_at = CASE WHEN @materiallyUpdated = 1 THEN @lastSeenAt ELSE materially_updated_at END,
-          active = 1, removed_at = NULL,
            provider_confidence = COALESCE(@providerConfidence, provider_confidence),
            matched_families = @matchedFamilies,
            score_version = CASE WHEN @materiallyUpdated = 1 THEN NULL ELSE score_version END,
@@ -687,6 +781,14 @@ export class JobRepository {
         matchedFamilies: computeMatchedFamilies(this.database, job.title),
         updatedAt: timestamp,
       });
+    if (materiallyUpdated && previous?.company !== job.company) {
+      new CompanyRepository(this.database).assignJob(
+        jobId,
+        job.company,
+        'ingestion-exact',
+        timestamp,
+      );
+    }
   }
 
   private insertJobSource(
@@ -700,6 +802,8 @@ export class JobRepository {
     contentHash: string,
     providerConfidence: number | null,
   ): void {
+    const reconciledAt = nowUtc();
+    const lifecycle = lifecycleFromEvidence(job, reconciledAt);
     this.database
       .prepare(
         `INSERT INTO job_sources (
@@ -707,7 +811,9 @@ export class JobRepository {
           raw_data_json, first_seen_at, last_seen_at, provider_id, active,
           last_verified_at, discovery_count, consecutive_snapshot_misses,
           content_hash, provider_confidence, last_seen_run_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 1, 0, ?, ?, ?)`,
+          , lifecycle_reason, closing_date, closing_date_precision,
+          provider_lifecycle_status, removed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         randomUUID(),
@@ -720,10 +826,16 @@ export class JobRepository {
         job.firstSeenAt,
         job.lastSeenAt,
         providerId,
+        Number(lifecycle.active),
         job.lastSeenAt,
         contentHash,
         providerConfidence,
         runId,
+        lifecycle.reason,
+        job.closingDate,
+        job.closingDatePrecision,
+        job.providerLifecycleStatus,
+        lifecycle.active ? null : reconciledAt,
       );
   }
 
@@ -738,6 +850,8 @@ export class JobRepository {
     materiallyUpdated: boolean,
     acceptContent: boolean,
   ): void {
+    const reconciledAt = nowUtc();
+    const lifecycle = lifecycleFromEvidence(job, reconciledAt);
     this.database
       .prepare(
         `UPDATE job_sources SET
@@ -745,12 +859,18 @@ export class JobRepository {
            last_verified_at = CASE WHEN ? > COALESCE(last_verified_at, '') THEN ? ELSE last_verified_at END,
            raw_data_json = CASE WHEN ? = 1 THEN COALESCE(?, raw_data_json) ELSE raw_data_json END,
            provider_id = COALESCE(provider_id, ?),
-           active = 1, removed_at = NULL, consecutive_snapshot_misses = 0,
+           active = CASE WHEN ? = 1 THEN ? ELSE active END,
+           lifecycle_reason = CASE WHEN ? = 1 THEN ? ELSE lifecycle_reason END,
+           removed_at = CASE WHEN ? = 1 THEN ? ELSE removed_at END,
+           consecutive_snapshot_misses = 0,
            discovery_count = discovery_count + 1,
            materially_updated_at = CASE WHEN ? = 1 THEN ? ELSE materially_updated_at END,
            content_hash = CASE WHEN ? = 1 THEN ? ELSE content_hash END,
            provider_confidence = COALESCE(?, provider_confidence),
-           last_seen_run_id = ?
+           last_seen_run_id = ?,
+           closing_date = CASE WHEN ? = 1 THEN ? ELSE closing_date END,
+           closing_date_precision = CASE WHEN ? = 1 THEN ? ELSE closing_date_precision END,
+           provider_lifecycle_status = CASE WHEN ? = 1 THEN ? ELSE provider_lifecycle_status END
          WHERE id = ?`,
       )
       .run(
@@ -761,12 +881,24 @@ export class JobRepository {
         Number(acceptContent),
         rawDataJson,
         providerId,
+        Number(acceptContent),
+        Number(lifecycle.active),
+        Number(acceptContent),
+        lifecycle.reason,
+        Number(acceptContent),
+        lifecycle.active ? null : reconciledAt,
         Number(materiallyUpdated),
         job.lastSeenAt,
         Number(acceptContent),
         contentHash,
         providerConfidence,
         runId,
+        Number(acceptContent),
+        job.closingDate,
+        Number(acceptContent),
+        job.closingDatePrecision,
+        Number(acceptContent),
+        job.providerLifecycleStatus,
         id,
       );
   }
@@ -847,7 +979,8 @@ export class JobRepository {
         `INSERT INTO job_observations (
           id, run_id, job_id, source_id, provider_id, external_id, posting_url,
           application_urls_json, raw_data_json, observed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          , closing_date, closing_date_precision, provider_lifecycle_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         randomUUID(),
@@ -860,6 +993,9 @@ export class JobRepository {
         JSON.stringify(job.applicationUrls),
         rawDataJson,
         job.lastSeenAt,
+        job.closingDate,
+        job.closingDatePrecision,
+        job.providerLifecycleStatus,
       );
   }
 
@@ -894,48 +1030,118 @@ export class JobRepository {
     occurredAt: string,
     source: string,
     notes: string | null,
-  ): void {
+  ): Application | null {
     if (!APPLICATION_EVENT_TYPES.includes(eventType as ApplicationEventType))
-      return;
+      return null;
+    const event = eventType as ApplicationEventType;
+    const resultingStatus = resultingStatusForEventType(event);
+    if (resultingStatus === null) {
+      throw new Error(
+        `Compatibility event ${event} requires a resulting status`,
+      );
+    }
+    const applicationId = this.ensureApplication(
+      jobId,
+      resultingStatus,
+      occurredAt,
+    );
+    const timestamp = nowUtc();
+    const metadataJson = JSON.stringify({
+      definition: 'application-event-v1',
+    });
     this.database
       .prepare(
-        `INSERT INTO application_history
-          (id, job_id, event_type, occurred_at, notes, source, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO application_history (
+          id, application_id, job_id, event_type, resulting_status,
+          occurred_at, occurred_at_sort, occurrence_precision, recorded_at_sort,
+          notes, source, metadata_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(randomUUID(), jobId, eventType, occurredAt, notes, source, nowUtc());
-    this.upsertApplication(jobId, eventType, occurredAt, notes);
+      .run(
+        randomUUID(),
+        applicationId,
+        jobId,
+        event,
+        resultingStatus,
+        occurredAt,
+        occurredAt,
+        'exact',
+        timestamp,
+        notes,
+        source,
+        metadataJson,
+        timestamp,
+      );
+    const application = new ApplicationRepository(this.database).reproject(
+      jobId,
+      timestamp,
+    );
+    if (application === null) {
+      throw new Error(
+        `Unable to rebuild Application projection for Job ${jobId}`,
+      );
+    }
+    return application;
   }
 
-  private upsertApplication(
+  private ensureApplication(
     jobId: string,
-    status: JobStatus,
+    status: ApplicationStatus,
     occurredAt: string,
-    notes: string | null,
-  ): void {
+  ): string {
+    const existing = this.database
+      .prepare<
+        [string],
+        { id: string }
+      >('SELECT id FROM applications WHERE job_id = ?')
+      .get(jobId);
+    if (existing !== undefined) return existing.id;
+
+    const context = this.database
+      .prepare<
+        [string],
+        JobApplicationContextRow
+      >('SELECT title, company, location FROM jobs WHERE id = ?')
+      .get(jobId);
+    if (context === undefined) {
+      throw new Error(`Cannot create Application: job ${jobId} does not exist`);
+    }
+
+    // The parent row must exist before its first event can satisfy the foreign
+    // key. These bootstrap projection values are replaced by the canonical fold
+    // immediately after the event append, inside the caller's transaction.
+    const applicationId = randomUUID();
     const timestamp = nowUtc();
     this.database
       .prepare(
         `INSERT INTO applications (
-          id, job_id, status, applied_at, last_event_at, notes, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(job_id) DO UPDATE SET
-          status = excluded.status,
-          applied_at = COALESCE(applications.applied_at, excluded.applied_at),
-          last_event_at = excluded.last_event_at,
-          notes = COALESCE(excluded.notes, applications.notes),
-          updated_at = excluded.updated_at`,
+          id, job_id, status, applied_at, applied_at_precision, last_event_at,
+          last_recorded_at, title_at_application, company_at_application,
+          location_at_application, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        randomUUID(),
+        applicationId,
         jobId,
         status,
         status === 'applied' ? occurredAt : null,
+        status === 'applied' ? 'exact' : null,
         occurredAt,
-        notes,
+        timestamp,
+        context.title,
+        context.company,
+        context.location,
+        null,
         timestamp,
         timestamp,
       );
+    new CompanyRepository(this.database).assignApplication(
+      applicationId,
+      context.company,
+      'application-exact',
+      timestamp,
+    );
+    return applicationId;
   }
 }
 
@@ -960,6 +1166,7 @@ function mapJob(row: Record<string, unknown>): Job {
     normalizedTitle: String(row['normalized_title']),
     company: String(row['company']),
     normalizedCompany: String(row['normalized_company']),
+    companyId: nullableString(row['company_id']),
     location: nullableString(row['location']),
     city: nullableString(row['city']),
     state: nullableString(row['state']),
@@ -998,6 +1205,7 @@ function mapJob(row: Record<string, unknown>): Job {
     providerConfidence: nullableNumber(row['provider_confidence']),
     matchedFamilies: nullableString(row['matched_families']),
     active: Boolean(row['active']),
+    lifecycleReason: row['lifecycle_reason'] as Job['lifecycleReason'],
     clearanceRequirement: nullableString(row['clearance_requirement']),
     sponsorshipAvailable:
       row['sponsorship_available'] === null
@@ -1080,6 +1288,8 @@ function postingContentHash(job: NormalizedJob): string {
     teleworkEligible: job.teleworkEligible,
     openingDate: job.openingDate,
     closingDate: job.closingDate,
+    closingDatePrecision: job.closingDatePrecision,
+    providerLifecycleStatus: job.providerLifecycleStatus,
     clearanceRequirement: normalizeContent(job.clearanceRequirement),
     sponsorshipAvailable: job.sponsorshipAvailable,
     estimatedExperienceYears: job.estimatedExperienceYears,

@@ -116,7 +116,7 @@ export function SourcesPage() {
             runAll.isPending || control.data.discovery?.running === true
           }
         >
-          Run all enabled
+          Run Enabled Sources
         </button>
         <span role="status">
           {control.data.discovery?.running === true
@@ -124,6 +124,16 @@ export function SourcesPage() {
             : `Last run ${formatDate(summary.lastDiscoveryRun)}`}
         </span>
       </div>
+      {runAll.isError ? (
+        <p className="source-error" role="alert">
+          {runAll.error.message}
+        </p>
+      ) : null}
+      {control.data.discovery?.lastError ? (
+        <p className="source-error" role="alert">
+          {control.data.discovery.lastError}
+        </p>
+      ) : null}
       {editing === null ? null : (
         <SourceEditor
           providers={providers.data}

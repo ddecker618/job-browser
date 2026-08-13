@@ -8,11 +8,13 @@ import { NotificationManager } from './NotificationManager.js';
 const navigation = [
   ['/', 'Dashboard', 'DB'],
   ['/jobs', 'Jobs', 'JB'],
+  ['/applications', 'Applications', 'AP'],
   ['/profile', 'Profile', 'PR'],
   ['/resumes', 'Resumes', 'RS'],
   ['/analytics', 'Analytics', 'AN'],
   ['/search-profile', 'Search Profile', 'SP'],
   ['/sources', 'Sources', 'SO'],
+  ['/employers', 'Discovery Engine', 'DE'],
   ['/settings', 'Settings', 'ST'],
 ] as const;
 
@@ -51,7 +53,7 @@ export function AppLayout() {
         </div>
         <nav>
           {navigation.map(([path, label, icon]) => (
-            <NavLink key={path} to={path} end={path === '/'}>
+            <NavLink key={path} to={path} end={path === '/'} aria-label={label}>
               <span className="nav-icon" aria-hidden="true">
                 {icon}
               </span>

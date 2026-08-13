@@ -477,6 +477,46 @@ export class SourceRepository {
       .run(Number(enabled), nowUtc());
   }
 
+  public getEmployerDiscoverySettings(): {
+    enabled: boolean;
+    lastEvaluatedAt: string | null;
+  } {
+    const row = this.database
+      .prepare<
+        [],
+        {
+          employer_discovery_enabled: number;
+          employer_discovery_last_evaluated_at: string | null;
+        }
+      >(
+        `SELECT employer_discovery_enabled, employer_discovery_last_evaluated_at
+           FROM discovery_settings WHERE id = 'default'`,
+      )
+      .get();
+    return {
+      enabled: Boolean(row?.employer_discovery_enabled),
+      lastEvaluatedAt: row?.employer_discovery_last_evaluated_at ?? null,
+    };
+  }
+
+  public setEmployerDiscoveryEnabled(enabled: boolean): void {
+    this.database
+      .prepare(
+        `UPDATE discovery_settings SET employer_discovery_enabled = ?, updated_at = ?
+         WHERE id = 'default'`,
+      )
+      .run(Number(enabled), nowUtc());
+  }
+
+  public markEmployerDiscoveryEvaluated(at: string): void {
+    this.database
+      .prepare(
+        `UPDATE discovery_settings SET employer_discovery_last_evaluated_at = ?, updated_at = ?
+         WHERE id = 'default'`,
+      )
+      .run(at, nowUtc());
+  }
+
   public summary(): SourceControlSummary {
     const sources = this.list();
     const row = this.database

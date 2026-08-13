@@ -205,10 +205,29 @@ export function SettingsPage() {
                 checked={discovery.data?.schedulerEnabled ?? false}
                 disabled={discovery.isPending || saveAutomation.isPending}
                 onChange={(event) =>
-                  saveAutomation.mutate(event.target.checked)
+                  saveAutomation.mutate({
+                    schedulerEnabled: event.target.checked,
+                    employerDiscoveryEnabled:
+                      discovery.data?.employerDiscoveryEnabled ?? false,
+                  })
                 }
               />
               Allow enabled source schedules while Job Browser is open
+            </label>
+            <label className="checkbox-field span-2">
+              <input
+                type="checkbox"
+                checked={discovery.data?.employerDiscoveryEnabled ?? false}
+                disabled={discovery.isPending || saveAutomation.isPending}
+                onChange={(event) =>
+                  saveAutomation.mutate({
+                    schedulerEnabled: discovery.data?.schedulerEnabled ?? false,
+                    employerDiscoveryEnabled: event.target.checked,
+                  })
+                }
+              />
+              Discover up to 25 eligible Employer CareerSites every six hours
+              while Job Browser is open (no startup catch-up)
             </label>
           </div>
         </section>

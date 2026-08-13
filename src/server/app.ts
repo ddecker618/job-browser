@@ -11,16 +11,29 @@ import { rateLimit } from 'express-rate-limit';
 import multer from 'multer';
 import { z } from 'zod';
 
+import {
+  ApplicationService,
+  ApplicationServiceError,
+} from '../applications/applicationService.js';
+import { OutcomeAnalyticsRepository } from '../analytics/outcomeAnalyticsRepository.js';
 import { loadCandidateProfile } from '../config/candidate-profile.js';
 import { loadScoringConfig } from '../config/scoring-config.js';
 import { DashboardRepository } from '../database/dashboardRepository.js';
 import type { JobDatabase } from '../db/database.js';
 import { defaultDatabasePath } from '../db/database.js';
+import { persistenceSetCoordinator } from '../db/persistenceSetCoordinator.js';
 import { JOB_STATUSES } from '../domain/job-status.js';
 import { detectAts, type AtsDetectorOptions } from '../domain/atsDetector.js';
 import type { AtsDetectionResult } from '../models/source-management.js';
 import type { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
+import { EmployerDiscoveryService } from '../discovery/employerDiscoveryService.js';
+import { CareerSiteHealthService } from '../discovery/careerSiteHealthService.js';
+import { EmployerDiscoveryIntelligenceService } from '../discovery/employerDiscoveryIntelligenceService.js';
 import type { CredentialResolver } from '../discovery/credentialResolver.js';
+import {
+  ResumeSnapshotCaptureError,
+  SNAPSHOT_MANAGED_DIRECTORY,
+} from '../domain/resume-snapshot.js';
 import { IntelligenceEngine } from '../intelligence/intelligenceEngine.js';
 import { createScoreVersion } from '../intelligence/scoreIdentity.js';
 import type { AppSettings } from '../models/dashboard.js';
@@ -31,7 +44,21 @@ import {
 } from '../config/search-profile.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import { JobSearchRepository } from '../repositories/job-search-repository.js';
+import { ResumeSnapshotRepository } from '../repositories/resume-snapshot-repository.js';
 import { SourceRepository } from '../repositories/source-repository.js';
+import { EmployerRepository } from '../repositories/employerRepository.js';
+import {
+  employerInputSchema,
+  careerSiteInputSchema,
+} from '../schemas/employer.js';
+import {
+  initializeSnapshotStorage,
+  reconcileSnapshotStorage,
+} from '../resumes/reconcileSnapshots.js';
+import {
+  captureResumeSnapshot,
+  type PreparedResumeSnapshot,
+} from '../resumes/resumeSnapshotCapture.js';
 import {
   loadUnifiedLegacyPreferences,
   saveUnifiedProfilePreferences,
@@ -59,10 +86,15 @@ export interface AppOptions {
   scoringConfigPath?: string;
   profilePreferencesPath?: string;
   resumeDirectory?: string;
+  snapshotDirectory?: string;
   artifactDirectory?: string;
   onSettingsSaved?: (settings: AppSettings) => void;
   coordinator?: DiscoveryCoordinator;
   sourceRepository?: SourceRepository;
+  employerRepository?: EmployerRepository;
+  employerDiscoveryService?: EmployerDiscoveryService;
+  careerSiteHealthService?: CareerSiteHealthService;
+  employerDiscoveryIntelligence?: EmployerDiscoveryIntelligenceService;
   credentialResolver?: CredentialResolver;
   apiRequestsPerMinute?: number;
   atsDetector?: (
@@ -72,9 +104,12 @@ export interface AppOptions {
 }
 
 const asyncRoute =
-  (handler: (request: Request, response: Response) => Promise<void>) =>
+  (handler: (request: Request, response: Response) => void | Promise<void>) =>
   (request: Request, response: Response, next: NextFunction): void => {
-    handler(request, response).catch(next);
+    const result = handler(request, response);
+    if (result instanceof Promise) {
+      result.catch(next);
+    }
   };
 
 export function createApp(
@@ -97,12 +132,36 @@ export function createApp(
   const jobSearchRepository = new JobSearchRepository(database, {
     getScoreVersion: () => getCurrentScoreVersion(),
   });
+  const applicationService = new ApplicationService(database);
+  const outcomeAnalytics = new OutcomeAnalyticsRepository(database);
   const sourceRepository =
     options.sourceRepository ?? new SourceRepository(database);
+  const employerRepository =
+    options.employerRepository ?? new EmployerRepository(database);
+  const employerDiscoveryIntelligence =
+    options.employerDiscoveryIntelligence ??
+    new EmployerDiscoveryIntelligenceService(database);
   const coordinator = options.coordinator;
+  const employerDiscoveryService =
+    options.employerDiscoveryService ??
+    new EmployerDiscoveryService(
+      employerRepository,
+      sourceRepository,
+      providerRegistry,
+      coordinator,
+      options.credentialResolver,
+      employerDiscoveryIntelligence,
+    );
+  const careerSiteHealthService =
+    options.careerSiteHealthService ??
+    new CareerSiteHealthService(employerRepository, employerDiscoveryService);
   const resumeDirectory =
     options.resumeDirectory ?? resolve(process.cwd(), 'data', 'resumes');
   mkdirSync(resumeDirectory, { recursive: true });
+  const snapshotDirectory =
+    options.snapshotDirectory ??
+    resolve(process.cwd(), 'data', SNAPSHOT_MANAGED_DIRECTORY);
+  initializeSnapshotStorage(snapshotDirectory);
   const upload = multer({
     storage: multer.diskStorage({
       destination: resumeDirectory,
@@ -149,7 +208,11 @@ export function createApp(
     const job = repository.getJob(request.params.id);
     if (job === null)
       return void response.status(404).json({ error: 'Job not found' });
-    if (job.scoreVersion !== getCurrentScoreVersion()) {
+    if (
+      job.active &&
+      job.status !== 'expired' &&
+      job.scoreVersion !== getCurrentScoreVersion()
+    ) {
       return void response.status(409).json({
         error: 'Job score is awaiting reprocessing',
         scoreVersion: job.scoreVersion,
@@ -175,6 +238,114 @@ export function createApp(
       .parse(request.body);
     repository.updateJobMetadata(request.params.id, body.favorite, body.notes);
     response.json(repository.getJob(request.params.id));
+  });
+  app.get('/api/applications', (request, response) => {
+    response
+      .status(200)
+      .json(applicationService.listApplications(request.query));
+  });
+  app.get('/api/applications/:applicationId', (request, response) => {
+    response
+      .status(200)
+      .json(
+        applicationService.getApplication(
+          routeParameter(request, 'applicationId'),
+        ),
+      );
+  });
+  app.get('/api/applications/:applicationId/timeline', (request, response) => {
+    response
+      .status(200)
+      .json(
+        applicationService.getTimeline(
+          routeParameter(request, 'applicationId'),
+        ),
+      );
+  });
+  app.get('/api/resume-snapshots/:snapshotId', (request, response) => {
+    const snapshot = new ResumeSnapshotRepository(database).findById(
+      routeParameter(request, 'snapshotId'),
+    );
+    if (snapshot === null) {
+      response.status(404).json({ error: 'ResumeSnapshot not found' });
+      return;
+    }
+    response.status(200).json(snapshot);
+  });
+  app.get('/api/resume-snapshots', (_request, response) => {
+    const report = reconcileSnapshotStorage(snapshotDirectory, database);
+    response.status(200).json({
+      snapshots: new ResumeSnapshotRepository(database).listStorageKeys(),
+      health: report,
+    });
+  });
+  app.post(
+    '/api/applications',
+    asyncRoute(async (request, response) => {
+      const resumeId = createCommandResumeId(request.body);
+      let prepared: PreparedResumeSnapshot | null = null;
+      try {
+        if (resumeId !== null) {
+          prepared = await captureResumeSnapshot({
+            database,
+            resumeId,
+            resumeDirectory,
+            snapshotRoot: snapshotDirectory,
+            profile: loadCandidateProfile(profilePath, profilePreferencesPath),
+            config: loadScoringConfig(scoringPath, profilePreferencesPath),
+          });
+        }
+        const result = applicationService.createApplication(
+          request.body,
+          prepared,
+        );
+        if (result.replayed && prepared !== null) prepared.cleanup();
+        response.status(result.replayed ? 200 : 201).json(result);
+      } catch (error) {
+        prepared?.cleanup();
+        throw error;
+      }
+    }),
+  );
+  app.post(
+    '/api/applications/:applicationId/events',
+    asyncRoute(async (request, response) => {
+      const resumeId = createCommandResumeId(request.body);
+      let prepared: PreparedResumeSnapshot | null = null;
+      try {
+        if (resumeId !== null) {
+          parsedResumeSnapshotTarget(request.body);
+          prepared = await captureResumeSnapshot({
+            database,
+            resumeId,
+            resumeDirectory,
+            snapshotRoot: snapshotDirectory,
+            profile: loadCandidateProfile(profilePath, profilePreferencesPath),
+            config: loadScoringConfig(scoringPath, profilePreferencesPath),
+          });
+        }
+        const result = applicationService.appendEvent(
+          routeParameter(request, 'applicationId'),
+          request.body,
+          prepared,
+        );
+        if (result.replayed && prepared !== null) prepared.cleanup();
+        response.status(result.replayed ? 200 : 201).json(result);
+      } catch (error) {
+        prepared?.cleanup();
+        throw error;
+      }
+    }),
+  );
+  app.patch('/api/applications/:applicationId/notes', (request, response) => {
+    response
+      .status(200)
+      .json(
+        applicationService.updateSummaryNotes(
+          routeParameter(request, 'applicationId'),
+          request.body,
+        ),
+      );
   });
   app.post(
     '/api/jobs/:id/refresh',
@@ -240,12 +411,15 @@ export function createApp(
   );
 
   app.get('/api/sources/control-center', (_request, response) => {
+    const employerDiscovery = sourceRepository.getEmployerDiscoverySettings();
     response.json({
       summary: sourceRepository.summary(),
       sources: sourceRepository.list(),
       recentRuns: sourceRepository.recentRuns(undefined, 12),
       discovery: coordinator?.status() ?? null,
       schedulerEnabled: sourceRepository.getSchedulerEnabled(),
+      employerDiscoveryEnabled: employerDiscovery.enabled,
+      employerDiscoveryLastEvaluatedAt: employerDiscovery.lastEvaluatedAt,
     });
   });
 
@@ -367,7 +541,28 @@ export function createApp(
   app.put('/api/discovery/settings', (request, response) => {
     const body = discoverySettingsSchema.parse(request.body);
     sourceRepository.setSchedulerEnabled(body.schedulerEnabled);
-    response.json({ schedulerEnabled: sourceRepository.getSchedulerEnabled() });
+    sourceRepository.setEmployerDiscoveryEnabled(body.employerDiscoveryEnabled);
+    response.json({
+      schedulerEnabled: sourceRepository.getSchedulerEnabled(),
+      employerDiscoveryEnabled:
+        sourceRepository.getEmployerDiscoverySettings().enabled,
+    });
+  });
+
+  app.post('/api/employer-discovery/seeds', (request, response) => {
+    const body = z
+      .strictObject({
+        seeds: z.array(
+          z.strictObject({
+            name: z.string(),
+            websiteUrl: z.url().nullable(),
+            careerSiteUrls: z.array(z.string()).max(5),
+            provenance: z.string(),
+          }),
+        ),
+      })
+      .parse(request.body);
+    response.json(employerRepository.importSeeds(body.seeds));
   });
 
   app.get('/api/profile', (_request, response) =>
@@ -376,37 +571,49 @@ export function createApp(
       scoring: loadScoringConfig(scoringPath, profilePreferencesPath),
     }),
   );
-  app.put('/api/profile', (request, response) => {
-    const body = z
-      .object({
-        profile: candidateProfileSchema,
-        rescore: z.boolean().default(false),
-      })
-      .parse(request.body);
-    saveJson(
-      profilePath ?? resolve(process.cwd(), 'config', 'candidate-profile.json'),
-      body.profile,
-    );
-    saveUnified({ candidateProfile: body.profile });
-    const summary = new IntelligenceEngine(database).analyze(
-      body.profile,
-      loadScoringConfig(scoringPath, profilePreferencesPath),
-    );
-    response.json({ profile: body.profile, analysis: summary });
-  });
-  app.put('/api/scoring', (request, response) => {
-    const scoring = scoringConfigSchema.parse(request.body);
-    saveJson(
-      scoringPath ?? resolve(process.cwd(), 'config', 'scoring-config.json'),
-      scoring,
-    );
-    saveUnified({ scoringConfig: scoring });
-    const analysis = new IntelligenceEngine(database).analyze(
-      loadCandidateProfile(profilePath, profilePreferencesPath),
-      scoring,
-    );
-    response.json({ scoring, analysis });
-  });
+  app.put(
+    '/api/profile',
+    asyncRoute(async (request, response) => {
+      const body = z
+        .object({
+          profile: candidateProfileSchema,
+          rescore: z.boolean().default(false),
+        })
+        .parse(request.body);
+      await persistenceSetCoordinator.withWrite(() => {
+        saveJson(
+          profilePath ??
+            resolve(process.cwd(), 'config', 'candidate-profile.json'),
+          body.profile,
+        );
+        saveUnified({ candidateProfile: body.profile });
+      });
+      const summary = new IntelligenceEngine(database).analyze(
+        body.profile,
+        loadScoringConfig(scoringPath, profilePreferencesPath),
+      );
+      response.json({ profile: body.profile, analysis: summary });
+    }),
+  );
+  app.put(
+    '/api/scoring',
+    asyncRoute(async (request, response) => {
+      const scoring = scoringConfigSchema.parse(request.body);
+      await persistenceSetCoordinator.withWrite(() => {
+        saveJson(
+          scoringPath ??
+            resolve(process.cwd(), 'config', 'scoring-config.json'),
+          scoring,
+        );
+        saveUnified({ scoringConfig: scoring });
+      });
+      const analysis = new IntelligenceEngine(database).analyze(
+        loadCandidateProfile(profilePath, profilePreferencesPath),
+        scoring,
+      );
+      response.json({ scoring, analysis });
+    }),
+  );
 
   app.get('/api/resumes', (_request, response) =>
     response.json(repository.listResumes()),
@@ -462,18 +669,23 @@ export function createApp(
     if (body.isDefault === true) repository.setDefaultResume(id);
     response.json(repository.getResume(id));
   });
-  app.delete('/api/resumes/:id', (request, response) => {
-    const id = request.params.id;
-    const storagePath = repository.getResumeStoragePath(id);
-    const resolvedStoragePath =
-      storagePath === null
-        ? null
-        : resolveResumeStoragePath(resumeDirectory, storagePath);
-    repository.deleteResume(id);
-    if (resolvedStoragePath !== null && existsSync(resolvedStoragePath))
-      unlinkSync(resolvedStoragePath);
-    response.status(204).end();
-  });
+  app.delete(
+    '/api/resumes/:id',
+    asyncRoute(async (request, response) => {
+      const id = routeParameter(request, 'id');
+      const storagePath = repository.getResumeStoragePath(id);
+      const resolvedStoragePath =
+        storagePath === null
+          ? null
+          : resolveResumeStoragePath(resumeDirectory, storagePath);
+      await persistenceSetCoordinator.withWrite(() => {
+        repository.deleteResume(id);
+        if (resolvedStoragePath !== null && existsSync(resolvedStoragePath))
+          unlinkSync(resolvedStoragePath);
+      });
+      response.status(204).end();
+    }),
+  );
   app.post('/api/resumes/:id/rescore', (request, response) => {
     const resume = repository.getResume(request.params.id);
     if (resume === null)
@@ -496,29 +708,47 @@ export function createApp(
       ),
     );
   });
-  app.patch('/api/resume-proposals/:id', (request, response) => {
-    const body = z
-      .object({ status: z.enum(['approved', 'rejected']) })
-      .parse(request.body);
-    const proposal = repository.reviewProposal(request.params.id, body.status);
-    if (body.status === 'approved') applyProposals([proposal]);
-    response.json(proposal);
-  });
-  app.post('/api/resumes/:id/proposals', (request, response) => {
-    const body = z
-      .object({ status: z.enum(['approved', 'rejected']) })
-      .parse(request.body);
-    const proposals = repository.reviewAllProposals(
-      request.params.id,
-      body.status,
-    );
-    if (body.status === 'approved') applyProposals(proposals);
-    response.json(proposals);
-  });
+  app.patch(
+    '/api/resume-proposals/:id',
+    asyncRoute(async (request, response) => {
+      const body = z
+        .object({ status: z.enum(['approved', 'rejected']) })
+        .parse(request.body);
+      const proposal = repository.reviewProposal(
+        routeParameter(request, 'id'),
+        body.status,
+      );
+      if (body.status === 'approved') await applyProposals([proposal]);
+      response.json(proposal);
+    }),
+  );
+  app.post(
+    '/api/resumes/:id/proposals',
+    asyncRoute(async (request, response) => {
+      const body = z
+        .object({ status: z.enum(['approved', 'rejected']) })
+        .parse(request.body);
+      const proposals = repository.reviewAllProposals(
+        routeParameter(request, 'id'),
+        body.status,
+      );
+      if (body.status === 'approved') await applyProposals(proposals);
+      response.json(proposals);
+    }),
+  );
 
   app.get('/api/analytics', (_request, response) =>
     response.json(repository.getAnalytics()),
   );
+  app.get('/api/analytics/application-outcomes', (request, response) => {
+    const query = z
+      .strictObject({
+        start: z.iso.datetime(),
+        end: z.iso.datetime(),
+      })
+      .parse(request.query);
+    response.json(outcomeAnalytics.calculate(query.start, query.end));
+  });
   app.get('/api/sources', (_request, response) =>
     response.json(repository.listSources()),
   );
@@ -590,14 +820,187 @@ export function createApp(
     response.status(204).end();
   });
 
+  app.use('/api/applications', (_request, response) => {
+    response.status(404).json({ error: 'Application endpoint not found' });
+  });
+
+  app.get('/api/employers', (_request, response) => {
+    response.json(employerRepository.listEmployersWithSites());
+  });
+
+  app.get('/api/employer-discovery/intelligence', (request, response) => {
+    const query = z
+      .strictObject({ asOf: z.iso.datetime().optional() })
+      .parse(request.query);
+    response.json(
+      employerDiscoveryIntelligence.summary(
+        query.asOf === undefined ? undefined : new Date(query.asOf),
+      ),
+    );
+  });
+
+  app.get('/api/career-sites/:id/intelligence', (request, response) => {
+    const query = z
+      .strictObject({ asOf: z.iso.datetime().optional() })
+      .parse(request.query);
+    const result = employerDiscoveryIntelligence.decision(
+      routeParameter(request, 'id'),
+      query.asOf === undefined ? undefined : new Date(query.asOf),
+    );
+    if (result === null) {
+      response.status(404).json({ error: 'CareerSite not found' });
+      return;
+    }
+    response.json(result);
+  });
+
+  app.post(
+    '/api/employer-discovery/run',
+    asyncRoute(async (_request, response) => {
+      response.json(await employerDiscoveryService.runEligible());
+    }),
+  );
+
+  app.post(
+    '/api/career-sites/:id/discover',
+    asyncRoute(async (request, response) => {
+      response.json(
+        await employerDiscoveryService.runSite(
+          routeParameter(request, 'id'),
+          true,
+        ),
+      );
+    }),
+  );
+  app.post(
+    '/api/career-sites/:id/health-check',
+    asyncRoute(async (request, response) => {
+      response.json(
+        await careerSiteHealthService.checkSite(routeParameter(request, 'id')),
+      );
+    }),
+  );
+  app.post(
+    '/api/career-sites/:id/repair',
+    asyncRoute(async (request, response) => {
+      response.json(
+        await careerSiteHealthService.repairSite(routeParameter(request, 'id')),
+      );
+    }),
+  );
+  app.post('/api/career-sites/:id/retire', (request, response) => {
+    response.json(
+      employerRepository.retireCareerSite(routeParameter(request, 'id')),
+    );
+  });
+  app.get('/api/career-sites/:id/verification-history', (request, response) => {
+    response.json(
+      employerRepository.listVerificationHistory(routeParameter(request, 'id')),
+    );
+  });
+  app.post(
+    '/api/career-site-health/run',
+    asyncRoute(async (_request, response) => {
+      response.json(await careerSiteHealthService.runEligible(25));
+    }),
+  );
+
+  app.get('/api/employers/:id', (request, response) => {
+    const employer = employerRepository.getEmployer(
+      routeParameter(request, 'id'),
+    );
+    if (employer === null)
+      return void response.status(404).json({ error: 'Employer not found' });
+    const sites = employerRepository.listCareerSites(employer.id);
+    response.json({ employer, careerSites: sites });
+  });
+
+  app.post(
+    '/api/employers',
+    asyncRoute((request, response) => {
+      const input = employerInputSchema.parse(request.body);
+      const employer = employerRepository.createEmployer(input);
+      response.status(201).json(employer);
+    }),
+  );
+
+  app.post(
+    '/api/employers/:id/career-sites',
+    asyncRoute((request, response) => {
+      const employer = employerRepository.getEmployer(
+        routeParameter(request, 'id'),
+      );
+      if (employer === null)
+        return void response.status(404).json({ error: 'Employer not found' });
+      const input = careerSiteInputSchema.parse(request.body);
+      const site = employerRepository.createCareerSite(employer.id, input);
+      response.status(201).json(site);
+    }),
+  );
+
+  app.post(
+    '/api/career-sites/:id/verify',
+    asyncRoute((request, response) => {
+      const site = employerRepository.verifyCareerSite(
+        routeParameter(request, 'id'),
+      );
+      response.json(site);
+    }),
+  );
+
+  app.post(
+    '/api/career-sites/:id/source',
+    asyncRoute(async (request, response) => {
+      const outcome = await employerDiscoveryService.runSite(
+        routeParameter(request, 'id'),
+        false,
+      );
+      if (outcome.site.discovery.sourceId === null) {
+        return void response
+          .status(409)
+          .json({ error: outcome.site.discovery.lastResult });
+      }
+      response
+        .status(outcome.counter === 'sourceCreated' ? 201 : 200)
+        .json(sourceRepository.get(outcome.site.discovery.sourceId));
+    }),
+  );
+
   app.use(
     (
       error: unknown,
-      _request: Request,
+      request: Request,
       response: Response,
       next: NextFunction,
     ) => {
       void next;
+      const applicationBodyErrorReason = applicationBodyParserErrorReason(
+        error,
+        request,
+      );
+      if (applicationBodyErrorReason !== null) {
+        response.status(400).json({
+          error: 'Application command validation failed',
+          code: 'application_validation_failed',
+          details: { reason: applicationBodyErrorReason },
+        });
+        return;
+      }
+      if (error instanceof ApplicationServiceError) {
+        response.status(error.status).json({
+          error: error.message,
+          code: error.code,
+          details: error.details,
+        });
+        return;
+      }
+      if (error instanceof ResumeSnapshotCaptureError) {
+        response.status(error.status).json({
+          error: error.message,
+          code: error.code,
+        });
+        return;
+      }
       const message = error instanceof Error ? error.message : String(error);
       response
         .status(error instanceof z.ZodError ? 400 : 500)
@@ -607,13 +1010,13 @@ export function createApp(
 
   return app;
 
-  function applyProposals(
+  async function applyProposals(
     proposals: readonly {
       fieldName: 'skills' | 'certifications';
       proposedValue: string;
       status: string;
     }[],
-  ): void {
+  ): Promise<void> {
     const approved = proposals.filter(
       (proposal) => proposal.status === 'approved',
     );
@@ -625,20 +1028,23 @@ export function createApp(
       if (proposal.fieldName === 'skills') skills.add(proposal.proposedValue);
       else certifications.add(proposal.proposedValue);
     }
-    saveJson(
-      profilePath ?? resolve(process.cwd(), 'config', 'candidate-profile.json'),
-      {
-        ...profile,
-        skills: [...skills],
-        certifications: [...certifications],
-      },
-    );
-    saveUnified({
-      candidateProfile: {
-        ...profile,
-        skills: [...skills],
-        certifications: [...certifications],
-      },
+    await persistenceSetCoordinator.withWrite(() => {
+      saveJson(
+        profilePath ??
+          resolve(process.cwd(), 'config', 'candidate-profile.json'),
+        {
+          ...profile,
+          skills: [...skills],
+          certifications: [...certifications],
+        },
+      );
+      saveUnified({
+        candidateProfile: {
+          ...profile,
+          skills: [...skills],
+          certifications: [...certifications],
+        },
+      });
     });
   }
 
@@ -737,4 +1143,56 @@ function saveJson(path: string, value: unknown): void {
 function routeParameter(request: Request, name: string): string {
   const value = request.params[name];
   return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+}
+
+function createCommandResumeId(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const resumeId = (body as Record<string, unknown>)['resumeId'];
+  return typeof resumeId === 'string' && resumeId.trim().length > 0
+    ? resumeId
+    : null;
+}
+
+function parsedResumeSnapshotTarget(body: unknown): void {
+  if (typeof body !== 'object' || body === null) return;
+  const command = body as Record<string, unknown>;
+  if (
+    command['kind'] !== 'replace' ||
+    command['replacementEventType'] !== 'applied'
+  ) {
+    throw new ResumeSnapshotCaptureError(
+      'A Resume snapshot can only be attached to an Applied event',
+      'snapshot_unsupported_association',
+      {},
+      400,
+    );
+  }
+}
+
+function applicationBodyParserErrorReason(
+  error: unknown,
+  request: Request,
+): string | null {
+  const path = request.originalUrl.split('?', 1)[0] ?? '';
+  if (path !== '/api/applications' && !path.startsWith('/api/applications/')) {
+    return null;
+  }
+  if (typeof error !== 'object' || error === null || !('type' in error)) {
+    return null;
+  }
+  switch (error.type) {
+    case 'entity.parse.failed':
+      return 'Request body must contain valid JSON';
+    case 'entity.too.large':
+      return 'Request body exceeds the allowed size';
+    case 'charset.unsupported':
+    case 'encoding.unsupported':
+      return 'Request body uses an unsupported character encoding';
+    case 'entity.verify.failed':
+    case 'request.aborted':
+    case 'request.size.invalid':
+      return 'Request body could not be read';
+    default:
+      return null;
+  }
 }

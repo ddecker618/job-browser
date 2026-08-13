@@ -1,5 +1,6 @@
-import { writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { join, resolve } from 'node:path';
 
 import {
   app,
@@ -12,7 +13,7 @@ import {
 } from 'electron';
 
 import { BackendManager } from './backendManager.js';
-import { userFacingError } from './errors.js';
+import { DesktopStartupError, userFacingError } from './errors.js';
 import { createDesktopLogger } from './logger.js';
 import { CredentialVault } from './credentialVault.js';
 import {
@@ -21,7 +22,20 @@ import {
   type DesktopPaths,
 } from './paths.js';
 import { WindowManager } from './windowManager.js';
-import { loadDesktopSmokeRoute } from './smokeNavigation.js';
+import {
+  applicationIdFromSmokeCreateResponse,
+  isApplicationListSmokeResponse,
+  loadDesktopSmokeApplicationDetail,
+  loadDesktopSmokeRoute,
+} from './smokeNavigation.js';
+import type { JobDatabase } from '../db/database.js';
+import type { NormalizedJob } from '../schemas/normalized-job.js';
+import { JobRepository } from '../repositories/job-repository.js';
+import { SourceRepository } from '../repositories/source-repository.js';
+
+const DESKTOP_SMOKE_RESUME_ID = '00000000-0000-4000-8000-000000008303';
+const DESKTOP_SMOKE_TITLE = 'Desktop Smoke Application Engineer';
+const DESKTOP_SMOKE_JOB_TITLE = 'Desktop Smoke Retained Job';
 
 app.setName('Job Browser');
 if (process.env['JOB_BROWSER_SMOKE_USER_DATA']) {
@@ -198,36 +212,48 @@ async function runStartup(): Promise<void> {
     await backend.stop();
     windows.sendProgress('Preparing application');
     windows.sendProgress('Locating database');
-    windows.sendProgress('Checking database');
-    windows.sendProgress('Applying database updates');
-    windows.sendProgress('Starting local service');
     const handle = await backend.start(paths, {
       development: !app.isPackaged && !process.argv.includes('--built'),
       logger: desktopLogger.log,
       credentialResolver: credentialVault,
+      onProgress: (stage) => windows.sendProgress(stage),
     });
     windows.sendProgress('Loading dashboard');
     await windows.loadDashboard(handle.url);
     windows.sendProgress('Ready');
     diagnosticText = JSON.stringify(runtimeInfo(), null, 2);
   } catch (error) {
+    const startupError =
+      error instanceof DesktopStartupError ? error : undefined;
     const detail =
       error instanceof Error ? (error.stack ?? error.message) : String(error);
-    desktopLogger.log('error', 'Desktop startup failed', { error: detail });
+    desktopLogger.log('error', 'Desktop startup failed', {
+      error: detail,
+      ...(startupError === undefined ? {} : { code: startupError.code }),
+      ...(startupError?.quarantinePath === undefined
+        ? {}
+        : { quarantinePath: startupError.quarantinePath }),
+    });
     diagnosticText = JSON.stringify(
       {
         version: app.getVersion(),
         databasePath: paths.database,
         logPath: desktopLogger.path,
         error: error instanceof Error ? error.message : String(error),
+        errorCode: startupError?.code ?? 'unknown',
+        quarantinePath: startupError?.quarantinePath ?? null,
       },
       null,
       2,
     );
     windows.sendFailure({
-      title: 'Job Browser could not start',
+      title:
+        startupError?.code.startsWith('database-') === true
+          ? 'Database recovery required'
+          : 'Job Browser could not start',
       message: userFacingError(error),
       databasePath: paths.database,
+      code: startupError?.code ?? 'unknown',
     });
   } finally {
     starting = false;
@@ -241,6 +267,7 @@ function runtimeInfo() {
     version: app.getVersion(),
     databasePath: paths.database,
     resumeDirectory: paths.resumes,
+    snapshotDirectory: paths.snapshots,
     logDirectory: paths.logs,
     backupDirectory: paths.backups,
     backendStatus: backend.current === null ? 'stopped' : 'healthy',
@@ -277,12 +304,101 @@ async function runDesktopSmoke(): Promise<void> {
     }
 
     await assertPageText(window.webContents, 'Opportunity command center');
+    recordSmokeStage('creating-application-fixture');
+    const desktopSmokeJobId = randomUUID();
+    const desktopSmokeEventId = randomUUID();
+    const desktopSmokeFingerprint =
+      randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '');
+    insertDesktopSmokeJob(
+      handle.database,
+      desktopSmokeJobId,
+      desktopSmokeFingerprint,
+    );
+    insertDesktopSmokeResume(handle.database);
+    const createResponse = await fetch(`${handle.url}/api/applications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventId: desktopSmokeEventId,
+        jobId: desktopSmokeJobId,
+        occurredAt: '2020-01-15T12:00:00.000Z',
+        occurrencePrecision: 'exact',
+        titleAtApplication: DESKTOP_SMOKE_TITLE,
+        companyAtApplication: 'Desktop Smoke Company',
+        locationAtApplication: 'Smoke Lab',
+        applicationUrl: null,
+        sourceId: null,
+        notes: 'Created by isolated desktop smoke validation',
+        resumeId: DESKTOP_SMOKE_RESUME_ID,
+      }),
+    });
+    if (!createResponse.ok) {
+      const createErrorBody = await createResponse.text();
+      throw new Error(
+        `Desktop smoke Application creation failed: ${createErrorBody}`,
+      );
+    }
+    const createdApplication: unknown = await createResponse.json();
+    const applicationId = applicationIdFromSmokeCreateResponse(
+      createdApplication,
+      desktopSmokeJobId,
+      desktopSmokeEventId,
+    );
+    if (applicationId === null) {
+      throw new Error(
+        'Desktop smoke Application creation returned invalid data',
+      );
+    }
     recordSmokeStage('asserting-jobs');
     await loadDesktopSmokeRoute(window.webContents, '/jobs');
     await assertPageText(window.webContents, 'OPPORTUNITY INVENTORY');
+    recordSmokeStage('asserting-applications');
+    await loadDesktopSmokeRoute(window.webContents, '/applications');
+    await assertPageText(window.webContents, DESKTOP_SMOKE_TITLE);
+    const applicationsResponse = await fetch(`${handle.url}/api/applications`);
+    if (!applicationsResponse.ok) {
+      throw new Error('Desktop Applications endpoint failed');
+    }
+    const applications: unknown = await applicationsResponse.json();
+    if (!isApplicationListSmokeResponse(applications)) {
+      throw new Error(
+        'Desktop Applications endpoint returned an invalid shape',
+      );
+    }
+    if (!hasApplicationListItem(applications.items, applicationId)) {
+      throw new Error('Desktop Applications list omitted the smoke record');
+    }
+    recordSmokeStage('asserting-resume-snapshots');
+    const snapshotsResponse = await fetch(`${handle.url}/api/resume-snapshots`);
+    if (!snapshotsResponse.ok) {
+      throw new Error('Desktop resume-snapshots endpoint failed');
+    }
+    const snapshots: unknown = await snapshotsResponse.json();
+    if (!snapshotHealthFromSmokeResponse(snapshots)) {
+      throw new Error('Desktop snapshot reconciliation reported unhealthy');
+    }
+    const snapshotKeys = snapshotStorageKeysFromSmokeResponse(snapshots);
+    if (snapshotKeys.length !== 1) {
+      throw new Error(
+        'Desktop snapshot capture did not persist exactly one artifact',
+      );
+    }
+    recordSmokeStage('asserting-application-detail');
+    await loadDesktopSmokeApplicationDetail(window.webContents, applicationId);
+    await assertPageText(window.webContents, DESKTOP_SMOKE_TITLE);
+    await assertPageText(window.webContents, 'Application timeline');
     recordSmokeStage('asserting-sources');
     await loadDesktopSmokeRoute(window.webContents, '/sources');
     await assertPageText(window.webContents, 'DISCOVERY CONTROL');
+    recordSmokeStage('asserting-discovery-engine');
+    await loadDesktopSmokeRoute(window.webContents, '/employers');
+    await assertPageText(window.webContents, 'Discovery Engine');
+    await assertPageText(window.webContents, 'Discovery Control Center');
+    await assertPageText(window.webContents, 'Run Discovery Now');
+    await assertPageText(window.webContents, 'Run Enabled Sources');
+    await assertPageText(window.webContents, 'Employer health summary');
+    await assertPageText(window.webContents, 'Discovery Intelligence');
+    await assertPageText(window.webContents, 'Check health');
     recordSmokeStage('asserting-settings');
     await loadDesktopSmokeRoute(window.webContents, '/settings');
     await assertPageText(window.webContents, 'Desktop application');
@@ -338,6 +454,128 @@ async function runDesktopSmoke(): Promise<void> {
     console.error(error);
     app.exit(1);
   }
+}
+
+function insertDesktopSmokeJob(
+  database: JobDatabase,
+  jobId: string,
+  fingerprint: string,
+): void {
+  const source = new SourceRepository(database).list()[0];
+  if (source === undefined) {
+    throw new Error('Desktop smoke requires one seeded local Source');
+  }
+  const job: NormalizedJob = {
+    id: jobId,
+    fingerprint,
+    externalId: jobId,
+    title: DESKTOP_SMOKE_JOB_TITLE,
+    normalizedTitle: 'desktop smoke retained job',
+    company: 'Desktop Smoke Company',
+    normalizedCompany: 'desktop smoke company',
+    location: 'Smoke Lab',
+    city: null,
+    state: null,
+    remoteType: 'unknown',
+    employmentType: 'unknown',
+    salaryMinimum: null,
+    salaryMaximum: null,
+    salaryText: null,
+    description: null,
+    requirements: null,
+    preferredQualifications: null,
+    postingUrl: null,
+    sourceName: 'Desktop smoke fixture',
+    sourceType: 'desktop-smoke',
+    datePosted: '2020-01-01T12:00:00.000Z',
+    agency: null,
+    department: null,
+    gradeLow: null,
+    gradeHigh: null,
+    payPlan: null,
+    appointmentType: null,
+    workSchedule: null,
+    teleworkEligible: null,
+    openingDate: null,
+    closingDate: null,
+    closingDatePrecision: null,
+    providerLifecycleStatus: 'unknown',
+    applicationUrls: [],
+    firstSeenAt: '2020-01-01T12:00:00.000Z',
+    lastSeenAt: '2020-01-01T12:00:00.000Z',
+    active: true,
+    clearanceRequirement: null,
+    sponsorshipAvailable: null,
+    estimatedExperienceYears: null,
+    seniorityLevel: 'unknown',
+    score: null,
+    recommendation: null,
+    scoreExplanation: null,
+    status: 'new',
+  };
+  new JobRepository(database).upsertObservation({
+    job,
+    sourceId: source.id,
+    providerId: null,
+    rawData: { fixture: 'desktop-smoke' },
+  });
+}
+
+function insertDesktopSmokeResume(database: JobDatabase): void {
+  const resumePath = join(paths.resumes, 'desktop-smoke-resume.txt');
+  const content = 'Desktop smoke resume with SIEM experience';
+  writeFileSync(resumePath, content);
+  database
+    .prepare(
+      `INSERT INTO resumes (
+        id, display_name, original_filename, storage_path, mime_type,
+        size_bytes, is_default, parsing_status, extracted_skills_json,
+        extracted_certifications_json, parsing_error, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 0, 'parsed', '[]', '[]', NULL,
+        '2020-01-01T00:00:00.000Z', '2020-01-01T00:00:00.000Z')
+      ON CONFLICT(id) DO UPDATE SET
+        display_name = excluded.display_name,
+        original_filename = excluded.original_filename,
+        storage_path = excluded.storage_path,
+        mime_type = excluded.mime_type,
+        size_bytes = excluded.size_bytes`,
+    )
+    .run(
+      DESKTOP_SMOKE_RESUME_ID,
+      'Desktop Smoke Resume',
+      'desktop-smoke-resume.txt',
+      resumePath,
+      'text/plain',
+      statSync(resumePath).size,
+    );
+}
+
+function snapshotHealthFromSmokeResponse(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const health = (value as { health?: unknown }).health;
+  if (typeof health !== 'object' || health === null) return false;
+  return (health as { healthy?: unknown }).healthy === true;
+}
+
+function snapshotStorageKeysFromSmokeResponse(value: unknown): string[] {
+  if (typeof value !== 'object' || value === null) return [];
+  const snapshots = (value as { snapshots?: unknown }).snapshots;
+  return Array.isArray(snapshots)
+    ? snapshots.filter((key): key is string => typeof key === 'string')
+    : [];
+}
+
+function hasApplicationListItem(
+  items: unknown[],
+  applicationId: string,
+): boolean {
+  return items.some(
+    (item) =>
+      typeof item === 'object' &&
+      item !== null &&
+      'id' in item &&
+      item.id === applicationId,
+  );
 }
 
 function recordSmokeStage(stage: string): void {
