@@ -87,14 +87,14 @@ export function AnalyticsPage() {
         </article>
         <article>
           <span>Tracked employers</span>
-          <strong>{data.topEmployers.length}</strong>
+          <strong>{data.trackedEmployers}</strong>
         </article>
         <article>
           <span>Skill signals</span>
-          <strong>{data.topSkills.length}</strong>
+          <strong>{data.skillSignals}</strong>
         </article>
       </div>
-      {outcomes.data !== undefined ? (
+      {outcomes.isSuccess ? (
         <section className="panel">
           <h3>Application outcomes</h3>
           <p>
@@ -122,6 +122,13 @@ export function AnalyticsPage() {
           <p>
             Unknown Company: {outcomes.data.unknownCompanyCount} · Unknown
             qualifications: {outcomes.data.unknownQualificationCount}
+          </p>
+        </section>
+      ) : outcomes.isError ? (
+        <section className="panel">
+          <h3>Application outcomes</h3>
+          <p className="source-error" role="alert">
+            {outcomes.error.message}
           </p>
         </section>
       ) : null}

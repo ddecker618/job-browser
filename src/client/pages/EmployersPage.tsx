@@ -6,6 +6,10 @@ import type {
   EmployerWithSites,
 } from '../../models/employer.js';
 import { api } from '../api.js';
+import {
+  formatDateOnly,
+  formatExactDateTime,
+} from '../applicationFormatting.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { EmptyState, ErrorState, LoadingState } from '../components/States.js';
 import { invalidateScoreQueries } from '../scoreCache.js';
@@ -29,6 +33,7 @@ export function EmployersPage() {
   const [seedName, setSeedName] = useState('');
   const [seedUrl, setSeedUrl] = useState('');
   const [historySummary, setHistorySummary] = useState<string | null>(null);
+  const [showRetired, setShowRetired] = useState(false);
 
   const employers = useQuery({
     queryKey: ['employers'],
@@ -98,6 +103,16 @@ export function EmployersPage() {
       );
       setLastRunSummary(
         `Enabled Sources: ${String(results.length)} run summaries, ${String(jobsFound)} jobs found, ${String(jobsInserted)} inserted`,
+      );
+    },
+    onSettled: async () => refreshDiscoveryState(),
+  });
+  const healthCheckMutation = useMutation({
+    mutationFn: api.runCareerSiteHealth,
+    onMutate: () => setLastRunSummary(null),
+    onSuccess: (result) => {
+      setLastRunSummary(
+        `CareerSite health: ${String(result.checked)} checked, ${String(result.healthy)} healthy, ${String(result.warning)} warning, ${String(result.broken)} broken, ${String(result.skipped)} skipped`,
       );
     },
     onSettled: async () => refreshDiscoveryState(),
@@ -213,13 +228,27 @@ export function EmployersPage() {
       summary[site.health.status] = (summary[site.health.status] ?? 0) + 1;
       return summary;
     }, {});
+  const totalCareerSites = visibleEmployers.reduce(
+    (sum, entry) => sum + entry.careerSites.length,
+    0,
+  );
+  const intelligenceSites = intelligence.data?.sites ?? [];
+  const retiredSites = intelligenceSites.filter(
+    (site) => site.healthStatus === 'retired',
+  );
+  const activeSites = intelligenceSites.filter(
+    (site) => site.healthStatus !== 'retired',
+  );
   const coordinatorRunning = sourceControl.data?.discovery?.running === true;
   const globalRunPending =
     runDiscoveryMutation.isPending ||
     runEnabledSourcesMutation.isPending ||
+    healthCheckMutation.isPending ||
     coordinatorRunning;
   const runError =
-    runDiscoveryMutation.error ?? runEnabledSourcesMutation.error;
+    runDiscoveryMutation.error ??
+    runEnabledSourcesMutation.error ??
+    healthCheckMutation.error;
 
   return (
     <>
@@ -247,7 +276,7 @@ export function EmployersPage() {
         </div>
         <div className="discovery-intelligence-metrics">
           <Metric
-            label="Employer automation"
+            label="Employer Discovery"
             value={
               sourceControl.data?.employerDiscoveryEnabled === true
                 ? 'Enabled'
@@ -263,12 +292,17 @@ export function EmployersPage() {
             }
           />
           <Metric
-            label="Eligible CareerSites"
+            label="CareerSites eligible now"
             value={intelligence.data?.totals.eligibleSites ?? 0}
           />
           <Metric
-            label="Due soon"
+            label="Due within 24h"
             value={intelligence.data?.totals.dueSoon ?? 0}
+          />
+          <Metric label="Total CareerSites" value={totalCareerSites} />
+          <Metric
+            label="Sources enabled"
+            value={sourceControl.data?.summary.enabledSources ?? 0}
           />
         </div>
         <div className="source-toolbar">
@@ -291,6 +325,16 @@ export function EmployersPage() {
             {runEnabledSourcesMutation.isPending
               ? 'Running Enabled Sources...'
               : 'Run Enabled Sources'}
+          </button>
+          <button
+            className="button"
+            type="button"
+            onClick={() => healthCheckMutation.mutate()}
+            disabled={globalRunPending}
+          >
+            {healthCheckMutation.isPending
+              ? 'Checking CareerSite Health...'
+              : 'Check CareerSite Health'}
           </button>
           <span role="status">
             {coordinatorRunning
@@ -319,10 +363,15 @@ export function EmployersPage() {
           </p>
         ) : null}
       </section>
-      <h2 className="source-section-title">Employer health summary</h2>
+      <h2 className="source-section-title">CareerSite Health</h2>
+      <p className="health-summary-note">
+        CareerSite health comes from bounded ATS-detection probes and is
+        separate from Source run success, which is shown under Discovery
+        Intelligence.
+      </p>
       <div
         className="analytics-kpis"
-        aria-label="Employer health summary counts"
+        aria-label="CareerSite health summary counts"
       >
         {(['healthy', 'warning', 'broken', 'unknown', 'retired'] as const).map(
           (status) => (
@@ -332,6 +381,10 @@ export function EmployersPage() {
             </article>
           ),
         )}
+        <article>
+          <span>total</span>
+          <strong>{String(totalCareerSites)}</strong>
+        </article>
       </div>
       <section
         className="discovery-intelligence"
@@ -362,16 +415,21 @@ export function EmployersPage() {
                 value={intelligence.data.totals.dueSoon}
               />
               <Metric
-                label="Recent successes"
+                label="Successful runs, last 30 days"
                 value={intelligence.data.totals.discoverySuccesses}
               />
               <Metric
-                label="Recent failures"
+                label="Failed runs, last 30 days"
                 value={intelligence.data.totals.discoveryFailures}
               />
             </div>
+            <small className="activity-window">
+              Activity window{' '}
+              {formatDateOnly(intelligence.data.activityWindow.start)} to{' '}
+              {formatDateOnly(intelligence.data.activityWindow.end)}
+            </small>
             <div className="discovery-intelligence-sites">
-              {intelligence.data.sites.slice(0, 5).map((site) => (
+              {activeSites.map((site) => (
                 <article key={site.careerSiteId}>
                   <div>
                     <strong>{site.employerName}</strong>
@@ -382,7 +440,14 @@ export function EmployersPage() {
                   <span className={`health-pill ${site.healthStatus}`}>
                     {site.healthStatus}
                   </span>
-                  <p>{site.reasons.slice(0, 3).join(' · ')}</p>
+                  <div>
+                    <p>{site.reasons.slice(0, 3).join(' · ')}</p>
+                    <small className="intelligence-activity">
+                      {site.activity.known
+                        ? `${String(site.activity.jobsFirstSeen ?? 0)} new jobs · ${String(site.activity.activeJobs ?? 0)} active jobs in the last 30 days`
+                        : 'Activity unknown until a linked Source succeeds'}
+                    </small>
+                  </div>
                   <small>
                     {site.nextEligibleAt === null
                       ? 'No automatic execution'
@@ -391,6 +456,39 @@ export function EmployersPage() {
                 </article>
               ))}
             </div>
+            {retiredSites.length > 0 ? (
+              <div className="retired-sites">
+                <button
+                  className="button plain"
+                  type="button"
+                  onClick={() => setShowRetired((shown) => !shown)}
+                  aria-expanded={showRetired}
+                >
+                  {showRetired ? 'Hide' : 'Show'} retired CareerSites (
+                  {String(retiredSites.length)})
+                </button>
+                {showRetired ? (
+                  <div className="discovery-intelligence-sites">
+                    {retiredSites.map((site) => (
+                      <article key={site.careerSiteId}>
+                        <div>
+                          <strong>{site.employerName}</strong>
+                          <span>
+                            {site.schedulingClass} · priority{' '}
+                            {String(site.priority)}
+                          </span>
+                        </div>
+                        <span className={`health-pill ${site.healthStatus}`}>
+                          {site.healthStatus}
+                        </span>
+                        <p>{site.reasons.slice(0, 2).join(' · ')}</p>
+                        <small>No automatic execution</small>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="discovery-provider-summary">
               {intelligence.data.providers.slice(0, 5).map((provider) => (
                 <span key={provider.providerId}>
@@ -597,6 +695,9 @@ function EmployerCard({
           {String(careerSites.length)} career site
           {careerSites.length === 1 ? '' : 's'}
         </span>
+        <small className="registry-added">
+          Added {formatExactDateTime(employer.createdAt)}
+        </small>
       </div>
       {expanded ? (
         <div className="career-sites-list">
@@ -721,6 +822,9 @@ function CareerSiteRow({
         <a href={site.url} target="_blank" rel="noopener noreferrer">
           {site.url}
         </a>
+        <small className="registry-added">
+          Added {formatExactDateTime(site.createdAt)}
+        </small>
       </div>
       <div className="career-site-ats">
         <span className={`ats-badge ${atsProvider ?? 'unknown'}`}>

@@ -195,6 +195,38 @@ describe('CareerSiteHealthService', () => {
     expect(detector).not.toHaveBeenCalled();
   });
 
+  it('bulk health run checks never-checked sites and advances the next check time', async () => {
+    const { repository, site } = setup();
+    const detector = vi.fn().mockResolvedValue(detection());
+    const service = new CareerSiteHealthService(
+      repository,
+      undefined,
+      detector,
+    );
+
+    expect(repository.getCareerSite(site.id)?.health.status).toBe('unknown');
+    const first = await service.runEligible(25);
+    expect(first).toMatchObject({
+      checked: 1,
+      healthy: 1,
+      warning: 0,
+      broken: 0,
+      skipped: 0,
+    });
+    expect(first.sites[0]?.health.status).toBe('healthy');
+    expect(repository.getCareerSite(site.id)?.health.status).toBe('healthy');
+    expect(repository.getCareerSite(site.id)?.health.checkedAt).not.toBeNull();
+    expect(
+      repository.getCareerSite(site.id)?.health.nextCheckAt,
+    ).not.toBeNull();
+    expect(repository.listHealthEligible()).toHaveLength(0);
+
+    detector.mockClear();
+    const second = await service.runEligible(25);
+    expect(second.checked).toBe(0);
+    expect(detector).not.toHaveBeenCalled();
+  });
+
   it('repairs stable sites without duplicating or deleting Sources', async () => {
     const { repository, site } = setup();
     repository.verifyCareerSite(site.id);

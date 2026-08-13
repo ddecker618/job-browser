@@ -88,6 +88,7 @@ export interface AppOptions {
   resumeDirectory?: string;
   snapshotDirectory?: string;
   artifactDirectory?: string;
+  databasePath?: string;
   onSettingsSaved?: (settings: AppSettings) => void;
   coordinator?: DiscoveryCoordinator;
   sourceRepository?: SourceRepository;
@@ -761,16 +762,18 @@ export function createApp(
     );
     const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
     if (unified !== null) settings.targetRoles = [...unified.sourceQueryRoles];
+    settings.databaseLocation =
+      options.databasePath ?? defaultDatabasePath();
     response.json(settings);
   });
   app.put('/api/settings', (request, response) => {
     const settings = settingsSchema.parse(request.body);
+    options.onSettingsSaved?.(settings);
     repository.saveSettings(settings);
     saveUnified({ sourceQueryRoles: settings.targetRoles });
     if (settings.targetRoles.length > 0) {
       sourceRepository.cascadeTargetRoles(settings.targetRoles);
     }
-    options.onSettingsSaved?.(settings);
     response.json(settings);
   });
   app.get('/api/search-profile', (_request, response) => {

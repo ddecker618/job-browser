@@ -642,6 +642,16 @@ export class DashboardRepository {
            ELSE COALESCE(salary_maximum, salary_minimum) END) AS value FROM jobs
           WHERE active = 1 AND status <> 'expired'`,
       ),
+      trackedEmployers: this.scalar(
+        `SELECT COUNT(DISTINCT normalized_company) AS value FROM jobs
+          WHERE active = 1 AND status <> 'expired'`,
+      ),
+      skillSignals: this.scalar(
+        `SELECT COUNT(DISTINCT skills.id) AS value FROM job_skills
+          JOIN skills ON skills.id = job_skills.skill_id
+          JOIN jobs ON jobs.id = job_skills.job_id
+          WHERE jobs.active = 1 AND jobs.status <> 'expired'`,
+      ),
     };
   }
 

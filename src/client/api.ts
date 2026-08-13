@@ -26,6 +26,7 @@ import type {
   EmployerSeedImportResult,
   CareerSiteVerificationHistory,
 } from '../models/employer.js';
+import type { CareerSiteHealthRunResult } from '../discovery/careerSiteHealthService.js';
 import type { EmployerDiscoveryRunResult } from '../discovery/employerDiscoveryService.js';
 import type { DiscoverySummary } from '../models/discovery.js';
 import type {
@@ -318,6 +319,10 @@ export const api = {
     ),
   runEmployerDiscovery: () =>
     request<EmployerDiscoveryRunResult>('/api/employer-discovery/run', {
+      method: 'POST',
+    }),
+  runCareerSiteHealth: () =>
+    request<CareerSiteHealthRunResult>('/api/career-site-health/run', {
       method: 'POST',
     }),
   importEmployerSeeds: (seeds: readonly EmployerSeed[]) =>

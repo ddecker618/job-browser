@@ -112,7 +112,7 @@ describe('Employers Discovery Intelligence UI', () => {
     expect(
       await screen.findByRole('heading', { name: 'Discovery Engine' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Employer automation')).toBeInTheDocument();
+    expect(screen.getByText('Employer Discovery')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Run Discovery Now' }));
     await waitFor(() =>
       expect(requests).toContain('/api/employer-discovery/run'),
@@ -124,6 +124,154 @@ describe('Employers Discovery Intelligence UI', () => {
     );
     await waitFor(() => expect(requests).toContain('/api/discovery/run'));
     await screen.findByText(/4 jobs found, 3 inserted/);
+  });
+
+  it('runs a bounded CareerSite health check from the control center', async () => {
+    const requests: string[] = [];
+    mockFetch((url) => {
+      requests.push(url.pathname);
+      if (url.pathname === '/api/employers') return employersFixture();
+      if (url.pathname === '/api/employer-discovery/intelligence')
+        return intelligenceFixture();
+      if (url.pathname === '/api/sources/control-center')
+        return sourceControlFixture();
+      if (url.pathname === '/api/career-site-health/run')
+        return {
+          checked: 2,
+          healthy: 1,
+          warning: 1,
+          broken: 0,
+          skipped: 0,
+          sites: [],
+        };
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    });
+    renderPage();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Discovery Control Center' }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Check CareerSite Health' }),
+    );
+    await waitFor(() =>
+      expect(requests).toContain('/api/career-site-health/run'),
+    );
+    await screen.findByText(/2 checked, 1 healthy, 1 warning/);
+  });
+
+  it('labels CareerSite health and 30-day run metrics separately', async () => {
+    mockFetch((url) => {
+      if (url.pathname === '/api/employers') return employersFixture();
+      if (url.pathname === '/api/employer-discovery/intelligence')
+        return intelligenceFixture();
+      if (url.pathname === '/api/sources/control-center')
+        return sourceControlFixture();
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    });
+    renderPage();
+
+    expect(
+      await screen.findByRole('heading', { name: 'CareerSite Health' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/separate from Source run success/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Successful runs, last 30 days'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Failed runs, last 30 days')).toBeInTheDocument();
+    expect(screen.getByText('CareerSites eligible now')).toBeInTheDocument();
+    expect(screen.getByText('Total CareerSites')).toBeInTheDocument();
+    expect(screen.getByText('Sources enabled')).toBeInTheDocument();
+    expect(screen.getByText('total')).toBeInTheDocument();
+  });
+
+  it('keeps retired CareerSites out of the active intelligence list', async () => {
+    const intelligence = intelligenceFixture();
+    intelligence.sites.push({
+      ...intelligence.sites[0]!,
+      careerSiteId: 'retired-site',
+      employerName: 'Wayne Enterprises',
+      healthStatus: 'retired',
+      schedulingClass: 'retired',
+      eligible: false,
+      executable: false,
+      nextEligibleAt: null,
+    });
+    mockFetch((url) => {
+      if (url.pathname === '/api/employers') return employersFixture();
+      if (url.pathname === '/api/employer-discovery/intelligence')
+        return intelligence;
+      if (url.pathname === '/api/sources/control-center')
+        return sourceControlFixture();
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    });
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Discovery Intelligence' });
+    expect(screen.getAllByText('Acme').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Wayne Enterprises')).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show retired CareerSites (1)' }),
+    );
+    expect(screen.getByText('Wayne Enterprises')).toBeInTheDocument();
+  });
+
+  it('renders registry Added timestamps for employers and career sites', async () => {
+    const employers = employersFixture() as {
+      employer: { id: string; name: string };
+      careerSites: unknown[];
+    }[];
+    employers[0]!.careerSites = [
+      {
+        id: 'site-1',
+        employerId: employers[0]!.employer.id,
+        employerName: employers[0]!.employer.name,
+        url: 'https://boards.greenhouse.io/acme',
+        atsPlatform: 'Greenhouse',
+        atsDetectedProvider: 'greenhouse',
+        confidence: 0.99,
+        confidenceLabel: 'high',
+        supportState: 'supported',
+        verificationState: 'verified',
+        lastVerifiedAt: null,
+        discovery: {
+          sourceId: null,
+          state: 'ready',
+          attemptCount: 0,
+          lastAttemptAt: null,
+          lastResult: null,
+          nextAttemptAt: null,
+          provenance: 'test',
+        },
+        health: {
+          status: 'unknown',
+          checkedAt: null,
+          message: null,
+          failureCount: 0,
+          effectiveUrl: null,
+          nextCheckAt: null,
+        },
+        explanation: null,
+        evidenceCount: 0,
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      },
+    ];
+    mockFetch((url) => {
+      if (url.pathname === '/api/employers') return employers;
+      if (url.pathname === '/api/employer-discovery/intelligence')
+        return intelligenceFixture();
+      if (url.pathname === '/api/sources/control-center')
+        return sourceControlFixture();
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    });
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Discovery Control Center' });
+    expect(screen.getAllByText('Acme').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^Added /)).toHaveLength(2);
   });
 });
 

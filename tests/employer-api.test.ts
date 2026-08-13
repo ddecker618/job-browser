@@ -17,11 +17,14 @@ afterEach(async () => {
     rmSync(directory, { recursive: true, force: true });
 });
 
-async function startTestBackend(): Promise<BackendHandle> {
+async function startTestBackend(
+  options: Partial<import('../src/server/backend.js').BackendOptions> = {},
+): Promise<BackendHandle> {
   const directory = mkdtempSync(join(tmpdir(), 'job-browser-employer-api-'));
   directories.push(directory);
   const handle = await startBackend({
     databasePath: join(directory, 'jobs.sqlite'),
+    ...options,
   });
   handles.push(handle);
   return handle;
@@ -229,6 +232,57 @@ describe('employer discovery API', () => {
       schedulerEnabled: false,
       employerDiscoveryEnabled: true,
     });
+  });
+
+  it('runs a bounded CareerSite health check and persists updated health', async () => {
+    const handle = await startTestBackend({
+      atsDetector: (url: string) =>
+        Promise.resolve({
+          detectedPlatform: 'Greenhouse',
+          confidence: 1,
+          confidenceLabel: 'high',
+          supportState: 'supported',
+          suggestedProvider: 'greenhouse',
+          extractedConfiguration: { boardToken: 'acme' },
+          structuredFallback: false,
+          explanation: 'Supported Greenhouse careers site',
+          resolvedUrl: url,
+          requestedUrl: url,
+          normalizedUrl: url,
+          finalUrl: url,
+          httpStatus: 200,
+          providersChecked: ['greenhouse'],
+          positiveSignals: ['hostname'],
+          negativeProbes: [],
+          failureCategory: null,
+        }),
+    });
+
+    const response = await fetch(`${handle.url}/api/career-site-health/run`, {
+      method: 'POST',
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      checked: number;
+      healthy: number;
+      warning: number;
+      broken: number;
+      skipped: number;
+      sites: { health: { status: string } }[];
+    };
+    expect(body.checked).toBeGreaterThan(0);
+    expect(body.sites.length).toBeLessThanOrEqual(25);
+    expect(body.sites.length).toBe(body.checked);
+    expect(body.healthy).toBe(body.checked);
+    expect(body.sites.every((site) => site.health.status === 'healthy')).toBe(
+      true,
+    );
+
+    const employers = (await fetch(`${handle.url}/api/employers`).then(
+      (response) => response.json(),
+    )) as { careerSites: { health: { status: string } }[] }[];
+    const sites = employers.flatMap((entry) => entry.careerSites);
+    expect(sites.some((site) => site.health.status === 'healthy')).toBe(true);
   });
 
   it('verifies a career site and returns its fingerprint', async () => {

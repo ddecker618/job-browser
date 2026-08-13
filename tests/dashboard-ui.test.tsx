@@ -268,22 +268,79 @@ describe('dashboard UI', () => {
   });
 
   it('renders analytics charts from existing metrics', async () => {
-    mockFetch(() => ({
-      topSkills: [{ label: 'Splunk', value: 4 }],
-      topCertifications: [{ label: 'Security+', value: 3 }],
-      topEmployers: [{ label: 'Alpha Health', value: 5 }],
-      jobsByLocation: [{ label: 'Remote', value: 4 }],
-      jobsByScore: [{ label: '80-100', value: 2 }],
-      recommendationDistribution: [{ label: 'Strong Match', value: 2 }],
-      jobsOverTime: [{ label: '2026-07-18', value: 2 }],
-      averageSalary: 82000,
-    }));
+    mockFetch((url) => {
+      if (url.includes('/api/analytics/application-outcomes')) {
+        return {
+          definition: 'Applications after last activity',
+          applications: { cohortSize: 2, everReached: [] },
+          unknownCompanyCount: 0,
+          unknownQualificationCount: 0,
+        };
+      }
+      return {
+        topSkills: [{ label: 'Splunk', value: 4 }],
+        topCertifications: [{ label: 'Security+', value: 3 }],
+        topEmployers: [{ label: 'Alpha Health', value: 5 }],
+        jobsByLocation: [{ label: 'Remote', value: 4 }],
+        jobsByScore: [{ label: '80-100', value: 2 }],
+        recommendationDistribution: [{ label: 'Strong Match', value: 2 }],
+        jobsOverTime: [{ label: '2026-07-18', value: 2 }],
+        averageSalary: 82000,
+        trackedEmployers: 12,
+        skillSignals: 4,
+      };
+    });
     renderPage(<AnalyticsPage />);
 
     expect(await screen.findByText('$82,000')).toBeInTheDocument();
     expect(screen.getAllByTestId('bar-chart')).toHaveLength(4);
     expect(screen.getByTestId('doughnut-chart')).toBeInTheDocument();
     expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+    expect(
+      screen
+        .getByText('Tracked employers')
+        .closest('article')
+        ?.querySelector('strong'),
+    ).toHaveTextContent('12');
+  });
+
+  it('surfaces an application-outcomes failure instead of hiding the panel', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string | URL | Request) => {
+        const url = input instanceof Request ? input.url : input.toString();
+        if (url.includes('/api/analytics/application-outcomes')) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ error: 'Outcome analytics are down' }), {
+              status: 500,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          );
+        }
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              topSkills: [],
+              topCertifications: [],
+              topEmployers: [{ label: 'Alpha Health', value: 1 }],
+              jobsByLocation: [],
+              jobsByScore: [],
+              recommendationDistribution: [],
+              jobsOverTime: [],
+              averageSalary: 0,
+              trackedEmployers: 1,
+              skillSignals: 0,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }),
+    );
+    renderPage(<AnalyticsPage />);
+
+    expect(
+      await screen.findByRole('alert'),
+    ).toHaveTextContent('Outcome analytics are down');
   });
 
   it('edits and saves application settings', async () => {

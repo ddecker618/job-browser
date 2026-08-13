@@ -246,6 +246,7 @@ export async function startBackend(
     const careerSiteHealthService = new CareerSiteHealthService(
       employerRepository,
       employerDiscoveryService,
+      options.atsDetector,
     );
     const scheduler =
       options.enableScheduler === true

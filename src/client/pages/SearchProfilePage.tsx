@@ -207,7 +207,9 @@ export function SearchProfilePage() {
           <span>
             {save.isSuccess
               ? 'Profile saved.'
-              : 'Changes apply to future discovery runs.'}
+              : save.isError
+                ? save.error.message
+                : 'Changes apply to future discovery runs.'}
           </span>
           <button
             className="button primary"

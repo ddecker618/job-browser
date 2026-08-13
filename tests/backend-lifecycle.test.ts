@@ -178,6 +178,107 @@ describe('backend lifecycle', () => {
     expect(existsSync(join(directory, 'backups'))).toBe(false);
   });
 
+  it('reports the effective database location regardless of stale stored settings', async () => {
+    const directory = temporary();
+    const databasePath = join(directory, 'jobs.sqlite');
+    const handle = await backend(directory, { databasePath });
+    handles.push(handle);
+
+    handle.database.exec(
+      `INSERT INTO app_settings (setting_key, setting_value_json, updated_at)
+       VALUES ('databaseLocation', '"${databasePath.replace(/\\/g, '\\\\')}"', '2024-01-01T00:00:00.000Z')
+       ON CONFLICT(setting_key) DO UPDATE SET
+         setting_value_json = excluded.setting_value_json,
+         updated_at = excluded.updated_at`,
+    );
+
+    const response = await fetch(`${handle.url}/api/settings`);
+    expect(response.status).toBe(200);
+    const settings = (await response.json()) as { databaseLocation: string };
+    expect(settings.databaseLocation).toBe(databasePath);
+  });
+
+  it('runs the settings-saved hook before persisting so a rejected save writes nothing', async () => {
+    const directory = temporary();
+    const databasePath = join(directory, 'jobs.sqlite');
+    const handle = await backend(directory, {
+      databasePath,
+      onSettingsSaved: () => {
+        throw new Error('Database location must be outside the installation directory');
+      },
+    });
+    handles.push(handle);
+
+    const saved = handle.database
+      .prepare<[string], { value: string }>(
+        'SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?',
+      )
+      .get('defaultSearch')?.value;
+    expect(saved).toBeUndefined();
+
+    const response = await fetch(`${handle.url}/api/settings`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        databaseLocation: databasePath,
+        defaultSearch: 'security engineer',
+        theme: 'dark',
+        defaultSort: 'score',
+        loggingLevel: 'info',
+        resumeDirectory: join(directory, 'resumes'),
+        artifactDirectory: join(directory, 'diagnostics'),
+        targetRoles: ['security engineer'],
+      }),
+    });
+    expect(response.status).toBe(500);
+
+const persisted = handle.database
+      .prepare<[string], { value: string }>(
+        'SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?',
+      )
+      .get('defaultSearch')?.value;
+    expect(persisted).toBeUndefined();
+  });
+
+  it('invokes the settings-saved hook exactly once before persisting', async () => {
+    const directory = temporary();
+    const databasePath = join(directory, 'jobs.sqlite');
+    let hookCalls = 0;
+    const seenSettings: unknown[] = [];
+    const handle = await backend(directory, {
+      databasePath,
+      onSettingsSaved: (settings) => {
+        hookCalls += 1;
+        seenSettings.push(settings);
+      },
+    });
+    handles.push(handle);
+
+    const response = await fetch(`${handle.url}/api/settings`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        databaseLocation: databasePath,
+        defaultSearch: 'security engineer',
+        theme: 'dark',
+        defaultSort: 'score',
+        loggingLevel: 'info',
+        resumeDirectory: join(directory, 'resumes'),
+        artifactDirectory: join(directory, 'diagnostics'),
+        targetRoles: ['security engineer'],
+      }),
+    });
+    expect(response.status).toBe(200);
+    expect(hookCalls).toBe(1);
+
+    const persisted = handle.database
+      .prepare<[string], { value: string }>(
+        'SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?',
+      )
+      .get('defaultSearch')?.value;
+    expect(JSON.parse(persisted!)).toBe('security engineer');
+  });
+
   it('rate-limits API and client file requests independently', async () => {
     const directory = temporary();
     const clientDirectory = join(directory, 'client');

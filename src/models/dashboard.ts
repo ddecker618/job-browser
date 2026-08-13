@@ -137,6 +137,8 @@ export interface AnalyticsView {
   recommendationDistribution: MetricItem[];
   jobsOverTime: MetricItem[];
   averageSalary: number;
+  trackedEmployers: number;
+  skillSignals: number;
 }
 
 export interface MetricItem {

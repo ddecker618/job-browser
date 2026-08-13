@@ -396,9 +396,17 @@ async function runDesktopSmoke(): Promise<void> {
     await assertPageText(window.webContents, 'Discovery Control Center');
     await assertPageText(window.webContents, 'Run Discovery Now');
     await assertPageText(window.webContents, 'Run Enabled Sources');
-    await assertPageText(window.webContents, 'Employer health summary');
     await assertPageText(window.webContents, 'Discovery Intelligence');
+    await assertPageText(window.webContents, 'Check CareerSite Health');
     await assertPageText(window.webContents, 'Check health');
+    recordSmokeStage('asserting-analytics');
+    await loadDesktopSmokeRoute(window.webContents, '/analytics');
+    await assertPageText(window.webContents, 'Average listed salary');
+    await assertPageText(window.webContents, 'Tracked employers');
+    recordSmokeStage('asserting-search-profile');
+    await loadDesktopSmokeRoute(window.webContents, '/search-profile');
+    await assertPageText(window.webContents, 'Discovery boundaries');
+    await assertPageText(window.webContents, 'Max onsite distance');
     recordSmokeStage('asserting-settings');
     await loadDesktopSmokeRoute(window.webContents, '/settings');
     await assertPageText(window.webContents, 'Desktop application');

@@ -1295,6 +1295,27 @@ kbd {
   }
 }
 /* Phase 6 discovery control center */
+.registry-added {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.health-summary-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: -0.4rem 0 0.9rem;
+}
+.activity-window {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.intelligence-activity {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.retired-sites {
+  display: grid;
+  gap: 8px;
+}
 .source-summary {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
