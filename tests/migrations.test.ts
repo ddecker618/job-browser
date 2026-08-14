@@ -69,6 +69,7 @@ describe('migration runner', () => {
       '025_career_site_health.sql',
       '026_explicit_job_lifecycle.sql',
       '027_manual_job_removal.sql',
+      '028_role_details.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -217,6 +218,7 @@ describe('migration runner', () => {
       '025_career_site_health.sql',
       '026_explicit_job_lifecycle.sql',
       '027_manual_job_removal.sql',
+      '028_role_details.sql',
     ]);
     expect(
       database
@@ -390,6 +392,7 @@ describe('migration runner', () => {
       '025_career_site_health.sql',
       '026_explicit_job_lifecycle.sql',
       '027_manual_job_removal.sql',
+      '028_role_details.sql',
     ]);
 
     const remaining = database

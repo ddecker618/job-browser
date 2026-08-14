@@ -611,6 +611,8 @@ export class DiceProvider extends BaseProvider {
     if (type === 'full-time') return 'full-time';
     if (type === 'part-time') return 'part-time';
     if (type === 'contract') return 'contract';
+    if (type === 'temporary') return 'temporary';
+    if (type === 'internship') return 'internship';
     return 'unknown';
   }
 

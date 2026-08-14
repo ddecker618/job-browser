@@ -158,6 +158,7 @@ describe('application event foundation migration', () => {
       '025_career_site_health.sql',
       '026_explicit_job_lifecycle.sql',
       '027_manual_job_removal.sql',
+      '028_role_details.sql',
     ]);
 
     expect(applicationIds(database)).toEqual([

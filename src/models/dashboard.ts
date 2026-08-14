@@ -1,6 +1,7 @@
 import type { JobStatus } from '../domain/job-status.js';
 import type { CategoryScores, RecommendationStatus } from './intelligence.js';
 import type { JobLifecycleReason } from '../domain/job-lifecycle.js';
+import type { RoleDetails } from '../schemas/role-details.js';
 
 export interface DashboardSummary {
   totalJobs: number;
@@ -93,6 +94,7 @@ export interface JobDetail extends JobListItem {
   sources: JobSourceView[];
   notes: string | null;
   recommendationStatus: RecommendationStatus | null;
+  roleDetails: RoleDetails | null;
 }
 
 export interface ResumeView {

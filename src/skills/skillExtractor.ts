@@ -3,7 +3,7 @@ import type { ExtractedTerm } from '../models/intelligence.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import { normalizeText } from '../utilities/normalization.js';
 
-type CatalogEntry = ScoringConfig['skills'][number];
+export type CatalogEntry = ScoringConfig['skills'][number];
 
 export interface JobTerms {
   skills: ExtractedTerm[];
@@ -24,9 +24,16 @@ export function extractJobTerms(
     .join(' ');
 
   return {
-    skills: extractTerms(text, config.skills),
-    certifications: extractTerms(text, config.certifications),
+    skills: extractTermsFromText(text, config.skills),
+    certifications: extractTermsFromText(text, config.certifications),
   };
+}
+
+export function extractTermsFromText(
+  text: string,
+  catalog: readonly CatalogEntry[],
+): ExtractedTerm[] {
+  return extractTerms(text, catalog);
 }
 
 export function profileHasTerm(

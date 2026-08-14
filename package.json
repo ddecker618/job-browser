@@ -1,6 +1,6 @@
 {
   "name": "job-browser",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Local job discovery, deduplication, and application tracking",
   "main": "dist/src/desktop/main.js",
   "private": true,
@@ -42,6 +42,7 @@
     "discover:test": "tsx src/discovery/cli.ts --fixture",
     "analyze": "tsx src/intelligence/cli.ts",
     "analyze:test": "tsx src/intelligence/cli.ts --fixture",
+    "role-details:backfill": "tsx src/db/cli/backfill-role-details.ts",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test"
   },
   "keywords": [],

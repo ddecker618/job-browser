@@ -1654,6 +1654,7 @@ function jobDetail(overrides: Partial<JobDetail> = {}): JobDetail {
     sources: [],
     notes: null,
     recommendationStatus: null,
+    roleDetails: null,
     ...overrides,
   };
 }

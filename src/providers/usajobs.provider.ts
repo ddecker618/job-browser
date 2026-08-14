@@ -422,7 +422,7 @@ export class UsaJobsProvider extends BaseProvider {
       salaryMaximum: salary.maximum,
       salaryText,
       description,
-      requirements: null,
+      requirements: detailText.length > 0 ? detailText : null,
       preferredQualifications: null,
       postingUrl,
       providerId: this.id,

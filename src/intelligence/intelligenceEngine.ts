@@ -7,6 +7,7 @@ import { JobRepository } from '../repositories/job-repository.js';
 import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import { extractRoleDetails } from './roleDetailsExtractor.js';
 import { createScoreInputHash, createScoreVersion } from './scoreIdentity.js';
 import { scoreJob } from './scoringEngine.js';
 import { verifyPosting } from './verificationService.js';
@@ -54,6 +55,10 @@ export class IntelligenceEngine {
           analyzedAt,
           verification,
         );
+        const roleDetails = extractRoleDetails(
+          toRoleDetailsInput(job),
+          config,
+        );
         this.intelligenceRepository.saveIntelligence(profile.id, intelligence, {
           verification,
           scoreVersion,
@@ -63,6 +68,7 @@ export class IntelligenceEngine {
             config,
             verification,
           ),
+          roleDetailsJson: JSON.stringify(roleDetails),
         });
         totalScore += intelligence.overallScore;
       }
@@ -128,4 +134,38 @@ function buildJobTextForVerification(job: {
   if (job.preferredQualifications !== null)
     parts.push(job.preferredQualifications);
   return parts.join('\n\n');
+}
+
+function toRoleDetailsInput(job: {
+  title: string;
+  company: string;
+  location: string | null;
+  city: string | null;
+  state: string | null;
+  remoteType: string;
+  teleworkEligible: boolean | null;
+  employmentType: string;
+  workSchedule: string | null;
+  appointmentType: string | null;
+  description: string | null;
+  requirements: string | null;
+  preferredQualifications: string | null;
+}): Parameters<typeof extractRoleDetails>[0] {
+  return {
+    title: job.title,
+    company: job.company,
+    location: job.location,
+    city: job.city,
+    state: job.state,
+    remoteType: job.remoteType as Parameters<typeof extractRoleDetails>[0]['remoteType'],
+    teleworkEligible: job.teleworkEligible,
+    employmentType: job.employmentType as Parameters<
+      typeof extractRoleDetails
+    >[0]['employmentType'],
+    workSchedule: job.workSchedule,
+    appointmentType: job.appointmentType,
+    description: job.description,
+    requirements: job.requirements,
+    preferredQualifications: job.preferredQualifications,
+  };
 }

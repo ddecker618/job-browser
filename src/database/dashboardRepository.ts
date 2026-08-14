@@ -22,6 +22,10 @@ import type {
 } from '../models/intelligence.js';
 import { nowUtc } from '../utilities/timestamps.js';
 import type { JobLifecycleReason } from '../domain/job-lifecycle.js';
+import {
+  roleDetailsSchema,
+  type RoleDetails,
+} from '../schemas/role-details.js';
 
 interface CountRow {
   value: number;
@@ -91,6 +95,7 @@ interface JobDetailRow extends JobListRow {
   appointment_type: string | null;
   work_schedule: string | null;
   telework_eligible: number | null;
+  role_details_json: string | null;
   opening_date: string | null;
   closing_date: string | null;
   application_urls_json: string;
@@ -274,7 +279,7 @@ jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
            jobs.posting_url, jobs.date_posted, jobs.clearance_requirement, jobs.notes,
            jobs.agency, jobs.department, jobs.grade_low, jobs.grade_high, jobs.pay_plan,
            jobs.appointment_type, jobs.work_schedule, jobs.telework_eligible,
-           jobs.opening_date, jobs.closing_date, jobs.application_urls_json,
+           jobs.opening_date, jobs.closing_date, jobs.application_urls_json, jobs.role_details_json,
           jobs.source_type AS provider, recommendations.category_scores_json,
            recommendations.explanations_json, recommendations.missing_qualifications_json,
            recommendations.recommendation_status,
@@ -365,6 +370,7 @@ jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
       sources,
       notes: row.notes,
       recommendationStatus: row.recommendation_status,
+      roleDetails: parseRoleDetails(row.role_details_json),
     };
   }
 
@@ -868,5 +874,14 @@ function parseJson<T>(value: string | null, fallback: T): T {
     return JSON.parse(value) as T;
   } catch {
     return fallback;
+  }
+}
+
+function parseRoleDetails(value: string | null): RoleDetails | null {
+  if (value === null) return null;
+  try {
+    return roleDetailsSchema.parse(JSON.parse(value) as unknown);
+  } catch {
+    return null;
   }
 }

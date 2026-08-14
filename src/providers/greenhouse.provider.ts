@@ -303,7 +303,8 @@ function inferEmploymentType(job: GreenhouseJob): EmploymentType {
   if (/part[ -]?time/.test(text)) return 'part-time';
   if (/contract(or)?/.test(text)) return 'contract';
   if (/temporary|seasonal/.test(text)) return 'temporary';
-  return 'full-time';
+  if (/full[ -]?time/.test(text)) return 'full-time';
+  return 'unknown';
 }
 
 function inferRemoteType(

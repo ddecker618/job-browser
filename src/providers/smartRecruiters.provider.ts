@@ -69,6 +69,7 @@ const jobSchema = z.object({
     .optional(),
   releasedDate: z.string().nullable().optional(),
   typeOfEmployment: z.object({ label: z.string().optional() }).optional(),
+  workplaceType: z.string().nullable().optional(),
   jobAd: z
     .object({
       sections: z
@@ -464,6 +465,10 @@ function locationLabel(job: SmartJob): string {
   );
 }
 function remote(job: SmartJob, location: string | null): RemoteType {
+  const workplace = (job.workplaceType ?? '').toLowerCase();
+  if (workplace === 'remote') return 'remote';
+  if (workplace === 'hybrid') return 'hybrid';
+  if (workplace === 'onsite' || workplace === 'other') return 'onsite';
   return job.location?.remote === true || /remote/i.test(location ?? '')
     ? 'remote'
     : location

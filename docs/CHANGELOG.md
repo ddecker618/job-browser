@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.0.15] - 2026-08-14
+
+### Structured Role Details Extraction
+
+- Deterministic regex and rule-based Role Details extraction (`role_details_json`, version `role-details-v1`) integrated into ingestion and scoring-time persistence.
+- Extraction precedence: authoritative structured provider data > labeled description sections > deterministic regex/rules > unknown. No AI/LLM/NLP.
+- Extracted dimensions: workplace arrangement, employment type (separated from work arrangement), primary/remote locations, clearance mode & level, education degree & substitutions, experience required/preferred years & substitutions, required/preferred skills and tech stack, certifications, travel percentage, work schedule flags, citizenship requirements, contingent conditions, and occupational series.
+- Migration `028_role_details.sql` adds nullable `jobs.role_details_json` column. Bounded offline backfill (`npm run role-details:backfill` or CLI) with idempotency, version-skipping, user_removed exclusion, and identity preservation.
+- Provider normalization audit and bugfixes across USAJOBS (retaining full requirements text), Greenhouse (removing fabricated full-time fallback), SmartRecruiters (`workplaceType` mapping), and Dice (`temporary`/`internship` mapping).
+- Job Detail panel structured Role Details section displaying clean key-value rows with evidence affordance (omitting unknown/null fields).
+- Complete test coverage (154 role-details extractor/integration tests, dashboard UI tests, provider tests, and full regression test suite).
 
 Phase 8 and Employer Discovery 9.1–9.5 are complete and Architect-approved as of
 2026-08-12. The worktree carries the current 9.6 stabilization work.

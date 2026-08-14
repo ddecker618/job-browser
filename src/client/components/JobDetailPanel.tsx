@@ -7,6 +7,7 @@ import { AppliedCreationDialog } from './AppliedCreationDialog.js';
 import { getFocusableElements } from './Dialog.js';
 import { ErrorState, LoadingState } from './States.js';
 import { invalidateScoreQueries } from '../scoreCache.js';
+import type { RoleDetails } from '../../schemas/role-details.js';
 
 function lifecycleDetailLabel(reason: string, userRemoved: boolean): string {
   if (userRemoved) return 'Removed from current';
@@ -340,6 +341,14 @@ export function JobDetailPanel({
                   <dd>{job.data.employmentType}</dd>
                 </div>
                 <div>
+                  <dt>Work arrangement</dt>
+                  <dd>
+                    {job.data.roleDetails?.workplace.arrangement ??
+                      job.data.workArrangement ??
+                      job.data.remoteType}
+                  </dd>
+                </div>
+                <div>
                   <dt>Posted</dt>
                   <dd>{formatDate(job.data.datePosted)}</dd>
                 </div>
@@ -404,6 +413,7 @@ export function JobDetailPanel({
                 {job.data.description ?? 'No description provided.'}
               </p>
             </section>
+            <RoleDetailsSection roleDetails={job.data.roleDetails} />
             <section className="detail-section">
               <h3>Job notes</h3>
               <p>
@@ -511,4 +521,197 @@ function formatSalary(minimum: number | null, maximum: number | null): string {
     .filter((value) => value !== null)
     .map((value) => `$${value.toLocaleString()}`)
     .join(' – ');
+}
+
+function RoleDetailsSection({
+  roleDetails,
+}: {
+  roleDetails: RoleDetails | null;
+}): React.JSX.Element | null {
+  if (roleDetails === null) return null;
+
+  const rows: { label: string; value: string }[] = [];
+
+  const workplaceLabel: Record<RoleDetails['workplace']['arrangement'], string> =
+    {
+      remote: 'Remote',
+      hybrid: 'Hybrid',
+      onsite: 'On-site',
+      unknown: 'Unknown',
+    };
+
+  if (roleDetails.employment.type !== 'unknown') {
+    const employmentLabel: Record<
+      RoleDetails['employment']['type'],
+      string
+    > = {
+      'full-time': 'Full-time',
+      'part-time': 'Part-time',
+      contract: 'Contract',
+      temporary: 'Temporary',
+      internship: 'Internship',
+      unknown: 'Unknown',
+    };
+    rows.push({
+      label: 'Employment',
+      value: employmentLabel[roleDetails.employment.type],
+    });
+  }
+
+  rows.push({
+    label: 'Work arrangement',
+    value: workplaceLabel[roleDetails.workplace.arrangement],
+  });
+
+  if (roleDetails.locations.primaryCity !== null) {
+    rows.push({
+      label: 'Primary location',
+      value: [roleDetails.locations.primaryCity, roleDetails.locations.primaryState]
+        .filter(Boolean)
+        .join(', '),
+    });
+  }
+  if (roleDetails.locations.remoteCapable) {
+    rows.push({ label: 'Remote eligible', value: 'Yes' });
+  }
+  if (roleDetails.locations.multiple) {
+    rows.push({ label: 'Multiple locations', value: 'Yes' });
+  }
+
+  if (roleDetails.clearance.mode !== 'unknown' && roleDetails.clearance.mode !== 'none') {
+    rows.push({
+      label: 'Clearance',
+      value: [roleDetails.clearance.level, roleDetails.clearance.mode]
+        .filter(Boolean)
+        .join(' — '),
+    });
+  }
+  if (roleDetails.clearance.sponsorable) {
+    rows.push({ label: 'Clearance sponsorship', value: 'Available' });
+  }
+
+  if (roleDetails.education.degreeRequired !== 'none' && roleDetails.education.degreeRequired !== 'unknown') {
+    const degreeLabel: Record<RoleDetails['education']['degreeRequired'], string> =
+      {
+        none: 'No degree required',
+        associate: 'Associate degree',
+        bachelor: "Bachelor's degree",
+        master: "Master's degree",
+        doctorate: 'Doctorate',
+        unknown: 'Unknown',
+      };
+    rows.push({
+      label: 'Education',
+      value: degreeLabel[roleDetails.education.degreeRequired],
+    });
+  }
+  if (roleDetails.education.degreeInProgressOk) {
+    rows.push({ label: 'Degree in progress', value: 'Accepted' });
+  }
+  if (roleDetails.education.field !== null) {
+    rows.push({ label: 'Degree field', value: roleDetails.education.field });
+  }
+
+  if (roleDetails.experience.requiredYears !== null) {
+    rows.push({
+      label: 'Experience required',
+      value: `${String(roleDetails.experience.requiredYears)} years`,
+    });
+  }
+  if (roleDetails.experience.preferredYears !== null) {
+    rows.push({
+      label: 'Experience preferred',
+      value: `${String(roleDetails.experience.preferredYears)} years`,
+    });
+  }
+  if (roleDetails.experience.substitution.length > 0) {
+    rows.push({
+      label: 'Experience substitution',
+      value: roleDetails.experience.substitution.join('; '),
+    });
+  }
+
+  if (roleDetails.skills.required.length > 0) {
+    rows.push({ label: 'Required skills', value: roleDetails.skills.required.join(', ') });
+  }
+  if (roleDetails.skills.preferred.length > 0) {
+    rows.push({
+      label: 'Preferred skills',
+      value: roleDetails.skills.preferred.join(', '),
+    });
+  }
+  if (roleDetails.certifications.required.length > 0) {
+    rows.push({
+      label: 'Required certifications',
+      value: roleDetails.certifications.required.join(', '),
+    });
+  }
+  if (roleDetails.certifications.preferred.length > 0) {
+    rows.push({
+      label: 'Preferred certifications',
+      value: roleDetails.certifications.preferred.join(', '),
+    });
+  }
+  if (roleDetails.technologies.length > 0) {
+    rows.push({
+      label: 'Technologies',
+      value: roleDetails.technologies.join(', '),
+    });
+  }
+  if (roleDetails.occupationalSeries.length > 0) {
+    rows.push({
+      label: 'Occupational series',
+      value: roleDetails.occupationalSeries.join(', '),
+    });
+  }
+  if (roleDetails.citizenship.usCitizenRequired) {
+    rows.push({ label: 'Citizenship', value: 'U.S. citizenship required' });
+  }
+  if (roleDetails.travel.required) {
+    rows.push({
+      label: 'Travel',
+      value:
+        roleDetails.travel.percent === null
+          ? 'Required'
+          : `Up to ${String(roleDetails.travel.percent)}%`,
+    });
+  }
+  if (roleDetails.schedule.classification !== 'unknown') {
+    rows.push({
+      label: 'Schedule',
+      value: [
+        roleDetails.schedule.classification,
+        ...roleDetails.schedule.flags,
+      ].join(', '),
+    });
+  }
+
+  const conditions: string[] = [];
+  if (roleDetails.contingentConditions.commissionBased) conditions.push('Commission-based');
+  if (roleDetails.contingentConditions.physicalRequirements) conditions.push('Physical requirements');
+  if (roleDetails.contingentConditions.fieldInstallation) conditions.push('Field installation');
+  if (roleDetails.contingentConditions.developmentFocused) conditions.push('Development-focused');
+  if (roleDetails.contingentConditions.professionalEngineering)
+    conditions.push('Professional engineering required');
+  if (roleDetails.contingentConditions.contingentOnAward)
+    conditions.push('Contingent on award');
+  if (conditions.length > 0) {
+    rows.push({ label: 'Conditions', value: conditions.join('; ') });
+  }
+
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="detail-section">
+      <h3>Structured role details</h3>
+      <dl className="detail-list">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <dt>{row.label}</dt>
+            <dd>{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
 }

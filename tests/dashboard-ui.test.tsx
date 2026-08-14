@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import type { ReactElement } from 'react';
@@ -159,6 +160,38 @@ describe('dashboard UI', () => {
     expect(await screen.findByLabelText('Job details')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Close job details' }));
     expect(screen.getByTestId('location')).not.toHaveTextContent('job=1');
+  });
+
+  it('renders structured role details in the job detail panel', async () => {
+    const user = userEvent.setup();
+    mockFetch((url) => {
+      if (url.endsWith('/api/saved-filters')) return [];
+      if (url.endsWith('/api/jobs/1')) return jobDetail();
+      return searchResponse([searchJob('1', 'Cybersecurity Analyst', 'Alpha Health')]);
+    });
+    renderPage(<JobsPage />, ['/jobs']);
+    await screen.findByText('Cybersecurity Analyst');
+    await user.click(screen.getByText('Cybersecurity Analyst'));
+
+    expect(await screen.findByLabelText('Job details')).toBeInTheDocument();
+    const section = within(
+      (await screen.findByText('Structured role details')).closest('section')!,
+    );
+    expect(section.getByText('Work arrangement')).toBeInTheDocument();
+    expect(section.getByText('On-site')).toBeInTheDocument();
+    expect(section.getByText('Primary location')).toBeInTheDocument();
+    expect(section.getByText('Clearance')).toBeInTheDocument();
+    expect(section.getByText('Experience required')).toBeInTheDocument();
+    expect(section.getByText('Required skills')).toBeInTheDocument();
+    expect(section.getByText('Linux, Splunk')).toBeInTheDocument();
+    expect(section.getByText('Preferred skills')).toBeInTheDocument();
+    expect(section.getByText('Required certifications')).toBeInTheDocument();
+    expect(section.getByText('CompTIA Security+')).toBeInTheDocument();
+    expect(section.getByText('Conditions')).toBeInTheDocument();
+    expect(section.getByText('Professional engineering required; Contingent on award')).toBeInTheDocument();
+    expect(section.getByText('Education')).toBeInTheDocument();
+    expect(section.getByText("Bachelor's degree")).toBeInTheDocument();
+    expect(section.getByText('Experience substitution')).toBeInTheDocument();
   });
 
   it('restores saved filters and virtualizes a large server page', async () => {
@@ -467,8 +500,8 @@ function jobDetail() {
     ...job('1', 'Cybersecurity Analyst', 'Alpha Health'),
     provider: 'greenhouse',
     existingApplicationId: null,
-    city: null,
-    state: null,
+    city: 'Springfield',
+    state: 'IL',
     notes: null,
     categoryScores: null,
     explanations: [],
@@ -476,7 +509,7 @@ function jobDetail() {
     skills: [],
     certifications: [],
     salaryText: null,
-    employmentType: null,
+    employmentType: 'full-time',
     requirements: null,
     preferredQualifications: null,
     datePosted: null,
@@ -491,11 +524,69 @@ function jobDetail() {
     teleworkEligible: null,
     openingDate: null,
     closingDate: null,
-    description: null,
+    description: 'Original description prose remains visible below.',
     postingUrl: null,
     sources: [],
     applicationUrls: [],
     recommendationStatus: null,
+    roleDetails: {
+      version: 'role-details-v1',
+      generatedAt: '2026-08-14T12:00:00.000Z',
+      sourceTextHash: 'a'.repeat(64),
+      workplace: { arrangement: 'onsite', source: 'provider', evidence: [] },
+      employment: {
+        type: 'full-time',
+        source: 'provider',
+        evidence: ['Provider employment type: full-time'],
+      },
+      locations: {
+        primaryCity: 'Springfield',
+        primaryState: 'IL',
+        remoteCapable: false,
+        multiple: false,
+        evidence: [],
+      },
+      clearance: {
+        mode: 'obtainable',
+        level: 'Secret',
+        sponsorable: false,
+        evidence: [],
+      },
+      education: {
+        degreeRequired: 'bachelor',
+        degreeInProgressOk: false,
+        field: null,
+        evidence: [],
+      },
+      experience: {
+        requiredYears: 5,
+        preferredYears: null,
+        substitution: ['or equivalent combination of education and experience'],
+        evidence: [],
+      },
+      skills: {
+        required: ['Linux', 'Splunk'],
+        preferred: ['AWS'],
+      },
+      technologies: ['Splunk'],
+      certifications: {
+        required: ['CompTIA Security+'],
+        preferred: [],
+      },
+      occupationalSeries: ['0854'],
+      citizenship: { usCitizenRequired: false, evidence: [] },
+      travel: { required: false, percent: null, evidence: [] },
+      schedule: { classification: 'daytime', flags: [], evidence: [] },
+      contingentConditions: {
+        commissionBased: false,
+        physicalRequirements: false,
+        fieldInstallation: false,
+        developmentFocused: false,
+        professionalEngineering: true,
+        contingentOnAward: true,
+        evidence: [],
+      },
+    },
   };
 }
 function LocationProbe() {

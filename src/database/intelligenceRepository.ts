@@ -64,6 +64,7 @@ export class IntelligenceRepository {
       verification: VerificationResult;
       scoreVersion: string;
       scoreInputHash: string;
+      roleDetailsJson: string | null;
     },
   ): void {
     this.database.transaction(() => {
@@ -140,7 +141,7 @@ export class IntelligenceRepository {
              verification_status = ?, eligibility_passed = ?, eligibility_rejection = ?,
              work_arrangement = ?, illinois_eligibility = ?, schedule_classification = ?,
              verified_at = ?, remote_type = ?, score_version = ?, score_input_hash = ?,
-             updated_at = ?
+             role_details_json = ?, updated_at = ?
            WHERE id = ?`,
         )
         .run(
@@ -157,6 +158,7 @@ export class IntelligenceRepository {
           result.workArrangement ?? metadata.verification.workArrangement,
           metadata.scoreVersion,
           metadata.scoreInputHash,
+          metadata.roleDetailsJson,
           result.analyzedAt,
           result.jobId,
         );
@@ -164,6 +166,15 @@ export class IntelligenceRepository {
       this.replaceTerms('skill', result.jobId, result.skills);
       this.replaceTerms('certification', result.jobId, result.certifications);
     })();
+  }
+
+  public backfillRoleDetails(
+    jobId: string,
+    roleDetailsJson: string,
+  ): void {
+    this.database
+      .prepare(`UPDATE jobs SET role_details_json = ? WHERE id = ?`)
+      .run(roleDetailsJson, jobId);
   }
 
   public completeRun(summary: AnalysisSummary): void {
