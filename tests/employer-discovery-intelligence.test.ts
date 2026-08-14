@@ -118,6 +118,20 @@ describe('EmployerDiscoveryIntelligenceService', () => {
     });
   });
 
+  it('does not count user-removed jobs as active or new employer activity', () => {
+    const fixture = setupSite({ confidence: 0.95 });
+    seedRun(fixture.database, fixture.sourceId, 'succeeded', 1);
+    seedJob(fixture.database, fixture.sourceId, '2026-08-12T01:00:00.000Z');
+    fixture.database
+      .prepare('UPDATE jobs SET user_removed = 1, active = 0 WHERE source_name = ?')
+      .run('Greenhouse');
+    expect(decisionFor(fixture).activity).toMatchObject({
+      known: true,
+      activeJobs: 0,
+      jobsFirstSeen: 0,
+    });
+  });
+
   it('changes scheduling deterministically after transient recovery', () => {
     const fixture = setupSite({ confidence: 0.95 });
     fixture.database

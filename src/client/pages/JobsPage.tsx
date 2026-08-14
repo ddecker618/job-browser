@@ -550,9 +550,12 @@ export function JobsPage() {
                         {isClosingSoon(job.closingDate) ? (
                           <i>Closing soon</i>
                         ) : null}
-                        {job.active && job.status !== 'expired' ? null : (
+{job.active && job.status !== 'expired' ? null : (
                           <i className="removed">
-                            {lifecycleLabel(job.lifecycleReason)}
+                            {lifecycleLabel(
+                              job.lifecycleReason,
+                              job.userRemoved,
+                            )}
                           </i>
                         )}
                       </span>
@@ -599,7 +602,8 @@ export function JobsPage() {
 
 type SetSearchParams = ReturnType<typeof useSearchParams>[1];
 
-function lifecycleLabel(reason: string): string {
+function lifecycleLabel(reason: string, userRemoved: boolean): string {
+  if (userRemoved) return 'Removed';
   if (reason === 'closing-date-expired') return 'Expired';
   if (reason === 'provider-closed') return 'Closed';
   if (reason === 'snapshot-missing') return 'No longer listed';

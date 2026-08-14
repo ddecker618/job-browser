@@ -55,6 +55,7 @@ interface JobListRow {
   provider: string;
   favorite: number;
   active: number;
+  user_removed: number;
   lifecycle_reason: JobLifecycleReason;
   last_verified_at: string | null;
   removed_at: string | null;
@@ -205,7 +206,10 @@ export class DashboardRepository {
         "SELECT COUNT(*) AS value FROM jobs WHERE recommendation = 'Hidden' OR status = 'ignored'",
       ),
       expiredJobs: this.scalar(
-        "SELECT COUNT(*) AS value FROM jobs WHERE status = 'expired' OR active = 0",
+        "SELECT COUNT(*) AS value FROM jobs WHERE status = 'expired' OR (active = 0 AND user_removed = 0)",
+      ),
+      userRemovedJobs: this.scalar(
+        'SELECT COUNT(*) AS value FROM jobs WHERE user_removed = 1',
       ),
       verifiedMatches: this.scalar(
         `SELECT COUNT(*) AS value FROM jobs
@@ -242,8 +246,8 @@ export class DashboardRepository {
         `SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.remote_type,
           jobs.salary_minimum, jobs.salary_maximum, jobs.score, jobs.recommendation,
           jobs.matched_families, jobs.status, jobs.first_seen_at, jobs.last_seen_at,
-            jobs.favorite, jobs.active, jobs.lifecycle_reason, jobs.last_verified_at,
-            jobs.removed_at, jobs.verification_status,
+jobs.favorite, jobs.active, jobs.lifecycle_reason, jobs.last_verified_at,
+            jobs.removed_at, jobs.user_removed, jobs.verification_status,
            jobs.eligibility_passed, jobs.eligibility_rejection,
            jobs.work_arrangement, jobs.score_version,
           COALESCE(MIN(job_sources.provider_id), jobs.source_type) AS provider
@@ -261,8 +265,9 @@ export class DashboardRepository {
         `SELECT jobs.id, jobs.title, jobs.company, jobs.location, jobs.city, jobs.state,
           jobs.remote_type, jobs.employment_type, jobs.salary_minimum, jobs.salary_maximum,
           jobs.salary_text, jobs.score, jobs.recommendation, jobs.matched_families, jobs.status,
-            jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
+jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
             jobs.lifecycle_reason, jobs.last_verified_at, jobs.removed_at,
+            jobs.user_removed,
            jobs.verification_status, jobs.eligibility_passed,
            jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version,
           jobs.description, jobs.requirements, jobs.preferred_qualifications,
@@ -833,8 +838,9 @@ function mapJobListItem(row: JobListRow): JobListItem {
     lastSeenAt: row.last_seen_at,
     provider: row.provider,
     favorite: Boolean(row.favorite),
-    active: Boolean(row.active),
+active: Boolean(row.active),
     lifecycleReason: row.lifecycle_reason,
+    userRemoved: Boolean(row.user_removed),
     lastVerifiedAt: row.last_verified_at,
     removedAt: row.removed_at,
     verificationStatus: row.verification_status,

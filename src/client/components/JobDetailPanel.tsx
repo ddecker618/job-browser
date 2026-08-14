@@ -8,11 +8,43 @@ import { getFocusableElements } from './Dialog.js';
 import { ErrorState, LoadingState } from './States.js';
 import { invalidateScoreQueries } from '../scoreCache.js';
 
-function lifecycleDetailLabel(reason: string): string {
+function lifecycleDetailLabel(reason: string, userRemoved: boolean): string {
+  if (userRemoved) return 'Removed from current';
   if (reason === 'closing-date-expired') return 'Expired after closing date';
   if (reason === 'provider-closed') return 'Closed by provider';
   if (reason === 'snapshot-missing') return 'No longer listed';
   return 'Inactive, reason unknown';
+}
+
+function eligibilityRejectionLabel(reason: string | null): string {
+  switch (reason) {
+    case 'clearance_required':
+      return 'Active security clearance required; your profile does not evidence holding one. Update clearance eligibility to “eligible” if you hold one.';
+    case 'professional_engineering_required':
+      return 'Federal professional-engineering basic qualification (e.g. 0854, ABET) required; no engineering credential found in your profile.';
+    case 'illinois_excluded':
+      return 'Remote position explicitly excludes Illinois.';
+    case 'location_outside_radius':
+      return 'Location is outside your search radius.';
+    case 'overnight_schedule':
+      return 'Position requires a permanent overnight shift.';
+    case 'rotating_nights':
+      return 'Position requires rotating day/night shifts.';
+    case 'weekend_coverage':
+      return 'Position requires regular weekend coverage.';
+    case 'sales_position':
+      return 'Position is commission-based sales.';
+    case 'field_installation':
+      return 'Position has substantial physical or field-installation requirements.';
+    case 'closed':
+      return 'Posting is closed.';
+    case 'already_applied':
+      return 'You have already applied.';
+    case 'dismissed':
+      return 'Job was dismissed.';
+    default:
+      return reason ?? 'eligibility gate failed';
+  }
 }
 
 export function JobDetailPanel({
@@ -74,6 +106,12 @@ export function JobDetailPanel({
     mutationFn: () => api.refreshJob(jobId),
     onSuccess: invalidate,
   });
+  const changeAvailability = useMutation({
+    mutationFn: (action: 'remove' | 'restore' | 'verify') =>
+      api.updateAvailability(jobId, action),
+    onSuccess: invalidate,
+  });
+  const availabilityError = changeAvailability.error ?? null;
 
   return (
     <div
@@ -149,9 +187,12 @@ export function JobDetailPanel({
                 </span>
                 <span>{job.data.workArrangement ?? job.data.remoteType}</span>
                 <span>{job.data.status}</span>
-                {job.data.active && job.data.status !== 'expired' ? null : (
+{job.data.active && job.data.status !== 'expired' ? null : (
                   <span className="removed">
-                    {lifecycleDetailLabel(job.data.lifecycleReason)}
+                    {lifecycleDetailLabel(
+                      job.data.lifecycleReason,
+                      job.data.userRemoved,
+                    )}
                   </span>
                 )}
               </div>
@@ -159,7 +200,7 @@ export function JobDetailPanel({
             {job.data.eligibilityPassed === false ? (
               <p className="eligibility-warning" role="alert">
                 Ineligible:{' '}
-                {job.data.eligibilityRejection ?? 'eligibility gate failed'}.
+                {eligibilityRejectionLabel(job.data.eligibilityRejection)}.
               </p>
             ) : null}
             <div className="action-strip">
@@ -197,7 +238,33 @@ export function JobDetailPanel({
               >
                 {refresh.isPending ? 'Refreshing…' : 'Refresh'}
               </button>
+              {job.data.userRemoved ? (
+                <button
+                  onClick={() => changeAvailability.mutate('restore')}
+                  disabled={changeAvailability.isPending}
+                >
+                  {changeAvailability.isPending ? 'Restoring…' : 'Restore'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => changeAvailability.mutate('remove')}
+                  disabled={changeAvailability.isPending}
+                >
+                  {changeAvailability.isPending ? 'Removing…' : 'Remove'}
+                </button>
+              )}
+              <button
+                onClick={() => changeAvailability.mutate('verify')}
+                disabled={changeAvailability.isPending}
+              >
+                {changeAvailability.isPending ? 'Verifying…' : 'Verify'}
+              </button>
             </div>
+            {availabilityError === null ? null : (
+              <p className="source-error" role="alert">
+                {availabilityError.message}
+              </p>
+            )}
             {statusError === null ? null : (
               <p className="source-error" role="alert">
                 {statusError}

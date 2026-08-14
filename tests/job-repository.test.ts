@@ -4,6 +4,7 @@ import type { JobDatabase } from '../src/db/database.js';
 import type { Application } from '../src/models/application.js';
 import { ApplicationRepository } from '../src/repositories/application-repository.js';
 import { JobRepository } from '../src/repositories/job-repository.js';
+import { JobLifecycleRepository } from '../src/repositories/job-lifecycle-repository.js';
 import { SmartRecruitersProvider } from '../src/providers/smartRecruiters.provider.js';
 import { createJobFixture } from './helpers/job-fixture.js';
 import {
@@ -585,6 +586,165 @@ describe('JobRepository', () => {
         .get(jobId)?.count ?? 0
     );
   }
+
+  describe('manual availability (remove/restore/verify)', () => {
+    it('removes a current job and invalidates its stored score', () => {
+      const jobId = insertNewJob();
+      database
+        .prepare('UPDATE jobs SET score_version = ? WHERE id = ?')
+        .run('2026-07-18-any', jobId);
+
+      expect(
+        repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' }),
+      ).toBe(true);
+
+      const row = database
+        .prepare<[string], { active: number; lifecycle_reason: string; user_removed: number; removed_at: string | null; score_version: string | null }>(
+          `SELECT active, lifecycle_reason, user_removed, removed_at, score_version
+           FROM jobs WHERE id = ?`,
+        )
+        .get(jobId);
+      expect(row).toMatchObject({
+        active: 0,
+        lifecycle_reason: 'snapshot-missing',
+        user_removed: 1,
+        score_version: null,
+      });
+      expect(row?.removed_at).not.toBeNull();
+
+      expect(
+        repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' }),
+      ).toBe(false);
+    });
+
+    it('restores a removed job to current and clears the removal marker', () => {
+      const jobId = insertNewJob();
+      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+
+      expect(
+        repository.setAvailability(jobId, { action: 'restore', changedBy: 'user' }),
+      ).toBe(true);
+
+      const row = database
+        .prepare<[string], { active: number; lifecycle_reason: string; user_removed: number; removed_at: string | null; score_version: string | null }>(
+          `SELECT active, lifecycle_reason, user_removed, removed_at, score_version
+           FROM jobs WHERE id = ?`,
+        )
+        .get(jobId);
+      expect(row).toMatchObject({
+        active: 1,
+        lifecycle_reason: 'active',
+        user_removed: 0,
+        removed_at: null,
+        score_version: null,
+      });
+    });
+
+    it('reactivates a job when manual verification finds it still alive', () => {
+      const jobId = insertNewJob();
+      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+      repository.setAvailability(jobId, { action: 'restore', changedBy: 'user' });
+      database
+        .prepare('UPDATE jobs SET active = 0, lifecycle_reason = ?, user_removed = 0 WHERE id = ?')
+        .run('provider-closed', jobId);
+
+      expect(
+        repository.recordAvailabilityVerification(jobId, {
+          available: true,
+          changedBy: 'availability-verify',
+        }),
+      ).toBe(true);
+
+      const row = database
+        .prepare<[string], { active: number; lifecycle_reason: string }>(
+          'SELECT active, lifecycle_reason FROM jobs WHERE id = ?',
+        )
+        .get(jobId);
+      expect(row).toEqual({ active: 1, lifecycle_reason: 'active' });
+    });
+
+    it('marks a job provider-closed when manual verification finds it dead', () => {
+      const jobId = insertNewJob();
+      database
+        .prepare('UPDATE jobs SET score_version = ? WHERE id = ?')
+        .run('2026-07-18-any', jobId);
+
+      expect(
+        repository.recordAvailabilityVerification(jobId, {
+          available: false,
+          changedBy: 'availability-verify',
+        }),
+      ).toBe(true);
+
+      const row = database
+        .prepare<[string], { active: number; lifecycle_reason: string; score_version: string | null }>(
+          'SELECT active, lifecycle_reason, score_version FROM jobs WHERE id = ?',
+        )
+        .get(jobId);
+      expect(row).toEqual({
+        active: 0,
+        lifecycle_reason: 'provider-closed',
+        score_version: null,
+      });
+    });
+
+    it('does not let verification override a user-removed job', () => {
+      const jobId = insertNewJob();
+      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+
+      expect(
+        repository.recordAvailabilityVerification(jobId, {
+          available: true,
+          changedBy: 'availability-verify',
+        }),
+      ).toBe(false);
+
+      const row = database
+        .prepare<[string], { active: number; user_removed: number }>(
+          'SELECT active, user_removed FROM jobs WHERE id = ?',
+        )
+        .get(jobId);
+      expect(row).toEqual({ active: 0, user_removed: 1 });
+    });
+
+    it('keeps a user-removed job removed when a provider relists it', () => {
+      const jobId = insertNewJob();
+      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+
+      const job = createJobFixture({ status: 'new', id: jobId });
+      repository.upsertObservation({ job, sourceId, rawData: job });
+      new JobLifecycleRepository(database).recomputeCanonical(jobId);
+
+      const row = database
+        .prepare<[string], { active: number; lifecycle_reason: string; user_removed: number }>(
+          'SELECT active, lifecycle_reason, user_removed FROM jobs WHERE id = ?',
+        )
+        .get(jobId);
+      expect(row).toEqual({
+        active: 0,
+        lifecycle_reason: 'snapshot-missing',
+        user_removed: 1,
+      });
+      expect(repository.findJob(jobId)).not.toBeNull();
+    });
+
+    it('restores a relisted job after the user restores it', () => {
+      const jobId = insertNewJob();
+      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+
+      const job = createJobFixture({ status: 'new', id: jobId });
+      repository.upsertObservation({ job, sourceId, rawData: job });
+      new JobLifecycleRepository(database).recomputeCanonical(jobId);
+      repository.setAvailability(jobId, { action: 'restore', changedBy: 'user' });
+
+      const row = database
+        .prepare<[string], { active: number; lifecycle_reason: string; user_removed: number }>(
+          'SELECT active, lifecycle_reason, user_removed FROM jobs WHERE id = ?',
+        )
+        .get(jobId);
+      expect(row).toEqual({ active: 1, lifecycle_reason: 'active', user_removed: 0 });
+    });
+  });
 
   function persistedProjection(jobId: string): ReturnType<typeof projectionOf> {
     return projectionOf(new ApplicationRepository(database).findByJobId(jobId));

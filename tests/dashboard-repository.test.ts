@@ -7,6 +7,7 @@ import { DashboardRepository } from '../src/database/dashboardRepository.js';
 import type { JobDatabase } from '../src/db/database.js';
 import { IntelligenceEngine } from '../src/intelligence/intelligenceEngine.js';
 import { JobRepository } from '../src/repositories/job-repository.js';
+import { JobLifecycleRepository } from '../src/repositories/job-lifecycle-repository.js';
 import { createJobFixture } from './helpers/job-fixture.js';
 import {
   createTestDatabase,
@@ -144,5 +145,48 @@ describe('DashboardRepository', () => {
     expect(dashboard.listSavedFilters()).toContainEqual(filter);
     dashboard.deleteFilter(filter.id);
     expect(dashboard.listSavedFilters()).toEqual([]);
+  });
+
+  it('excludes user-removed jobs from Current Jobs counts and surfaces them separately', () => {
+    // Current/active KPIs start with the seed job visible.
+    expect(dashboard.listJobs()).toHaveLength(1);
+    new JobRepository(database).setAvailability(jobId, {
+      action: 'remove',
+      changedBy: 'user',
+    });
+
+    const summary = dashboard.getSummary();
+    expect(summary.userRemovedJobs).toBe(1);
+    // active-count KPIs must not include the user-removed job
+    expect(summary.totalJobs).toBe(1); // historical total is preserved
+    expect(summary.strongMatches).toBe(0);
+    expect(summary.expiredJobs).toBe(0);
+    // The removed job is retained but inactive and flagged for Restore.
+    const detail = dashboard.getJob(jobId);
+    expect(detail?.active).toBe(false);
+    expect(detail?.userRemoved).toBe(true);
+  });
+
+  it('does not resurrect a user-removed job when a provider relists it', () => {
+    new JobRepository(database).setAvailability(jobId, {
+      action: 'remove',
+      changedBy: 'user',
+    });
+    expect(dashboard.getSummary().userRemovedJobs).toBe(1);
+
+    // Provider re-observes the same posting (rediscovery).
+    const relisted = createJobFixture({ id: jobId, status: 'new' });
+    new JobRepository(database).upsertObservation({
+      job: relisted,
+      sourceId,
+      rawData: relisted,
+    });
+    new JobLifecycleRepository(database).recomputeCanonical(jobId);
+
+    // Canonical recomputation must honor user_removed and stay suppressed.
+    expect(dashboard.getSummary().userRemovedJobs).toBe(1);
+    expect(dashboard.getJob(jobId)?.userRemoved).toBe(true);
+    expect(dashboard.getJob(jobId)?.active).toBe(false);
+    expect(dashboard.getSummary().strongMatches).toBe(0);
   });
 });

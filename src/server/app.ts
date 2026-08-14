@@ -43,6 +43,7 @@ import {
   searchProfileSchema,
 } from '../config/search-profile.js';
 import { JobRepository } from '../repositories/job-repository.js';
+import { verifyJobAvailability } from '../intelligence/jobAvailability.js';
 import { JobSearchRepository } from '../repositories/job-search-repository.js';
 import { ResumeSnapshotRepository } from '../repositories/resume-snapshot-repository.js';
 import { SourceRepository } from '../repositories/source-repository.js';
@@ -102,6 +103,7 @@ export interface AppOptions {
     url: string,
     options?: AtsDetectorOptions,
   ) => Promise<AtsDetectionResult>;
+  availabilityFetcher?: import('../intelligence/jobAvailability.js').AvailabilityFetcher;
 }
 
 const asyncRoute =
@@ -230,6 +232,42 @@ export function createApp(
     });
     response.json(repository.getJob(request.params.id));
   });
+  app.patch(
+    '/api/jobs/:id/availability',
+    asyncRoute(async (request, response) => {
+      const body = z
+        .object({ action: z.enum(['remove', 'restore', 'verify']) })
+        .parse(request.body);
+      const id = routeParameter(request, 'id');
+      const job = repository.getJob(id);
+      if (job === null) {
+        response.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      if (body.action === 'verify') {
+        const outcome = await verifyJobAvailability(
+          job.postingUrl,
+          options.availabilityFetcher,
+        );
+        // Only definitive outcomes change lifecycle state. Timeouts, network
+        // errors, and other low-confidence failures (reason 'unreachable')
+        // must never automatically remove a job (availability safety policy).
+        if (outcome.reason !== 'unreachable') {
+          jobRepository.recordAvailabilityVerification(id, {
+            available: outcome.available,
+            changedBy: 'availability-verify',
+          });
+        }
+        response.json({ job: repository.getJob(id), outcome });
+        return;
+      }
+      const changed = jobRepository.setAvailability(id, {
+        action: body.action,
+        changedBy: 'dashboard',
+      });
+      response.json({ changed, job: repository.getJob(id) });
+    }),
+  );
   app.patch('/api/jobs/:id', (request, response) => {
     const body = z
       .object({

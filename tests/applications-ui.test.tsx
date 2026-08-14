@@ -1616,6 +1616,7 @@ function jobDetail(overrides: Partial<JobDetail> = {}): JobDetail {
     favorite: false,
     active: true,
     lifecycleReason: 'active',
+    userRemoved: false,
     lastVerifiedAt: '2026-07-02T12:00:00.000Z',
     removedAt: null,
     verificationStatus: 'verified',

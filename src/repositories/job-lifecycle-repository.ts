@@ -84,10 +84,13 @@ export class JobLifecycleRepository {
     this.database
       .prepare(
         `UPDATE jobs SET
-           active = CASE WHEN EXISTS (
-             SELECT 1 FROM job_sources WHERE job_sources.job_id = jobs.id AND active = 1
-           ) THEN 1 ELSE 0 END,
+           active = CASE
+             WHEN jobs.user_removed = 1 THEN 0
+             WHEN EXISTS (
+               SELECT 1 FROM job_sources WHERE job_sources.job_id = jobs.id AND active = 1
+             ) THEN 1 ELSE 0 END,
            lifecycle_reason = CASE
+             WHEN jobs.user_removed = 1 THEN jobs.lifecycle_reason
              WHEN EXISTS (
                SELECT 1 FROM job_sources WHERE job_sources.job_id = jobs.id AND active = 1
              ) THEN 'active'
@@ -105,11 +108,14 @@ export class JobLifecycleRepository {
              ) THEN 'provider-closed'
              ELSE 'closing-date-expired'
            END,
-           removed_at = CASE WHEN EXISTS (
-             SELECT 1 FROM job_sources WHERE job_sources.job_id = jobs.id AND active = 1
-           ) THEN NULL ELSE COALESCE(removed_at, ?) END
+           removed_at = CASE
+             WHEN jobs.user_removed = 1 THEN COALESCE(jobs.removed_at, ?)
+             WHEN EXISTS (
+               SELECT 1 FROM job_sources WHERE job_sources.job_id = jobs.id AND active = 1
+             ) THEN NULL ELSE COALESCE(jobs.removed_at, ?)
+           END
          WHERE id = ?`,
       )
-      .run(changedAt, jobId);
+      .run(changedAt, changedAt, jobId);
   }
 }

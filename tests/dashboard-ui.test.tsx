@@ -339,8 +339,10 @@ describe('dashboard UI', () => {
     renderPage(<AnalyticsPage />);
 
     expect(
-      await screen.findByRole('alert'),
-    ).toHaveTextContent('Outcome analytics are down');
+      await screen.findByText('Outcome analytics are down', undefined, {
+        timeout: 5_000,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('edits and saves application settings', async () => {

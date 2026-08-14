@@ -229,6 +229,51 @@ function applyVerification(
     };
   }
 
+  const extracted = verification.extractedRequirements;
+  if (
+    extracted.professionalEngineering &&
+    !profileHasEngineeringCredential(profile)
+  ) {
+    explanations.push(
+      'Hard eligibility gate failed: Professional engineering basic qualification required.',
+    );
+    return {
+      hardBlock: true,
+      eligibilityPassed: false,
+      rejectionReason: 'professional_engineering_required',
+      verifiedStatus,
+      modifier: null,
+      workArrangement,
+    };
+  }
+
+  if (
+    extracted.clearanceMode === 'active' &&
+    profile.clearanceEligibility !== 'eligible'
+  ) {
+    explanations.push(
+      `Hard eligibility gate failed: Active ${extracted.clearanceLevel ?? 'security'} clearance required and the profile does not evidence holding it.`,
+    );
+    return {
+      hardBlock: true,
+      eligibilityPassed: false,
+      rejectionReason: 'clearance_required',
+      verifiedStatus,
+      modifier: null,
+      workArrangement,
+    };
+  }
+  if (
+    extracted.clearanceMode === 'obtainable' ||
+    extracted.clearanceMode === 'eligible' ||
+    extracted.clearanceMode === 'ambiguous' ||
+    extracted.clearanceMode === 'public-trust'
+  ) {
+    explanations.push(
+      `Clearance wording present (${extracted.clearanceMode}); not a hard rejection without an active clearance requirement.`,
+    );
+  }
+
   if (workArrangement === 'remote') {
     const remoteEligibility =
       verification.illinoisEligibility === 'eligible' ||
@@ -238,11 +283,25 @@ function applyVerification(
     explanations.push(
       `Remote position: commute_status=not_applicable, remote_eligibility=${remoteEligibility}, illinois_eligibility=${verification.illinoisEligibility}`,
     );
-  } else if (workArrangement === 'onsite' || workArrangement === 'hybrid') {
+  } else {
+    const arrangementLabel =
+      workArrangement === 'onsite'
+        ? 'Onsite'
+        : workArrangement === 'hybrid'
+          ? 'Hybrid'
+          : 'Unknown work arrangement; commute boundary applies';
     const commute = classifyCommute(job, profile);
     explanations.push(
-      `${workArrangement === 'onsite' ? 'Onsite' : 'Hybrid'} work arrangement: ${commute.evidence} commute_status=${commute.commuteStatus}`,
+      `${arrangementLabel}: ${commute.evidence} commute_status=${commute.commuteStatus}`,
     );
+    if (commute.locationStatus === 'unknown') {
+      explanations.push(
+        'Location cannot be confirmed; retaining job with unknown location status.',
+      );
+    }
+    if (commute.status === 'within') {
+      explanations.push('Location eligibility gate passed.');
+    }
     if (commute.locationStatus === 'ineligible') {
       return {
         hardBlock: true,
@@ -252,14 +311,6 @@ function applyVerification(
         modifier: null,
         workArrangement,
       };
-    }
-    if (commute.locationStatus === 'unknown') {
-      explanations.push(
-        'Location cannot be confirmed; retaining job with unknown location status.',
-      );
-    }
-    if (commute.status === 'within') {
-      explanations.push('Location eligibility gate passed.');
     }
   }
 
@@ -580,6 +631,18 @@ function tokenSimilarity(left: string, right: string): number {
 
 function roundScore(value: number): number {
   return Math.round(Math.min(100, Math.max(0, value)) * 10) / 10;
+}
+
+function profileHasEngineeringCredential(profile: CandidateProfile): boolean {
+  const hasEngineeringDegree = profile.degrees.some((degree) =>
+    /\bengineering\b/i.test(degree.name),
+  );
+  const hasEngineeringCredential = profile.certifications.some((cert) =>
+    /professional\s+engineer|\bpe\s+license|\b(eit|fe)\b|fundamentals\s+of\s+engineering/i.test(
+      cert,
+    ),
+  );
+  return hasEngineeringDegree || hasEngineeringCredential;
 }
 
 function createZeroScores(): CategoryScores {

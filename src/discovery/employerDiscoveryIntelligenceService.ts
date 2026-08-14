@@ -235,6 +235,7 @@ export class EmployerDiscoveryIntelligenceService {
                  COUNT(DISTINCT CASE WHEN active = 1 AND first_seen_at >= ? AND first_seen_at < ? THEN job_id END) AS jobs_first_seen,
                  MAX(CASE WHEN active = 1 AND first_seen_at >= ? AND first_seen_at < ? THEN first_seen_at END) AS last_new_job_at
            FROM job_sources
+          WHERE job_id NOT IN (SELECT id FROM jobs WHERE user_removed = 1)
           GROUP BY source_id`,
       )
       .all(start, end, start, end);
@@ -267,6 +268,7 @@ export class EmployerDiscoveryIntelligenceService {
                    MAX(CASE WHEN js.active = 1 AND js.first_seen_at >= ? AND js.first_seen_at < ? THEN js.first_seen_at END) AS last_new_job_at
              FROM career_sites cs
              LEFT JOIN job_sources js ON js.source_id = cs.source_id
+            WHERE js.job_id IS NULL OR js.job_id NOT IN (SELECT id FROM jobs WHERE user_removed = 1)
             GROUP BY cs.employer_id
          ), run_activity AS (
            SELECT cs.employer_id,

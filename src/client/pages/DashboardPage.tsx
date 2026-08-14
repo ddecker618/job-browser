@@ -19,6 +19,7 @@ export function DashboardPage() {
     ['Applied', summary.data.appliedJobs, 'Application history'],
     ['Hidden', summary.data.hiddenJobs, 'Removed from focus'],
     ['Expired', summary.data.expiredJobs, 'No longer active'],
+    ['Removed', summary.data.userRemovedJobs, 'Manually removed from Current'],
   ] as const;
 
   return (

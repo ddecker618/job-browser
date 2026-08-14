@@ -29,6 +29,7 @@ interface JobRow {
   favorite: number;
   active: number;
   lifecycle_reason: JobSearchItem['lifecycleReason'];
+  user_removed: number;
   removed_at: string | null;
   verification_status: string | null;
   eligibility_passed: number | null;
@@ -104,7 +105,7 @@ export class JobSearchRepository {
            jobs.salary_minimum, jobs.salary_maximum, jobs.score, jobs.recommendation,
            jobs.matched_families, jobs.status, jobs.first_seen_at, jobs.last_verified_at,
             jobs.materially_updated_at, jobs.closing_date, jobs.favorite, jobs.active,
-            jobs.lifecycle_reason, jobs.removed_at,
+            jobs.lifecycle_reason, jobs.removed_at, jobs.user_removed,
            jobs.verification_status, jobs.eligibility_passed,
            jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version
           FROM filtered_jobs JOIN jobs ON jobs.id = filtered_jobs.id
@@ -511,8 +512,9 @@ function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
     materiallyUpdatedAt: row.materially_updated_at,
     closingDate: row.closing_date,
     favorite: Boolean(row.favorite),
-    active: Boolean(row.active),
+active: Boolean(row.active),
     lifecycleReason: row.lifecycle_reason,
+    userRemoved: Boolean(row.user_removed),
     removedAt: row.removed_at,
     sources,
     verificationStatus: row.verification_status,

@@ -49,6 +49,12 @@ function baseVerification(): VerificationResult {
       degreeInProgressOk: true,
       clearancesRequired: [],
       clearancesSponsorable: false,
+      clearanceMode: 'none',
+      clearanceLevel: null,
+      clearanceEvidence: [],
+      occupationalSeries: null,
+      professionalEngineering: false,
+      professionalEngineeringEvidence: [],
       travelRequired: false,
       travelPercent: null,
       physicalRequirements: [],
@@ -296,5 +302,232 @@ describe('scoring engine', () => {
     expect(result.eligibilityRejection).toBe('location_outside_radius');
     expect(result.overallScore).toBe(0);
     expect(result.skills).toEqual([]);
+  });
+
+  it('hard-blocks an out-of-state job when the arrangement is ambiguous', () => {
+    const job = createJobFixture({
+      title: 'Cybersecurity Analyst',
+      normalizedTitle: 'cybersecurity analyst',
+      remoteType: 'remote',
+      location: 'Houston, TX',
+      city: 'Houston',
+      state: 'TX',
+      description:
+        'Monitor Splunk SIEM alerts and investigate incidents. Full-time.',
+      status: 'new',
+    });
+    const verification = verifyPosting(
+      `${job.title} at ${job.company}\nLocation: ${job.location ?? ''}\n${job.description ?? ''}`,
+      job.postingUrl,
+      200,
+    );
+
+    expect(verification.workArrangement).toBe('unknown');
+
+    const result = scoreJob(
+      job,
+      loadCandidateProfile(),
+      loadScoringConfig(),
+      analyzedAt,
+      verification,
+    );
+
+    expect(result.recommendationStatus).toBe('Hard No');
+    expect(result.eligibilityPassed).toBe(false);
+    expect(result.eligibilityRejection).toBe('location_outside_radius');
+    expect(result.overallScore).toBe(0);
+  });
+
+  it('hard-blocks an out-of-state job when provider arrangement is unknown', () => {
+    const job = createJobFixture({
+      title: 'Cybersecurity Analyst',
+      normalizedTitle: 'cybersecurity analyst',
+      remoteType: 'unknown',
+      location: 'Houston, TX',
+      city: 'Houston',
+      state: 'TX',
+      description:
+        'Monitor Splunk SIEM alerts and investigate incidents. Full-time.',
+      status: 'new',
+    });
+    const verification = verifyPosting(
+      `${job.title} at ${job.company}\nLocation: ${job.location ?? ''}\n${job.description ?? ''}`,
+      job.postingUrl,
+      200,
+    );
+
+    const result = scoreJob(
+      job,
+      loadCandidateProfile(),
+      loadScoringConfig(),
+      analyzedAt,
+      verification,
+    );
+
+    expect(verification.workArrangement).toBe('unknown');
+    expect(result.recommendationStatus).toBe('Hard No');
+    expect(result.eligibilityPassed).toBe(false);
+    expect(result.eligibilityRejection).toBe('location_outside_radius');
+    expect(result.overallScore).toBe(0);
+  });
+
+  it('does not hard-block a genuine remote job with no physical location', () => {
+    const job = createJobFixture({
+      title: 'Cybersecurity Analyst',
+      normalizedTitle: 'cybersecurity analyst',
+      remoteType: 'remote',
+      location: 'Remote - United States',
+      city: null,
+      state: null,
+      description:
+        'Monitor Splunk SIEM alerts and investigate incidents. Full-time remote.',
+      status: 'new',
+    });
+    const verification = verifyPosting(
+      `${job.title} at ${job.company}\nLocation: ${job.location ?? ''}\n${job.description ?? ''}`,
+      job.postingUrl,
+      200,
+    );
+
+    const result = scoreJob(
+      job,
+      loadCandidateProfile(),
+      loadScoringConfig(),
+      analyzedAt,
+      verification,
+    );
+
+    expect(result.eligibilityPassed).toBe(true);
+    expect(result.recommendationStatus).not.toBe('Hard No');
+    expect(result.overallScore).toBeGreaterThan(0);
+  });
+
+  describe('profile-aware federal eligibility gates', () => {
+    it('hard-blocks active-clearance postings when the profile does not evidence a clearance', () => {
+      const verification = verifyPosting(
+        'Must currently possess an active Top Secret clearance.',
+        'https://example.com/clearance/ts1',
+        200,
+      );
+      const job = createJobFixture({
+        title: 'IT Security Specialist',
+        normalizedTitle: 'it security specialist',
+        remoteType: 'onsite',
+      });
+      const result = scoreJob(
+        job,
+        loadCandidateProfile(),
+        loadScoringConfig(),
+        analyzedAt,
+        verification,
+      );
+      expect(result.eligibilityPassed).toBe(false);
+      expect(result.eligibilityRejection).toBe('clearance_required');
+      expect(result.recommendationStatus).toBe('Hard No');
+    });
+
+    it('passes active-clearance postings when the profile affirms clearance eligibility', () => {
+      const verification = verifyPosting(
+        'Must currently possess an active Top Secret clearance.',
+        'https://example.com/clearance/ts2',
+        200,
+      );
+      const profile = {
+        ...loadCandidateProfile(),
+        clearanceEligibility: 'eligible' as const,
+      };
+      const job = createJobFixture({
+        title: 'IT Security Specialist',
+        normalizedTitle: 'it security specialist',
+        remoteType: 'onsite',
+      });
+      const result = scoreJob(
+        job,
+        profile,
+        loadScoringConfig(),
+        analyzedAt,
+        verification,
+      );
+      expect(result.eligibilityPassed).toBe(true);
+      expect(result.eligibilityRejection).toBe('none');
+    });
+
+    it('does not hard-block sponsorable clearance postings', () => {
+      const verification = verifyPosting(
+        'Must be able to obtain a Secret clearance. Sponsorship is available.',
+        'https://example.com/clearance/secret1',
+        200,
+      );
+      const job = createJobFixture({
+        title: 'IT Security Specialist',
+        normalizedTitle: 'it security specialist',
+        remoteType: 'onsite',
+      });
+      const result = scoreJob(
+        job,
+        loadCandidateProfile(),
+        loadScoringConfig(),
+        analyzedAt,
+        verification,
+      );
+      expect(result.eligibilityPassed).toBe(true);
+      expect(result.eligibilityRejection).toBe('none');
+    });
+
+    it('hard-blocks 0854 postings when the profile has no engineering credential', () => {
+      const verification = verifyPosting(
+        'Job family (Series): 0854 Computer Engineering. Degree must be from an ABET-accredited engineering program.',
+        'https://usa.example/job/0854/block',
+        200,
+      );
+      const job = createJobFixture({
+        title: 'IT Specialist (Computer Engineering)',
+        normalizedTitle: 'it specialist computer engineering',
+        remoteType: 'onsite',
+      });
+      const result = scoreJob(
+        job,
+        loadCandidateProfile(),
+        loadScoringConfig(),
+        analyzedAt,
+        verification,
+      );
+      expect(result.eligibilityPassed).toBe(false);
+      expect(result.eligibilityRejection).toBe('professional_engineering_required');
+      expect(result.recommendationStatus).toBe('Hard No');
+    });
+
+    it('passes 0854 postings when the profile holds an engineering degree', () => {
+      const verification = verifyPosting(
+        'Job family (Series): 0854 Computer Engineering. Degree must be from an ABET-accredited engineering program.',
+        'https://usa.example/job/0854/pass',
+        200,
+      );
+      const profile = {
+        ...loadCandidateProfile(),
+        degrees: [
+          {
+            name: 'Bachelor of Science in Computer Engineering',
+            institution: 'Test University',
+            status: 'Completed',
+            expectedCompletion: null,
+          },
+        ],
+      };
+      const job = createJobFixture({
+        title: 'IT Specialist (Computer Engineering)',
+        normalizedTitle: 'it specialist computer engineering',
+        remoteType: 'onsite',
+      });
+      const result = scoreJob(
+        job,
+        profile,
+        loadScoringConfig(),
+        analyzedAt,
+        verification,
+      );
+      expect(result.eligibilityPassed).toBe(true);
+      expect(result.eligibilityRejection).toBe('none');
+    });
   });
 });

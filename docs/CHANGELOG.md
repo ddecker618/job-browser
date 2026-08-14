@@ -7,6 +7,37 @@ All notable changes to this project will be documented in this file.
 Phase 8 and Employer Discovery 9.1–9.5 are complete and Architect-approved as of
 2026-08-12. The worktree carries the current 9.6 stabilization work.
 
+### Job lifecycle / manual availability (2026-08-14)
+
+- Manual Remove / Restore of current jobs via a durable `jobs.user_removed`
+  marker (migration `027_manual_job_removal.sql`); `PATCH
+  /api/jobs/:id/availability` exposes `remove` / `restore` / `verify`. The Jobs
+  list and Job detail panel label removed jobs ("Removed"), and the dashboard
+  surfaces a separate "Removed" count.
+- User removals survive rediscovery and canonical recomputation: a provider
+  re-listing the same canonical posting cannot silently resurrect a
+  user-removed job. Jobs are never physically deleted; historical and
+  application views still reference them.
+- Bounded manual `verify` distinguishes definitive (`alive`, `closed`) from
+  low-confidence (`unreachable`) outcomes. Only definitive outcomes mutate
+  lifecycle state; timeouts, network errors, auth/rate-limit, and bot-protection
+  responses never auto-remove a job (availability safety policy).
+- Discovery employer activity (active/new-job counts) excludes user-removed
+  jobs so manual suppression never inflates metrics.
+
+### Federal / clearance eligibility (2026-08-14)
+
+- Deterministic `federalEligibility` classification: occupational-series
+  extraction, 0854 / professional-engineering basic-qualification detection
+  (ABET, calculus + engineering-science, PE/FE/EIT, IOR wording), and active /
+  obtainable / eligible / public-trust / ambiguous / none clearance
+  classification.
+- Only a genuine active-clearance requirement or explicit professional-
+  engineering basic qualification hard-rejects (`clearance_required`,
+  `professional_engineering_required`). Obtainable / eligible / public-trust
+  wording and generic engineering titles never hard-block.
+- `SCORING_RULES_VERSION` → `2026-08-13-federal-and-clearance-v1`.
+
 ### Added
 
 - Discovery Control Center `Check CareerSite Health` action: a bounded

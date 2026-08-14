@@ -304,6 +304,106 @@ export class JobRepository {
     })();
   }
 
+  public setAvailability(
+    jobId: string,
+    change: { action: 'remove' | 'restore'; changedBy: string },
+  ): boolean {
+    if (change.changedBy.trim().length === 0) {
+      throw new Error('Availability changes require a non-empty changedBy value');
+    }
+    const changedAt = nowUtc();
+    return this.database.transaction(() => {
+      const row = this.database
+        .prepare<[string], JobStatusRow>('SELECT id FROM jobs WHERE id = ?')
+        .get(jobId);
+      if (row === undefined) {
+        throw new Error(`Cannot change availability: job ${jobId} does not exist`);
+      }
+      const target =
+        change.action === 'remove'
+          ? {
+              active: 0,
+              lifecycleReason: 'snapshot-missing',
+              userRemoved: 1,
+              removedAt: changedAt,
+            }
+          : {
+              active: 1,
+              lifecycleReason: 'active',
+              userRemoved: 0,
+              removedAt: null,
+            };
+      const result = this.database
+        .prepare(
+          `UPDATE jobs SET
+             active = ?, lifecycle_reason = ?, user_removed = ?,
+             removed_at = ?, score_version = NULL, updated_at = ?
+           WHERE id = ?
+             AND (active <> ? OR user_removed <> ?)`,
+        )
+        .run(
+          target.active,
+          target.lifecycleReason,
+          target.userRemoved,
+          target.removedAt,
+          changedAt,
+          jobId,
+          target.active,
+          target.userRemoved,
+        );
+      return result.changes > 0;
+    })();
+  }
+
+  public recordAvailabilityVerification(
+    jobId: string,
+    outcome: { available: boolean; changedBy: string },
+  ): boolean {
+    if (outcome.changedBy.trim().length === 0) {
+      throw new Error('Availability verification requires a non-empty changedBy value');
+    }
+    const changedAt = nowUtc();
+    return this.database.transaction(() => {
+      const row = this.database
+        .prepare<[string], { user_removed: number }>(
+          'SELECT user_removed FROM jobs WHERE id = ?',
+        )
+        .get(jobId);
+      if (row === undefined) {
+        throw new Error(`Cannot verify availability: job ${jobId} does not exist`);
+      }
+      const target = outcome.available
+        ? {
+            active: 1,
+            lifecycleReason: 'active',
+            removedAt: null,
+          }
+        : {
+            active: 0,
+            lifecycleReason: 'provider-closed',
+            removedAt: changedAt,
+          };
+      const result = this.database
+        .prepare(
+          `UPDATE jobs SET
+             active = ?, lifecycle_reason = ?, removed_at = ?,
+             score_version = NULL, updated_at = ?
+           WHERE id = ? AND user_removed = 0
+             AND (active <> ? OR lifecycle_reason <> ?)`,
+        )
+        .run(
+          target.active,
+          target.lifecycleReason,
+          target.removedAt,
+          changedAt,
+          jobId,
+          target.active,
+          target.lifecycleReason,
+        );
+      return result.changes > 0;
+    })();
+  }
+
   public changeStatus(jobId: string, change: StatusChange): boolean {
     if (!JOB_STATUSES.includes(change.status)) {
       throw new Error(`Invalid job status: ${change.status}`);

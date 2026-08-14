@@ -165,6 +165,11 @@ export const api = {
   ) => request<JobDetail>(`/api/jobs/${id}`, json('PATCH', body)),
   updateStatus: (id: string, status: string) =>
     request<JobDetail>(`/api/jobs/${id}/status`, json('PATCH', { status })),
+  updateAvailability: (id: string, action: 'remove' | 'restore' | 'verify') =>
+    request<{ changed: boolean; job: JobDetail; outcome?: unknown }>(
+      `/api/jobs/${id}/availability`,
+      json('PATCH', { action }),
+    ),
   refreshJob: (id: string) =>
     request<JobDetail>(`/api/jobs/${id}/refresh`, { method: 'POST' }),
   listApplications: (query: ApplicationListQuery, signal?: AbortSignal) =>

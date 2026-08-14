@@ -117,14 +117,67 @@ describe('verificationService', () => {
       expect(result.eligibility.rejectionReason).toBe('sales_position');
     });
 
-    it('blocks clearance-required positions without sponsorship', () => {
+    it('classifies explicit active-clearance requirements without hard-blocking at verification time', () => {
       const result = verifyPosting(
         'Active security clearance required. Must have current TS/SCI clearance.',
         'https://example.com/job/11',
         200,
       );
-      expect(result.eligibility.passed).toBe(false);
-      expect(result.eligibility.rejectionReason).toBe('clearance_required');
+      expect(result.extractedRequirements.clearanceMode).toBe('active');
+      expect(result.extractedRequirements.clearanceLevel).toMatch(/ts\/sci/i);
+      expect(result.eligibility.passed).toBe(true);
+    });
+
+    it('classifies clearances that can be obtained as non-blocking', () => {
+      const result = verifyPosting(
+        'Must be able to obtain a Secret clearance. Sponsorship is available.',
+        'https://example.com/job/11b',
+        200,
+      );
+      expect(result.extractedRequirements.clearanceMode).toBe('obtainable');
+      expect(result.eligibility.passed).toBe(true);
+    });
+
+    it('classifies eligible-for clearance wording as non-blocking', () => {
+      const result = verifyPosting(
+        'Must be eligible for a security clearance.',
+        'https://example.com/job/11c',
+        200,
+      );
+      expect(result.extractedRequirements.clearanceMode).toBe('eligible');
+      expect(result.eligibility.passed).toBe(true);
+    });
+  });
+
+  describe('federal professional engineering basic qualification', () => {
+    it('detects the 0854 series and ABET language as explicit', () => {
+      const result = verifyPosting(
+        'Job family (Series): 0854 Computer Engineering. Degree must be from an ABET-accredited engineering program.',
+        'https://usa.example/job/0854',
+        200,
+      );
+      expect(result.extractedRequirements.occupationalSeries).toBe('0854');
+      expect(result.extractedRequirements.professionalEngineering).toBe(true);
+      expect(result.extractedRequirements.professionalEngineeringEvidence.length).toBeGreaterThan(0);
+    });
+
+    it('does not treat a software engineer title as professional engineering', () => {
+      const result = verifyPosting(
+        'Software Engineer - Systems Development. Requires 5 years of experience.',
+        'https://example.com/job/sw',
+        200,
+      );
+      expect(result.extractedRequirements.professionalEngineering).toBe(false);
+      expect(result.extractedRequirements.occupationalSeries).toBeNull();
+    });
+
+    it('ignores engineering language softened by preference', () => {
+      const result = verifyPosting(
+        'Basic requirement: engineering background preferred but not required for this analyst role.',
+        'https://example.com/job/pref',
+        200,
+      );
+      expect(result.extractedRequirements.professionalEngineering).toBe(false);
     });
   });
 

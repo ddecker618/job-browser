@@ -8,6 +8,12 @@ import type {
 } from '../domain/verification.js';
 import { classifyWorkArrangement } from '../domain/work-arrangement.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import {
+  classifyActiveClearance,
+  classifyProfessionalEngineeringBasicQualification,
+  extractOccupationalSeries,
+} from './federalEligibility.js';
+import type { ClearanceMode } from './federalEligibility.js';
 
 export interface VerificationResult {
   evidence: VerificationEvidence;
@@ -24,6 +30,12 @@ export interface VerificationResult {
     degreeInProgressOk: boolean;
     clearancesRequired: string[];
     clearancesSponsorable: boolean;
+    clearanceMode: ClearanceMode;
+    clearanceLevel: string | null;
+    clearanceEvidence: string[];
+    occupationalSeries: string | null;
+    professionalEngineering: boolean;
+    professionalEngineeringEvidence: string[];
     travelRequired: boolean;
     travelPercent: number | null;
     physicalRequirements: string[];
@@ -299,17 +311,6 @@ function evaluateEligibility(
     };
   }
 
-  const clearance = findMatches(text, CLEARANCE_REQUIRED);
-  const sponsorable = findMatches(text, CLEARANCE_SPONSORABLE);
-  if (clearance.length > 0 && sponsorable.length === 0) {
-    return {
-      passed: false,
-      rejectionReason: 'clearance_required',
-      rejectionDetail:
-        'Active security clearance required and sponsorship not indicated',
-    };
-  }
-
   if (findMatches(text, COMMISSION).length > 0) {
     return {
       passed: false,
@@ -337,6 +338,9 @@ function evaluateEligibility(
 function extractStructuredRequirements(text: string) {
   const reqYears = extractYears(text, EXPERIENCE_REQUIRED);
   const prefYears = extractYears(text, EXPERIENCE_PREFERRED);
+  const clearance = classifyActiveClearance(text);
+  const engineering =
+    classifyProfessionalEngineeringBasicQualification(text);
 
   return {
     requiredYears: reqYears,
@@ -345,6 +349,12 @@ function extractStructuredRequirements(text: string) {
     degreeInProgressOk: findMatches(text, DEGREE_IN_PROGRESS_OK).length > 0,
     clearancesRequired: findMatches(text, CLEARANCE_REQUIRED),
     clearancesSponsorable: findMatches(text, CLEARANCE_SPONSORABLE).length > 0,
+    clearanceMode: clearance.mode,
+    clearanceLevel: clearance.level,
+    clearanceEvidence: clearance.evidence,
+    occupationalSeries: extractOccupationalSeries(text) ?? engineering.occupationalSeries,
+    professionalEngineering: engineering.explicit,
+    professionalEngineeringEvidence: engineering.evidence,
     travelRequired: findMatches(text, TRAVEL).length > 0,
     travelPercent: extractTravelPercent(text),
     physicalRequirements: findMatches(text, PHYSICAL),

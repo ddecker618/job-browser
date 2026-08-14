@@ -42,6 +42,7 @@ export const ELIGIBILITY_REJECTION_REASONS = [
   'rotating_nights',
   'weekend_coverage',
   'clearance_required',
+  'professional_engineering_required',
   'sales_position',
   'software_development',
   'field_installation',

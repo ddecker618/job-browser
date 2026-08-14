@@ -74,6 +74,7 @@ export interface JobSearchItem {
     | 'closing-date-expired'
     | 'provider-closed'
     | 'unknown';
+  userRemoved: boolean;
   removedAt: string | null;
   sources: JobSearchSource[];
   verificationStatus: string | null;
