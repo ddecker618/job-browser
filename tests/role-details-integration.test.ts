@@ -322,16 +322,38 @@ This position is contingent upon program award.`,
         description: 'Original immutable job prose description.',
       });
       const before = database
-        .prepare<[string], { id: string; external_id: string; description: string }>(
-          `SELECT id, external_id, description FROM jobs WHERE id = ?`,
+        .prepare<
+          [string],
+          {
+            id: string;
+            external_id: string;
+            description: string;
+            status: string;
+            user_removed: number;
+            active: number;
+          }
+        >(
+          `SELECT id, external_id, description, status, user_removed, active
+             FROM jobs WHERE id = ?`,
         )
         .get(job.id);
 
       backfillRoleDetails(database, CONFIG);
 
       const after = database
-        .prepare<[string], { id: string; external_id: string; description: string }>(
-          `SELECT id, external_id, description FROM jobs WHERE id = ?`,
+        .prepare<
+          [string],
+          {
+            id: string;
+            external_id: string;
+            description: string;
+            status: string;
+            user_removed: number;
+            active: number;
+          }
+        >(
+          `SELECT id, external_id, description, status, user_removed, active
+             FROM jobs WHERE id = ?`,
         )
         .get(job.id);
 

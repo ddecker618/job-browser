@@ -20,14 +20,14 @@ Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.
 
 ### Backfill & Migration 028
 - Bounded offline backfill (`backfillRoleDetails`, batch size 200, skips current version, skips user-removed/expired/inactive jobs).
-- Migration runner idempotency and schema-parse safety fully verified.
+- Migration runner idempotency, schema-parse safety, and 027→028 upgrade preservation (Job IDs, lifecycle, user_removed, Applications, ResumeSnapshots, Company identity, Sources) verified.
 
 ### Scoring & Eligibility Integration
 - Strict alignment with existing hard gates: far non-remote onsite jobs fail, ambiguous work arrangements cannot bypass commute gates, confirmed remote bypasses distance, active clearance blocks when lacking, obtainable/eligible clearance remain non-blocking, professional engineering / 0854 remains blocking, user-removed jobs remain excluded.
 
 ### UI & Verification
 - Job Detail panel displays the structured Role Details section with clean key-value rows and evidence support.
-- Full test suite: 92 test files, 869 tests passing (including 154 role-details extractor and integration tests).
+- Full test suite: 92 test files, 870 tests passing (including 154 role-details extractor and integration tests).
 - Desktop smoke, packaged smoke, and installed smoke passed successfully.
 - Rebuilt installer: `release/Job-Browser-Setup-1.0.15.exe` (249,874,434 bytes, SHA-256: `505C91D3B13D826B7A74015E881FACB7ECB6D85396DE274B93B022B371BC425F`).
 

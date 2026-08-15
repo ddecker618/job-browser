@@ -173,7 +173,7 @@ describe('EmployerDiscoveryService', () => {
       await import('../src/discovery/employerDiscoveryIntelligenceService.js')
     ).EmployerDiscoveryIntelligenceService(
       database,
-      () => new Date('2026-08-14T23:59:59.999Z'),
+      () => new Date('2099-01-01T00:00:00.000Z'),
     );
     const service = new EmployerDiscoveryService(
       employers,
@@ -185,7 +185,7 @@ describe('EmployerDiscoveryService', () => {
       undefined,
       undefined,
       intelligence,
-      () => new Date('2026-08-14T23:59:59.999Z'),
+      () => new Date('2099-01-01T00:00:00.000Z'),
     );
 
     await expect(service.runEligible(1)).resolves.toMatchObject({

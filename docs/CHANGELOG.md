@@ -13,9 +13,11 @@ All notable changes to this project will be documented in this file.
 - Provider normalization audit and bugfixes across USAJOBS (retaining full requirements text), Greenhouse (removing fabricated full-time fallback), SmartRecruiters (`workplaceType` mapping), and Dice (`temporary`/`internship` mapping).
 - Job Detail panel structured Role Details section displaying clean key-value rows with evidence affordance (omitting unknown/null fields).
 - Complete test coverage (154 role-details extractor/integration tests, dashboard UI tests, provider tests, and full regression test suite).
+- Final verification (2026-08-14): lint, strict typecheck, build, and the full test suite (92 files / 870 tests) pass; development smoke, packaged smoke, and installed smoke pass against isolated user-data.
+- Installer: `release/Job-Browser-Setup-1.0.15.exe`, 249,874,434 bytes, SHA-256 `505C91D3B13D826B7A74015E881FACB7ECB6D85396DE274B93B022B371BC425F`.
 
-Phase 8 and Employer Discovery 9.1–9.5 are complete and Architect-approved as of
-2026-08-12. The worktree carries the current 9.6 stabilization work.
+The following sections summarize the 9.6 lifecycle / discovery stabilization
+work that is included in this 1.0.15 release.
 
 ### Job lifecycle / manual availability (2026-08-14)
 
@@ -96,8 +98,9 @@ Phase 8 and Employer Discovery 9.1–9.5 are complete and Architect-approved as 
 - `PUT /api/settings` no longer invokes the `onSettingsSaved` hook twice (the
   redundant post-persist call was removed); the guard runs exactly once, before
   persisting.
-- Verification: typecheck, ESLint, and the full suite (89 files / 676 tests)
-  pass; desktop build/smoke remains the only outstanding completion gate.
+- Verification at the time (2026-08-13): typecheck, ESLint, and the full suite
+  (89 files / 676 tests) passed; desktop build/smoke was the only outstanding
+  completion gate at that checkpoint.
 
 ### Lifecycle (migration `026_explicit_job_lifecycle.sql`)
 
@@ -118,7 +121,7 @@ Phase 8 and Employer Discovery 9.1–9.5 are complete and Architect-approved as 
   rejected: unsafe stored overrides fall back to per-user data, Settings
   rejects new unsafe paths, and external custom locations remain valid.
 
-### Verification
+### Stabilization sprint verification (2026-08-13, before the Role Details work)
 
 - Full suite: 89 files / 676 tests passed (2026-08-13). ESLint and strict
   typecheck pass. The desktop smoke now asserts the Analytics and Search Profile
@@ -127,8 +130,10 @@ Phase 8 and Employer Discovery 9.1–9.5 are complete and Architect-approved as 
 - Development smoke, unpacked build (`release/win-unpacked`), packaged smoke,
   NSIS package, and installed-app smoke all passed against isolated smoke
   user-data.
-- Installer: `release/Job-Browser-Setup-1.0.14.exe`, 249,839,217 bytes, SHA-256
+- Intermediate installer at that time: `release/Job-Browser-Setup-1.0.14.exe`,
+  249,839,217 bytes, SHA-256
   `0B8823AB8ACC7254705E6C411AC3946C88F573D0D8359FAC5A77087C1C5B2AEA`.
+  Superseded by the final 1.0.15 artifact listed above.
 
 ## [1.0.14] — 2026-08-12
 

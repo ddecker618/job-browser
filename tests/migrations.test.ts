@@ -2,6 +2,7 @@ import {
   copyFileSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -265,6 +266,227 @@ describe('migration runner', () => {
     expect(companyFacts).toEqual({
       job_assignments: 1,
       application_assignments: 1,
+    });
+  });
+
+  it('upgrades a populated database from 027 through 028 without losing data', () => {
+    const directory = temporaryMigrationDirectory();
+    for (const filename of readdirSync(DEFAULT_MIGRATIONS_DIRECTORY)) {
+      if (filename < '028_') {
+        copyFileSync(
+          join(DEFAULT_MIGRATIONS_DIRECTORY, filename),
+          join(directory, filename),
+        );
+      }
+    }
+    const database = openDatabase(':memory:');
+    databases.push(database);
+    runMigrations(database, directory);
+
+    database.exec(`
+      INSERT INTO sources (
+        id, employer, source_type, enabled, failure_count, created_at, updated_at
+      ) VALUES ('source-028', 'Preserved Employer', 'fixture', 1, 0,
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO companies (
+        id, canonical_name, normalized_key, resolver_version, created_at, updated_at
+      ) VALUES ('company-exact-v1:preserved employer', 'Preserved Employer',
+        'preserved employer', 'company-exact-v1', '2026-01-01T00:00:00.000Z',
+        '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO jobs (
+        id, fingerprint, external_id, title, normalized_title, company,
+        normalized_company, remote_type, employment_type, source_name,
+        source_type, first_seen_at, last_seen_at, active, seniority_level,
+        status, user_removed, company_id, description, created_at, updated_at
+      ) VALUES ('job-028', '${'e'.repeat(64)}', 'external-028', 'Preserved Job',
+        'preserved job', 'Preserved Employer', 'preserved employer', 'onsite',
+        'full-time', 'Fixture', 'fixture', '2026-01-01T00:00:00.000Z',
+        '2026-01-01T00:00:00.000Z', 1, 'mid', 'applied', 0,
+        'company-exact-v1:preserved employer', 'Preserved description prose.',
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO jobs (
+        id, fingerprint, external_id, title, normalized_title, company,
+        normalized_company, remote_type, employment_type, source_name,
+        source_type, first_seen_at, last_seen_at, active, seniority_level,
+        status, user_removed, description, created_at, updated_at
+      ) VALUES ('job-028-removed', '${'g'.repeat(64)}', 'external-removed',
+        'Removed Job', 'removed job', 'Preserved Employer',
+        'preserved employer', 'onsite', 'full-time', 'Fixture', 'fixture',
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', 0, 'mid',
+        'new', 1, 'Removed description.', '2026-01-01T00:00:00.000Z',
+        '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO job_sources (
+        id, job_id, source_id, external_id, first_seen_at, last_seen_at
+      ) VALUES ('job-source-028', 'job-028', 'source-028', 'external-028',
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO job_company_assignments (
+        id, job_id, company_id, original_company_text, normalized_key, result,
+        resolver_method, resolver_version, assigned_at
+      ) VALUES ('job-company-028', 'job-028',
+        'company-exact-v1:preserved employer', 'Preserved Employer',
+        'preserved employer', 'resolved', 'migration-exact',
+        'company-exact-v1', '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO applications (
+        id, job_id, status, title_at_application, company_at_application,
+        company_id, created_at, updated_at
+      ) VALUES ('application-028', 'job-028', 'applied', 'Copied Job',
+        'Preserved Employer', 'company-exact-v1:preserved employer',
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO application_company_assignments (
+        id, application_id, company_id, original_company_text, normalized_key,
+        result, resolver_method, resolver_version, assigned_at
+      ) VALUES ('application-company-028', 'application-028',
+        'company-exact-v1:preserved employer', 'Preserved Employer',
+        'preserved employer', 'resolved', 'migration-exact',
+        'company-exact-v1', '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO resume_snapshots (
+        id, content_hash, storage_key, original_filename, mime_type, extension,
+        size_bytes, parser_version, normalization_version, parsing_status,
+        created_at
+      ) VALUES ('snapshot-028', '${'f'.repeat(64)}', 'snapshots/028.pdf',
+        'resume.pdf', 'application/pdf', 'pdf', 1234, 'resume-v1',
+        'normalization-v1', 'parsed', '2026-01-01T00:00:00.000Z');
+
+      INSERT INTO resume_snapshot_interpretations (
+        id, snapshot_id, schema_version, parser_version, normalization_version,
+        parsing_status, normalized_payload_json, created_at
+      ) VALUES ('interpretation-028', 'snapshot-028', 1, 'resume-v1',
+        'normalization-v1', 'parsed', '{}', '2026-01-01T00:00:00.000Z');
+    `);
+
+    expect(runMigrations(database).applied).toEqual(['028_role_details.sql']);
+
+    const column = database
+      .prepare<[], NameRow>(
+        "SELECT name FROM pragma_table_info('jobs') WHERE name = 'role_details_json'",
+      )
+      .get();
+    expect(column?.name).toBe('role_details_json');
+
+    const existingRowsWithDetails = database
+      .prepare<[], { count: number }>(
+        `SELECT COUNT(*) AS count FROM jobs WHERE role_details_json IS NOT NULL`,
+      )
+      .get();
+    expect(existingRowsWithDetails?.count).toBe(0);
+
+    const preservedJob = database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT id, external_id, description, status, user_removed, active,
+                company_id, title
+           FROM jobs WHERE id = 'job-028'`,
+      )
+      .get();
+    expect(preservedJob).toMatchObject({
+      id: 'job-028',
+      external_id: 'external-028',
+      description: 'Preserved description prose.',
+      status: 'applied',
+      user_removed: 0,
+      active: 1,
+      company_id: 'company-exact-v1:preserved employer',
+      title: 'Preserved Job',
+    });
+
+    const removedJob = database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT id, status, user_removed, active, description
+           FROM jobs WHERE id = 'job-028-removed'`,
+      )
+      .get();
+    expect(removedJob).toMatchObject({
+      id: 'job-028-removed',
+      status: 'new',
+      user_removed: 1,
+      active: 0,
+      description: 'Removed description.',
+    });
+
+    const company = database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT id, canonical_name, normalized_key
+           FROM companies WHERE id = 'company-exact-v1:preserved employer'`,
+      )
+      .get();
+    expect(company).toMatchObject({
+      id: 'company-exact-v1:preserved employer',
+      canonical_name: 'Preserved Employer',
+      normalized_key: 'preserved employer',
+    });
+
+    const application = database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT id, job_id, status, title_at_application, company_at_application,
+                company_id
+           FROM applications WHERE id = 'application-028'`,
+      )
+      .get();
+    expect(application).toMatchObject({
+      id: 'application-028',
+      job_id: 'job-028',
+      status: 'applied',
+      title_at_application: 'Copied Job',
+      company_at_application: 'Preserved Employer',
+      company_id: 'company-exact-v1:preserved employer',
+    });
+
+    const snapshot = database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT id, content_hash, storage_key, original_filename
+           FROM resume_snapshots WHERE id = 'snapshot-028'`,
+      )
+      .get();
+    expect(snapshot).toMatchObject({
+      id: 'snapshot-028',
+      content_hash: 'f'.repeat(64),
+      storage_key: 'snapshots/028.pdf',
+      original_filename: 'resume.pdf',
+    });
+
+    const interpretation = database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT id, snapshot_id, normalized_payload_json
+           FROM resume_snapshot_interpretations WHERE id = 'interpretation-028'`,
+      )
+      .get();
+    expect(interpretation).toMatchObject({
+      id: 'interpretation-028',
+      snapshot_id: 'snapshot-028',
+      normalized_payload_json: '{}',
+    });
+
+    const source = database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT id, employer, source_type, enabled
+           FROM sources WHERE id = 'source-028'`,
+      )
+      .get();
+    expect(source).toMatchObject({
+      id: 'source-028',
+      employer: 'Preserved Employer',
+      source_type: 'fixture',
+      enabled: 1,
+    });
+
+    const jobSource = database
+      .prepare<[], Record<string, unknown>>(
+        `SELECT id, job_id, source_id, external_id, active
+           FROM job_sources WHERE id = 'job-source-028'`,
+      )
+      .get();
+    expect(jobSource).toMatchObject({
+      id: 'job-source-028',
+      job_id: 'job-028',
+      source_id: 'source-028',
+      external_id: 'external-028',
     });
   });
 
