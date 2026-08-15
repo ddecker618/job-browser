@@ -38,6 +38,7 @@ export const ELIGIBILITY_REJECTION_REASONS = [
   'illinois_excluded',
   'location_outside_radius',
   'location_unknown',
+  'remote_region_ineligible',
   'overnight_schedule',
   'rotating_nights',
   'weekend_coverage',

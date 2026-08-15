@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.18] - 2026-08-15
+
+### Geographic eligibility: deterministic worksite distance and remote region restrictions
+
+- New `src/intelligence/geographicEligibility.ts` replaces the commute gate's reliance on the small exact-city heuristic. Worksites are parsed from the structured `city`/`state` fields AND the free-text `location` field (multi-worksite splitting on `;`, `/`, and/or plus `City, ST` runs), so provider location-string-only postings can no longer bypass the commute gate.
+- Location knowledge is classified deterministically with the existing local atlas (no network geocoder): `known_local` (exact distance within the radius), `known_distant` (exact distance beyond the radius), `known_state_eligible` (same-state, exact distance unavailable), `known_state_ineligible` (out-of-state, exact distance unavailable), and `unknown`. Uncertainty is never treated as positive evidence, and a distance is never fabricated.
+- Hard gate: a non-remote role is hard-blocked (`location_outside_radius`) only when every known worksite is definitively outside the configured commute boundary (exact distance or out-of-state). Same-state, unknown, and mixed worksite sets are not hard-blocked.
+- Remote roles skip the worksite distance gate, but explicit remote region restrictions ("Remote role is restricted to Maryland", "Candidates must reside in Texas", "MD, VA" lists) are detected deterministically; a restricted region that does not intersect the candidate's preferred states hard-blocks with the new `remote_region_ineligible` reason. Nationwide allowances ("anywhere in the US") are never treated as restrictions.
+- Recommendation honesty: `Verified Match` is now capped at `Strong Match` whenever location eligibility could not be confirmed (same-state unknown distance, unknown location, unknown work arrangement). Remote roles and confirmed `known_local` roles keep full verification.
+- Scoring semantics: location score is driven by actual commute eligibility (`known_local` 100, `known_state_eligible` 60, unknown 30, blocked 0) instead of exact-city guesswork; an unknown work arrangement scores 50 for remote preference rather than the near-perfect not-preferred value.
+- `SCORING_RULES_VERSION` → `2026-08-15-geographic-eligibility-v1`, and `remoteRegion` is included in the score-input hash, so previously persisted geographic scores are invalidated and recomputed at startup.
+- New regression coverage (`tests/geographic-eligibility.test.ts`, 50 tests): worksite parsing, location-knowledge classification, hard-gate matrix, recommendation caps, end-to-end scoring, remote region restrictions, persisted-score invalidation, and a current-ranking integration test asserting geographically impossible jobs stay out of the eligible Jobs ranking while unknown-location jobs never rank above viable ones.
+- Final verification (2026-08-15): lint, strict typecheck, build, and the full test suite (94 files / 951 tests) pass; development, packaged, and installed smokes pass against isolated user-data, including the installed-app upgrade scenario proving a seeded geographically-invalid high score auto-corrects to `Hard No` / 0.
+- Installer: `release/Job-Browser-Setup-1.0.18.exe`, 249,893,167 bytes, SHA-256 `BDD1F4932A1C9C7E4AA6616D922DC68F9981E178B648A1DA6EEB0CECAC1A059D`.
+
 ## [1.0.17] - 2026-08-14
 
 ### Stale role-details invalidation and automatic reconciliation

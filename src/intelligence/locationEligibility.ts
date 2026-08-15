@@ -176,3 +176,11 @@ function haversineMiles(left: Coordinates, right: Coordinates): number {
 function toRadians(value: number): number {
   return (value * Math.PI) / 180;
 }
+
+export {
+  CITY_COORDINATES,
+  coordinatesFor,
+  haversineMiles,
+  normalizeCity,
+  normalizeState,
+};

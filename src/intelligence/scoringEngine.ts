@@ -8,7 +8,15 @@ import type { WorkArrangement } from '../domain/verification.js';
 import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import type { VerificationResult } from './verificationService.js';
-import { classifyCommute } from './locationEligibility.js';
+import {
+  analyzeGeographicEligibility,
+  evaluateGeographicGate,
+  recommendationCapFor,
+} from './geographicEligibility.js';
+import type {
+  GeographicEligibility,
+  RecommendationCap,
+} from './geographicEligibility.js';
 import { extractJobTerms, profileHasTerm } from '../skills/skillExtractor.js';
 import { normalizeText } from '../utilities/normalization.js';
 
@@ -32,12 +40,14 @@ export function scoreJob(
   const explanations: string[] = [];
   const missingQualifications: string[] = [];
 
+  const geo = analyzeGeographicEligibility(job, profile);
   const verificationResult = applyVerification(
     verification ?? null,
     job,
     profile,
     config,
     explanations,
+    geo,
   );
 
   if (verificationResult.hardBlock) {
@@ -63,6 +73,24 @@ export function scoreJob(
     verificationResult.workArrangement === 'unknown'
       ? job
       : { ...job, remoteType: verificationResult.workArrangement };
+  if (scoringJob.remoteType !== 'remote') {
+    if (geo.knowledge === 'unknown') {
+      missingQualifications.push(
+        'Work location could not be confirmed to be within the configured commute boundary.',
+      );
+    } else if (geo.knowledge === 'known_state_eligible') {
+      missingQualifications.push(
+        'Worksite is in a preferred state but the exact commute distance is unconfirmed.',
+      );
+    } else if (
+      geo.knowledge === 'known_distant' ||
+      geo.knowledge === 'known_state_ineligible'
+    ) {
+      missingQualifications.push(
+        'Worksite is outside the configured commute boundary.',
+      );
+    }
+  }
   const terms = extractJobTerms(scoringJob, config);
 
   const title = scoreTitle(scoringJob, profile, explanations);
@@ -82,7 +110,7 @@ export function scoreJob(
     explanations,
     missingQualifications,
   );
-  const location = scoreLocation(scoringJob, profile, explanations);
+  const location = scoreLocation(scoringJob, geo, profile, explanations);
   const remotePreference = scoreRemote(scoringJob, profile, explanations);
   const salary = scoreSalary(scoringJob, profile, explanations);
   const experience = scoreExperience(
@@ -124,6 +152,7 @@ export function scoreJob(
     config,
     finalScore,
     verificationResult,
+    recommendationCapFor(scoringJob.remoteType, geo),
   );
 
   explanations.unshift(
@@ -168,6 +197,7 @@ function applyVerification(
   profile: CandidateProfile,
   config: ScoringConfig,
   explanations: string[],
+  geo: GeographicEligibility,
 ): VerificationScoringResult {
   const cfg = config.verification;
 
@@ -227,6 +257,38 @@ function applyVerification(
       modifier: null,
       workArrangement,
     };
+  }
+
+  const remoteRegion = verification.remoteRegion;
+  if (
+    workArrangement === 'remote' &&
+    remoteRegion !== undefined &&
+    remoteRegion.restricted &&
+    remoteRegion.states.length > 0
+  ) {
+    const preferredStates = profile.preferredLocations
+      .map((location) => location.state.trim().toUpperCase())
+      .filter((state) => state !== '');
+    const allowed = remoteRegion.states.filter((state) =>
+      preferredStates.includes(state),
+    );
+    const restrictedPhrase = remoteRegion.states.join(', ');
+    if (allowed.length === 0) {
+      explanations.push(
+        `Hard eligibility gate failed: remote work is restricted to ${restrictedPhrase}, and the candidate is outside the permitted region.`,
+      );
+      return {
+        hardBlock: true,
+        eligibilityPassed: false,
+        rejectionReason: 'remote_region_ineligible',
+        verifiedStatus,
+        modifier: null,
+        workArrangement,
+      };
+    }
+    explanations.push(
+      `Remote work is restricted to ${restrictedPhrase}; the candidate is within the permitted region.`,
+    );
   }
 
   const extracted = verification.extractedRequirements;
@@ -290,19 +352,12 @@ function applyVerification(
         : workArrangement === 'hybrid'
           ? 'Hybrid'
           : 'Unknown work arrangement; commute boundary applies';
-    const commute = classifyCommute(job, profile);
-    explanations.push(
-      `${arrangementLabel}: ${commute.evidence} commute_status=${commute.commuteStatus}`,
-    );
-    if (commute.locationStatus === 'unknown') {
-      explanations.push(
-        'Location cannot be confirmed; retaining job with unknown location status.',
-      );
+    const gate = evaluateGeographicGate(workArrangement, geo);
+    for (const evidence of geo.evidence) {
+      explanations.push(`${arrangementLabel}: ${evidence}`);
     }
-    if (commute.status === 'within') {
-      explanations.push('Location eligibility gate passed.');
-    }
-    if (commute.locationStatus === 'ineligible') {
+    if (gate.block && gate.explanation !== null) {
+      explanations.push(`Location eligibility gate failed: ${gate.explanation}`);
       return {
         hardBlock: true,
         eligibilityPassed: false,
@@ -311,6 +366,20 @@ function applyVerification(
         modifier: null,
         workArrangement,
       };
+    }
+    if (gate.explanation !== null) {
+      explanations.push(gate.explanation);
+    }
+    if (geo.knowledge === 'unknown') {
+      explanations.push(
+        'Location cannot be confirmed; retaining job with unknown location status.',
+      );
+    } else if (geo.knowledge === 'known_state_eligible') {
+      explanations.push(
+        'Location eligibility gate passed; job is in a preferred state, exact distance unavailable.',
+      );
+    } else if (geo.knowledge === 'known_local') {
+      explanations.push('Location eligibility gate passed.');
     }
   }
 
@@ -417,6 +486,7 @@ function scoreTerms(
 
 function scoreLocation(
   job: JobForScoring,
+  geo: GeographicEligibility,
   profile: CandidateProfile,
   explanations: string[],
 ): number {
@@ -424,33 +494,31 @@ function scoreLocation(
     explanations.push('Remote role satisfies location constraints.');
     return 100;
   }
-  if (job.city === null && job.state === null) {
-    explanations.push('Location is not specific enough to calculate distance.');
-    return 50;
-  }
-  const exact = profile.preferredLocations.some(
-    (location) =>
-      normalizeText(location.city) === normalizeText(job.city ?? '') &&
-      normalizeText(location.state) === normalizeText(job.state ?? ''),
-  );
-  if (exact) {
-    explanations.push('Job is in a preferred city.');
+  if (geo.knowledge === 'known_local' && geo.distanceMiles !== null) {
+    explanations.push(
+      `Worksite is ${String(geo.distanceMiles)} miles from a preferred location; within the configured ${String(profile.searchRadiusMiles)}-mile commute boundary.`,
+    );
     return 100;
   }
-  const sameState = profile.preferredLocations.some(
-    (location) =>
-      normalizeText(location.state) === normalizeText(job.state ?? ''),
-  );
-  if (sameState) {
+  if (geo.knowledge === 'known_state_eligible') {
     explanations.push(
-      `Job is in a preferred state; exact distance against the ${String(profile.searchRadiusMiles)}-mile radius is unavailable.`,
+      `Worksite is in a preferred state; exact distance against the ${String(profile.searchRadiusMiles)}-mile radius is unavailable.`,
     );
-    return 70;
+    return 60;
+  }
+  if (
+    geo.knowledge === 'known_distant' ||
+    geo.knowledge === 'known_state_ineligible'
+  ) {
+    explanations.push(
+      'Worksite is outside the configured commute boundary.',
+    );
+    return 0;
   }
   explanations.push(
-    'Outside preferred locations; exact distance is unavailable.',
+    'Location is not specific enough to confirm commute eligibility.',
   );
-  return 20;
+  return 30;
 }
 
 function scoreRemote(
@@ -471,6 +539,12 @@ function scoreRemote(
       'Hybrid arrangement is acceptable when commuting is realistic.',
     );
     return 75;
+  }
+  if (job.remoteType === 'unknown') {
+    explanations.push(
+      'Work arrangement is unknown; remote preference cannot be confirmed.',
+    );
+    return 50;
   }
   if (profile.remotePreference === 'preferred') {
     explanations.push(
@@ -577,6 +651,7 @@ function recommend(
   config: ScoringConfig,
   score: number,
   verificationResult: VerificationScoringResult,
+  cap: RecommendationCap,
 ): RecommendationStatus {
   if (
     job.status === 'applied' ||
@@ -609,7 +684,12 @@ function recommend(
 
   if (verificationResult.verifiedStatus === 'verified') {
     const thresholds = config.recommendationThresholds;
-    if (score >= thresholds.applyImmediately) return 'Verified Match';
+    if (score >= thresholds.applyImmediately && cap === 'none') {
+      return 'Verified Match';
+    }
+    if (score >= thresholds.applyImmediately && cap === 'strong') {
+      return 'Strong Match';
+    }
   }
 
   const thresholds = config.recommendationThresholds;

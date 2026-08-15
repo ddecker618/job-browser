@@ -59,6 +59,7 @@ export function createScoreInputHash(
       },
       workArrangement: verification.workArrangement,
       illinoisEligibility: verification.illinoisEligibility,
+      remoteRegion: verification.remoteRegion,
       schedule: verification.schedule,
       eligibility: verification.eligibility,
       extractedRequirements: verification.extractedRequirements,

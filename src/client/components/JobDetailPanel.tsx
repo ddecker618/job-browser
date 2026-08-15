@@ -27,6 +27,8 @@ function eligibilityRejectionLabel(reason: string | null): string {
       return 'Remote position explicitly excludes Illinois.';
     case 'location_outside_radius':
       return 'Location is outside your search radius.';
+    case 'remote_region_ineligible':
+      return 'Remote work is restricted to regions outside your configured location.';
     case 'overnight_schedule':
       return 'Position requires a permanent overnight shift.';
     case 'rotating_nights':

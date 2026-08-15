@@ -8,6 +8,7 @@ import type {
 } from '../domain/verification.js';
 import { classifyWorkArrangement } from '../domain/work-arrangement.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import { US_STATE_BY_NAME, normalizeStateCode } from '../utilities/us-states.js';
 import {
   classifyActiveClearance,
   classifyProfessionalEngineeringBasicQualification,
@@ -15,12 +16,19 @@ import {
 } from './federalEligibility.js';
 import type { ClearanceMode } from './federalEligibility.js';
 
+export interface RemoteRegionEligibility {
+  restricted: boolean;
+  states: string[];
+  evidence: string[];
+}
+
 export interface VerificationResult {
   evidence: VerificationEvidence;
   workArrangement: WorkArrangement;
   workArrangementEvidence: string[];
   illinoisEligibility: IllinoisEligibility;
   illinoisEvidence: string[];
+  remoteRegion?: RemoteRegionEligibility;
   schedule: ScheduleEvidence;
   eligibility: EligibilityResult;
   extractedRequirements: {
@@ -169,6 +177,27 @@ const CLEARANCE_SPONSORABLE = [
   /(?:clearance|security\s+clearance)\s+(?:sponsorship|processing)\s+(?:is\s+)?(?:available|provided)/i,
 ];
 
+// Explicit geographic restrictions on remote work. A remote role is only
+// unrestricted when the posting states so; these phrases assert a bounded
+// region (states) that the candidate must be within. Global allowances
+// ("all 50 states", "nationwide") are not restrictions.
+const REMOTE_REGION_RESTRICTION = [
+  /remote\s+(?:positions?|roles?|work|opportunities?)\s+(?:are\s+)?(?:only\s+)?(?:available|offered|open|permitted|authorized)\b[^.\n;]{0,80}\b(?:in|within)\b[^.\n;]{0,120}/i,
+  /remote\s+(?:position|role|work)\s+(?:is\s+)?(?:restricted|limited)\s+to\b[^.\n;]{0,120}/i,
+  /candidates?\s+(?:must\s+)?(?:reside|be\s+located|be\s+based|work)\s+(?:in|within|near)\b[^.\n;]{0,120}/i,
+  /must\s+(?:live|reside|be\s+located|be\s+based|work)\s+in\s+(?:one\s+of\s+)?(?:the\s+)?(?:following\s+)?(?:states|regions|locations)\b[^.\n;]{0,160}/i,
+  /only\s+available\s+in\s+(?:the\s+(?:states|regions)\s+of\s+)?[^.\n;]{0,120}/i,
+  /cannot\s+(?:work|reside)\s+outside\s+of\s+(?:the\s+)?(?:states|regions)\b[^.\n;]{0,120}/i,
+  /must\s+(?:reside|live|be\s+located|be\s+based)\s+in\s+[^.\n;]{2,60}/i,
+];
+
+const REMOTE_REGION_GLOBAL_ALLOWANCE = [
+  /all\s+(?:50\s+)?(?:states|us\s+states|united\s+states)/i,
+  /\bnationwide\b/i,
+  /any(?:where)?\s+in\s+(?:the\s+)?(?:us|united\s+states)/i,
+  /all\s+(?:us|u\.?s\.?|united\s+states)/i,
+];
+
 export function verifyPosting(
   text: string,
   url: string | null,
@@ -196,6 +225,10 @@ export function verifyPosting(
     text,
     workArrangementResult.arrangement,
   );
+  const remoteRegion = classifyRemoteRegion(
+    text,
+    workArrangementResult.arrangement,
+  );
   const scheduleResult = classifySchedule(text);
 
   const eligibility = evaluateEligibility(
@@ -213,10 +246,78 @@ export function verifyPosting(
     workArrangementEvidence: workArrangementResult.evidence,
     illinoisEligibility: illinoisResult.eligibility,
     illinoisEvidence: illinoisResult.evidence,
+    remoteRegion,
     schedule: scheduleResult,
     eligibility,
     extractedRequirements: requirements,
   };
+}
+
+function classifyRemoteRegion(
+  text: string,
+  arrangement: WorkArrangement,
+): RemoteRegionEligibility {
+  if (arrangement !== 'remote') {
+    return { restricted: false, states: [], evidence: [] };
+  }
+
+  if (REMOTE_REGION_GLOBAL_ALLOWANCE.some((pattern) => pattern.test(text))) {
+    return {
+      restricted: false,
+      states: [],
+      evidence: ['Posting allows remote work anywhere in the United States'],
+    };
+  }
+
+  const matches: string[] = [];
+  for (const pattern of REMOTE_REGION_RESTRICTION) {
+    matches.push(...findMatches(text, [pattern]));
+  }
+  if (matches.length === 0) {
+    return { restricted: false, states: [], evidence: [] };
+  }
+
+  const states = extractStateNames(text);
+  if (states.length === 0) {
+    return {
+      restricted: false,
+      states: [],
+      evidence: matches,
+    };
+  }
+
+  return { restricted: true, states, evidence: matches };
+}
+
+const NON_STATE_UPPER_TOKENS = new Set(['US']);
+
+function extractStateNames(text: string): string[] {
+  const codes = new Set<string>();
+
+  for (const [name, code] of Object.entries(US_STATE_BY_NAME)) {
+    const pattern = new RegExp(`\\b${name.replace(/ /g, '\\s+')}\\b`, 'i');
+    if (pattern.test(text)) {
+      codes.add(code.toUpperCase());
+    }
+  }
+
+  const stateList =
+    /(?:\b[A-Z]{2}\b\s*,\s*){1,}\s*\b[A-Z]{2}\b/g;
+  let listMatch: RegExpExecArray | null;
+  while ((listMatch = stateList.exec(text)) !== null) {
+    const token = /\b([A-Z]{2})\b/g;
+    let tokenMatch: RegExpExecArray | null;
+    while ((tokenMatch = token.exec(listMatch[0])) !== null) {
+      const tokenValue = tokenMatch[1];
+      if (tokenValue === undefined) continue;
+      const normalized = normalizeStateCode(tokenValue);
+      if (normalized !== null && !NON_STATE_UPPER_TOKENS.has(normalized)) {
+        codes.add(normalized);
+      }
+    }
+  }
+
+  return [...codes].sort();
 }
 
 function classifyIllinoisEligibility(
