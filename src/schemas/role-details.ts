@@ -18,7 +18,7 @@ import { SCHEDULE_TYPES } from '../domain/verification.js';
 // determinism semantics change.
 // ---------------------------------------------------------------------------
 
-export const ROLE_DETAILS_VERSION = 'role-details-v1';
+export const ROLE_DETAILS_VERSION = 'role-details-v2';
 
 export const employmentTypeSchema = z.enum(EMPLOYMENT_TYPES);
 

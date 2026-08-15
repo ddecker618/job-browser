@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.17] - 2026-08-14
+
+### Stale role-details invalidation and automatic reconciliation
+
+- `ROLE_DETAILS_VERSION` → `role-details-v2`. The extraction contract changed semantics: negated remote/telework denial handling, provider remote-type contradiction by an explicit denial, active-clearance classification, and general U.S. state normalization are now part of the persisted document's determinism contract, so prior `role-details-v1` documents are no longer comparable.
+- `SCORING_RULES_VERSION` → `2026-08-14-role-details-v2-invalidation-v1`.
+- Automatic bounded startup reconciliation (`IntelligenceEngine.reconcileStaleData`): each startup re-extracts role details for up to 200 active jobs carrying a missing or stale-version document, invalidates the persisted score/recommendation of every active job whose role details remain stale, then runs the existing stale-score pipeline to recompute scores from the corrected interpretation. Offline, idempotent, restart-safe, no manual CLI; expired and `user_removed` jobs are never re-interpreted or resurrected.
+- Old persisted scores from the 1.0.15 interpretation (e.g. "remote / Verified Match" for a "Telework/Remote work not authorized" position) cannot survive: they are cleared and recomputed as `Hard No` / 0 for the default profile.
+- New upgrade regression test (`tests/role-details-upgrade.test.ts`) covering stale detection, re-extraction to v2, arrangement correction, state normalization, active-clearance recognition, score invalidation and recomputation, current-v2 row skipping, `user_removed` preservation, idempotent reruns, bounded batching, and no network dependency.
+- Final verification (2026-08-14): lint, strict typecheck, build, and the full test suite (93 files / 901 tests) pass; development, packaged, and installed smokes pass against isolated user-data, including the installed-app stale-v1 upgrade scenario (the installed 1.0.17 binary auto-corrects a seeded synthetic 1.0.15 database at startup).
+- Installer: `release/Job-Browser-Setup-1.0.17.exe`, 249,884,580 bytes, SHA-256 `8E3E578826B48993730614B9F9E06119C1EF59B2325E7A6D8B2405831E2F924C`.
+
 ## [1.0.15] - 2026-08-14
 
 ### Structured Role Details Extraction

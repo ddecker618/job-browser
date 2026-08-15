@@ -177,6 +177,23 @@ export class IntelligenceRepository {
       .run(roleDetailsJson, jobId);
   }
 
+  /**
+   * Clears a job's persisted score and its score-version marker so the job
+   * flows through the scoring pipeline again. Called whenever a job's role
+   * details are re-interpreted (e.g. a stale role-details-v1 document is
+   * re-extracted as role-details-v2): the old recommendation was derived from
+   * an interpretation whose semantics have changed and must not survive.
+   */
+  public invalidateScore(jobId: string): void {
+    this.database
+      .prepare(
+        `UPDATE jobs SET score_version = NULL, score = NULL, recommendation = NULL,
+           score_explanation = NULL, updated_at = ?
+         WHERE id = ?`,
+      )
+      .run(nowUtc(), jobId);
+  }
+
   public completeRun(summary: AnalysisSummary): void {
     this.database
       .prepare(

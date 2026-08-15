@@ -72,6 +72,7 @@ export function backfillRoleDetails(
     };
     const details = extractRoleDetails(input, config);
     intelligence.backfillRoleDetails(row.id, JSON.stringify(details));
+    intelligence.invalidateScore(row.id);
     updated += 1;
   }
 

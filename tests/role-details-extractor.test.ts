@@ -33,11 +33,11 @@ function input(overrides: Partial<RoleDetailsInput> = {}): RoleDetailsInput {
 
 describe('roleDetails extractor', () => {
   describe('document contract', () => {
-    it('is versioned as role-details-v1', () => {
+    it('is versioned as role-details-v2', () => {
       expect(extractRoleDetails(input(), CONFIG).version).toBe(
         ROLE_DETAILS_VERSION,
       );
-      expect(ROLE_DETAILS_VERSION).toBe('role-details-v1');
+      expect(ROLE_DETAILS_VERSION).toBe('role-details-v2');
     });
 
     it('records a generated timestamp', () => {

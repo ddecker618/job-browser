@@ -11,12 +11,19 @@ import {
 const userData = mkdtempSync(join(tmpdir(), 'job-browser-desktop-smoke-'));
 const installed = process.argv.includes('--installed');
 const packaged = installed || process.argv.includes('--packaged');
+const upgrade = process.argv.includes('--upgrade');
 const environment: NodeJS.ProcessEnv = {
   ...process.env,
   JOB_BROWSER_SMOKE_USER_DATA: userData,
   JOB_BROWSER_SMOKE_TEST: '1',
+  JOB_BROWSER_DB_PATH: join(userData, 'data', 'jobs.sqlite'),
+  ...(upgrade ? { JOB_BROWSER_SMOKE_UPGRADE: '1' } : {}),
 };
 delete environment['ELECTRON_RUN_AS_NODE'];
+
+if (upgrade) {
+  seedUpgradeDatabase(join(userData, 'data', 'jobs.sqlite'));
+}
 
 if (!packaged) installElectronNativeDependencies();
 
@@ -97,6 +104,21 @@ try {
     );
   }
   if (!packaged) restoreNodeNativeDependencies();
+}
+
+function seedUpgradeDatabase(databasePath: string): void {
+  execFileSync(
+    process.execPath,
+    [
+      resolve('node_modules', 'tsx', 'dist', 'cli.mjs'),
+      resolve('scripts', 'seed-upgrade-database.ts'),
+      databasePath,
+    ],
+    {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+    },
+  );
 }
 
 function terminateProcessTree(): void {

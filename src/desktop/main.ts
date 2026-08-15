@@ -30,12 +30,17 @@ import {
 } from './smokeNavigation.js';
 import type { JobDatabase } from '../db/database.js';
 import type { NormalizedJob } from '../schemas/normalized-job.js';
+import { ROLE_DETAILS_VERSION } from '../schemas/role-details.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import { SourceRepository } from '../repositories/source-repository.js';
 
 const DESKTOP_SMOKE_RESUME_ID = '00000000-0000-4000-8000-000000008303';
 const DESKTOP_SMOKE_TITLE = 'Desktop Smoke Application Engineer';
 const DESKTOP_SMOKE_JOB_TITLE = 'Desktop Smoke Retained Job';
+
+const UPGRADE_SMOKE_STALE_FINGERPRINT = 'd'.repeat(64);
+const UPGRADE_SMOKE_REMOVED_FINGERPRINT = 'e'.repeat(64);
+const UPGRADE_SMOKE_STALE_SCORE_VERSION = 'stale-1.0.15-score-version';
 
 app.setName('Job Browser');
 if (process.env['JOB_BROWSER_SMOKE_USER_DATA']) {
@@ -304,6 +309,10 @@ async function runDesktopSmoke(): Promise<void> {
     }
 
     await assertPageText(window.webContents, 'Opportunity command center');
+    if (process.env['JOB_BROWSER_SMOKE_UPGRADE'] === '1') {
+      recordSmokeStage('asserting-upgrade-reconciliation');
+      assertUpgradeReconciliation(handle.database);
+    }
     recordSmokeStage('creating-application-fixture');
     const desktopSmokeJobId = randomUUID();
     const desktopSmokeEventId = randomUUID();
@@ -556,6 +565,74 @@ function insertDesktopSmokeResume(database: JobDatabase): void {
       'text/plain',
       statSync(resumePath).size,
     );
+}
+
+interface UpgradeReconciliationStaleRow {
+  role_details_json: string;
+  remote_type: string;
+  score: number | null;
+  recommendation: string | null;
+  score_version: string | null;
+}
+
+interface UpgradeReconciliationRemovedRow {
+  active: number;
+  user_removed: number;
+  role_details_json: string;
+}
+
+function assertUpgradeReconciliation(database: JobDatabase): void {
+  const stale = database
+    .prepare<[string], UpgradeReconciliationStaleRow>(
+      `SELECT role_details_json, remote_type, score, recommendation, score_version
+         FROM jobs WHERE fingerprint = ?`,
+    )
+    .get(UPGRADE_SMOKE_STALE_FINGERPRINT);
+  if (stale === undefined) {
+    throw new Error('Upgrade smoke: seeded stale job is missing');
+  }
+  const roleDetails = JSON.parse(stale.role_details_json) as {
+    version?: unknown;
+  };
+  if (roleDetails.version !== ROLE_DETAILS_VERSION) {
+    throw new Error(
+      `Upgrade smoke: role details were not re-extracted (found version ${String(roleDetails.version)})`,
+    );
+  }
+  if (stale.remote_type !== 'onsite') {
+    throw new Error(
+      `Upgrade smoke: remote arrangement was not corrected (remote_type=${stale.remote_type})`,
+    );
+  }
+  if (
+    stale.score === 88 ||
+    stale.recommendation === 'Verified Match' ||
+    stale.score_version === UPGRADE_SMOKE_STALE_SCORE_VERSION
+  ) {
+    throw new Error('Upgrade smoke: stale score survived reconciliation');
+  }
+  if (stale.recommendation !== 'Hard No' || stale.score !== 0) {
+    throw new Error(
+      `Upgrade smoke: score was not recomputed (${String(stale.recommendation)} / ${String(stale.score)})`,
+    );
+  }
+  const removed = database
+    .prepare<[string], UpgradeReconciliationRemovedRow>(
+      `SELECT active, user_removed, role_details_json FROM jobs WHERE fingerprint = ?`,
+    )
+    .get(UPGRADE_SMOKE_REMOVED_FINGERPRINT);
+  if (removed === undefined) {
+    throw new Error('Upgrade smoke: removed fixture is missing');
+  }
+  if (removed.active !== 0 || removed.user_removed !== 1) {
+    throw new Error('Upgrade smoke: removed job was resurrected');
+  }
+  const removedDetails = JSON.parse(removed.role_details_json) as {
+    version?: unknown;
+  };
+  if (removedDetails.version !== 'role-details-v1') {
+    throw new Error('Upgrade smoke: removed job role details were touched');
+  }
 }
 
 function snapshotHealthFromSmokeResponse(value: unknown): boolean {

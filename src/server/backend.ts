@@ -213,12 +213,22 @@ export async function startBackend(
     new JobRepository(database).refreshMatchedFamilies();
     const currentProfile = loadCandidateProfile(options.candidateProfilePath);
     const currentScoring = loadScoringConfig(options.scoringConfigPath);
-    const reprocessed = new IntelligenceEngine(
+    const reconciliation = new IntelligenceEngine(
       database,
       options.logger ?? logger,
-    ).reprocessIfStale(currentProfile, currentScoring);
-    if (reprocessed !== null) {
-      logger('info', 'Stale job scores reprocessed', { ...reprocessed });
+    ).reconcileStaleData(currentProfile, currentScoring);
+    if (
+      reconciliation.roleDetailsProcessed > 0 ||
+      reconciliation.scoresInvalidated > 0 ||
+      reconciliation.analysis !== null
+    ) {
+      logger('info', 'Stale role details and scores reconciled', {
+        roleDetailsProcessed: reconciliation.roleDetailsProcessed,
+        roleDetailsUpdated: reconciliation.roleDetailsUpdated,
+        roleDetailsSkipped: reconciliation.roleDetailsSkipped,
+        scoresInvalidated: reconciliation.scoresInvalidated,
+        scoresReprocessed: reconciliation.analysis?.jobsAnalyzed ?? 0,
+      });
     }
     const coordinator = new DiscoveryCoordinator(database, providerRegistry, {
       credentialResolver:

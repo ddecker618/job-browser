@@ -2,41 +2,26 @@
 
 ## Current Phase
 
-Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15 are complete and Architect-approved. Version is `1.0.15`. Migration head is `028`.
+Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15 are complete and Architect-approved, and the 1.0.17 stale role-details invalidation / reconciliation release is complete. Version is `1.0.17`. Migration head is `028`.
 
-## Current Implementation Checkpoint (2026-08-14 — Structured Role Details Sprint v1.0.15)
+## Current Implementation Checkpoint (2026-08-14 — 1.0.17 Stale Role-Details Invalidation & Reconciliation)
 
-### Core Architecture & Extraction Rules
-- **Deterministic Regex/Rules Engine**: `src/intelligence/roleDetailsExtractor.ts` extracts canonical `RoleDetails` (`role-details-v1`) without AI/LLM/NLP.
-- **Precedence Hierarchy**: Structured Provider data > Labeled description sections > Deterministic regex/rules > Unknown.
-- **Persisted Contract**: Stored in `jobs.role_details_json` (added via migration `028_role_details.sql`). Original description prose remains untouched.
-- **Separation of Dimensions**: Employment type (`full-time`, `part-time`, `contract`, `temporary`, `internship`, `unknown`) with source (`provider` | `description` | `unknown`) and evidence is strictly separated from Work arrangement.
+### What changed in this release
+- **`ROLE_DETAILS_VERSION` → `role-details-v2`** (`src/schemas/role-details.ts`). The extraction contract's determinism semantics changed (negated remote/telework denial handling, provider contradiction by explicit denial, active-clearance classification, general U.S. state normalization), so persisted `role-details-v1` documents are stale by definition.
+- **`SCORING_RULES_VERSION` → `2026-08-14-role-details-v2-invalidation-v1`** (`src/intelligence/scoringVersion.ts`).
+- **Automatic bounded startup reconciliation**: `IntelligenceEngine.reconcileStaleData(profile, config, roleDetailsBatchSize = 200)` (`src/intelligence/intelligenceEngine.ts`) runs inside `startBackend` (`src/server/backend.ts`) at every startup. It (1) re-extracts role details for active, non-expired jobs whose stored document is missing or carries an older version, in a bounded batch; (2) invalidates the persisted score/recommendation of every active job whose role details remain stale via `IntelligenceRepository.invalidateScore`; (3) runs the existing stale-score pipeline (`reprocessIfStale` → `analyze`) to recompute from the corrected interpretation. Offline (no provider/network), idempotent, restart-safe, no manual CLI. Expired and `user_removed` jobs are excluded and never resurrected. The bounded `backfillRoleDetails` path (`src/db/backfill-role-details.ts`) also invalidates the score of each row it re-extracts.
+- **Upgrade regression test**: `tests/role-details-upgrade.test.ts` proves stale detection → re-extraction to v2 → arrangement no longer remote → state/location normalized → active clearance recognized → old score invalidated and recomputed (Hard No / 0 for the default profile) → current-v2 rows skipped → `user_removed` preserved → reruns idempotent → bounded per-startup pass → no network. Uses a generic synthetic fixture (no company/provider-specific hardcoding).
+- **Installed upgrade smoke (core acceptance)**: `scripts/desktop-smoke.ts --installed --upgrade` seeds an isolated temp user-data SQLite database (via `scripts/seed-upgrade-database.ts`, a separate process so the native module is not locked before the electron-ABI swap) with a synthetic 1.0.15 stale-v1 job, then launches the installed binary; `src/desktop/main.ts` runs `assertUpgradeReconciliation` to verify the app auto-corrected the interpretation and score at startup and left the `user_removed` job untouched. The real `%APPDATA%\Job Browser\data\jobs.sqlite` is never opened.
 
-### Provider Integration & Audit
-- **USAJOBS**: `detailText` (duties/qualifications/conditions) correctly retained into `requirements`.
-- **Greenhouse**: Removed fabricated `full-time` fallback; explicit metadata retained.
-- **SmartRecruiters**: `workplaceType` (`REMOTE`, `HYBRID`, `ONSITE`) mapped correctly.
-- **Dice**: `temporary` and `internship` employment types mapped.
+### Verified state (2026-08-14)
+- Full gate green: `npm run lint`, `npm run typecheck`, `npm run build`, `npm test` (93 files / 901 tests).
+- Smokes passed with isolated temp user-data: development smoke, development upgrade smoke, packaged smoke, packaged upgrade smoke, installed smoke, and installed upgrade smoke.
+- Installer: `release/Job-Browser-Setup-1.0.17.exe`, 249,884,580 bytes, SHA-256: `8E3E578826B48993730614B9F9E06119C1EF59B2325E7A6D8B2405831E2F924C`.
 
-### Backfill & Migration 028
-- Bounded offline backfill (`backfillRoleDetails`, batch size 200, skips current version, skips user-removed/expired/inactive jobs).
-- Migration runner idempotency, schema-parse safety, and 027→028 upgrade preservation (Job IDs, lifecycle, user_removed, Applications, ResumeSnapshots, Company identity, Sources) verified.
-
-### Scoring & Eligibility Integration
-- Strict alignment with existing hard gates: far non-remote onsite jobs fail, ambiguous work arrangements cannot bypass commute gates, confirmed remote bypasses distance, active clearance blocks when lacking, obtainable/eligible clearance remain non-blocking, professional engineering / 0854 remains blocking, user-removed jobs remain excluded.
-
-### UI & Verification
-- Job Detail panel displays the structured Role Details section with clean key-value rows and evidence support.
-- Full test suite: 92 test files, 898 tests passing (including 188 role-details extractor and integration tests).
-- Desktop smoke, packaged smoke, and installed smoke passed successfully.
-- Rebuilt installer: `release/Job-Browser-Setup-1.0.15.exe` (249,874,434 bytes, SHA-256: `505C91D3B13D826B7A74015E881FACB7ECB6D85396DE274B93B022B371BC425F`).
-
-### Regression Hardening (2026-08-14)
-- Work-arrangement classification detects clause-local remote/telework denials ("Telework/Remote work currently not authorized", "not eligible for remote work", "does not offer remote work", "unavailable"); inserted qualifiers do not defeat the rule and separate-clause denials do not taint positive remote statements.
-- Explicit remote/telework denial overrides provider remote/hybrid claims; non-denial prose ("must report to the office") does not override provider claims. `remoteDenied` flag on `WorkArrangementClassification`.
-- Clearance classification generalizes active-status qualifiers ("TS/SCI with an active CI polygraph", "must hold TS/SCI", "must maintain an active [level] clearance", "currently hold"), plus "ability to obtain" and "eligible for [level] clearance" forms without over-correcting to active.
-- U.S. state normalization (full names, postal codes, state-only locations) shared via `src/utilities/us-states.ts`.
-- 28 new deterministic regression tests (synthetic paraphrases + positive-language anti-overcorrection guards). No company/provider-specific exceptions; general failure-class fixes only.
+### Prior 1.0.15 content (still current, unchanged)
+- Deterministic regex/rules engine (`src/intelligence/roleDetailsExtractor.ts`) extracts canonical RoleDetails without AI/LLM/NLP; precedence is structured provider data > labeled description sections > deterministic regex/rules > unknown. Persisted in `jobs.role_details_json` via migration `028_role_details.sql`.
+- Provider integration fixes (USAJOBS requirements retention, Greenhouse fallback removal, SmartRecruiters `workplaceType`, Dice employment types).
+- Regression hardening: clause-local remote/telework denial detection, explicit-denial-over-provider override (`remoteDenied` flag), generalized active/obtainable/eligible clearance classification, and shared U.S. state normalization via `src/utilities/us-states.ts` (28 regression tests).
 
 ## Recommended Next Sprint
 - **Next Sprint**: Advanced Discovery Analytics & Alerting Rules.

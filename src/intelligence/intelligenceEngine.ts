@@ -1,4 +1,8 @@
 import type { JobDatabase } from '../db/database.js';
+import {
+  ROLE_DETAILS_BACKFILL_BATCH_SIZE,
+  backfillRoleDetails,
+} from '../db/backfill-role-details.js';
 import { AnalyticsService } from '../analytics/analyticsService.js';
 import { IntelligenceRepository } from '../database/intelligenceRepository.js';
 import { log, type LogWriter } from '../logging/logger.js';
@@ -6,6 +10,7 @@ import type { AnalysisSummary } from '../models/intelligence.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import type { CandidateProfile } from '../schemas/candidate-profile.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
+import { ROLE_DETAILS_VERSION } from '../schemas/role-details.js';
 import { nowUtc } from '../utilities/timestamps.js';
 import { extractRoleDetails } from './roleDetailsExtractor.js';
 import { createScoreInputHash, createScoreVersion } from './scoreIdentity.js';
@@ -117,6 +122,63 @@ export class IntelligenceEngine {
     if (staleActiveJobs === 0) return null;
     return this.analyze(profile, config);
   }
+
+  /**
+   * Bounded startup reconciliation for a semantic-version change (1.0.15 ->
+   * 1.0.16, role-details-v1 -> role-details-v2):
+   *
+   * 1. Re-extract role details for active jobs whose stored document is
+   *    missing or carries an older semantic version, in a bounded batch. This
+   *    is offline, idempotent, and restart-safe: each startup advances up to
+   *    `roleDetailsBatchSize` jobs.
+   * 2. Invalidate the persisted score/recommendation of every active job whose
+   *    stored role details remain stale, so a pre-upgrade interpretation
+   *    (e.g. "remote / Verified Match") cannot survive the re-interpretation.
+   * 3. Run the existing stale-score pipeline, which recomputes scores from the
+   *    corrected interpretation and writes the current role-details version.
+   */
+  public reconcileStaleData(
+    profile: CandidateProfile,
+    config: ScoringConfig,
+    roleDetailsBatchSize = ROLE_DETAILS_BACKFILL_BATCH_SIZE,
+  ): ReconcileStaleDataResult {
+    const backfill = backfillRoleDetails(
+      this.database,
+      config,
+      roleDetailsBatchSize,
+    );
+    const scoresInvalidated = this.invalidateScoresForStaleRoleDetails();
+    const analysis = this.reprocessIfStale(profile, config);
+    return {
+      roleDetailsProcessed: backfill.processed,
+      roleDetailsUpdated: backfill.updated,
+      roleDetailsSkipped: backfill.skippedCurrentVersion,
+      scoresInvalidated,
+      analysis,
+    };
+  }
+
+  private invalidateScoresForStaleRoleDetails(): number {
+    const result = this.database
+      .prepare(
+        `UPDATE jobs SET score_version = NULL, score = NULL, recommendation = NULL,
+           score_explanation = NULL, updated_at = ?
+         WHERE active = 1 AND status <> 'expired'
+           AND (role_details_json IS NULL
+                OR json_extract(role_details_json, '$.version') IS NULL
+                OR json_extract(role_details_json, '$.version') <> ?)`,
+      )
+      .run(nowUtc(), ROLE_DETAILS_VERSION);
+    return result.changes;
+  }
+}
+
+export interface ReconcileStaleDataResult {
+  roleDetailsProcessed: number;
+  roleDetailsUpdated: number;
+  roleDetailsSkipped: number;
+  scoresInvalidated: number;
+  analysis: AnalysisSummary | null;
 }
 
 function buildJobTextForVerification(job: {
