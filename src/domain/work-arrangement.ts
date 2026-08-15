@@ -5,15 +5,27 @@ const ONSITE_EVIDENCE: readonly RegExp[] = [
   /\bon[- ]?site\b/i,
   /\bin[- ]?person\s+(?:role|position|work)/i,
   /not\s+a\s+remote\s+(?:role|position|job|opportunity)/i,
-  /remote\s+work\s+(?:is\s+)?not\s+(?:authorized|available|permitted|offered)/i,
-  /not\s+authorized\s+to\s+work\s+remotely/i,
+  /not\s+(?:authorized|permitted|allowed)\s+to\s+work\s+remotely/i,
   /no\s+remote\s+(?:work|option|positions?)/i,
   /must\s+(?:live|reside|be\s+located)\s+within\s+(?:commuting\s+)?distance/i,
-  /must\s+report\s+to\s+(?:the\s+)?office/i,
+  /must\s+report\s+to\s+(?:the\s+)?(?:office|worksite|work\s+site|facility|onsite\s+location)/i,
+  /requires?\s+onsite\s+(?:presence|attendance|work)\b/i,
+  /onsite\s+presence\s+is\s+required\b/i,
   /work\s+from\s+our\s+office/i,
   /local\s+candidates?\s+only/i,
   /commutable\s+distance/i,
   /relocation\s+(?:assistance\s+)?is\s+not\s+available/i,
+];
+
+// Explicit statements that remote/telework availability is denied. These are
+// matched clause-locally (no `.`, `;`, or newline may separate the term from
+// its denial predicate) so an inserted qualifier such as "currently" or
+// "at this time" cannot defeat the rule, and a denial in an unrelated clause
+// cannot taint a positive remote statement elsewhere in the text.
+const REMOTE_DENIAL_EVIDENCE: readonly RegExp[] = [
+  /(?:telework(?:ing)?|remote\s+work|remote\s+positions?|remote\s+roles?|remote\s+opportunities?|telecommuting|telecommute|work\s+from\s+home|working\s+from\s+home|remote\s+option)\b[^.\n;]{0,80}?\b(?:not\s+(?:authorized|available|permitted|allowed|offered|eligible|provided|supported|possible)|unavailable|not\s+an\s+option)\b/i,
+  /\b(?:not\s+(?:eligible|authorized|permitted|allowed)\s+for|does\s+not\s+(?:offer|provide|support|allow|permit|authorize)|do\s+not\s+(?:offer|provide|support|allow|permit|authorize))\s+(?:remote\s+work|remote\s+positions?|telework(?:ing)?|telecommuting|work\s+from\s+home)\b/i,
+  /\bno\s+(?:remote\s+work|remote\s+positions?|telework(?:ing)?|telecommuting)\b/i,
 ];
 
 const HYBRID_EVIDENCE: readonly RegExp[] = [
@@ -34,6 +46,11 @@ const REMOTE_EVIDENCE: readonly RegExp[] = [
   /anywhere\s+in\s+(?:the\s+)?(?:us|united\s+states)/i,
   /nationwide\s+remote/i,
   /fully\s+distributed/i,
+  /eligible\s+for\s+(?:remote\s+work|telework|telecommuting|remote\s+positions?)/i,
+  /(?:may|can|will)\s+work\s+remotely\b/i,
+  /\btelework(?:ing)?\s+(?:is\s+)?(?:available|permitted|allowed|offered|authorized)\b/i,
+  /\btelecommuting\s+(?:is\s+)?(?:available|permitted|allowed|offered)\b/i,
+  /\btelework(?:ing)?[\s-]?eligible\b/i,
 ];
 
 const TECHNICAL_REMOTE_LANGUAGE: readonly RegExp[] = [
@@ -44,24 +61,36 @@ const TECHNICAL_REMOTE_LANGUAGE: readonly RegExp[] = [
 export interface WorkArrangementClassification {
   arrangement: RemoteType;
   evidence: string[];
+  /** True when the text explicitly denies that remote/telework is available. */
+  remoteDenied: boolean;
 }
 
 export function classifyWorkArrangement(
   text: string,
 ): WorkArrangementClassification {
   const onsite = matches(text, ONSITE_EVIDENCE);
+  const denial = matches(text, REMOTE_DENIAL_EVIDENCE);
   const hybrid = matches(text, HYBRID_EVIDENCE);
   const remote = matches(text, REMOTE_EVIDENCE);
   const technicalRemote = matches(text, TECHNICAL_REMOTE_LANGUAGE);
 
   if (onsite.length > 0) {
-    return { arrangement: 'onsite', evidence: onsite };
+    return { arrangement: 'onsite', evidence: onsite, remoteDenied: false };
+  }
+  if (denial.length > 0) {
+    return {
+      arrangement: 'onsite',
+      evidence: denial.map(
+        (indicator) => `${indicator} (remote/telework not authorized)`,
+      ),
+      remoteDenied: true,
+    };
   }
   if (hybrid.length > 0) {
-    return { arrangement: 'hybrid', evidence: hybrid };
+    return { arrangement: 'hybrid', evidence: hybrid, remoteDenied: false };
   }
   if (remote.length > 0 && technicalRemote.length === 0) {
-    return { arrangement: 'remote', evidence: remote };
+    return { arrangement: 'remote', evidence: remote, remoteDenied: false };
   }
   if (technicalRemote.length > 0) {
     return {
@@ -70,9 +99,10 @@ export function classifyWorkArrangement(
         (indicator) =>
           `${indicator} (technical terminology, not work arrangement)`,
       ),
+      remoteDenied: false,
     };
   }
-  return { arrangement: 'unknown', evidence: [] };
+  return { arrangement: 'unknown', evidence: [], remoteDenied: false };
 }
 
 function matches(text: string, patterns: readonly RegExp[]): string[] {

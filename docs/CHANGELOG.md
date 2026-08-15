@@ -12,9 +12,17 @@ All notable changes to this project will be documented in this file.
 - Migration `028_role_details.sql` adds nullable `jobs.role_details_json` column. Bounded offline backfill (`npm run role-details:backfill` or CLI) with idempotency, version-skipping, user_removed exclusion, and identity preservation.
 - Provider normalization audit and bugfixes across USAJOBS (retaining full requirements text), Greenhouse (removing fabricated full-time fallback), SmartRecruiters (`workplaceType` mapping), and Dice (`temporary`/`internship` mapping).
 - Job Detail panel structured Role Details section displaying clean key-value rows with evidence affordance (omitting unknown/null fields).
-- Complete test coverage (154 role-details extractor/integration tests, dashboard UI tests, provider tests, and full regression test suite).
-- Final verification (2026-08-14): lint, strict typecheck, build, and the full test suite (92 files / 870 tests) pass; development smoke, packaged smoke, and installed smoke pass against isolated user-data.
+- Complete test coverage (188 role-details extractor/integration tests, dashboard UI tests, provider tests, and full regression test suite).
+- Final verification (2026-08-14): lint, strict typecheck, build, and the full test suite (92 files / 898 tests) pass; development smoke, packaged smoke, and installed smoke pass against isolated user-data.
 - Installer: `release/Job-Browser-Setup-1.0.15.exe`, 249,874,434 bytes, SHA-256 `505C91D3B13D826B7A74015E881FACB7ECB6D85396DE274B93B022B371BC425F`.
+
+### Regression hardening: remote/telework denial, clearance wording, state normalization (2026-08-14)
+
+- Work-arrangement classification now recognizes clause-local denials of remote / telework / telecommute / work-from-home availability ("Telework/Remote work currently not authorized", "not eligible for remote work", "does not offer remote work", "unavailable"), so an inserted qualifier such as "currently" cannot defeat the rule and a denial in an unrelated clause cannot taint a positive remote statement. Positive telework / telecommute / remotely language classifies remote; hybrid phrasing stays hybrid.
+- An explicit remote/telework denial in the posting text overrides a provider remote/hybrid claim (provider remote-type fields are frequently template defaults); non-denial prose such as "must report to the office" still does not override provider claims.
+- Clearance classification now recognizes active-status qualifiers that follow the level or modify a polygraph ("TS/SCI with an active CI polygraph"), standalone-level requirements ("must hold TS/SCI"), "must maintain an active [level] clearance", "ability to obtain", and "eligible for [level] clearance" — without turning obtainable / eligible / preferred wording into an active hard block.
+- General U.S. state normalization (full state names, postal abbreviations, state-only locations) shared by the extractor and location eligibility via `src/utilities/us-states.ts`.
+- 28 new deterministic regression tests (synthetic paraphrases plus positive-language anti-overcorrection guards). No company/provider/job-specific exceptions; every fix is a general failure-class rule.
 
 The following sections summarize the 9.6 lifecycle / discovery stabilization
 work that is included in this 1.0.15 release.

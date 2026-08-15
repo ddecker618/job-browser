@@ -342,6 +342,65 @@ describe('roleDetails extractor', () => {
         'Provider location: Springfield, IL',
       );
     });
+
+    it('normalizes a state-only location to its postal code', () => {
+      const details = extractRoleDetails(
+        input({ city: null, state: null, location: 'Maryland' }),
+        CONFIG,
+      );
+      expect(details.locations.primaryCity).toBeNull();
+      expect(details.locations.primaryState).toBe('MD');
+    });
+
+    it('normalizes a state-only location case-insensitively', () => {
+      const details = extractRoleDetails(
+        input({ city: null, state: null, location: 'hawaii' }),
+        CONFIG,
+      );
+      expect(details.locations.primaryCity).toBeNull();
+      expect(details.locations.primaryState).toBe('HI');
+    });
+
+    it('parses a full state name into a postal code', () => {
+      const details = extractRoleDetails(
+        input({ city: null, state: null, location: 'Columbia, Maryland' }),
+        CONFIG,
+      );
+      expect(details.locations.primaryCity).toBe('Columbia');
+      expect(details.locations.primaryState).toBe('MD');
+    });
+
+    it('parses postal-code locations with multi-word cities', () => {
+      const details = extractRoleDetails(
+        input({ city: null, state: null, location: 'Annapolis Junction, MD' }),
+        CONFIG,
+      );
+      expect(details.locations.primaryCity).toBe('Annapolis Junction');
+      expect(details.locations.primaryState).toBe('MD');
+    });
+
+    it('normalizes states unrelated to the reported regressions', () => {
+      const oregon = extractRoleDetails(
+        input({ city: null, state: null, location: 'Oregon' }),
+        CONFIG,
+      );
+      expect(oregon.locations.primaryCity).toBeNull();
+      expect(oregon.locations.primaryState).toBe('OR');
+
+      const bend = extractRoleDetails(
+        input({ city: null, state: null, location: 'Bend, Oregon' }),
+        CONFIG,
+      );
+      expect(bend.locations.primaryCity).toBe('Bend');
+      expect(bend.locations.primaryState).toBe('OR');
+
+      const kapolei = extractRoleDetails(
+        input({ city: null, state: null, location: 'Kapolei, Hawaii' }),
+        CONFIG,
+      );
+      expect(kapolei.locations.primaryCity).toBe('Kapolei');
+      expect(kapolei.locations.primaryState).toBe('HI');
+    });
   });
 
   describe('clearance', () => {
@@ -849,6 +908,112 @@ describe('roleDetails extractor', () => {
     });
   });
 
+  describe('regression: remote-work denial paraphrases', () => {
+    it('classifies "Telework/Remote work currently not authorized" as onsite', () => {
+      const details = extractRoleDetails(
+        input({
+          description: 'Telework/Remote work currently not authorized for this position.',
+        }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+      expect(details.workplace.source).toBe('description');
+    });
+
+    it('classifies a qualifier-inserted denial as onsite', () => {
+      const details = extractRoleDetails(
+        input({
+          description: 'Remote work is currently not authorized for this role.',
+        }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+    });
+
+    it('classifies "not eligible for remote work" as onsite', () => {
+      const details = extractRoleDetails(
+        input({ description: 'This position is not eligible for remote work.' }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+    });
+
+    it('classifies telecommuting denials as onsite', () => {
+      const details = extractRoleDetails(
+        input({ description: 'Telecommuting is not permitted for this role.' }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+    });
+
+    it('classifies work-from-home denials as onsite', () => {
+      const details = extractRoleDetails(
+        input({ description: 'Work from home is not available at this time.' }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+    });
+
+    it('classifies "does not offer remote work" as onsite', () => {
+      const details = extractRoleDetails(
+        input({ description: 'This position does not offer remote work.' }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+    });
+
+    it('classifies "remote work is unavailable" as onsite', () => {
+      const details = extractRoleDetails(
+        input({ description: 'Remote work is unavailable for this role.' }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+    });
+
+    it('classifies a worksite-reporting requirement as onsite', () => {
+      const details = extractRoleDetails(
+        input({ description: 'Employees must report to the worksite each day.' }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+    });
+
+    it('does not overcorrect explicit remote authorization language', () => {
+      const cases = [
+        'Remote work is authorized for this role.',
+        'This position is eligible for telework.',
+        'May work remotely.',
+        'Telework is available for qualified candidates.',
+      ];
+      for (const description of cases) {
+        const details = extractRoleDetails(input({ description }), CONFIG);
+        expect(details.workplace.arrangement, description).toBe('remote');
+      }
+    });
+
+    it('keeps hybrid language hybrid under the denial rules', () => {
+      const cases = [
+        'Hybrid schedule available.',
+        'Remote work available three days per week.',
+      ];
+      for (const description of cases) {
+        const details = extractRoleDetails(input({ description }), CONFIG);
+        expect(details.workplace.arrangement, description).toBe('hybrid');
+      }
+    });
+
+    it('does not treat a denial in a separate clause as a remote denial', () => {
+      const details = extractRoleDetails(
+        input({
+          description:
+            'Overtime is not authorized. Remote work is available for this role.',
+        }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('remote');
+    });
+  });
+
   describe('provider/description conflicts', () => {
     it('prefers an explicit provider remote type over contradictory prose', () => {
       const details = extractRoleDetails(
@@ -872,6 +1037,56 @@ describe('roleDetails extractor', () => {
         CONFIG,
       );
       expect(details.workplace.arrangement).toBe('onsite');
+    });
+  });
+
+  describe('regression: provider remote claim vs explicit denial', () => {
+    it('overrides a provider remote claim when the description denies remote work', () => {
+      const details = extractRoleDetails(
+        input({
+          remoteType: 'remote',
+          description: 'Remote work is not authorized for this position.',
+        }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+      expect(details.workplace.source).toBe('description');
+    });
+
+    it('overrides a provider hybrid claim when the description denies telework', () => {
+      const details = extractRoleDetails(
+        input({
+          remoteType: 'hybrid',
+          teleworkEligible: true,
+          description: 'Telework is not available for this role.',
+        }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+      expect(details.workplace.source).toBe('description');
+    });
+
+    it('overrides a provider remote claim on not-eligible language', () => {
+      const details = extractRoleDetails(
+        input({
+          remoteType: 'remote',
+          description: 'This position is not eligible for remote work.',
+        }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('onsite');
+    });
+
+    it('does not override provider remote claims with non-denial prose', () => {
+      const details = extractRoleDetails(
+        input({
+          remoteType: 'remote',
+          description: 'Candidates must report to our downtown office.',
+        }),
+        CONFIG,
+      );
+      expect(details.workplace.arrangement).toBe('remote');
+      expect(details.workplace.source).toBe('provider');
     });
   });
 
@@ -913,6 +1128,84 @@ describe('roleDetails extractor', () => {
         CONFIG,
       );
       expect(details.clearance.mode).toBe('obtainable');
+    });
+  });
+
+  describe('regression: active-clearance polygraph paraphrases', () => {
+    it('classifies "TS/SCI with an active CI Polygraph" as active', () => {
+      const details = extractRoleDetails(
+        input({ description: 'TS/SCI with an active CI Polygraph required.' }),
+        CONFIG,
+      );
+      expect(details.clearance.mode).toBe('active');
+      expect(details.clearance.level).toMatch(/ts\/sci/i);
+    });
+
+    it('classifies a must-hold level without the word clearance as active', () => {
+      const details = extractRoleDetails(
+        input({ description: 'Must hold TS/SCI with an active CI polygraph.' }),
+        CONFIG,
+      );
+      expect(details.clearance.mode).toBe('active');
+      expect(details.clearance.level).toMatch(/ts\/sci/i);
+    });
+
+    it('classifies a current level with an active polygraph as active', () => {
+      const details = extractRoleDetails(
+        input({
+          description: 'Current TS/SCI with an active polygraph is required.',
+        }),
+        CONFIG,
+      );
+      expect(details.clearance.mode).toBe('active');
+    });
+
+    it('classifies must-maintain active language as active', () => {
+      const details = extractRoleDetails(
+        input({
+          description: 'Must maintain an active Top Secret clearance.',
+        }),
+        CONFIG,
+      );
+      expect(details.clearance.mode).toBe('active');
+      expect(details.clearance.level).toMatch(/top\s+secret/i);
+    });
+
+    it('classifies currently-hold level language as active', () => {
+      const details = extractRoleDetails(
+        input({ description: 'Candidates must currently hold TS/SCI.' }),
+        CONFIG,
+      );
+      expect(details.clearance.mode).toBe('active');
+    });
+
+    it('does not overcorrect "ability to obtain" into active', () => {
+      const details = extractRoleDetails(
+        input({
+          description: 'Ability to obtain a TS/SCI clearance is preferred.',
+        }),
+        CONFIG,
+      );
+      expect(details.clearance.mode).toBe('obtainable');
+    });
+
+    it('does not overcorrect eligible-for-level language into active', () => {
+      const details = extractRoleDetails(
+        input({
+          description:
+            'Candidates eligible for a TS/SCI clearance are encouraged to apply.',
+        }),
+        CONFIG,
+      );
+      expect(details.clearance.mode).toBe('eligible');
+    });
+
+    it('does not make softened level-only language active', () => {
+      const details = extractRoleDetails(
+        input({ description: 'TS/SCI clearance preferred.' }),
+        CONFIG,
+      );
+      expect(details.clearance.mode).not.toBe('active');
     });
   });
 

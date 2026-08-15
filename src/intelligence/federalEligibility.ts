@@ -181,21 +181,30 @@ export interface ClearanceClassification {
 
 const ACTIVE_CLEARANCE_PATTERNS: readonly RegExp[] = [
   /(?:active|currently|current)\s+(?:top\s+secret|ts\/sci|secret)\s+clearance/i,
+  // Active-status qualifier may follow the level, and may modify a polygraph
+  // ("TS/SCI with an active CI polygraph") rather than the word "clearance".
+  /(?:top\s+secret|ts\/sci|secret)\b[^.\n]{0,60}?\b(?:active|current)\s+(?:clearance|polygraph|ci\s+polygraph|eligibility)\b/i,
+  // "active/current TS/SCI" without requiring the literal word "clearance".
+  /(?:active|currently|current)\s+(?:top\s+secret|ts\/sci|secret)\b/i,
   /active\s+(?:security\s+)?clearance\s+(?:is\s+)?required/i,
-  /must\s+(?:have|hold|possess)\s+(?:an?\s+)?active\s+(?:security\s+)?clearance/i,
-  /currently\s+(?:hold|possess|maintain)\s+(?:an?\s+)?(?:active\s+)?(?:security\s+)?clearance/i,
+  /must\s+(?:currently\s+)?(?:have|hold|possess|maintain)\s+(?:an?\s+)?(?:active\s+|currently\s+active\s+)?(?:(?:top\s+secret|ts\/sci|secret|confidential|security)\s+)?clearance/i,
+  // "must hold TS/SCI" where the level stands alone without the word
+  // "clearance" (e.g. "must hold TS/SCI with an active CI polygraph").
+  /must\s+(?:currently\s+)?(?:have|hold|possess|maintain)\s+(?:an?\s+)?(?:active\s+)?(?:top\s+secret|ts\/sci|secret)\b/i,
+  /currently\s+(?:hold|possess|maintain)\s+(?:an?\s+)?(?:active\s+)?(?:top\s+secret|ts\/sci|secret)\b/i,
   /must\s+currently\s+possess/i,
 ];
 
 const OBTAINABLE_CLEARANCE_PATTERNS: readonly RegExp[] = [
-  /(?:able|willing)\s+to\s+(?:obtain|sponsor|process|acquire)/i,
+  /(?:able|willing|ability|opportunity)\s+to\s+(?:obtain|sponsor|process|acquire)/i,
   /sponsorship\s+(?:is\s+)?(?:available|provided|offered)/i,
   /clearance\s+(?:sponsorship|processing)\s+(?:is\s+)?(?:available|provided)/i,
   /may\s+be\s+eligible\s+to\s+obtain/i,
 ];
 
 const ELIGIBLE_CLEARANCE_PATTERNS: readonly RegExp[] = [
-  /eligible\s+for\s+(?:an?\s+)?(?:security\s+)?clearance/i,
+  /eligible\s+for\s+(?:an?\s+)?(?:(?:top\s+secret|ts\/sci|secret|confidential|security|active)\s+)?clearance/i,
+  /eligible\s+for\s+(?:an?\s+)?(?:top\s+secret|ts\/sci|secret)\b/i,
   /clearance\s+eligibility/i,
 ];
 

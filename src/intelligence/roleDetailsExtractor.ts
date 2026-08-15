@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { EmploymentType, RemoteType } from '../domain/job.js';
 import { normalizeText } from '../utilities/normalization.js';
 import { nowUtc } from '../utilities/timestamps.js';
+import { parseLocationCityState } from '../utilities/us-states.js';
 import type { ScoringConfig } from '../schemas/scoring-config.js';
 import {
   ROLE_DETAILS_VERSION,
@@ -324,6 +325,20 @@ function classifyWorkplace(
   text: string,
 ): RoleDetails['workplace'] {
   const textResult = classifyWorkArrangement(text);
+
+  // An explicit denial that remote/telework is available in the posting text
+  // overrides a provider remote/hybrid claim: provider remote-type fields are
+  // frequently template defaults, while a verbatim denial states the actual
+  // policy. Non-denial prose (e.g. "must report to the office") does not
+  // override provider claims.
+  if (textResult.remoteDenied) {
+    return {
+      arrangement: 'onsite',
+      source: 'description',
+      evidence: textResult.evidence,
+    };
+  }
+
   const explicitRemoteType =
     input.remoteType === 'remote' || input.remoteType === 'hybrid';
 
@@ -412,17 +427,6 @@ function classifyLocations(
     multiple,
     evidence,
   };
-}
-
-function parseLocationCityState(
-  location: string,
-): { city: string | null; state: string | null } {
-  if (/remote/i.test(location)) return { city: null, state: null };
-  const match = /^\s*([^,]+?)\s*,\s*([A-Za-z]{2})\s*$/.exec(location);
-  if (match?.[1] && match[2]) {
-    return { city: match[1].trim(), state: match[2].trim().toUpperCase() };
-  }
-  return { city: null, state: null };
 }
 
 function classifyEducation(
