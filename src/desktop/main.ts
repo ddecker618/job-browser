@@ -593,15 +593,51 @@ function assertUpgradeReconciliation(database: JobDatabase): void {
   }
   const roleDetails = JSON.parse(stale.role_details_json) as {
     version?: unknown;
+    workplace?: { arrangement?: unknown };
+    locations?: {
+      primaryCity?: unknown;
+      primaryState?: unknown;
+    };
+    clearance?: { mode?: unknown; level?: unknown };
   };
   if (roleDetails.version !== ROLE_DETAILS_VERSION) {
     throw new Error(
       `Upgrade smoke: role details were not re-extracted (found version ${String(roleDetails.version)})`,
     );
   }
+  const arrangement = roleDetails.workplace?.arrangement;
+  if (arrangement !== 'onsite') {
+    throw new Error(
+      `Upgrade smoke: work arrangement not corrected (${String(arrangement)})`,
+    );
+  }
   if (stale.remote_type !== 'onsite') {
     throw new Error(
       `Upgrade smoke: remote arrangement was not corrected (remote_type=${stale.remote_type})`,
+    );
+  }
+  const primaryCity = roleDetails.locations?.primaryCity;
+  const primaryState = roleDetails.locations?.primaryState;
+  if (primaryCity !== 'Annapolis Junction') {
+    throw new Error(
+      `Upgrade smoke: city was not normalized (${String(primaryCity)})`,
+    );
+  }
+  if (primaryState !== 'MD') {
+    throw new Error(
+      `Upgrade smoke: state was not normalized (${String(primaryState)})`,
+    );
+  }
+  const clearanceMode = roleDetails.clearance?.mode;
+  const clearanceLevel = roleDetails.clearance?.level;
+  if (clearanceMode !== 'active') {
+    throw new Error(
+      `Upgrade smoke: clearance was not classified as active (${String(clearanceMode)})`,
+    );
+  }
+  if (typeof clearanceLevel !== 'string' || !/ts\/sci/i.test(clearanceLevel)) {
+    throw new Error(
+      `Upgrade smoke: clearance level was not recognized (${String(clearanceLevel)})`,
     );
   }
   if (
