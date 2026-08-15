@@ -71,6 +71,7 @@ describe('migration runner', () => {
       '026_explicit_job_lifecycle.sql',
       '027_manual_job_removal.sql',
       '028_role_details.sql',
+      '029_discovery_alerts.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -220,6 +221,7 @@ describe('migration runner', () => {
       '026_explicit_job_lifecycle.sql',
       '027_manual_job_removal.sql',
       '028_role_details.sql',
+      '029_discovery_alerts.sql',
     ]);
     expect(
       database
@@ -362,7 +364,7 @@ describe('migration runner', () => {
         'normalization-v1', 'parsed', '{}', '2026-01-01T00:00:00.000Z');
     `);
 
-    expect(runMigrations(database).applied).toEqual(['028_role_details.sql']);
+    expect(runMigrations(database).applied).toEqual(['028_role_details.sql', '029_discovery_alerts.sql']);
 
     const column = database
       .prepare<[], NameRow>(
@@ -615,6 +617,7 @@ describe('migration runner', () => {
       '026_explicit_job_lifecycle.sql',
       '027_manual_job_removal.sql',
       '028_role_details.sql',
+      '029_discovery_alerts.sql',
     ]);
 
     const remaining = database

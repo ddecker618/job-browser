@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.19] - 2026-08-15
+
+### Advanced discovery analytics & alerting rules
+
+- New database migration `029_discovery_alerts.sql` sets up the `discovery_alerts` table with constraints and indexes ensuring stable identity (only one active/acknowledged alert per rule and entity).
+- New `src/discovery/discoveryAnalyticsService.ts` queries metrics and formats the global summary, windowed run stats, job yields (excluding user-removed jobs), source performance stats, and provider health rollups.
+- New `src/discovery/discoveryAlertService.ts` evaluates alerting rules for 6 conditions: `source-failure-streak` (Warning at 2 consecutive failures, Critical at >= 3, suppressed if provider-level degradation is active), `source-overdue` (Warning if scheduled next run is overdue by >= 1 hour, suppressed if scheduler is globally disabled, or site is retired/backed off), `career-site-broken` (Warning/Critical depending on ATS check results, suppressed if site is retired), `zero-yield-streak` (Warning if >= 3 consecutive successful runs return 0 jobs on a source with historical yield), `discovery-stale` (Warning if time since last successful run/discovery exceeds 3x expected cadence), and `provider-degraded` (Warning if >= 3 enabled sources for a provider fail in the last 24h, and overall provider failure rate is >= 50%).
+- Integrated alert evaluation hooks during backend startup reconciliation, immediately after completed coordinator discovery runs, and at the end of the scheduler loop.
+- Registered API endpoints in `src/server/app.ts` for analytics query windows, provider/sources details, active/resolved alerts list, alert acknowledgement, and manual re-evaluation.
+- Rewrote the top of `src/client/pages/EmployersPage.tsx` to render the Operations Console, displaying summary cards, active alerts (with Acknowledge/evaluate buttons), trend analytics, provider health rollups, and a sources performance table.
+- Added a compact summary widget in `src/client/pages/DashboardPage.tsx` linking to the console.
+- Comprehensive test coverage in `tests/discovery-alerts.test.ts` verifying rules, lifecycle state transitions, suppression, and analytics calculations.
+- Final verification (2026-08-15): lint (`npm run lint`), strict typecheck (`npm run typecheck`), build (`npm run build`), and the full test suite (95 files / 956 tests) pass; packaged desktop smoke tests pass against isolated user-data.
+- Installer: `release/Job-Browser-Setup-1.0.19.exe`, 249,909,327 bytes, SHA-256 `0FB31AFF80AF84EB80A1064D7239FDC023F489A4F10A0D2746AC5F604996BD22`.
+
 ## [1.0.18] - 2026-08-15
 
 ### Geographic eligibility: deterministic worksite distance and remote region restrictions

@@ -50,6 +50,32 @@ export function EmployersPage() {
       query.state.data?.discovery?.running === true ? 1500 : 30_000,
   });
 
+  const [analyticsWindow, setAnalyticsWindow] = useState<'24h' | '7d' | '30d'>('24h');
+
+  const alerts = useQuery({
+    queryKey: ['discovery-alerts'],
+    queryFn: () => api.discoveryAlerts(),
+    refetchInterval: 15000,
+  });
+
+  const sourceAnalytics = useQuery({
+    queryKey: ['source-analytics'],
+    queryFn: api.sourceAnalytics,
+    refetchInterval: 15000,
+  });
+
+  const providerAnalytics = useQuery({
+    queryKey: ['provider-analytics'],
+    queryFn: api.providerAnalytics,
+    refetchInterval: 15000,
+  });
+
+  const discoveryAnalytics = useQuery({
+    queryKey: ['discovery-analytics', analyticsWindow],
+    queryFn: () => api.discoveryAnalytics(analyticsWindow),
+    refetchInterval: 15000,
+  });
+
   const refreshDiscoveryState = async () => {
     await Promise.all([
       client.invalidateQueries({ queryKey: ['employers'] }),
@@ -57,9 +83,20 @@ export function EmployersPage() {
         queryKey: ['employer-discovery-intelligence'],
       }),
       client.invalidateQueries({ queryKey: ['source-control-center'] }),
+      client.invalidateQueries({ queryKey: ['discovery-alerts'] }),
+      client.invalidateQueries({ queryKey: ['source-analytics'] }),
+      client.invalidateQueries({ queryKey: ['provider-analytics'] }),
+      client.invalidateQueries({ queryKey: ['discovery-analytics'] }),
       invalidateScoreQueries(client),
     ]);
   };
+
+  const acknowledgeAlertMutation = useMutation({
+    mutationFn: (id: string) => api.acknowledgeDiscoveryAlert(id),
+    onSettled: async () => {
+      await client.invalidateQueries({ queryKey: ['discovery-alerts'] });
+    },
+  });
 
   const verifyMutation = useMutation({
     mutationFn: (id: string) => api.verifyCareerSite(id),
@@ -257,6 +294,23 @@ export function EmployersPage() {
         title="Discovery Engine"
         description="Manage Employer CareerSites, ATS detection, Source mapping, discovery execution, health, and optional scheduling through the existing provider pipeline."
       />
+
+      {sourceControl.isError ? (
+        <p className="source-error" role="alert">
+          Source control state is unavailable.
+        </p>
+      ) : null}
+      {runError === null ? null : (
+        <p className="source-error" role="alert">
+          {runError.message}
+        </p>
+      )}
+      {sourceControl.data?.discovery?.lastError ? (
+        <p className="source-error" role="alert">
+          {sourceControl.data.discovery.lastError}
+        </p>
+      ) : null}
+
       <section
         className="discovery-intelligence"
         aria-labelledby="discovery-control-center-title"
@@ -274,37 +328,84 @@ export function EmployersPage() {
             {globalRunPending ? 'Running' : 'Idle'}
           </span>
         </div>
-        <div className="discovery-intelligence-metrics">
-          <Metric
-            label="Employer Discovery"
-            value={
-              sourceControl.data?.employerDiscoveryEnabled === true
-                ? 'Enabled'
-                : 'Disabled'
-            }
-          />
-          <Metric
-            label="Source scheduling"
-            value={
-              sourceControl.data?.schedulerEnabled === true
-                ? 'Enabled'
-                : 'Disabled'
-            }
-          />
-          <Metric
-            label="CareerSites eligible now"
-            value={intelligence.data?.totals.eligibleSites ?? 0}
-          />
-          <Metric
-            label="Due within 24h"
-            value={intelligence.data?.totals.dueSoon ?? 0}
-          />
-          <Metric label="Total CareerSites" value={totalCareerSites} />
-          <Metric
-            label="Sources enabled"
-            value={sourceControl.data?.summary.enabledSources ?? 0}
-          />
+
+        <div className="discovery-console">
+        {/* Summary KPI Cards */}
+        <div className="discovery-summary-cards">
+          <div className="discovery-summary-card">
+            <span>Active Alerts</span>
+            <strong>{alerts.data?.filter(a => a.state === 'active').length ?? 0}</strong>
+          </div>
+          <div className="discovery-summary-card">
+            <span>Employer Discovery</span>
+            <strong>{sourceControl.data?.employerDiscoveryEnabled === true ? 'Enabled' : 'Disabled'}</strong>
+          </div>
+          <div className="discovery-summary-card">
+            <span>Source scheduling</span>
+            <strong>{sourceControl.data?.schedulerEnabled === true ? 'Enabled' : 'Disabled'}</strong>
+          </div>
+          <div className="discovery-summary-card">
+            <span>Sources enabled</span>
+            <strong>{sourceControl.data?.summary.enabledSources ?? 0}</strong>
+          </div>
+          <div className="discovery-summary-card">
+            <span>CareerSites eligible now</span>
+            <strong>{intelligence.data?.totals.eligibleSites ?? 0}</strong>
+          </div>
+          <div className="discovery-summary-card">
+            <span>Total CareerSites</span>
+            <strong>{totalCareerSites}</strong>
+          </div>
         </div>
+
+        {/* Active Alerts Panel */}
+        <div className="alerts-panel">
+          <h3 className="console-section-title">🚨 Active Operational Alerts</h3>
+          {alerts.isPending ? (
+            <p>Loading alerts...</p>
+          ) : alerts.data === undefined || alerts.data.length === 0 ? (
+            <div style={{ padding: '1rem', background: 'rgba(76, 175, 80, 0.1)', color: 'var(--green)', borderRadius: '8px', border: '1px solid rgba(76, 175, 80, 0.3)', fontSize: '0.85rem' }}>
+              ✓ All discovery systems operating normally. No active alerts.
+            </div>
+          ) : (
+            <div className="alerts-list">
+              {alerts.data.map((alert) => (
+                <div key={alert.id} className="alert-item">
+                  <span className={`alert-severity-badge ${alert.severity.toLowerCase()}`}>
+                    {alert.severity}
+                  </span>
+                  <div>
+                    <strong style={{ display: 'block', fontSize: '0.85rem' }}>{alert.ruleId}</strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>
+                      {alert.entityType}: {alert.entityId}
+                    </span>
+                  </div>
+                  <div className="alert-item-message">{alert.message}</div>
+                  <div className="alert-item-time">
+                    <div>Detected: {new Date(alert.firstDetectedAt).toLocaleTimeString()}</div>
+                    <div>Observed: {new Date(alert.lastDetectedAt).toLocaleTimeString()}</div>
+                  </div>
+                  <div>
+                    {alert.state === 'active' ? (
+                      <button
+                        className="button small"
+                        type="button"
+                        onClick={() => acknowledgeAlertMutation.mutate(alert.id)}
+                        disabled={acknowledgeAlertMutation.isPending}
+                      >
+                        Acknowledge
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--muted)', fontStyle: 'italic' }}>Acknowledged</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Discovery Action Toolbar */}
         <div className="source-toolbar">
           <button
             className="button primary"
@@ -312,9 +413,7 @@ export function EmployersPage() {
             onClick={() => runDiscoveryMutation.mutate()}
             disabled={globalRunPending}
           >
-            {runDiscoveryMutation.isPending
-              ? 'Running Discovery...'
-              : 'Run Discovery Now'}
+            {runDiscoveryMutation.isPending ? 'Running Discovery...' : 'Run Discovery Now'}
           </button>
           <button
             className="button"
@@ -322,9 +421,7 @@ export function EmployersPage() {
             onClick={() => runEnabledSourcesMutation.mutate()}
             disabled={globalRunPending}
           >
-            {runEnabledSourcesMutation.isPending
-              ? 'Running Enabled Sources...'
-              : 'Run Enabled Sources'}
+            {runEnabledSourcesMutation.isPending ? 'Running Enabled Sources...' : 'Run Enabled Sources'}
           </button>
           <button
             className="button"
@@ -332,9 +429,15 @@ export function EmployersPage() {
             onClick={() => healthCheckMutation.mutate()}
             disabled={globalRunPending}
           >
-            {healthCheckMutation.isPending
-              ? 'Checking CareerSite Health...'
-              : 'Check CareerSite Health'}
+            {healthCheckMutation.isPending ? 'Checking CareerSite Health...' : 'Check CareerSite Health'}
+          </button>
+          <button
+            className="button"
+            type="button"
+            onClick={() => { void api.evaluateDiscoveryAlerts().then(() => refreshDiscoveryState()); }}
+            disabled={globalRunPending}
+          >
+            Re-evaluate Alerts
           </button>
           <span role="status">
             {coordinatorRunning
@@ -342,27 +445,157 @@ export function EmployersPage() {
               : `${String(sourceControl.data?.summary.enabledSources ?? 0)} enabled Sources`}
           </span>
         </div>
-        {sourceControl.isError ? (
-          <p className="source-error" role="alert">
-            Source control state is unavailable.
-          </p>
-        ) : null}
-        {runError === null ? null : (
-          <p className="source-error" role="alert">
-            {runError.message}
-          </p>
-        )}
-        {sourceControl.data?.discovery?.lastError ? (
-          <p className="source-error" role="alert">
-            {sourceControl.data.discovery.lastError}
-          </p>
-        ) : null}
+
         {lastRunSummary !== null ? (
           <p className="source-summary" role="status" aria-live="polite">
             Last run: {lastRunSummary}
           </p>
         ) : null}
+
+        {/* Double Column Panel: Analytics Trend + Provider Health Rollup */}
+        <div className="chart-grid">
+          {/* Trend & Metrics Window Panel */}
+          <div className="alerts-panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 className="console-section-title" style={{ margin: 0 }}>📊 Performance Trend</h3>
+              <select
+                value={analyticsWindow}
+                onChange={(e) => setAnalyticsWindow(e.target.value as '24h' | '7d' | '30d')}
+                style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', color: 'inherit', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}
+              >
+                <option value="24h">Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+              </select>
+            </div>
+            {discoveryAnalytics.isPending ? (
+              <p>Loading analytics...</p>
+            ) : discoveryAnalytics.data === undefined ? (
+              <p>No analytics data available.</p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--muted)', textTransform: 'uppercase' }}>Run Activity</h4>
+                  <div className="trend-item"><span>Total Runs</span><strong>{discoveryAnalytics.data.activity.totalRuns}</strong></div>
+                  <div className="trend-item"><span>Success Rate</span><strong>{Math.round(discoveryAnalytics.data.activity.successRate * 100)}%</strong></div>
+                  <div className="trend-item"><span>Failed Runs</span><strong>{discoveryAnalytics.data.activity.failedRuns}</strong></div>
+                  <div className="trend-item"><span>Avg Duration</span><strong>{discoveryAnalytics.data.activity.averageDurationMs ? `${String(Math.round(discoveryAnalytics.data.activity.averageDurationMs / 1000))}s` : 'N/A'}</strong></div>
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--muted)', textTransform: 'uppercase' }}>Job Yield</h4>
+                  <div className="trend-item"><span>Discovered</span><strong>{discoveryAnalytics.data.yield.jobsDiscovered}</strong></div>
+                  <div className="trend-item"><span>New Canonical</span><strong>{discoveryAnalytics.data.yield.newCanonicalJobs}</strong></div>
+                  <div className="trend-item"><span>Rediscovered</span><strong>{discoveryAnalytics.data.yield.rediscoveredJobs}</strong></div>
+                  <div className="trend-item"><span>Zero-Yield Runs</span><strong>{discoveryAnalytics.data.yield.zeroYieldRunCount}</strong></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Provider Rollup Panel */}
+          <div className="alerts-panel">
+            <h3 className="console-section-title">🔌 Provider Health Rollup</h3>
+            {providerAnalytics.isPending ? (
+              <p>Loading providers...</p>
+            ) : providerAnalytics.data === undefined || providerAnalytics.data.length === 0 ? (
+              <p>No provider data registered.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left', color: 'var(--muted)' }}>
+                    <th style={{ padding: '0.4rem 0' }}>Provider</th>
+                    <th>Sources</th>
+                    <th>Success Rate</th>
+                    <th>Avg Yield</th>
+                    <th>Failure Trend</th>
+                    <th>Zero Yield</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {providerAnalytics.data.map((provider) => (
+                    <tr key={provider.providerId} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '0.5rem 0', fontWeight: 'bold' }}>{provider.providerName}</td>
+                      <td>{provider.sourcesCount}</td>
+                      <td>{Math.round(provider.successRate * 100)}%</td>
+                      <td>{provider.averageYield} jobs</td>
+                      <td>
+                        <span className={`health-pill ${provider.recentFailureTrend === 'degrading' ? 'broken' : 'healthy'}`}>
+                          {provider.recentFailureTrend}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`health-pill ${provider.recentZeroYieldTrend === 'high-zero-yield' ? 'warning' : 'healthy'}`}>
+                          {provider.recentZeroYieldTrend === 'high-zero-yield' ? 'high zero' : 'stable'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Sources Performance Matrix */}
+        <div className="alerts-panel">
+          <h3 className="console-section-title">🗂️ Sources Health & Performance Matrix</h3>
+          {sourceAnalytics.isPending ? (
+            <p>Loading sources analytics...</p>
+          ) : sourceAnalytics.data === undefined || sourceAnalytics.data.length === 0 ? (
+            <p>No sources analytics available.</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left', color: 'var(--muted)' }}>
+                    <th style={{ padding: '0.5rem' }}>Source</th>
+                    <th>Provider</th>
+                    <th>Status</th>
+                    <th>Last Run</th>
+                    <th>Success Rate</th>
+                    <th>Failure Streak</th>
+                    <th>Zero Yield Streak</th>
+                    <th>Stale Hours</th>
+                    <th>Next Run</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourceAnalytics.data.map((src) => {
+                    const isStale = src.staleDurationHours !== null && src.staleDurationHours > 72; // e.g. 72h
+                    return (
+                      <tr key={src.sourceId} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '0.6rem 0.5rem', fontWeight: 'bold' }}>{src.displayName}</td>
+                        <td>{src.provider}</td>
+                        <td>
+                          <span className={`health-pill ${src.enabled ? 'healthy' : 'retired'}`}>
+                            {src.enabled ? 'Active' : 'Disabled'}
+                          </span>
+                        </td>
+                        <td>{src.lastRun ? new Date(src.lastRun).toLocaleString() : 'Never'}</td>
+                        <td>{Math.round(src.successRate * 100)}%</td>
+                        <td>
+                          <span className={src.consecutiveFailures > 0 ? 'color-error' : ''} style={src.consecutiveFailures > 0 ? { color: 'var(--red)', fontWeight: 'bold' } : {}}>
+                            {src.consecutiveFailures}
+                          </span>
+                        </td>
+                        <td>{src.zeroResultStreak}</td>
+                        <td>
+                          <span style={isStale ? { color: 'var(--red)', fontWeight: 'bold' } : {}}>
+                            {src.staleDurationHours !== null ? `${String(src.staleDurationHours)}h` : 'N/A'}
+                          </span>
+                        </td>
+                        <td>{src.nextScheduledRun ? new Date(src.nextScheduledRun).toLocaleString() : 'Manual'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
       </section>
+
       <h2 className="source-section-title">CareerSite Health</h2>
       <p className="health-summary-note">
         CareerSite health comes from bounded ATS-detection probes and is
@@ -386,6 +619,7 @@ export function EmployersPage() {
           <strong>{String(totalCareerSites)}</strong>
         </article>
       </div>
+
       <section
         className="discovery-intelligence"
         aria-labelledby="discovery-intelligence-title"

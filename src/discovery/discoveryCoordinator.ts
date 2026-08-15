@@ -18,6 +18,7 @@ export interface CoordinatorOptions {
   credentialResolver: CredentialResolver;
   profilePreferencesPath?: string;
   analyze?: () => void;
+  evaluateAlerts?: () => void;
 }
 
 export class DiscoveryCoordinator {
@@ -258,7 +259,10 @@ export class DiscoveryCoordinator {
         this.statusValue.completedSources += 1;
       }
     }
-    if (summaries.length > 0) this.options.analyze?.();
+    if (summaries.length > 0) {
+      this.options.analyze?.();
+      this.options.evaluateAlerts?.();
+    }
     this.statusValue.activeSourceId = null;
     if (this.statusValue.queuedSourceIds.length === 0) {
       this.statusValue.running = false;

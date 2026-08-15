@@ -88,3 +88,96 @@ export interface DiscoverySummary {
   executionTimeMs: number;
   emptyNotice?: string | null;
 }
+
+export interface GlobalDiscoverySummary {
+  enabledSources: number;
+  disabledSources: number;
+  totalCareerSites: number;
+  activeCareerSites: number;
+  retiredCareerSites: number;
+  healthyCareerSites: number;
+  warningCareerSites: number;
+  brokenCareerSites: number;
+  unknownCareerSites: number;
+}
+
+export interface DiscoveryAnalyticsWindow {
+  totalRuns: number;
+  successfulRuns: number;
+  failedRuns: number;
+  interruptedRuns: number;
+  zeroResultSuccessfulRuns: number;
+  successRate: number;
+  failureRate: number;
+  averageDurationMs: number | null;
+  medianDurationMs: number | null;
+  lastSuccessfulRun: string | null;
+  lastFailedRun: string | null;
+}
+
+export interface DiscoveryJobYield {
+  jobsDiscovered: number;
+  newCanonicalJobs: number;
+  rediscoveredJobs: number;
+  jobsUpdated: number;
+  jobsClosed: number;
+  currentlyActiveJobs: number;
+  userRemovedJobsExcluded: number;
+  newJobYieldPerSuccessfulRun: number;
+  zeroYieldRunCount: number;
+}
+
+export interface DiscoveryAnalyticsReport {
+  summary: GlobalDiscoverySummary;
+  activity: DiscoveryAnalyticsWindow;
+  yield: DiscoveryJobYield;
+}
+
+export interface SourceAnalyticsRow {
+  sourceId: string;
+  displayName: string;
+  provider: string;
+  enabled: boolean;
+  lastRun: string | null;
+  lastSuccessfulRun: string | null;
+  lastFailure: string | null;
+  consecutiveFailures: number;
+  successRate: number;
+  runCount: number;
+  newJobs: number;
+  activeJobs: number;
+  jobsPerSuccessfulRun: number;
+  zeroResultStreak: number;
+  staleDurationHours: number | null;
+  nextScheduledRun: string | null;
+  healthStatus: string;
+}
+
+export interface ProviderAnalyticsRow {
+  providerId: string;
+  providerName: string;
+  sourcesCount: number;
+  successfulRuns: number;
+  failedRuns: number;
+  successRate: number;
+  averageYield: number;
+  recentFailureTrend: 'stable' | 'degrading';
+  recentZeroYieldTrend: 'stable' | 'high-zero-yield';
+}
+
+export interface DiscoveryAlert {
+  id: string;
+  ruleId: string;
+  entityType: 'source' | 'career_site' | 'provider';
+  entityId: string;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  state: 'active' | 'acknowledged' | 'resolved';
+  firstDetectedAt: string;
+  lastDetectedAt: string;
+  resolvedAt: string | null;
+  acknowledgedAt: string | null;
+  message: string;
+  evidenceJson: string;
+  ruleVersion: string;
+}
+

@@ -29,6 +29,8 @@ import type { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js'
 import { EmployerDiscoveryService } from '../discovery/employerDiscoveryService.js';
 import { CareerSiteHealthService } from '../discovery/careerSiteHealthService.js';
 import { EmployerDiscoveryIntelligenceService } from '../discovery/employerDiscoveryIntelligenceService.js';
+import { DiscoveryAlertService } from '../discovery/discoveryAlertService.js';
+import { DiscoveryAnalyticsService } from '../discovery/discoveryAnalyticsService.js';
 import type { CredentialResolver } from '../discovery/credentialResolver.js';
 import {
   ResumeSnapshotCaptureError,
@@ -98,6 +100,8 @@ export interface AppOptions {
   careerSiteHealthService?: CareerSiteHealthService;
   employerDiscoveryIntelligence?: EmployerDiscoveryIntelligenceService;
   credentialResolver?: CredentialResolver;
+  discoveryAlertService?: DiscoveryAlertService;
+  discoveryAnalyticsService?: DiscoveryAnalyticsService;
   apiRequestsPerMinute?: number;
   atsDetector?: (
     url: string,
@@ -158,6 +162,10 @@ export function createApp(
   const careerSiteHealthService =
     options.careerSiteHealthService ??
     new CareerSiteHealthService(employerRepository, employerDiscoveryService);
+  const discoveryAlertService =
+    options.discoveryAlertService ?? new DiscoveryAlertService(database);
+  const discoveryAnalyticsService =
+    options.discoveryAnalyticsService ?? new DiscoveryAnalyticsService(database);
   const resumeDirectory =
     options.resumeDirectory ?? resolve(process.cwd(), 'data', 'resumes');
   mkdirSync(resumeDirectory, { recursive: true });
@@ -945,6 +953,50 @@ export function createApp(
       response.json(await careerSiteHealthService.runEligible(25));
     }),
   );
+
+  app.get('/api/discovery/analytics', (request, response) => {
+    const windowParam = request.query['window'] as string | undefined;
+    let windowHours = 24;
+    if (windowParam === '7d') windowHours = 168;
+    else if (windowParam === '30d') windowHours = 720;
+    response.json(discoveryAnalyticsService.getReport(windowHours));
+  });
+
+  app.get('/api/discovery/analytics/sources', (_request, response) => {
+    response.json(discoveryAnalyticsService.getSourceAnalytics());
+  });
+
+  app.get('/api/discovery/analytics/providers', (_request, response) => {
+    response.json(discoveryAnalyticsService.getProviderAnalytics());
+  });
+
+  app.get('/api/discovery/alerts', (request, response) => {
+    const state = request.query['state'] as 'active' | 'acknowledged' | 'resolved' | undefined;
+    response.json(discoveryAlertService.listAlerts(state ? { state } : {}));
+  });
+
+  app.get('/api/discovery/alerts/:id', (request, response) => {
+    const alert = discoveryAlertService.getAlert(request.params.id);
+    if (alert === null) {
+      response.status(404).json({ error: 'Alert not found' });
+      return;
+    }
+    response.json(alert);
+  });
+
+  app.patch('/api/discovery/alerts/:id/acknowledge', (request, response) => {
+    const alert = discoveryAlertService.acknowledgeAlert(request.params.id);
+    if (alert === null) {
+      response.status(404).json({ error: 'Alert not found' });
+      return;
+    }
+    response.json(alert);
+  });
+
+  app.post('/api/discovery/alerts/evaluate', (_request, response) => {
+    discoveryAlertService.evaluateRules();
+    response.json({ status: 'ok' });
+  });
 
   app.get('/api/employers/:id', (request, response) => {
     const employer = employerRepository.getEmployer(

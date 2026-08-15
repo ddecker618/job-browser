@@ -28,7 +28,13 @@ import type {
 } from '../models/employer.js';
 import type { CareerSiteHealthRunResult } from '../discovery/careerSiteHealthService.js';
 import type { EmployerDiscoveryRunResult } from '../discovery/employerDiscoveryService.js';
-import type { DiscoverySummary } from '../models/discovery.js';
+import type {
+  DiscoverySummary,
+  DiscoveryAnalyticsReport,
+  SourceAnalyticsRow,
+  ProviderAnalyticsRow,
+  DiscoveryAlert,
+} from '../models/discovery.js';
 import type {
   CareerSiteIntelligenceDecision,
   DiscoveryIntelligenceSummary,
@@ -366,6 +372,27 @@ export const api = {
     request<CareerSiteVerificationHistory[]>(
       `/api/career-sites/${encodeURIComponent(id)}/verification-history`,
     ),
+  discoveryAnalytics: (window?: string) =>
+    request<DiscoveryAnalyticsReport>(
+      `/api/discovery/analytics${window ? `?window=${window}` : ''}`,
+    ),
+  sourceAnalytics: () =>
+    request<SourceAnalyticsRow[]>('/api/discovery/analytics/sources'),
+  providerAnalytics: () =>
+    request<ProviderAnalyticsRow[]>('/api/discovery/analytics/providers'),
+  discoveryAlerts: (state?: string) =>
+    request<DiscoveryAlert[]>(
+      `/api/discovery/alerts${state ? `?state=${state}` : ''}`,
+    ),
+  acknowledgeDiscoveryAlert: (id: string) =>
+    request<DiscoveryAlert>(
+      `/api/discovery/alerts/${encodeURIComponent(id)}/acknowledge`,
+      { method: 'PATCH' },
+    ),
+  evaluateDiscoveryAlerts: () =>
+    request<{ status: string }>('/api/discovery/alerts/evaluate', {
+      method: 'POST',
+    }),
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

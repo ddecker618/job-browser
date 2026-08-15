@@ -7,6 +7,7 @@ import { PageHeader } from '../components/PageHeader.js';
 
 export function DashboardPage() {
   const summary = useQuery({ queryKey: ['dashboard'], queryFn: api.dashboard });
+  const alerts = useQuery({ queryKey: ['discovery-alerts'], queryFn: () => api.discoveryAlerts() });
   if (summary.isPending) return <LoadingState label="Building your overview" />;
   if (summary.isError)
     return <ErrorState error={summary.error} title="Dashboard unavailable" />;
@@ -93,6 +94,36 @@ export function DashboardPage() {
                 </li>
               ))}
             </ol>
+          )}
+        </article>
+        <article className="panel activity-panel">
+          <span className="eyebrow">Discovery Operations</span>
+          <h3>Discovery Health</h3>
+          {alerts.isPending ? (
+            <p>Loading discovery status...</p>
+          ) : alerts.isError ? (
+            <p>Discovery status unavailable.</p>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <span className={`health-pill ${alerts.data.length > 0 ? 'warning' : 'healthy'}`} style={{ padding: '0.1rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>
+                   {alerts.data.length > 0 ? `${String(alerts.data.length)} Alert(s)` : 'Normal'}
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                  {alerts.data.length > 0 ? 'Active issues detected' : 'All systems normal'}
+                </span>
+              </div>
+              {alerts.data.length > 0 && (
+                <ul style={{ paddingLeft: '1.2rem', fontSize: '0.8rem', color: 'var(--muted)', margin: '0 0 1rem' }}>
+                  {alerts.data.slice(0, 3).map(alert => (
+                    <li key={alert.id} style={{ marginBottom: '0.25rem' }}>
+                      <strong>{alert.severity}</strong>: {alert.message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link to="/employers">Go to Discovery Control Center →</Link>
+            </div>
           )}
         </article>
       </section>

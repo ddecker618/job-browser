@@ -2341,3 +2341,132 @@ kbd {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Discovery Console Operational Alerts and Analytics */
+.discovery-console {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.discovery-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.8rem;
+}
+
+.discovery-summary-card {
+  padding: 1rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.discovery-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.discovery-summary-card span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.discovery-summary-card strong {
+  font-size: 1.6rem;
+  color: var(--text);
+}
+
+.alert-severity-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+.alert-severity-badge.critical {
+  background: rgba(198, 93, 93, 0.15);
+  color: #ff9d9d;
+  border: 1px solid rgba(198, 93, 93, 0.4);
+}
+
+.alert-severity-badge.warning {
+  background: rgba(220, 160, 50, 0.15);
+  color: #ffda79;
+  border: 1px solid rgba(220, 160, 50, 0.4);
+}
+
+.alert-severity-badge.info {
+  background: rgba(50, 160, 220, 0.15);
+  color: #8be9fd;
+  border: 1px solid rgba(50, 160, 220, 0.4);
+}
+
+.alerts-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.alert-item {
+  display: grid;
+  grid-template-columns: 80px minmax(150px, 1.2fr) 2fr auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.alert-item-message {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.alert-item-time {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.console-section-title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.trend-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.trend-item span {
+  color: var(--muted);
+}
+

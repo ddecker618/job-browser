@@ -3,6 +3,7 @@ import type { DiscoveryCoordinator } from './discoveryCoordinator.js';
 import type { EmployerDiscoveryService } from './employerDiscoveryService.js';
 import type { CareerSiteHealthService } from './careerSiteHealthService.js';
 import type { JobLifecycleRepository } from '../repositories/job-lifecycle-repository.js';
+import type { DiscoveryAlertService } from './discoveryAlertService.js';
 
 const EMPLOYER_DISCOVERY_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const HEALTH_STARTUP_DELAY_MS = 24 * 60 * 60 * 1000;
@@ -20,6 +21,7 @@ export class DiscoveryScheduler {
     private readonly now: () => Date = () => new Date(),
     private readonly careerSiteHealth?: CareerSiteHealthService,
     private readonly jobLifecycle?: JobLifecycleRepository,
+    private readonly alerts?: DiscoveryAlertService,
   ) {}
 
   public start(): void {
@@ -46,7 +48,10 @@ export class DiscoveryScheduler {
     if (this.stopped) return;
     const evaluatedAt = this.now();
     this.jobLifecycle?.reconcileKnownClosures(evaluatedAt.toISOString());
-    if (!this.sources.getSchedulerEnabled()) return;
+    if (!this.sources.getSchedulerEnabled()) {
+      this.alerts?.evaluateRules();
+      return;
+    }
     const due = this.sources.listDue(evaluatedAt.toISOString());
     for (const source of due) {
       await this.coordinator.runSource(source.id, 'scheduled');
@@ -71,6 +76,7 @@ export class DiscoveryScheduler {
     ) {
       await this.careerSiteHealth.runEligible(25);
     }
+    this.alerts?.evaluateRules();
   }
 
   private scheduleNext(): void {

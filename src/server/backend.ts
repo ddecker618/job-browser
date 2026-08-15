@@ -36,6 +36,8 @@ import { EmployerDiscoveryService } from '../discovery/employerDiscoveryService.
 import { CareerSiteHealthService } from '../discovery/careerSiteHealthService.js';
 import { EmployerRepository } from '../repositories/employerRepository.js';
 import { EmployerDiscoveryIntelligenceService } from '../discovery/employerDiscoveryIntelligenceService.js';
+import { DiscoveryAlertService } from '../discovery/discoveryAlertService.js';
+import { DiscoveryAnalyticsService } from '../discovery/discoveryAnalyticsService.js';
 import { unavailableCredentialResolver } from '../discovery/credentialResolver.js';
 import { IntelligenceEngine } from '../intelligence/intelligenceEngine.js';
 import { loadCandidateProfile } from '../config/candidate-profile.js';
@@ -230,6 +232,10 @@ export async function startBackend(
         scoresReprocessed: reconciliation.analysis?.jobsAnalyzed ?? 0,
       });
     }
+    const discoveryAlertService = new DiscoveryAlertService(database);
+    const discoveryAnalyticsService = new DiscoveryAnalyticsService(database);
+    discoveryAlertService.evaluateRules();
+
     const coordinator = new DiscoveryCoordinator(database, providerRegistry, {
       credentialResolver:
         options.credentialResolver ?? unavailableCredentialResolver,
@@ -241,6 +247,7 @@ export async function startBackend(
           loadCandidateProfile(options.candidateProfilePath),
           loadScoringConfig(options.scoringConfigPath),
         ),
+      evaluateAlerts: () => discoveryAlertService.evaluateRules(),
     });
     const employerRepository = new EmployerRepository(database);
     const employerDiscoveryIntelligence =
@@ -268,6 +275,7 @@ export async function startBackend(
             undefined,
             careerSiteHealthService,
             jobLifecycle,
+            discoveryAlertService,
           )
         : null;
     scheduler?.start();
@@ -279,6 +287,8 @@ export async function startBackend(
       employerDiscoveryService,
       careerSiteHealthService,
       employerDiscoveryIntelligence,
+      discoveryAlertService,
+      discoveryAnalyticsService,
     });
     if (options.development === true) {
       const { createServer } = await import('vite');
