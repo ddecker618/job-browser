@@ -22,6 +22,10 @@ export interface EmployerDiscoveryRunResult {
 export class EmployerDiscoveryService {
   private activeRun: Promise<EmployerDiscoveryRunResult> | null = null;
 
+  public isRunning(): boolean {
+    return this.activeRun !== null;
+  }
+
   public constructor(
     private readonly employers: EmployerRepository,
     private readonly sources: SourceRepository,

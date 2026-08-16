@@ -231,4 +231,7 @@ export interface SourceControlCenter {
   schedulerEnabled: boolean;
   employerDiscoveryEnabled: boolean;
   employerDiscoveryLastEvaluatedAt: string | null;
+  employerDiscoveryRunning: boolean;
+  careerSiteHealthRunning: boolean;
+  alertEvaluationRunning: boolean;
 }

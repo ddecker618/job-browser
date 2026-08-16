@@ -273,6 +273,25 @@ describe('Employers Discovery Intelligence UI', () => {
     expect(screen.getAllByText('Acme').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/^Added /)).toHaveLength(2);
   });
+
+  it('displays correct subsystem-specific status texts (Idle, running states)', async () => {
+    const sc = sourceControlFixture();
+    sc.employerDiscoveryRunning = true;
+    sc.careerSiteHealthRunning = false;
+
+    mockFetch((url) => {
+      if (url.pathname === '/api/employers') return employersFixture();
+      if (url.pathname === '/api/employer-discovery/intelligence')
+        return intelligenceFixture();
+      if (url.pathname === '/api/sources/control-center')
+        return sc;
+      throw new Error(`Unexpected request: ${url.pathname}`);
+    });
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Discovery Control Center' });
+    expect(screen.getByText('Employer discovery running')).toBeInTheDocument();
+  });
 });
 
 function renderPage() {
@@ -479,5 +498,8 @@ function sourceControlFixture() {
     schedulerEnabled: true,
     employerDiscoveryEnabled: true,
     employerDiscoveryLastEvaluatedAt: null,
+    employerDiscoveryRunning: false,
+    careerSiteHealthRunning: false,
+    alertEvaluationRunning: false,
   };
 }

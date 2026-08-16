@@ -467,6 +467,9 @@ export function createApp(
       schedulerEnabled: sourceRepository.getSchedulerEnabled(),
       employerDiscoveryEnabled: employerDiscovery.enabled,
       employerDiscoveryLastEvaluatedAt: employerDiscovery.lastEvaluatedAt,
+      employerDiscoveryRunning: employerDiscoveryService.isRunning(),
+      careerSiteHealthRunning: careerSiteHealthService.isRunning(),
+      alertEvaluationRunning: discoveryAlertService.isRunning(),
     });
   });
 

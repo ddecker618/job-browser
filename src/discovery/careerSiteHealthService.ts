@@ -24,6 +24,10 @@ export interface CareerSiteHealthRunResult {
 export class CareerSiteHealthService {
   private activeRun: Promise<CareerSiteHealthRunResult> | null = null;
 
+  public isRunning(): boolean {
+    return this.activeRun !== null;
+  }
+
   public constructor(
     private readonly employers: EmployerRepository,
     private readonly discovery?: EmployerDiscoveryService,

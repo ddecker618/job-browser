@@ -277,11 +277,42 @@ export function EmployersPage() {
     (site) => site.healthStatus !== 'retired',
   );
   const coordinatorRunning = sourceControl.data?.discovery?.running === true;
+  const employerDiscoveryRunning = sourceControl.data?.employerDiscoveryRunning === true;
+  const careerSiteHealthRunning = sourceControl.data?.careerSiteHealthRunning === true;
+  const alertEvaluationRunning = sourceControl.data?.alertEvaluationRunning === true;
+
+  const isEmployerDiscoveryPending = runDiscoveryMutation.isPending || employerDiscoveryRunning;
+  const isSourceDiscoveryPending = runEnabledSourcesMutation.isPending || coordinatorRunning;
+  const isHealthCheckPending = healthCheckMutation.isPending || careerSiteHealthRunning;
+  const isAlertEvaluationPending = alertEvaluationRunning;
+
   const globalRunPending =
-    runDiscoveryMutation.isPending ||
-    runEnabledSourcesMutation.isPending ||
-    healthCheckMutation.isPending ||
-    coordinatorRunning;
+    isEmployerDiscoveryPending ||
+    isSourceDiscoveryPending ||
+    isHealthCheckPending ||
+    isAlertEvaluationPending;
+
+  let statusText = 'Idle';
+  const runningStates: string[] = [];
+
+  if (isSourceDiscoveryPending) {
+    runningStates.push('Source discovery running');
+  }
+  if (isEmployerDiscoveryPending) {
+    runningStates.push('Employer discovery running');
+  }
+  if (isHealthCheckPending) {
+    runningStates.push('CareerSite health check running');
+  }
+  if (isAlertEvaluationPending) {
+    runningStates.push('Alert evaluation running');
+  }
+
+  if (runningStates.length === 1) {
+    statusText = runningStates[0] ?? 'Idle';
+  } else if (runningStates.length > 1) {
+    statusText = 'Multiple operations running';
+  }
   const runError =
     runDiscoveryMutation.error ??
     runEnabledSourcesMutation.error ??
@@ -323,9 +354,9 @@ export function EmployersPage() {
             </h2>
           </div>
           <span
-            className={`health-pill ${globalRunPending ? 'warning' : 'healthy'}`}
+            className={`health-pill ${runningStates.length > 0 ? 'warning' : 'healthy'}`}
           >
-            {globalRunPending ? 'Running' : 'Idle'}
+            {statusText}
           </span>
         </div>
 

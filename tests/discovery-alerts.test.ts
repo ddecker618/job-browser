@@ -4,6 +4,7 @@ import { createTestDatabase, insertTestSource } from './helpers/test-database.js
 import { DiscoveryAlertService } from '../src/discovery/discoveryAlertService.js';
 import { DiscoveryAnalyticsService } from '../src/discovery/discoveryAnalyticsService.js';
 import { EmployerRepository } from '../src/repositories/employerRepository.js';
+import { ensureIsoUtc } from '../src/utilities/timestamps.js';
 
 const databases: JobDatabase[] = [];
 
@@ -167,6 +168,80 @@ describe('Discovery Alerts & Analytics Sprint', () => {
       warningCareerSites: 0,
       brokenCareerSites: 1,
       unknownCareerSites: 0,
+    });
+  });
+
+  describe('alert timestamp lifecycle and normalization', () => {
+    it('normalizes SQLite space-separated and local-styled datetime strings to UTC', () => {
+      expect(ensureIsoUtc('2026-08-12 12:00:00')).toBe('2026-08-12T12:00:00.000Z');
+      expect(ensureIsoUtc('2026-08-12T12:00:00')).toBe('2026-08-12T12:00:00.000Z');
+      expect(ensureIsoUtc('2026-08-12T12:00:00.123Z')).toBe('2026-08-12T12:00:00.123Z');
+    });
+
+    it('manages firstDetectedAt stability, lastDetectedAt update, acknowledgement, and resolution', () => {
+      const { db } = setupDb();
+
+      // Mock clocks
+      let currentTime = new Date('2026-08-12T12:00:00Z');
+      const customAlertService = new DiscoveryAlertService(db, () => currentTime);
+
+      // Create an overdue scheduled source
+      const sourceId = insertTestSource(db, { id: 'src-time-test' });
+      db.prepare("INSERT INTO source_schedules (source_id, enabled, cadence, next_run_at, created_at, updated_at) VALUES (?, 1, 'every-24-hours', '2026-08-12T10:00:00Z', '2026-08-12T10:00:00Z', '2026-08-12T10:00:00Z')").run(sourceId);
+      db.prepare("UPDATE discovery_settings SET scheduler_enabled = 1 WHERE id = 'default'").run();
+
+      // First evaluation (T1 = 12:00:00Z)
+      customAlertService.evaluateRules();
+      let alerts = customAlertService.listAlerts();
+      expect(alerts).toHaveLength(1);
+      const alert = alerts[0]!;
+      expect(alert.firstDetectedAt).toBe('2026-08-12T12:00:00.000Z');
+      expect(alert.lastDetectedAt).toBe('2026-08-12T12:00:00.000Z');
+      expect(alert.acknowledgedAt).toBeNull();
+      expect(alert.resolvedAt).toBeNull();
+
+      // Second evaluation (T2 = 13:00:00Z)
+      currentTime = new Date('2026-08-12T13:00:00Z');
+      customAlertService.evaluateRules();
+      alerts = customAlertService.listAlerts();
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]!.firstDetectedAt).toBe('2026-08-12T12:00:00.000Z'); // Remains stable
+      expect(alerts[0]!.lastDetectedAt).toBe('2026-08-12T13:00:00.000Z'); // Updates
+
+      // Acknowledge (T3 = 14:00:00Z)
+      currentTime = new Date('2026-08-12T14:00:00Z');
+      customAlertService.acknowledgeAlert(alerts[0]!.id);
+      alerts = customAlertService.listAlerts({ state: 'acknowledged' });
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]!.acknowledgedAt).toBe('2026-08-12T14:00:00.000Z');
+
+      // Resolve (T4 = 15:00:00Z)
+      currentTime = new Date('2026-08-12T15:00:00Z');
+      db.prepare("UPDATE source_schedules SET next_run_at = '2026-08-12T17:00:00Z' WHERE source_id = ?").run(sourceId);
+      customAlertService.evaluateRules();
+      alerts = customAlertService.listAlerts();
+      expect(alerts).toHaveLength(0); // resolved alert is no longer listed in active/acknowledged list
+
+      const resolved = customAlertService.listAlerts({ state: 'resolved' });
+      expect(resolved).toHaveLength(1);
+      expect(resolved[0]!.resolvedAt).toBe('2026-08-12T15:00:00.000Z');
+    });
+
+    it('renders alerts created by space-separated SQLite dates consistently with Z-ending application dates', () => {
+      const { db, alertService } = setupDb();
+      // Insert alert manually with non-Z, space-separated datetime
+      db.prepare(`
+        INSERT INTO discovery_alerts (
+          id, rule_id, entity_type, entity_id, severity, state,
+          first_detected_at, last_detected_at, resolved_at, acknowledged_at,
+          message, evidence_json, rule_version
+        ) VALUES ('manual-alert', 'source-overdue', 'source', 'src-manual', 'WARNING', 'active', '2026-08-12 12:26:05', '2026-08-12 21:21:22', NULL, NULL, 'Test msg', '{}', '1')
+      `).run();
+
+      const alerts = alertService.listAlerts();
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]!.firstDetectedAt).toBe('2026-08-12T12:26:05.000Z');
+      expect(alerts[0]!.lastDetectedAt).toBe('2026-08-12T21:21:22.000Z');
     });
   });
 });

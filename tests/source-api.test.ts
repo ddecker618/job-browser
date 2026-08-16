@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ConfiguredSource } from '../src/models/source-management.js';
+import type { ConfiguredSource, SourceControlCenter } from '../src/models/source-management.js';
 import { startBackend, type BackendHandle } from '../src/server/backend.js';
 
 const handles: BackendHandle[] = [];
@@ -266,5 +266,24 @@ describe('source management API', () => {
     expect(updatedSource.schedule.enabled).toBe(false);
     expect(updatedSource.schedule.cadence).toBe('manual');
     expect(updatedSource.schedule.nextRunAt).toBeNull();
+  });
+
+  it('returns subsystem running states in control-center status', async () => {
+    const directory = mkdtempSync(
+      join(tmpdir(), 'job-browser-status-states-'),
+    );
+    directories.push(directory);
+    const handle = await startBackend({
+      databasePath: join(directory, 'jobs.sqlite'),
+      seedDefaultSources: true,
+    });
+    handles.push(handle);
+
+    const getRes = await fetch(`${handle.url}/api/sources/control-center`);
+    expect(getRes.status).toBe(200);
+    const data = (await getRes.json()) as SourceControlCenter;
+    expect(typeof data.employerDiscoveryRunning).toBe('boolean');
+    expect(typeof data.careerSiteHealthRunning).toBe('boolean');
+    expect(typeof data.alertEvaluationRunning).toBe('boolean');
   });
 });

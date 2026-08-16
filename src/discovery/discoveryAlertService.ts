@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { JobDatabase } from '../db/database.js';
+import { ensureIsoUtc } from '../utilities/timestamps.js';
 
 export interface DiscoveryAlert {
   id: string;
@@ -20,6 +21,12 @@ export interface DiscoveryAlert {
 const RULE_VERSION = 'discovery-alert-rules-v1';
 
 export class DiscoveryAlertService {
+  private running = false;
+
+  public isRunning(): boolean {
+    return this.running;
+  }
+
   public constructor(
     private readonly database: JobDatabase,
     private readonly now: () => Date = () => new Date(),
@@ -42,7 +49,7 @@ export class DiscoveryAlertService {
     }
     query += ' ORDER BY severity = \'CRITICAL\' DESC, severity = \'WARNING\' DESC, last_detected_at DESC';
 
-    const rows = db.prepare(query).all(...params) as unknown as DiscoveryAlertRow[];
+    const rows = db.prepare(query).all(...params) as DiscoveryAlertRow[];
     return rows.map(mapRow);
   }
 
@@ -55,7 +62,7 @@ export class DiscoveryAlertService {
           FROM discovery_alerts
          WHERE id = ?
       `)
-      .get(id) as unknown as DiscoveryAlertRow | undefined;
+      .get(id) as DiscoveryAlertRow | undefined;
 
     return row ? mapRow(row) : null;
   }
@@ -74,10 +81,13 @@ export class DiscoveryAlertService {
   }
 
   public evaluateRules(): void {
-    const db = this.database;
-    const evaluatedAt = this.now().toISOString();
+    if (this.running) return;
+    this.running = true;
+    try {
+      const db = this.database;
+      const evaluatedAt = this.now().toISOString();
 
-    db.transaction(() => {
+      db.transaction(() => {
       // 1. Fetch current active/acknowledged alerts to track resolution
       const activeAlerts = db.prepare(`
         SELECT id, rule_id, entity_type, entity_id
@@ -222,7 +232,7 @@ export class DiscoveryAlertService {
            WHERE s.enabled = 1 AND ss.enabled = 1 AND ss.next_run_at IS NOT NULL
         `).all() as { id: string; display_name: string | null; next_run_at: string; discovery_state: string | null; health_status: string | null }[];
 
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const oneHourAgo = new Date(this.now().getTime() - 60 * 60 * 1000).toISOString();
 
         for (const ss of scheduledSources) {
           if (
@@ -319,7 +329,7 @@ export class DiscoveryAlertService {
         `).get(sc.id) as { completed_at: string } | undefined;
 
         if (lastSuccess) {
-          const staleHours = (Date.now() - Date.parse(lastSuccess.completed_at)) / 3600000;
+          const staleHours = (this.now().getTime() - Date.parse(lastSuccess.completed_at)) / 3600000;
           if (staleHours > 3 * cadenceHours) {
             processAlert(
               'discovery-stale',
@@ -341,9 +351,9 @@ export class DiscoveryAlertService {
          WHERE cs.health_status != 'retired' AND cs.discovery_state != 'retired'
       `).all() as { id: string; url: string; employer_name: string; discovery_state: string; source_id: string | null }[];
 
-      // To evaluate career sites, we check their scheduling class
-      const windowStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const windowEnd = new Date().toISOString();
+       // To evaluate career sites, we check their scheduling class
+      const windowStart = new Date(this.now().getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const windowEnd = evaluatedAt;
 
       for (const cs of activeSites) {
         // Query site rows format for classifying
@@ -402,7 +412,7 @@ export class DiscoveryAlertService {
 
         if (cadenceHours !== null && cs.discovery_state !== 'backoff') {
           const anchor = activity.lastSuccessfulDiscoveryAt ?? row.created_at;
-          const staleHours = (Date.now() - Date.parse(anchor)) / 3600000;
+          const staleHours = (this.now().getTime() - Date.parse(anchor)) / 3600000;
           if (staleHours > 3 * cadenceHours) {
             processAlert(
               'discovery-stale',
@@ -428,7 +438,10 @@ export class DiscoveryAlertService {
         }
       }
     })();
+  } finally {
+    this.running = false;
   }
+}
 }
 
 interface DiscoveryAlertRow {
@@ -455,10 +468,10 @@ function mapRow(row: DiscoveryAlertRow): DiscoveryAlert {
     entityId: row.entity_id,
     severity: row.severity as DiscoveryAlert['severity'],
     state: row.state as DiscoveryAlert['state'],
-    firstDetectedAt: row.first_detected_at,
-    lastDetectedAt: row.last_detected_at,
-    resolvedAt: row.resolved_at,
-    acknowledgedAt: row.acknowledged_at,
+    firstDetectedAt: ensureIsoUtc(row.first_detected_at),
+    lastDetectedAt: ensureIsoUtc(row.last_detected_at),
+    resolvedAt: row.resolved_at ? ensureIsoUtc(row.resolved_at) : null,
+    acknowledgedAt: row.acknowledged_at ? ensureIsoUtc(row.acknowledged_at) : null,
     message: row.message,
     evidenceJson: row.evidence_json,
     ruleVersion: row.rule_version,

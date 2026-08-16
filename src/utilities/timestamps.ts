@@ -187,3 +187,18 @@ function twoDigits(value: number): string {
 function assertValidCurrentTime(value: Date): void {
   if (Number.isNaN(value.getTime())) throw new Error('Current time is invalid');
 }
+
+export function ensureIsoUtc(value: string): string {
+  let parsedValue = value.trim();
+  if (!parsedValue.includes('T') && parsedValue.includes(' ')) {
+    parsedValue = parsedValue.replace(' ', 'T');
+  }
+  if (!parsedValue.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(parsedValue)) {
+    parsedValue += 'Z';
+  }
+  const date = new Date(parsedValue);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid date value: ${value}`);
+  }
+  return date.toISOString();
+}

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.20] - 2026-08-16
+
+### Clarified Discovery operational states and alert timestamp normalizations
+
+- Fixed operational state ambiguity by introducing explicit subsystem running states (`employerDiscoveryRunning`, `careerSiteHealthRunning`, and `alertEvaluationRunning`) to the `/api/sources/control-center` response and `SourceControlCenter` type definition.
+- Exposed `isRunning()` on `EmployerDiscoveryService`, `CareerSiteHealthService`, and `DiscoveryAlertService` to return true during active background automation runs.
+- Reconstructed the status pill in `EmployersPage.tsx` to dynamically query active running states, showing detailed statuses like "Employer discovery running", "Source discovery running", "CareerSite health check running", "Alert evaluation running", "Multiple operations running", or "Idle" instead of a vague aggregate "Running" label.
+- Addressed timestamp timezone inconsistency by introducing `ensureIsoUtc(value)` in `timestamps.ts`, which parses database space-separated datetime strings consistently and outputs canonical ISO-8601 UTC strings ending with a `Z` suffix.
+- Applied `ensureIsoUtc()` to `first_detected_at`, `last_detected_at`, `resolved_at`, and `acknowledged_at` in the alert row mapping boundary, resolving discrepancies between SQL datetime defaults and application-created timestamps.
+- Removed system clock dependencies (`Date.now()` and `new Date()`) inside `DiscoveryAlertService.evaluateRules()`, replacing them with `this.now()` to ensure deterministic evaluations and robust time-travel mocking.
+- Added comprehensive unit, integration, UI, and API regression coverage for timestamp normalizations, lifecycle transitions (stability of `firstDetectedAt`, updates of `lastDetectedAt`), and subsystem-specific running labels.
+- Final verification: lint (`npm run lint`), strict typecheck (`npm run typecheck`), build (`npm run build`), and the full test suite (95 files / 961 tests) pass; packaged desktop smoke tests pass against isolated user-data.
+- Installer: `release/Job-Browser-Setup-1.0.20.exe`, 249,911,168 bytes, SHA-256 `8A4196B0834A4233EE08D8190DCA8297C02006F65DB75B0C94C1A0FF2DCB7776`.
+
 ## [1.0.19] - 2026-08-15
 
 ### Advanced discovery analytics & alerting rules
