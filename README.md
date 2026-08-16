@@ -2,7 +2,7 @@
 
 Job Browser is a local application for discovering, deduplicating, analyzing, and tracking realistic job opportunities. It runs as a Windows desktop application or as a local Node.js/Express dashboard over the same SQLite-backed services.
 
-Discovery supports Greenhouse, Lever, Ashby, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Handshake, Indeed, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. LinkedIn, Dice, Handshake, Indeed, USAJOBS, Wellfound, and ZipRecruiter are visible-browser connectors and must never bypass a CAPTCHA, security check, login control, or site policy. There is no automatic application submission or AI-generated application answer workflow.
+Discovery supports Greenhouse, Lever, Ashby, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Handshake, Indeed, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. There is no automatic application submission or AI-generated application answer workflow.
 
 ## Screenshots
 
