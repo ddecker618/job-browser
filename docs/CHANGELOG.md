@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.24] - 2026-08-17
+
+### Discovery Error Remediation: Failure Categorization and Zero-Yield False Positive Fix
+
+- **BambooHR failure categorization.** `BambooHrProvider.validateConfiguration` now returns a structured `failureCategory` on validation failure (`'unreachable'` for DNS, `'timeout'` for timeouts, `'blocked'` for HTTP 403). Previously all network failures fell through to the generic "BambooHR subdomain is unreachable or inactive" message with no diagnostic structure.
+- **ProviderHttpClient preserves original error detail.** The generic catch in `ProviderHttpClient.request()` now appends the original error message (`"${provider} request failed: ${detail}"`), so downstream string matching in providers and `translateError()` can classify the root cause instead of losing it.
+- **DNS resolution failure surfacing.** `translateError()` now has a dedicated branch for "could not be resolved" errors, producing `"Provider unavailable: DNS resolution failed for host"` instead of the generic catch-all. Combined with the BambooHR `failureCategory`, this surfaces the actual DNS failure reason for the Etsy source-failure-streak alert.
+- **Zero-yield streak skips healthy sources.** `zero-yield-streak` now ignores sources with `health_status = 'healthy'`. A healthy source returning 0 new jobs means the job pool is exhausted (no new listings), not a malfunction. This eliminates false-positive alerts for LinkedIn, ZipRecruiter, and PaloAltoNetworks — all three are working correctly but have no new jobs to discover.
+- Final verification: `npm run verify` passes completely clean (format, lint, strict typecheck, full test suite — 99 files / 1011 tests). Desktop smoke green. Installer: `release/Job-Browser-Setup-1.0.24.exe`.
+
 ## [1.0.23] - 2026-08-16
 
 ### Discovery Alert Rule Reconciliation and Imported Source Remediation

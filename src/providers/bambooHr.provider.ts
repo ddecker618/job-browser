@@ -170,16 +170,33 @@ export class BambooHrProvider extends BaseProvider {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       let userMessage = 'BambooHR subdomain is unreachable or inactive';
+      let failureCategory: 'unreachable' | 'timeout' | 'blocked' | null =
+        'unreachable';
       if (message.includes('404') || message.includes('Not Found')) {
         userMessage = 'BambooHR subdomain not found';
+        failureCategory = null;
       } else if (message.includes('timeout') || message.includes('timed out')) {
         userMessage = 'BambooHR validation timed out';
+        failureCategory = 'timeout';
+      } else if (
+        message.includes('403') ||
+        message.toLowerCase().includes('forbidden')
+      ) {
+        userMessage = 'BambooHR subdomain access was blocked';
+        failureCategory = 'blocked';
+      } else if (
+        message.includes('could not be resolved') ||
+        message.includes('getaddrinfo')
+      ) {
+        userMessage = 'BambooHR subdomain DNS resolution failed';
+        failureCategory = 'unreachable';
       }
       return {
         valid: false,
         message: userMessage,
         normalizedConfiguration: null,
         preview: null,
+        failureCategory,
       };
     }
   }

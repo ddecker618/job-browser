@@ -166,7 +166,12 @@ export class ProviderHttpClient {
         );
       if (signal.aborted)
         throw new ProviderFetchError(`${request.provider} request timed out`);
-      throw new ProviderFetchError(`${request.provider} request failed`);
+      {
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new ProviderFetchError(
+          `${request.provider} request failed: ${detail}`,
+        );
+      }
     } finally {
       releaseGlobal?.();
     }

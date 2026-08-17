@@ -579,4 +579,11 @@ describe('translateError', () => {
       'No jobs matched the configured filters.',
     );
   });
+
+  it('translates DNS resolution failure to a specific provider unavailable message', () => {
+    const error = new Error('Public host could not be resolved');
+    expect(translateError(error)).toBe(
+      'Provider unavailable: DNS resolution failed for host',
+    );
+  });
 });

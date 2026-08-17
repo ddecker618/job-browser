@@ -2,11 +2,22 @@
 
 ## Current Phase
 
-Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, and discovery-alert reconciliation / imported-source remediation 1.0.23 are complete and Architect-approved. Current version is `1.0.23`. Migration head is `030`.
+Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, and discovery error remediation (failure categorization + zero-yield fix) 1.0.24 are complete and Architect-approved. Current version is `1.0.24`. Migration head is `030`.
 
-## Current Implementation Checkpoint (2026-08-16 — 1.0.23 Discovery Alert Rule Reconciliation & Imported Source Remediation)
+## Current Implementation Checkpoint (2026-08-17 — 1.0.24 Discovery Error Remediation: Failure Categorization & Zero-Yield Fix)
 
 ### What changed in this release
+- **BambooHR failure categorization**: `BambooHrProvider.validateConfiguration` now returns a structured `failureCategory` (`'unreachable'`, `'timeout'`, `'blocked'`) instead of a generic message.
+- **ProviderHttpClient error detail passthrough**: The generic catch now includes the original error message, so downstream string matching can classify the root cause.
+- **DNS-specific translateError branch**: "could not be resolved" errors produce `"Provider unavailable: DNS resolution failed for host"` instead of the generic catch-all.
+- **Zero-yield healthy source skip**: Sources with `health_status = 'healthy'` are excluded from zero-yield evaluation. Exhausted job pools are not malfunctions.
+
+### Verified state (2026-08-17)
+- Full gate green: `npm run verify` (format, lint, typecheck, vitest — 99 files / 1011 tests).
+- Desktop smoke green: `npm run desktop:smoke`.
+- Installer: `release/Job-Browser-Setup-1.0.24.exe`.
+
+## Prior 1.0.23 content (Discovery Alert Rule Reconciliation & Imported Source Remediation)
 - **Zero-yield streak rule corrected**: `zero-yield-streak` requires completed, non-truncated runs (`complete_snapshot = 1 AND fetch_truncated = 0`), groups sub-query runs within 60s into a discovery cycle, and fires only after 3 distinct complete zero-yield cycles on a source with historical yield. Clears 15 of 17 production alerts (only PaloAltoNetworks, ZipRecruiter genuinely fire).
 - **Career-site-broken rule narrowed**: fires CRITICAL only for `health_status = 'broken'`, WARNING only for `warning AND health_failure_count > 0`. Clears 18 of 22 production alerts.
 - **Discovery-stale rule corrected**: excludes terminal `unsupported` discovery states and sites whose Source schedule is disabled/manual. Clears all 8 production false positives.

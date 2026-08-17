@@ -253,7 +253,7 @@ export class DiscoveryAlertService {
         const sources = db
           .prepare(
             `
-        SELECT id, display_name, provider_id, failure_count FROM sources WHERE enabled = 1
+        SELECT id, display_name, provider_id, failure_count, health_status FROM sources WHERE enabled = 1
       `,
           )
           .all() as {
@@ -261,6 +261,7 @@ export class DiscoveryAlertService {
           display_name: string | null;
           provider_id: string | null;
           failure_count: number;
+          health_status: string | null;
         }[];
 
         for (const src of sources) {
@@ -384,7 +385,10 @@ export class DiscoveryAlertService {
         // jobs, and the source previously yielded jobs. Runs are grouped into a
         // discovery cycle when they start within ZERO_YIELD_CYCLE_GAP_MS of one
         // another (multi-query sources produce one run per query per tick).
+        // Healthy sources with zero yield are not alerted — they are simply
+        // exhausted (no new jobs to discover), not malfunctioning.
         for (const src of sources) {
+          if (src.health_status === 'healthy') continue;
           // Get recent completed, non-truncated successful runs for this source
           const recentRuns = db
             .prepare(

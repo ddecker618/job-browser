@@ -260,6 +260,84 @@ describe('new public ATS providers', () => {
         .description,
     ).toBe('Summary from list.');
   });
+
+  it('sets failureCategory to unreachable on DNS resolution failure', async () => {
+    const originalVitest = process.env['VITEST'];
+    const originalNodeEnv = process.env['NODE_ENV'];
+    delete process.env['VITEST'];
+    process.env['NODE_ENV'] = 'production';
+    try {
+      const transport = vi.fn<ProviderHttpTransport>(() =>
+        Promise.reject(new Error('Public host could not be resolved')),
+      );
+      const provider = new BambooHrProvider(client(transport));
+      const result = await provider.validateConfiguration({
+        companyDomain: 'nonexistent',
+        company: 'Nonexistent',
+      });
+      expect(result.valid).toBe(false);
+      expect(result.failureCategory).toBe('unreachable');
+      expect(result.message).toContain('DNS resolution failed');
+    } finally {
+      if (originalVitest !== undefined) process.env['VITEST'] = originalVitest;
+      else delete process.env['VITEST'];
+      if (originalNodeEnv !== undefined)
+        process.env['NODE_ENV'] = originalNodeEnv;
+      else delete process.env['NODE_ENV'];
+    }
+  });
+
+  it('sets failureCategory to timeout on request timeout', async () => {
+    const originalVitest = process.env['VITEST'];
+    const originalNodeEnv = process.env['NODE_ENV'];
+    delete process.env['VITEST'];
+    process.env['NODE_ENV'] = 'production';
+    try {
+      const transport = vi.fn<ProviderHttpTransport>(() =>
+        Promise.reject(new Error('Request timed out after 15000ms')),
+      );
+      const provider = new BambooHrProvider(client(transport));
+      const result = await provider.validateConfiguration({
+        companyDomain: 'slowcorp',
+        company: 'SlowCorp',
+      });
+      expect(result.valid).toBe(false);
+      expect(result.failureCategory).toBe('timeout');
+      expect(result.message).toContain('timed out');
+    } finally {
+      if (originalVitest !== undefined) process.env['VITEST'] = originalVitest;
+      else delete process.env['VITEST'];
+      if (originalNodeEnv !== undefined)
+        process.env['NODE_ENV'] = originalNodeEnv;
+      else delete process.env['NODE_ENV'];
+    }
+  });
+
+  it('sets failureCategory to blocked on HTTP 403', async () => {
+    const originalVitest = process.env['VITEST'];
+    const originalNodeEnv = process.env['NODE_ENV'];
+    delete process.env['VITEST'];
+    process.env['NODE_ENV'] = 'production';
+    try {
+      const transport = vi.fn<ProviderHttpTransport>(() =>
+        Promise.reject(new Error('BambooHR (HTTP 403)')),
+      );
+      const provider = new BambooHrProvider(client(transport));
+      const result = await provider.validateConfiguration({
+        companyDomain: 'blockedcorp',
+        company: 'BlockedCorp',
+      });
+      expect(result.valid).toBe(false);
+      expect(result.failureCategory).toBe('blocked');
+      expect(result.message).toContain('blocked');
+    } finally {
+      if (originalVitest !== undefined) process.env['VITEST'] = originalVitest;
+      else delete process.env['VITEST'];
+      if (originalNodeEnv !== undefined)
+        process.env['NODE_ENV'] = originalNodeEnv;
+      else delete process.env['NODE_ENV'];
+    }
+  });
 });
 
 function client(transport: ProviderHttpTransport): ProviderHttpClient {

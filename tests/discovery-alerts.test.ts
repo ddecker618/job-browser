@@ -265,6 +265,62 @@ describe('Discovery Alerts & Analytics Sprint', () => {
     });
   });
 
+  it('does not fire zero-yield alert for healthy sources', () => {
+    const { db, alertService } = setupDb();
+    const sourceId = insertTestSource(db, { id: 'zy-healthy' });
+
+    // Set source health to healthy (source is working but has no new jobs).
+    db.prepare("UPDATE sources SET health_status = 'healthy' WHERE id = ?").run(
+      sourceId,
+    );
+
+    // 3 distinct complete cycles, all zero-yield, plus historical yield.
+    db.prepare(
+      `
+      INSERT INTO runs (id, source_id, provider_id, status, started_at, completed_at, jobs_discovered, jobs_inserted, jobs_updated, rediscoveries, complete_snapshot, fetch_truncated, created_at)
+      VALUES
+        ('zyh1', ?, 'workday', 'succeeded', '2026-08-12T07:00:00Z', '2026-08-12T07:01:00Z', 0, 0, 0, 0, 1, 0, '2026-08-12T07:00:00Z'),
+        ('zyh2', ?, 'workday', 'succeeded', '2026-08-12T08:00:00Z', '2026-08-12T08:01:00Z', 0, 0, 0, 0, 1, 0, '2026-08-12T08:00:00Z'),
+        ('zyh3', ?, 'workday', 'succeeded', '2026-08-12T09:00:00Z', '2026-08-12T09:01:00Z', 0, 0, 0, 0, 1, 0, '2026-08-12T09:00:00Z'),
+        ('zyhh', ?, 'workday', 'succeeded', '2026-07-01T09:00:00Z', '2026-07-01T09:01:00Z', 5, 5, 0, 0, 1, 0, '2026-07-01T09:00:00Z')
+    `,
+    ).run(sourceId, sourceId, sourceId, sourceId);
+
+    alertService.evaluateRules();
+    // Healthy source should not trigger zero-yield alert.
+    expect(alertService.listAlerts()).toHaveLength(0);
+  });
+
+  it('fires zero-yield alert for unhealthy sources with zero yield', () => {
+    const { db, alertService } = setupDb();
+    const sourceId = insertTestSource(db, { id: 'zy-unhealthy' });
+
+    // Set source health to failed (source is malfunctioning).
+    db.prepare("UPDATE sources SET health_status = 'failed' WHERE id = ?").run(
+      sourceId,
+    );
+
+    // 3 distinct complete cycles, all zero-yield, plus historical yield.
+    db.prepare(
+      `
+      INSERT INTO runs (id, source_id, provider_id, status, started_at, completed_at, jobs_discovered, jobs_inserted, jobs_updated, rediscoveries, complete_snapshot, fetch_truncated, created_at)
+      VALUES
+        ('zyu1', ?, 'workday', 'succeeded', '2026-08-12T07:00:00Z', '2026-08-12T07:01:00Z', 0, 0, 0, 0, 1, 0, '2026-08-12T07:00:00Z'),
+        ('zyu2', ?, 'workday', 'succeeded', '2026-08-12T08:00:00Z', '2026-08-12T08:01:00Z', 0, 0, 0, 0, 1, 0, '2026-08-12T08:00:00Z'),
+        ('zyu3', ?, 'workday', 'succeeded', '2026-08-12T09:00:00Z', '2026-08-12T09:01:00Z', 0, 0, 0, 0, 1, 0, '2026-08-12T09:00:00Z'),
+        ('zyuh', ?, 'workday', 'succeeded', '2026-07-01T09:00:00Z', '2026-07-01T09:01:00Z', 5, 5, 0, 0, 1, 0, '2026-07-01T09:00:00Z')
+    `,
+    ).run(sourceId, sourceId, sourceId, sourceId);
+
+    alertService.evaluateRules();
+    const list = alertService.listAlerts();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({
+      ruleId: 'zero-yield-streak',
+      entityId: sourceId,
+    });
+  });
+
   it('does not flag unsupported career sites as stale', () => {
     const { db, alertService, employerRepository } = setupDb();
     const employer = employerRepository.createEmployer({

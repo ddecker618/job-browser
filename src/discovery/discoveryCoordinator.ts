@@ -362,6 +362,12 @@ export function translateError(error: unknown): string {
     return 'Invalid configuration: Check configuration fields';
   }
   if (
+    message.toLowerCase().includes('could not be resolved') ||
+    message.toLowerCase().includes('host could not be resolved')
+  ) {
+    return 'Provider unavailable: DNS resolution failed for host';
+  }
+  if (
     message.toLowerCase().includes('fetch failed') ||
     message.toLowerCase().includes('getaddrinfo') ||
     message.toLowerCase().includes('connrefused')
