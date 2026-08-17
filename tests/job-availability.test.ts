@@ -10,10 +10,7 @@ import {
 } from '../src/intelligence/jobAvailability.js';
 import { JobRepository } from '../src/repositories/job-repository.js';
 import { SourceRepository } from '../src/repositories/source-repository.js';
-import {
-  startBackend,
-  type BackendHandle,
-} from '../src/server/backend.js';
+import { startBackend, type BackendHandle } from '../src/server/backend.js';
 import { createJobFixture } from './helpers/job-fixture.js';
 
 const handles: BackendHandle[] = [];
@@ -92,7 +89,11 @@ describe('job availability REST API', () => {
       job: { id: string; active: boolean; userRemoved: boolean };
     };
     expect(body.changed).toBe(true);
-    expect(body.job).toMatchObject({ id: jobId, active: false, userRemoved: true });
+    expect(body.job).toMatchObject({
+      id: jobId,
+      active: false,
+      userRemoved: true,
+    });
 
     response = await fetch(url, {
       method: 'PATCH',
@@ -105,7 +106,11 @@ describe('job availability REST API', () => {
       job: { id: string; active: boolean; userRemoved: boolean };
     };
     expect(body.changed).toBe(true);
-    expect(body.job).toMatchObject({ id: jobId, active: true, userRemoved: false });
+    expect(body.job).toMatchObject({
+      id: jobId,
+      active: true,
+      userRemoved: false,
+    });
   });
 
   it('rejects an unknown availability action', async () => {
@@ -135,11 +140,9 @@ describe('job availability REST API', () => {
   });
 
   it('does not mark a job inactive when verification is low-confidence (unreachable)', async () => {
-    const fixture = await backend(
-      () => {
-        throw new Error('network timeout');
-      },
-    );
+    const fixture = await backend(() => {
+      throw new Error('network timeout');
+    });
     const url = `${fixture.handle.url}/api/jobs/${fixture.jobId}/availability`;
 
     const response = await fetch(url, {
@@ -178,13 +181,13 @@ describe('job availability REST API', () => {
   });
 });
 
-async function backend(
-  availabilityFetcher?: AvailabilityFetcher,
-): Promise<{
+async function backend(availabilityFetcher?: AvailabilityFetcher): Promise<{
   handle: BackendHandle;
   jobId: string;
 }> {
-  const directory = mkdtempSync(join(tmpdir(), 'job-browser-availability-api-'));
+  const directory = mkdtempSync(
+    join(tmpdir(), 'job-browser-availability-api-'),
+  );
   directories.push(directory);
   const handle = await startBackend({
     databasePath: join(directory, 'jobs.sqlite'),
@@ -192,9 +195,7 @@ async function backend(
     clientDirectory: join(directory, 'client'),
     enableScheduler: false,
     apiRequestsPerMinute: 1_000,
-    ...(availabilityFetcher === undefined
-      ? {}
-      : { availabilityFetcher }),
+    ...(availabilityFetcher === undefined ? {} : { availabilityFetcher }),
     logger: () => undefined,
   });
   handles.push(handle);

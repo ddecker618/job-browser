@@ -607,6 +607,43 @@ Regression fixtures
 Provider compatibility
 Production build
 Desktop smoke tests
+
+Milestone 9.6 Employer Seed Manifest Import
+Objective
+
+Import employer seeds in bulk from versioned JSON/CSV manifests without creating duplicate Employers, CareerSites, or Sources.
+
+Status
+
+**Status: COMPLETE** — 2026-08-16, version 1.0.21. Migration `030_employer_aliases.sql`
+adds the unique `employer_aliases` table. `src/domain/urlIdentity.ts` provides
+deterministic URL/domain/name/configuration/ATS-tenant identities.
+`src/models/employer-manifest.ts` and `src/schemas/employer-manifest.ts` parse and
+validate `employer-seed-manifest-v1` JSON/CSV manifests. `EmployerSeedImporter`
+resolves employers by domain → alias → normalized name, career sites by exact
+URL → URL identity → ATS family+tenant → effective URL → retained evidence, and
+Sources by site link → URL identity → canonical configuration JSON → ATS tenant,
+with batched (≤25) transactions and full-batch rollback on database errors.
+Dry-run is read-only; retired sites are reused as-is; disabled/archived Sources
+are never auto-re-enabled. Surface: `npm run employers:import -- <file> [--dry-run]`
+CLI and `POST /api/employer-discovery/import`. Importer evidence is written after
+verification so it survives the fingerprint evidence wipe. Full suite 99 files /
+1005 tests; lint, strict typecheck, and production build pass.
+
+Required Work
+Versioned manifest schema (JSON + CSV)
+Deterministic URL identity canonicalization
+Alias table migration
+Idempotent importer with batch rollback
+Dry-run mode
+CLI and REST API surfaces
+Importer evidence and discovery state recording
+Completion Gate
+
+Importing the same manifest repeatedly (and importing curated starter seeds) never
+duplicates Employers, CareerSites, or Sources, and a database error inside a batch
+leaves no partial changes.
+
 Future Expansion
 
 Future work may include:

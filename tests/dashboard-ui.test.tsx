@@ -167,7 +167,9 @@ describe('dashboard UI', () => {
     mockFetch((url) => {
       if (url.endsWith('/api/saved-filters')) return [];
       if (url.endsWith('/api/jobs/1')) return jobDetail();
-      return searchResponse([searchJob('1', 'Cybersecurity Analyst', 'Alpha Health')]);
+      return searchResponse([
+        searchJob('1', 'Cybersecurity Analyst', 'Alpha Health'),
+      ]);
     });
     renderPage(<JobsPage />, ['/jobs']);
     await screen.findByText('Cybersecurity Analyst');
@@ -188,7 +190,11 @@ describe('dashboard UI', () => {
     expect(section.getByText('Required certifications')).toBeInTheDocument();
     expect(section.getByText('CompTIA Security+')).toBeInTheDocument();
     expect(section.getByText('Conditions')).toBeInTheDocument();
-    expect(section.getByText('Professional engineering required; Contingent on award')).toBeInTheDocument();
+    expect(
+      section.getByText(
+        'Professional engineering required; Contingent on award',
+      ),
+    ).toBeInTheDocument();
     expect(section.getByText('Education')).toBeInTheDocument();
     expect(section.getByText("Bachelor's degree")).toBeInTheDocument();
     expect(section.getByText('Experience substitution')).toBeInTheDocument();
@@ -344,10 +350,13 @@ describe('dashboard UI', () => {
         const url = input instanceof Request ? input.url : input.toString();
         if (url.includes('/api/analytics/application-outcomes')) {
           return Promise.resolve(
-            new Response(JSON.stringify({ error: 'Outcome analytics are down' }), {
-              status: 500,
-              headers: { 'Content-Type': 'application/json' },
-            }),
+            new Response(
+              JSON.stringify({ error: 'Outcome analytics are down' }),
+              {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' },
+              },
+            ),
           );
         }
         return Promise.resolve(

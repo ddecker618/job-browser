@@ -76,13 +76,14 @@ export function backfillRoleDetails(
     updated += 1;
   }
 
-  const totalCurrentVersion = database
-    .prepare<[string], { count: number }>(
-      `SELECT COUNT(*) AS count FROM jobs
+  const totalCurrentVersion =
+    database
+      .prepare<[string], { count: number }>(
+        `SELECT COUNT(*) AS count FROM jobs
         WHERE active = 1 AND status <> 'expired'
           AND json_extract(role_details_json, '$.version') = ?`,
-    )
-    .get(ROLE_DETAILS_VERSION)?.count ?? 0;
+      )
+      .get(ROLE_DETAILS_VERSION)?.count ?? 0;
 
   return {
     processed: rows.length,

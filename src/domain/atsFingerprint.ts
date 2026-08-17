@@ -1,7 +1,5 @@
 import type { AtsSupportState } from '../models/source-management.js';
-import type {
-  CareerSiteFingerprint,
-} from '../models/employer.js';
+import type { CareerSiteFingerprint } from '../models/employer.js';
 
 export const FINGERPRINT_VERSION = 'ats-fingerprint-v1';
 
@@ -45,6 +43,8 @@ const PROVIDER_IDS = new Set([
   'recruitee',
   'teamtailor',
   'icims',
+  'cisco',
+  'crowdstrike',
 ]);
 
 function normalizeUrl(input: string): URL | null {
@@ -147,9 +147,7 @@ function matchUrl(url: URL): UrlMatch | null {
     return supportedMatch(
       'Lever',
       'lever',
-      parts[0]
-        ? { site: parts[0], company: displaySlug(parts[0]) }
-        : null,
+      parts[0] ? { site: parts[0], company: displaySlug(parts[0]) } : null,
       0.99,
       [
         {
@@ -169,14 +167,32 @@ function matchUrl(url: URL): UrlMatch | null {
     return supportedMatch(
       'Ashby',
       'ashby',
-      parts[0]
-        ? { boardName: parts[0], company: displaySlug(parts[0]) }
-        : null,
+      parts[0] ? { boardName: parts[0], company: displaySlug(parts[0]) } : null,
       0.99,
       [
         {
           kind: 'hostname',
           detail: 'Hostname is jobs.ashbyhq.com, a known Ashby job board host.',
+          confidence: 0.99,
+        },
+      ],
+      null,
+      null,
+      null,
+      null,
+    );
+  }
+
+  if (host === 'jobs.cisco.com' || host === 'careers.cisco.com') {
+    return supportedMatch(
+      'Cisco Careers',
+      'cisco',
+      { company: 'cisco' },
+      0.99,
+      [
+        {
+          kind: 'hostname',
+          detail: 'Hostname is jobs.cisco.com, a known Cisco careers host.',
           confidence: 0.99,
         },
       ],
@@ -501,7 +517,11 @@ export function fingerprintCareerSiteUrl(
     atsDetectedProvider: providerSupported ? (match.provider ?? null) : null,
     confidence: match.confidence,
     confidenceLabel:
-      match.confidence >= 0.85 ? 'high' : match.confidence >= 0.5 ? 'medium' : 'low',
+      match.confidence >= 0.85
+        ? 'high'
+        : match.confidence >= 0.5
+          ? 'medium'
+          : 'low',
     supportState,
     evidence: evidenceRows,
     detectedVariant: match.variant,

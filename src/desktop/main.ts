@@ -653,9 +653,10 @@ function assertUpgradeReconciliation(database: JobDatabase): void {
     );
   }
   const removed = database
-    .prepare<[string], UpgradeReconciliationRemovedRow>(
-      `SELECT active, user_removed, role_details_json FROM jobs WHERE fingerprint = ?`,
-    )
+    .prepare<
+      [string],
+      UpgradeReconciliationRemovedRow
+    >(`SELECT active, user_removed, role_details_json FROM jobs WHERE fingerprint = ?`)
     .get(UPGRADE_SMOKE_REMOVED_FINGERPRINT);
   if (removed === undefined) {
     throw new Error('Upgrade smoke: removed fixture is missing');

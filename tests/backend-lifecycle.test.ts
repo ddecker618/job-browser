@@ -204,15 +204,18 @@ describe('backend lifecycle', () => {
     const handle = await backend(directory, {
       databasePath,
       onSettingsSaved: () => {
-        throw new Error('Database location must be outside the installation directory');
+        throw new Error(
+          'Database location must be outside the installation directory',
+        );
       },
     });
     handles.push(handle);
 
     const saved = handle.database
-      .prepare<[string], { value: string }>(
-        'SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?',
-      )
+      .prepare<
+        [string],
+        { value: string }
+      >('SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?')
       .get('defaultSearch')?.value;
     expect(saved).toBeUndefined();
 
@@ -232,10 +235,11 @@ describe('backend lifecycle', () => {
     });
     expect(response.status).toBe(500);
 
-const persisted = handle.database
-      .prepare<[string], { value: string }>(
-        'SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?',
-      )
+    const persisted = handle.database
+      .prepare<
+        [string],
+        { value: string }
+      >('SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?')
       .get('defaultSearch')?.value;
     expect(persisted).toBeUndefined();
   });
@@ -272,9 +276,10 @@ const persisted = handle.database
     expect(hookCalls).toBe(1);
 
     const persisted = handle.database
-      .prepare<[string], { value: string }>(
-        'SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?',
-      )
+      .prepare<
+        [string],
+        { value: string }
+      >('SELECT setting_value_json AS value FROM app_settings WHERE setting_key = ?')
       .get('defaultSearch')?.value;
     expect(JSON.parse(persisted!)).toBe('security engineer');
   });

@@ -4,7 +4,10 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ConfiguredSource, SourceControlCenter } from '../src/models/source-management.js';
+import type {
+  ConfiguredSource,
+  SourceControlCenter,
+} from '../src/models/source-management.js';
 import { startBackend, type BackendHandle } from '../src/server/backend.js';
 
 const handles: BackendHandle[] = [];
@@ -269,9 +272,7 @@ describe('source management API', () => {
   });
 
   it('returns subsystem running states in control-center status', async () => {
-    const directory = mkdtempSync(
-      join(tmpdir(), 'job-browser-status-states-'),
-    );
+    const directory = mkdtempSync(join(tmpdir(), 'job-browser-status-states-'));
     directories.push(directory);
     const handle = await startBackend({
       databasePath: join(directory, 'jobs.sqlite'),

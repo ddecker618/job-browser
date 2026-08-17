@@ -47,7 +47,7 @@ describe('roleDetails extractor', () => {
     });
 
     it('records a stable source-text hash', () => {
-      const details = extractRoleDetails(input({}, ), CONFIG);
+      const details = extractRoleDetails(input({}), CONFIG);
       expect(details.sourceTextHash).toMatch(/^[0-9a-f]{64}$/);
     });
 
@@ -191,14 +191,22 @@ describe('roleDetails extractor', () => {
 
   describe('workplace precedence', () => {
     it('uses an explicit provider remote type', () => {
-      const details = extractRoleDetails(input({ remoteType: 'remote' }), CONFIG);
+      const details = extractRoleDetails(
+        input({ remoteType: 'remote' }),
+        CONFIG,
+      );
       expect(details.workplace.arrangement).toBe('remote');
       expect(details.workplace.source).toBe('provider');
-      expect(details.workplace.evidence).toContain('Provider remote type: remote');
+      expect(details.workplace.evidence).toContain(
+        'Provider remote type: remote',
+      );
     });
 
     it('uses an explicit provider hybrid type', () => {
-      const details = extractRoleDetails(input({ remoteType: 'hybrid' }), CONFIG);
+      const details = extractRoleDetails(
+        input({ remoteType: 'hybrid' }),
+        CONFIG,
+      );
       expect(details.workplace.arrangement).toBe('hybrid');
       expect(details.workplace.source).toBe('provider');
     });
@@ -239,7 +247,9 @@ describe('roleDetails extractor', () => {
 
     it('falls back to description evidence when the provider is silent', () => {
       const details = extractRoleDetails(
-        input({ description: 'Hybrid role, three days per week in the office.' }),
+        input({
+          description: 'Hybrid role, three days per week in the office.',
+        }),
         CONFIG,
       );
       expect(details.workplace.arrangement).toBe('hybrid');
@@ -258,7 +268,8 @@ describe('roleDetails extractor', () => {
     it('classifies onsite from explicit labeled language', () => {
       const details = extractRoleDetails(
         input({
-          description: 'Not a remote role. Must report to the office. Local candidates only.',
+          description:
+            'Not a remote role. Must report to the office. Local candidates only.',
         }),
         CONFIG,
       );
@@ -286,7 +297,10 @@ describe('roleDetails extractor', () => {
     });
 
     it('reports a hybrid-capable location as remote-capable', () => {
-      const details = extractRoleDetails(input({ remoteType: 'hybrid' }), CONFIG);
+      const details = extractRoleDetails(
+        input({ remoteType: 'hybrid' }),
+        CONFIG,
+      );
       expect(details.locations.remoteCapable).toBe(true);
     });
   });
@@ -423,7 +437,9 @@ describe('roleDetails extractor', () => {
 
     it('classifies obtainable clearance language', () => {
       const details = extractRoleDetails(
-        input({ description: 'May be eligible to obtain a security clearance.' }),
+        input({
+          description: 'May be eligible to obtain a security clearance.',
+        }),
         CONFIG,
       );
       expect(details.clearance.mode).toBe('obtainable');
@@ -432,7 +448,8 @@ describe('roleDetails extractor', () => {
     it('markers clearance sponsorship as available', () => {
       const details = extractRoleDetails(
         input({
-          description: 'Clearance sponsorship is available for the right candidate.',
+          description:
+            'Clearance sponsorship is available for the right candidate.',
         }),
         CONFIG,
       );
@@ -441,7 +458,9 @@ describe('roleDetails extractor', () => {
 
     it('classifies a public trust position', () => {
       const details = extractRoleDetails(
-        input({ description: 'Public trust position with a background check.' }),
+        input({
+          description: 'Public trust position with a background check.',
+        }),
         CONFIG,
       );
       expect(details.clearance.mode).toBe('public-trust');
@@ -495,7 +514,8 @@ describe('roleDetails extractor', () => {
     it('records degree-in-progress acceptance', () => {
       const details = extractRoleDetails(
         input({
-          description: 'Degree in progress is acceptable, or equivalent work experience.',
+          description:
+            'Degree in progress is acceptable, or equivalent work experience.',
         }),
         CONFIG,
       );
@@ -524,7 +544,9 @@ describe('roleDetails extractor', () => {
 
     it('extracts "requires at least N years" language', () => {
       const details = extractRoleDetails(
-        input({ description: 'Requires at least 3 years of security experience.' }),
+        input({
+          description: 'Requires at least 3 years of security experience.',
+        }),
         CONFIG,
       );
       expect(details.experience.requiredYears).toBe(3);
@@ -548,13 +570,20 @@ describe('roleDetails extractor', () => {
 
     it('records a required/preferred split in evidence', () => {
       const details = extractRoleDetails(
-        input({ description: 'Requires at least 3 years of experience; 5 years preferred.' }),
+        input({
+          description:
+            'Requires at least 3 years of experience; 5 years preferred.',
+        }),
         CONFIG,
       );
       expect(details.experience.requiredYears).toBe(3);
       expect(details.experience.preferredYears).toBe(5);
-      expect(details.experience.evidence).toContain('Required experience: 3 years');
-      expect(details.experience.evidence).toContain('Preferred experience: 5 years');
+      expect(details.experience.evidence).toContain(
+        'Required experience: 3 years',
+      );
+      expect(details.experience.evidence).toContain(
+        'Preferred experience: 5 years',
+      );
     });
 
     it('records equivalent-experience substitution', () => {
@@ -581,7 +610,9 @@ describe('roleDetails extractor', () => {
   describe('catalog skills and certifications', () => {
     it('extracts required skills from the requirements section', () => {
       const details = extractRoleDetails(
-        input({ requirements: 'Linux administration and Python scripting required.' }),
+        input({
+          requirements: 'Linux administration and Python scripting required.',
+        }),
         CONFIG,
       );
       expect(details.skills.required).toContain('Linux');
@@ -611,7 +642,8 @@ describe('roleDetails extractor', () => {
     it('deduplicates and sorts matched skills', () => {
       const details = extractRoleDetails(
         input({
-          description: 'Windows Server and Linux. Linux is the primary platform.',
+          description:
+            'Windows Server and Linux. Linux is the primary platform.',
         }),
         CONFIG,
       );
@@ -679,7 +711,9 @@ describe('roleDetails extractor', () => {
 
     it('flags the 0854 professional-engineering series', () => {
       const details = extractRoleDetails(
-        input({ description: 'Occupational series 0854 (Computer Engineering).' }),
+        input({
+          description: 'Occupational series 0854 (Computer Engineering).',
+        }),
         CONFIG,
       );
       expect(details.occupationalSeries).toContain('0854');
@@ -860,7 +894,9 @@ describe('roleDetails extractor', () => {
       const cases = [
         input({ remoteType: 'remote' }),
         input({ teleworkEligible: true }),
-        input({ description: 'Hybrid role, three days per week in the office.' }),
+        input({
+          description: 'Hybrid role, three days per week in the office.',
+        }),
         input({ description: 'Must report to the office.' }),
       ];
       for (const caseInput of cases) {
@@ -912,7 +948,8 @@ describe('roleDetails extractor', () => {
     it('classifies "Telework/Remote work currently not authorized" as onsite', () => {
       const details = extractRoleDetails(
         input({
-          description: 'Telework/Remote work currently not authorized for this position.',
+          description:
+            'Telework/Remote work currently not authorized for this position.',
         }),
         CONFIG,
       );
@@ -932,7 +969,9 @@ describe('roleDetails extractor', () => {
 
     it('classifies "not eligible for remote work" as onsite', () => {
       const details = extractRoleDetails(
-        input({ description: 'This position is not eligible for remote work.' }),
+        input({
+          description: 'This position is not eligible for remote work.',
+        }),
         CONFIG,
       );
       expect(details.workplace.arrangement).toBe('onsite');
@@ -972,7 +1011,9 @@ describe('roleDetails extractor', () => {
 
     it('classifies a worksite-reporting requirement as onsite', () => {
       const details = extractRoleDetails(
-        input({ description: 'Employees must report to the worksite each day.' }),
+        input({
+          description: 'Employees must report to the worksite each day.',
+        }),
         CONFIG,
       );
       expect(details.workplace.arrangement).toBe('onsite');
@@ -1093,7 +1134,12 @@ describe('roleDetails extractor', () => {
   describe('no company-HQ inference', () => {
     it('never infers a location from the company name alone', () => {
       const details = extractRoleDetails(
-        input({ company: 'Washington DC Consulting Group', city: null, state: null, location: null }),
+        input({
+          company: 'Washington DC Consulting Group',
+          city: null,
+          state: null,
+          location: null,
+        }),
         CONFIG,
       );
       expect(details.locations.primaryCity).toBeNull();
@@ -1424,7 +1470,8 @@ Desired Qualifications:
     it('does not infer years from qualitative language', () => {
       const details = extractRoleDetails(
         input({
-          description: 'The ideal candidate has significant hands-on experience.',
+          description:
+            'The ideal candidate has significant hands-on experience.',
         }),
         CONFIG,
       );
@@ -1513,7 +1560,8 @@ Desired Qualifications:
     it('does not flag travel when only the word travel appears in prose', () => {
       const details = extractRoleDetails(
         input({
-          description: 'The engineering team travels to conferences in our roadmap talks.',
+          description:
+            'The engineering team travels to conferences in our roadmap talks.',
         }),
         CONFIG,
       );
@@ -1546,7 +1594,9 @@ Desired Qualifications:
   describe('matrix: schedule breadth', () => {
     it('classifies a standard daytime schedule', () => {
       const details = extractRoleDetails(
-        input({ description: 'Work a standard daytime schedule Monday to Friday.' }),
+        input({
+          description: 'Work a standard daytime schedule Monday to Friday.',
+        }),
         CONFIG,
       );
       expect(details.schedule.classification).toBe('daytime');
@@ -1575,7 +1625,8 @@ Desired Qualifications:
     it('classifies a public trust position with a background investigation', () => {
       const details = extractRoleDetails(
         input({
-          description: 'Public trust position with a background investigation required.',
+          description:
+            'Public trust position with a background investigation required.',
         }),
         CONFIG,
       );
@@ -1643,7 +1694,8 @@ Desired Qualifications:
     it('orders skills and certifications deterministically across catalogs', () => {
       const details = extractRoleDetails(
         input({
-          requirements: 'Linux, Splunk, Windows Server, and Nmap are all required. PowerShell automation.',
+          requirements:
+            'Linux, Splunk, Windows Server, and Nmap are all required. PowerShell automation.',
         }),
         CONFIG,
       );

@@ -49,9 +49,7 @@ describe('CrowdStrikeProvider', () => {
     });
     const url = new URL(search.target);
     expect(url.origin).toBe('https://crowdstrike.wd5.myworkdayjobs.com');
-    expect(url.pathname).toBe(
-      '/wday/cxs/crowdstrike/crowdstrikecareers/jobs',
-    );
+    expect(url.pathname).toBe('/wday/cxs/crowdstrike/crowdstrikecareers/jobs');
     expect(url.searchParams.get('_tenant')).toBe('crowdstrike');
     expect(url.searchParams.get('_site')).toBe('crowdstrikecareers');
     expect(url.searchParams.get('_company')).toBe('CrowdStrike');

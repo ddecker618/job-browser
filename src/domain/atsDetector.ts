@@ -184,6 +184,12 @@ export async function detectAts(
       failureCategory = 'timeout';
       explanation = 'The connection to the site timed out.';
     } else if (
+      msg.includes('could not be resolved') ||
+      msg.includes('unreachable')
+    ) {
+      failureCategory = 'unreachable';
+      explanation = 'The careers site host could not be resolved.';
+    } else if (
       msg.includes('validation failed') ||
       msg.includes('SSRF') ||
       msg.includes('private')

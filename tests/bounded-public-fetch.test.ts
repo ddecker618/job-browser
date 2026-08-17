@@ -140,4 +140,26 @@ describe('boundedPublicFetch', () => {
     expect((error as Error).message).toBe('Public request failed');
     expect((error as Error).message).not.toContain('secret.internal');
   });
+
+  it('reports DNS resolution failures distinctly from validation failures', async () => {
+    const unresolved: PublicFetchResolver = () =>
+      Promise.reject(new Error('URL host could not be resolved'));
+    await expect(
+      boundedPublicFetch('https://nonexistent.example.com', {
+        resolve: unresolved,
+        transport: () =>
+          Promise.reject(new Error('transport must not be called')),
+      }),
+    ).rejects.toThrow('Public host could not be resolved');
+
+    const invalid: PublicFetchResolver = () =>
+      Promise.reject(new Error('blocked SSRF private target'));
+    await expect(
+      boundedPublicFetch('https://example.com/feed', {
+        resolve: invalid,
+        transport: () =>
+          Promise.reject(new Error('transport must not be called')),
+      }),
+    ).rejects.toThrow('Public URL validation failed');
+  });
 });

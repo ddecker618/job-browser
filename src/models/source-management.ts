@@ -185,6 +185,7 @@ export const ATS_SUPPORT_STATES = [
   'detected-but-unsupported',
   'structured-data-fallback-available',
   'unsupported',
+  'never-detected',
 ] as const;
 export type AtsSupportState = (typeof ATS_SUPPORT_STATES)[number];
 

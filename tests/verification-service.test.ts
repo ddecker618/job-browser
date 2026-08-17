@@ -158,7 +158,9 @@ describe('verificationService', () => {
       );
       expect(result.extractedRequirements.occupationalSeries).toBe('0854');
       expect(result.extractedRequirements.professionalEngineering).toBe(true);
-      expect(result.extractedRequirements.professionalEngineeringEvidence.length).toBeGreaterThan(0);
+      expect(
+        result.extractedRequirements.professionalEngineeringEvidence.length,
+      ).toBeGreaterThan(0);
     });
 
     it('does not treat a software engineer title as professional engineering', () => {

@@ -331,6 +331,13 @@ function fetchTransport(
   return new Promise((resolve, reject) => {
     const headers = new Headers(init.headers);
     headers.set('Host', url.host);
+    const ua = headers.get('user-agent');
+    if (!ua || ua === 'job-browser/1.0 (local job discovery)') {
+      headers.set(
+        'User-Agent',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      );
+    }
     const request = (url.protocol === 'https:' ? httpsRequest : httpRequest)(
       {
         protocol: url.protocol,

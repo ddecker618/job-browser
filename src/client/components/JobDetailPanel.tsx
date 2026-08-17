@@ -190,7 +190,7 @@ export function JobDetailPanel({
                 </span>
                 <span>{job.data.workArrangement ?? job.data.remoteType}</span>
                 <span>{job.data.status}</span>
-{job.data.active && job.data.status !== 'expired' ? null : (
+                {job.data.active && job.data.status !== 'expired' ? null : (
                   <span className="removed">
                     {lifecycleDetailLabel(
                       job.data.lifecycleReason,
@@ -534,19 +534,18 @@ function RoleDetailsSection({
 
   const rows: { label: string; value: string }[] = [];
 
-  const workplaceLabel: Record<RoleDetails['workplace']['arrangement'], string> =
-    {
-      remote: 'Remote',
-      hybrid: 'Hybrid',
-      onsite: 'On-site',
-      unknown: 'Unknown',
-    };
+  const workplaceLabel: Record<
+    RoleDetails['workplace']['arrangement'],
+    string
+  > = {
+    remote: 'Remote',
+    hybrid: 'Hybrid',
+    onsite: 'On-site',
+    unknown: 'Unknown',
+  };
 
   if (roleDetails.employment.type !== 'unknown') {
-    const employmentLabel: Record<
-      RoleDetails['employment']['type'],
-      string
-    > = {
+    const employmentLabel: Record<RoleDetails['employment']['type'], string> = {
       'full-time': 'Full-time',
       'part-time': 'Part-time',
       contract: 'Contract',
@@ -568,7 +567,10 @@ function RoleDetailsSection({
   if (roleDetails.locations.primaryCity !== null) {
     rows.push({
       label: 'Primary location',
-      value: [roleDetails.locations.primaryCity, roleDetails.locations.primaryState]
+      value: [
+        roleDetails.locations.primaryCity,
+        roleDetails.locations.primaryState,
+      ]
         .filter(Boolean)
         .join(', '),
     });
@@ -580,7 +582,10 @@ function RoleDetailsSection({
     rows.push({ label: 'Multiple locations', value: 'Yes' });
   }
 
-  if (roleDetails.clearance.mode !== 'unknown' && roleDetails.clearance.mode !== 'none') {
+  if (
+    roleDetails.clearance.mode !== 'unknown' &&
+    roleDetails.clearance.mode !== 'none'
+  ) {
     rows.push({
       label: 'Clearance',
       value: [roleDetails.clearance.level, roleDetails.clearance.mode]
@@ -592,16 +597,21 @@ function RoleDetailsSection({
     rows.push({ label: 'Clearance sponsorship', value: 'Available' });
   }
 
-  if (roleDetails.education.degreeRequired !== 'none' && roleDetails.education.degreeRequired !== 'unknown') {
-    const degreeLabel: Record<RoleDetails['education']['degreeRequired'], string> =
-      {
-        none: 'No degree required',
-        associate: 'Associate degree',
-        bachelor: "Bachelor's degree",
-        master: "Master's degree",
-        doctorate: 'Doctorate',
-        unknown: 'Unknown',
-      };
+  if (
+    roleDetails.education.degreeRequired !== 'none' &&
+    roleDetails.education.degreeRequired !== 'unknown'
+  ) {
+    const degreeLabel: Record<
+      RoleDetails['education']['degreeRequired'],
+      string
+    > = {
+      none: 'No degree required',
+      associate: 'Associate degree',
+      bachelor: "Bachelor's degree",
+      master: "Master's degree",
+      doctorate: 'Doctorate',
+      unknown: 'Unknown',
+    };
     rows.push({
       label: 'Education',
       value: degreeLabel[roleDetails.education.degreeRequired],
@@ -634,7 +644,10 @@ function RoleDetailsSection({
   }
 
   if (roleDetails.skills.required.length > 0) {
-    rows.push({ label: 'Required skills', value: roleDetails.skills.required.join(', ') });
+    rows.push({
+      label: 'Required skills',
+      value: roleDetails.skills.required.join(', '),
+    });
   }
   if (roleDetails.skills.preferred.length > 0) {
     rows.push({
@@ -689,10 +702,14 @@ function RoleDetailsSection({
   }
 
   const conditions: string[] = [];
-  if (roleDetails.contingentConditions.commissionBased) conditions.push('Commission-based');
-  if (roleDetails.contingentConditions.physicalRequirements) conditions.push('Physical requirements');
-  if (roleDetails.contingentConditions.fieldInstallation) conditions.push('Field installation');
-  if (roleDetails.contingentConditions.developmentFocused) conditions.push('Development-focused');
+  if (roleDetails.contingentConditions.commissionBased)
+    conditions.push('Commission-based');
+  if (roleDetails.contingentConditions.physicalRequirements)
+    conditions.push('Physical requirements');
+  if (roleDetails.contingentConditions.fieldInstallation)
+    conditions.push('Field installation');
+  if (roleDetails.contingentConditions.developmentFocused)
+    conditions.push('Development-focused');
   if (roleDetails.contingentConditions.professionalEngineering)
     conditions.push('Professional engineering required');
   if (roleDetails.contingentConditions.contingentOnAward)

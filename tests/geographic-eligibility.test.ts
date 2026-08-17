@@ -325,7 +325,11 @@ describe('geographic eligibility: recommendation cap', () => {
       state: 'IL',
       location: 'Springfield, IL',
     });
-    const unknown = createJobFixture({ city: null, state: null, location: null });
+    const unknown = createJobFixture({
+      city: null,
+      state: null,
+      location: null,
+    });
     expect(recommendationCapFor('onsite', geoFor(sameState))).toBe('strong');
     expect(recommendationCapFor('hybrid', geoFor(unknown))).toBe('strong');
     expect(recommendationCapFor('unknown', geoFor(unknown))).toBe('strong');
@@ -357,7 +361,8 @@ describe('geographic eligibility: end-to-end scoring', () => {
       city: 'St. Louis',
       state: 'MO',
       location: 'St. Louis, MO',
-      description: 'Hybrid role based in St. Louis; office three days per week.',
+      description:
+        'Hybrid role based in St. Louis; office three days per week.',
     });
     const result = verifyAndScore(job);
     expect(result.eligibilityPassed).toBe(true);
@@ -402,7 +407,8 @@ describe('geographic eligibility: end-to-end scoring', () => {
       city: 'Houston',
       state: 'TX',
       location: 'Houston, TX',
-      description: 'Monitor Splunk SIEM alerts and investigate incidents. Full-time.',
+      description:
+        'Monitor Splunk SIEM alerts and investigate incidents. Full-time.',
     });
     const result = verifyAndScore(job);
     expect(result.eligibilityPassed).toBe(false);
@@ -498,7 +504,8 @@ describe('geographic eligibility: end-to-end scoring', () => {
       city: 'Springfield',
       state: 'IL',
       location: 'Springfield, IL',
-      description: 'Monitor Splunk SIEM alerts and investigate incidents. Full-time.',
+      description:
+        'Monitor Splunk SIEM alerts and investigate incidents. Full-time.',
     });
     const result = verifyAndScore(job);
     expect(result.eligibilityPassed).toBe(true);
@@ -809,7 +816,9 @@ describe('geographic eligibility: current ranking through the Jobs query path', 
         direction: 'desc',
         includeIneligible: true,
       });
-      const impossibleItem = all.items.find((item) => item.id === impossible.id);
+      const impossibleItem = all.items.find(
+        (item) => item.id === impossible.id,
+      );
       expect(impossibleItem).toMatchObject({
         score: 0,
         eligibilityPassed: false,
@@ -851,7 +860,8 @@ describe('geographic eligibility: arrangement is not fabricated', () => {
       city: 'Springfield',
       state: 'IL',
       location: 'Springfield, IL',
-      description: 'Monitor Splunk SIEM alerts and investigate incidents. Full-time.',
+      description:
+        'Monitor Splunk SIEM alerts and investigate incidents. Full-time.',
     });
     const text = [
       `${job.title} at ${job.company}`,

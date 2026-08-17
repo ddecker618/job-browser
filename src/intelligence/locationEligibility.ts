@@ -17,7 +17,12 @@ interface Coordinates {
 export interface CommuteResult {
   status: 'within' | 'outside' | 'unknown';
   locationStatus: LocationStatus;
-  commuteStatus: 'not_applicable' | 'within' | 'outside' | 'unknown' | 'likely_eligible';
+  commuteStatus:
+    | 'not_applicable'
+    | 'within'
+    | 'outside'
+    | 'unknown'
+    | 'likely_eligible';
   distanceMiles: number | null;
   evidence: string;
 }

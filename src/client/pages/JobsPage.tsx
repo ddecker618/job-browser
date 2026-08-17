@@ -550,7 +550,7 @@ export function JobsPage() {
                         {isClosingSoon(job.closingDate) ? (
                           <i>Closing soon</i>
                         ) : null}
-{job.active && job.status !== 'expired' ? null : (
+                        {job.active && job.status !== 'expired' ? null : (
                           <i className="removed">
                             {lifecycleLabel(
                               job.lifecycleReason,

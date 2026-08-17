@@ -72,6 +72,7 @@ describe('migration runner', () => {
       '027_manual_job_removal.sql',
       '028_role_details.sql',
       '029_discovery_alerts.sql',
+      '030_employer_aliases.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -222,6 +223,7 @@ describe('migration runner', () => {
       '027_manual_job_removal.sql',
       '028_role_details.sql',
       '029_discovery_alerts.sql',
+      '030_employer_aliases.sql',
     ]);
     expect(
       database
@@ -364,19 +366,25 @@ describe('migration runner', () => {
         'normalization-v1', 'parsed', '{}', '2026-01-01T00:00:00.000Z');
     `);
 
-    expect(runMigrations(database).applied).toEqual(['028_role_details.sql', '029_discovery_alerts.sql']);
+    expect(runMigrations(database).applied).toEqual([
+      '028_role_details.sql',
+      '029_discovery_alerts.sql',
+      '030_employer_aliases.sql',
+    ]);
 
     const column = database
-      .prepare<[], NameRow>(
-        "SELECT name FROM pragma_table_info('jobs') WHERE name = 'role_details_json'",
-      )
+      .prepare<
+        [],
+        NameRow
+      >("SELECT name FROM pragma_table_info('jobs') WHERE name = 'role_details_json'")
       .get();
     expect(column?.name).toBe('role_details_json');
 
     const existingRowsWithDetails = database
-      .prepare<[], { count: number }>(
-        `SELECT COUNT(*) AS count FROM jobs WHERE role_details_json IS NOT NULL`,
-      )
+      .prepare<
+        [],
+        { count: number }
+      >(`SELECT COUNT(*) AS count FROM jobs WHERE role_details_json IS NOT NULL`)
       .get();
     expect(existingRowsWithDetails?.count).toBe(0);
 
@@ -618,6 +626,7 @@ describe('migration runner', () => {
       '027_manual_job_removal.sql',
       '028_role_details.sql',
       '029_discovery_alerts.sql',
+      '030_employer_aliases.sql',
     ]);
 
     const remaining = database

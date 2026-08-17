@@ -153,3 +153,12 @@ export interface EmployerSeedImportResult {
   rejected: number;
   truncated: boolean;
 }
+
+export interface EmployerAlias {
+  id: string;
+  employerId: string;
+  normalizedAlias: string;
+  provenance: string;
+  createdAt: string;
+  updatedAt: string;
+}

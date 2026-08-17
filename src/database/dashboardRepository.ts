@@ -844,7 +844,7 @@ function mapJobListItem(row: JobListRow): JobListItem {
     lastSeenAt: row.last_seen_at,
     provider: row.provider,
     favorite: Boolean(row.favorite),
-active: Boolean(row.active),
+    active: Boolean(row.active),
     lifecycleReason: row.lifecycle_reason,
     userRemoved: Boolean(row.user_removed),
     lastVerifiedAt: row.last_verified_at,

@@ -283,8 +283,7 @@ describe('Employers Discovery Intelligence UI', () => {
       if (url.pathname === '/api/employers') return employersFixture();
       if (url.pathname === '/api/employer-discovery/intelligence')
         return intelligenceFixture();
-      if (url.pathname === '/api/sources/control-center')
-        return sc;
+      if (url.pathname === '/api/sources/control-center') return sc;
       throw new Error(`Unexpected request: ${url.pathname}`);
     });
     renderPage();
@@ -317,35 +316,67 @@ function mockFetch(handler: (url: URL) => unknown) {
 
       if (url.pathname === '/api/discovery/alerts') {
         return Promise.resolve(
-          new Response(
-            JSON.stringify([]),
-            { status: 200, headers: { 'Content-Type': 'application/json' } },
-          ),
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
         );
       }
       if (url.pathname === '/api/discovery/analytics/sources') {
         return Promise.resolve(
-          new Response(
-            JSON.stringify([]),
-            { status: 200, headers: { 'Content-Type': 'application/json' } },
-          ),
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
         );
       }
       if (url.pathname === '/api/discovery/analytics/providers') {
         return Promise.resolve(
-          new Response(
-            JSON.stringify([]),
-            { status: 200, headers: { 'Content-Type': 'application/json' } },
-          ),
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
         );
       }
       if (url.pathname === '/api/discovery/analytics') {
         return Promise.resolve(
           new Response(
             JSON.stringify({
-              summary: { enabledSources: 0, disabledSources: 0, totalCareerSites: 0, activeCareerSites: 0, retiredCareerSites: 0, healthyCareerSites: 0, warningCareerSites: 0, brokenCareerSites: 0, unknownCareerSites: 0 },
-              activity: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, interruptedRuns: 0, zeroResultSuccessfulRuns: 0, successRate: 0, failureRate: 0, averageDurationMs: null, medianDurationMs: null, lastSuccessfulRun: null, lastFailedRun: null },
-              yield: { jobsDiscovered: 0, newCanonicalJobs: 0, rediscoveredJobs: 0, jobsUpdated: 0, jobsClosed: 0, currentlyActiveJobs: 0, userRemovedJobsExcluded: 0, newJobYieldPerSuccessfulRun: 0, zeroYieldRunCount: 0 }
+              summary: {
+                enabledSources: 0,
+                disabledSources: 0,
+                totalCareerSites: 0,
+                activeCareerSites: 0,
+                retiredCareerSites: 0,
+                healthyCareerSites: 0,
+                warningCareerSites: 0,
+                brokenCareerSites: 0,
+                unknownCareerSites: 0,
+              },
+              activity: {
+                totalRuns: 0,
+                successfulRuns: 0,
+                failedRuns: 0,
+                interruptedRuns: 0,
+                zeroResultSuccessfulRuns: 0,
+                successRate: 0,
+                failureRate: 0,
+                averageDurationMs: null,
+                medianDurationMs: null,
+                lastSuccessfulRun: null,
+                lastFailedRun: null,
+              },
+              yield: {
+                jobsDiscovered: 0,
+                newCanonicalJobs: 0,
+                rediscoveredJobs: 0,
+                jobsUpdated: 0,
+                jobsClosed: 0,
+                currentlyActiveJobs: 0,
+                userRemovedJobsExcluded: 0,
+                newJobYieldPerSuccessfulRun: 0,
+                zeroYieldRunCount: 0,
+              },
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
@@ -353,10 +384,10 @@ function mockFetch(handler: (url: URL) => unknown) {
       }
 
       return Promise.resolve(
-        new Response(
-          JSON.stringify(handler(url)),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        ),
+        new Response(JSON.stringify(handler(url)), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
       );
     }),
   );

@@ -164,4 +164,25 @@ describe('ATS detector', () => {
       extractedConfiguration: { origin: 'https://careers.acme.example' },
     });
   });
+
+  it('classifies DNS resolution failures as unreachable, not invalid URL', async () => {
+    const result = await detectAts('https://nonexistent.example.com', {
+      fetchPublic: () =>
+        Promise.reject(new Error('Public host could not be resolved')),
+    });
+    expect(result).toMatchObject({
+      failureCategory: 'unreachable',
+    });
+    expect(result.explanation).toContain('could not be resolved');
+  });
+
+  it('still classifies SSRF/validation rejections as invalid URL', async () => {
+    const result = await detectAts('http://127.0.0.1/admin', {
+      fetchPublic: () =>
+        Promise.reject(new Error('blocked SSRF private target')),
+    });
+    expect(result).toMatchObject({
+      failureCategory: 'invalid_url',
+    });
+  });
 });

@@ -81,7 +81,8 @@ export async function extractResumeFromPath(
       proposedCertifications: certifications
         .map((term) => term.label)
         .filter(
-          (certification) => !currentCertifications.has(normalizeText(certification)),
+          (certification) =>
+            !currentCertifications.has(normalizeText(certification)),
         ),
     };
   } catch (error) {

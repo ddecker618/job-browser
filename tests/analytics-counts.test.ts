@@ -48,7 +48,11 @@ describe('Dashboard analytics employer/skill totals', () => {
         .prepare(
           'INSERT INTO skills (id, name, normalized_name) VALUES (?, ?, ?)',
         )
-        .run(skillId, `signal-skill-${String(index)}`, `signal-skill-${String(index)}`);
+        .run(
+          skillId,
+          `signal-skill-${String(index)}`,
+          `signal-skill-${String(index)}`,
+        );
       database
         .prepare(
           'INSERT INTO job_skills (job_id, skill_id, frequency) VALUES (?, ?, ?)',

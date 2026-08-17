@@ -178,7 +178,9 @@ describe('JobSearchRepository', () => {
     database
       .prepare("UPDATE jobs SET status = 'expired' WHERE id = ?")
       .run(expiredStatus);
-    const repository = new JobSearchRepository(database, { forceFallback: true });
+    const repository = new JobSearchRepository(database, {
+      forceFallback: true,
+    });
 
     expect(repository.search(parse()).items.map((job) => job.id)).toEqual([
       current,

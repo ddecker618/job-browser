@@ -595,11 +595,23 @@ describe('JobRepository', () => {
         .run('2026-07-18-any', jobId);
 
       expect(
-        repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' }),
+        repository.setAvailability(jobId, {
+          action: 'remove',
+          changedBy: 'user',
+        }),
       ).toBe(true);
 
       const row = database
-        .prepare<[string], { active: number; lifecycle_reason: string; user_removed: number; removed_at: string | null; score_version: string | null }>(
+        .prepare<
+          [string],
+          {
+            active: number;
+            lifecycle_reason: string;
+            user_removed: number;
+            removed_at: string | null;
+            score_version: string | null;
+          }
+        >(
           `SELECT active, lifecycle_reason, user_removed, removed_at, score_version
            FROM jobs WHERE id = ?`,
         )
@@ -613,20 +625,38 @@ describe('JobRepository', () => {
       expect(row?.removed_at).not.toBeNull();
 
       expect(
-        repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' }),
+        repository.setAvailability(jobId, {
+          action: 'remove',
+          changedBy: 'user',
+        }),
       ).toBe(false);
     });
 
     it('restores a removed job to current and clears the removal marker', () => {
       const jobId = insertNewJob();
-      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+      repository.setAvailability(jobId, {
+        action: 'remove',
+        changedBy: 'user',
+      });
 
       expect(
-        repository.setAvailability(jobId, { action: 'restore', changedBy: 'user' }),
+        repository.setAvailability(jobId, {
+          action: 'restore',
+          changedBy: 'user',
+        }),
       ).toBe(true);
 
       const row = database
-        .prepare<[string], { active: number; lifecycle_reason: string; user_removed: number; removed_at: string | null; score_version: string | null }>(
+        .prepare<
+          [string],
+          {
+            active: number;
+            lifecycle_reason: string;
+            user_removed: number;
+            removed_at: string | null;
+            score_version: string | null;
+          }
+        >(
           `SELECT active, lifecycle_reason, user_removed, removed_at, score_version
            FROM jobs WHERE id = ?`,
         )
@@ -642,10 +672,18 @@ describe('JobRepository', () => {
 
     it('reactivates a job when manual verification finds it still alive', () => {
       const jobId = insertNewJob();
-      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
-      repository.setAvailability(jobId, { action: 'restore', changedBy: 'user' });
+      repository.setAvailability(jobId, {
+        action: 'remove',
+        changedBy: 'user',
+      });
+      repository.setAvailability(jobId, {
+        action: 'restore',
+        changedBy: 'user',
+      });
       database
-        .prepare('UPDATE jobs SET active = 0, lifecycle_reason = ?, user_removed = 0 WHERE id = ?')
+        .prepare(
+          'UPDATE jobs SET active = 0, lifecycle_reason = ?, user_removed = 0 WHERE id = ?',
+        )
         .run('provider-closed', jobId);
 
       expect(
@@ -656,9 +694,10 @@ describe('JobRepository', () => {
       ).toBe(true);
 
       const row = database
-        .prepare<[string], { active: number; lifecycle_reason: string }>(
-          'SELECT active, lifecycle_reason FROM jobs WHERE id = ?',
-        )
+        .prepare<
+          [string],
+          { active: number; lifecycle_reason: string }
+        >('SELECT active, lifecycle_reason FROM jobs WHERE id = ?')
         .get(jobId);
       expect(row).toEqual({ active: 1, lifecycle_reason: 'active' });
     });
@@ -677,7 +716,14 @@ describe('JobRepository', () => {
       ).toBe(true);
 
       const row = database
-        .prepare<[string], { active: number; lifecycle_reason: string; score_version: string | null }>(
+        .prepare<
+          [string],
+          {
+            active: number;
+            lifecycle_reason: string;
+            score_version: string | null;
+          }
+        >(
           'SELECT active, lifecycle_reason, score_version FROM jobs WHERE id = ?',
         )
         .get(jobId);
@@ -690,7 +736,10 @@ describe('JobRepository', () => {
 
     it('does not let verification override a user-removed job', () => {
       const jobId = insertNewJob();
-      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+      repository.setAvailability(jobId, {
+        action: 'remove',
+        changedBy: 'user',
+      });
 
       expect(
         repository.recordAvailabilityVerification(jobId, {
@@ -700,25 +749,30 @@ describe('JobRepository', () => {
       ).toBe(false);
 
       const row = database
-        .prepare<[string], { active: number; user_removed: number }>(
-          'SELECT active, user_removed FROM jobs WHERE id = ?',
-        )
+        .prepare<
+          [string],
+          { active: number; user_removed: number }
+        >('SELECT active, user_removed FROM jobs WHERE id = ?')
         .get(jobId);
       expect(row).toEqual({ active: 0, user_removed: 1 });
     });
 
     it('keeps a user-removed job removed when a provider relists it', () => {
       const jobId = insertNewJob();
-      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+      repository.setAvailability(jobId, {
+        action: 'remove',
+        changedBy: 'user',
+      });
 
       const job = createJobFixture({ status: 'new', id: jobId });
       repository.upsertObservation({ job, sourceId, rawData: job });
       new JobLifecycleRepository(database).recomputeCanonical(jobId);
 
       const row = database
-        .prepare<[string], { active: number; lifecycle_reason: string; user_removed: number }>(
-          'SELECT active, lifecycle_reason, user_removed FROM jobs WHERE id = ?',
-        )
+        .prepare<
+          [string],
+          { active: number; lifecycle_reason: string; user_removed: number }
+        >('SELECT active, lifecycle_reason, user_removed FROM jobs WHERE id = ?')
         .get(jobId);
       expect(row).toEqual({
         active: 0,
@@ -730,19 +784,30 @@ describe('JobRepository', () => {
 
     it('restores a relisted job after the user restores it', () => {
       const jobId = insertNewJob();
-      repository.setAvailability(jobId, { action: 'remove', changedBy: 'user' });
+      repository.setAvailability(jobId, {
+        action: 'remove',
+        changedBy: 'user',
+      });
 
       const job = createJobFixture({ status: 'new', id: jobId });
       repository.upsertObservation({ job, sourceId, rawData: job });
       new JobLifecycleRepository(database).recomputeCanonical(jobId);
-      repository.setAvailability(jobId, { action: 'restore', changedBy: 'user' });
+      repository.setAvailability(jobId, {
+        action: 'restore',
+        changedBy: 'user',
+      });
 
       const row = database
-        .prepare<[string], { active: number; lifecycle_reason: string; user_removed: number }>(
-          'SELECT active, lifecycle_reason, user_removed FROM jobs WHERE id = ?',
-        )
+        .prepare<
+          [string],
+          { active: number; lifecycle_reason: string; user_removed: number }
+        >('SELECT active, lifecycle_reason, user_removed FROM jobs WHERE id = ?')
         .get(jobId);
-      expect(row).toEqual({ active: 1, lifecycle_reason: 'active', user_removed: 0 });
+      expect(row).toEqual({
+        active: 1,
+        lifecycle_reason: 'active',
+        user_removed: 0,
+      });
     });
   });
 

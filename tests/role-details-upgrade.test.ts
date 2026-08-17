@@ -37,7 +37,12 @@ const STALE_V1_DOCUMENT = JSON.stringify({
     multiple: false,
     evidence: [],
   },
-  clearance: { mode: 'obtainable', level: null, sponsorable: true, evidence: [] },
+  clearance: {
+    mode: 'obtainable',
+    level: null,
+    sponsorable: true,
+    evidence: [],
+  },
   education: {
     degreeRequired: 'none',
     degreeInProgressOk: false,
@@ -81,7 +86,10 @@ interface JobStateRow {
   state: string | null;
 }
 
-function stateOf(database: JobDatabase, jobId: string): JobStateRow | undefined {
+function stateOf(
+  database: JobDatabase,
+  jobId: string,
+): JobStateRow | undefined {
   return database
     .prepare<[string], JobStateRow>(
       `SELECT id, role_details_json, score, recommendation, score_version,
@@ -240,8 +248,9 @@ describe('1.0.15 -> 1.0.16 upgrade reconciliation', () => {
     expect(result.roleDetailsProcessed).toBe(1);
     const current = stateOf(database, currentJobId);
     expect(
-      roleDetailsSchema.parse(JSON.parse(current!.role_details_json!) as unknown)
-        .version,
+      roleDetailsSchema.parse(
+        JSON.parse(current!.role_details_json!) as unknown,
+      ).version,
     ).toBe(ROLE_DETAILS_VERSION);
 
     // user_removed jobs are not resurrected or touched.

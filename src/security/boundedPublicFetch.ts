@@ -65,9 +65,16 @@ export async function boundedPublicFetch(
       let target: ResolvedPublicUrl;
       try {
         target = await abortable(resolve(current), signal);
-      } catch {
+      } catch (error) {
         if (signal.aborted)
           throw new BoundedPublicFetchError('Public request timed out');
+        const resolveError =
+          error instanceof Error ? error.message : String(error);
+        if (resolveError.includes('could not be resolved')) {
+          throw new BoundedPublicFetchError(
+            'Public host could not be resolved',
+          );
+        }
         throw new BoundedPublicFetchError('Public URL validation failed');
       }
       let response: PublicTransportResponse;

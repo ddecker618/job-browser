@@ -168,10 +168,7 @@ export class IntelligenceRepository {
     })();
   }
 
-  public backfillRoleDetails(
-    jobId: string,
-    roleDetailsJson: string,
-  ): void {
+  public backfillRoleDetails(jobId: string, roleDetailsJson: string): void {
     this.database
       .prepare(`UPDATE jobs SET role_details_json = ? WHERE id = ?`)
       .run(roleDetailsJson, jobId);

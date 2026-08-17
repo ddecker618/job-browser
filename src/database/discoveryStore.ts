@@ -349,9 +349,10 @@ export class DiscoveryStore {
       .run(verifiedAt, sourceId, runId);
     const lifecycle = new JobLifecycleRepository(this.database);
     const affected = this.database
-      .prepare<[string], { job_id: string }>(
-        'SELECT DISTINCT job_id FROM job_sources WHERE source_id = ?',
-      )
+      .prepare<
+        [string],
+        { job_id: string }
+      >('SELECT DISTINCT job_id FROM job_sources WHERE source_id = ?')
       .all(sourceId);
     for (const row of affected) {
       lifecycle.recomputeCanonical(row.job_id, verifiedAt);

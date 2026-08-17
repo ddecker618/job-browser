@@ -20,6 +20,13 @@ export interface DiscoveryAlert {
 
 const RULE_VERSION = 'discovery-alert-rules-v1';
 
+// A "zero-yield" streak requires a minimum number of full, non-truncated
+// discovery cycles that each yielded zero jobs. Multi-query sources produce one
+// run per query within a single scheduled tick, so runs that start within
+// ZERO_YIELD_CYCLE_GAP_MS of one another are grouped into one discovery cycle.
+const ZERO_YIELD_MIN_CYCLES = 3;
+const ZERO_YIELD_CYCLE_GAP_MS = 60_000;
+
 export class DiscoveryAlertService {
   private running = false;
 
@@ -32,7 +39,9 @@ export class DiscoveryAlertService {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  public listAlerts(options: { state?: 'active' | 'acknowledged' | 'resolved' } = {}): DiscoveryAlert[] {
+  public listAlerts(
+    options: { state?: 'active' | 'acknowledged' | 'resolved' } = {},
+  ): DiscoveryAlert[] {
     const db = this.database;
     let query = `
       SELECT id, rule_id, entity_type, entity_id, severity, state,
@@ -47,7 +56,8 @@ export class DiscoveryAlertService {
     } else {
       query += " WHERE state IN ('active', 'acknowledged')";
     }
-    query += ' ORDER BY severity = \'CRITICAL\' DESC, severity = \'WARNING\' DESC, last_detected_at DESC';
+    query +=
+      " ORDER BY severity = 'CRITICAL' DESC, severity = 'WARNING' DESC, last_detected_at DESC";
 
     const rows = db.prepare(query).all(...params) as DiscoveryAlertRow[];
     return rows.map(mapRow);
@@ -55,13 +65,15 @@ export class DiscoveryAlertService {
 
   public getAlert(id: string): DiscoveryAlert | null {
     const row = this.database
-      .prepare(`
+      .prepare(
+        `
         SELECT id, rule_id, entity_type, entity_id, severity, state,
                first_detected_at, last_detected_at, resolved_at, acknowledged_at,
                message, evidence_json, rule_version
           FROM discovery_alerts
          WHERE id = ?
-      `)
+      `,
+      )
       .get(id) as DiscoveryAlertRow | undefined;
 
     return row ? mapRow(row) : null;
@@ -70,11 +82,13 @@ export class DiscoveryAlertService {
   public acknowledgeAlert(id: string): DiscoveryAlert | null {
     const timestamp = this.now().toISOString();
     this.database
-      .prepare(`
+      .prepare(
+        `
         UPDATE discovery_alerts
            SET state = 'acknowledged', acknowledged_at = ?
          WHERE id = ? AND state = 'active'
-      `)
+      `,
+      )
       .run(timestamp, id);
 
     return this.getAlert(id);
@@ -88,68 +102,91 @@ export class DiscoveryAlertService {
       const evaluatedAt = this.now().toISOString();
 
       db.transaction(() => {
-      // 1. Fetch current active/acknowledged alerts to track resolution
-      const activeAlerts = db.prepare(`
+        // 1. Fetch current active/acknowledged alerts to track resolution
+        const activeAlerts = db
+          .prepare(
+            `
         SELECT id, rule_id, entity_type, entity_id
           FROM discovery_alerts
          WHERE state IN ('active', 'acknowledged')
-      `).all() as { id: string; rule_id: string; entity_type: string; entity_id: string }[];
+      `,
+          )
+          .all() as {
+          id: string;
+          rule_id: string;
+          entity_type: string;
+          entity_id: string;
+        }[];
 
-      // Keep track of which alerts were triggered in this evaluation pass
-      const triggeredAlertIds = new Set<string>();
+        // Keep track of which alerts were triggered in this evaluation pass
+        const triggeredAlertIds = new Set<string>();
 
-      // Rule evaluation logic helper
-      const processAlert = (
-        ruleId: string,
-        entityType: 'source' | 'career_site' | 'provider',
-        entityId: string,
-        severity: 'INFO' | 'WARNING' | 'CRITICAL',
-        message: string,
-        evidence: Record<string, unknown>,
-      ) => {
-        const existing = activeAlerts.find(
-          (a) =>
-            a.rule_id === ruleId &&
-            a.entity_type === entityType &&
-            a.entity_id === entityId,
-        );
+        // Rule evaluation logic helper
+        const processAlert = (
+          ruleId: string,
+          entityType: 'source' | 'career_site' | 'provider',
+          entityId: string,
+          severity: 'INFO' | 'WARNING' | 'CRITICAL',
+          message: string,
+          evidence: Record<string, unknown>,
+        ) => {
+          const existing = activeAlerts.find(
+            (a) =>
+              a.rule_id === ruleId &&
+              a.entity_type === entityType &&
+              a.entity_id === entityId,
+          );
 
-        if (existing) {
-          triggeredAlertIds.add(existing.id);
-          db.prepare(`
+          if (existing) {
+            triggeredAlertIds.add(existing.id);
+            db.prepare(
+              `
             UPDATE discovery_alerts
                SET last_detected_at = ?, severity = ?, message = ?, evidence_json = ?
              WHERE id = ?
-          `).run(evaluatedAt, severity, message, JSON.stringify(evidence), existing.id);
-        } else {
-          const newId = randomUUID();
-          db.prepare(`
+          `,
+            ).run(
+              evaluatedAt,
+              severity,
+              message,
+              JSON.stringify(evidence),
+              existing.id,
+            );
+          } else {
+            const newId = randomUUID();
+            db.prepare(
+              `
             INSERT INTO discovery_alerts (
               id, rule_id, entity_type, entity_id, severity, state,
               first_detected_at, last_detected_at, resolved_at, acknowledged_at,
               message, evidence_json, rule_version
             ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, NULL, NULL, ?, ?, ?)
-          `).run(
-            newId,
-            ruleId,
-            entityType,
-            entityId,
-            severity,
-            evaluatedAt,
-            evaluatedAt,
-            message,
-            JSON.stringify(evidence),
-            RULE_VERSION,
-          );
-        }
-      };
+          `,
+            ).run(
+              newId,
+              ruleId,
+              entityType,
+              entityId,
+              severity,
+              evaluatedAt,
+              evaluatedAt,
+              message,
+              JSON.stringify(evidence),
+              RULE_VERSION,
+            );
+          }
+        };
 
-      // --- EVALUATE RULES ---
+        // --- EVALUATE RULES ---
 
-      // 1. PROVIDER DEGRADATION (evaluated first so we can suppress source failure alerts)
-      // Check last 24h of runs grouped by provider
-      const last24hIso = new Date(Date.parse(evaluatedAt) - 24 * 60 * 60 * 1000).toISOString();
-      const providerStats = db.prepare(`
+        // 1. PROVIDER DEGRADATION (evaluated first so we can suppress source failure alerts)
+        // Check last 24h of runs grouped by provider
+        const last24hIso = new Date(
+          Date.parse(evaluatedAt) - 24 * 60 * 60 * 1000,
+        ).toISOString();
+        const providerStats = db
+          .prepare(
+            `
         SELECT provider_id,
                COUNT(*) AS total,
                SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) AS succeeded,
@@ -158,206 +195,353 @@ export class DiscoveryAlertService {
          WHERE provider_id IS NOT NULL 
            AND started_at >= ?
          GROUP BY provider_id
-      `).all(last24hIso) as { provider_id: string; total: number; succeeded: number; failed: number }[];
+      `,
+          )
+          .all(last24hIso) as {
+          provider_id: string;
+          total: number;
+          succeeded: number;
+          failed: number;
+        }[];
 
-      const degradedProviders = new Set<string>();
+        const degradedProviders = new Set<string>();
 
-      for (const p of providerStats) {
-        // Count enabled sources for provider
-        const enabledSources = db.prepare(`
+        for (const p of providerStats) {
+          // Count enabled sources for provider
+          const enabledSources = db
+            .prepare(
+              `
           SELECT COUNT(*) AS count FROM sources WHERE provider_id = ? AND enabled = 1
-        `).get(p.provider_id) as { count: number };
+        `,
+            )
+            .get(p.provider_id) as { count: number };
 
-        if (enabledSources.count >= 3 && p.total >= 3) {
-          const failureRate = p.failed / (p.succeeded + p.failed || 1);
-          // Find distinct sources that had at least one failed run in last 24 hours
-          const failedSources = db.prepare(`
+          if (enabledSources.count >= 3 && p.total >= 3) {
+            const failureRate = p.failed / (p.succeeded + p.failed || 1);
+            // Find distinct sources that had at least one failed run in last 24 hours
+            const failedSources = db
+              .prepare(
+                `
             SELECT COUNT(DISTINCT source_id) AS count
               FROM runs
              WHERE provider_id = ? AND status = 'failed' AND started_at >= ?
-          `).get(p.provider_id, last24hIso) as { count: number };
+          `,
+              )
+              .get(p.provider_id, last24hIso) as { count: number };
 
-          if (failureRate >= 0.5 && failedSources.count >= 3) {
-            degradedProviders.add(p.provider_id);
+            if (failureRate >= 0.5 && failedSources.count >= 3) {
+              degradedProviders.add(p.provider_id);
+              processAlert(
+                'provider-degraded',
+                'provider',
+                p.provider_id,
+                'WARNING',
+                `Provider ${p.provider_id} is degraded: ${String(p.failed)}/${String(p.total)} runs failed in the last 24 hours across ${String(failedSources.count)} sources.`,
+                {
+                  totalRuns: p.total,
+                  failedRuns: p.failed,
+                  failureRate,
+                  failedSources: failedSources.count,
+                },
+              );
+            }
+          }
+        }
+
+        // 2. SOURCE FAILURE STREAK
+        // Trigger when enabled source failure_count >= 2
+        const sources = db
+          .prepare(
+            `
+        SELECT id, display_name, provider_id, failure_count FROM sources WHERE enabled = 1
+      `,
+          )
+          .all() as {
+          id: string;
+          display_name: string | null;
+          provider_id: string | null;
+          failure_count: number;
+        }[];
+
+        for (const src of sources) {
+          // If provider is degraded, we suppress individual source failure alert
+          if (src.provider_id && degradedProviders.has(src.provider_id)) {
+            continue;
+          }
+
+          if (src.failure_count >= 2) {
+            const severity = src.failure_count >= 3 ? 'CRITICAL' : 'WARNING';
             processAlert(
-              'provider-degraded',
-              'provider',
-              p.provider_id,
-              'WARNING',
-              `Provider ${p.provider_id} is degraded: ${String(p.failed)}/${String(p.total)} runs failed in the last 24 hours across ${String(failedSources.count)} sources.`,
-              { totalRuns: p.total, failedRuns: p.failed, failureRate, failedSources: failedSources.count },
+              'source-failure-streak',
+              'source',
+              src.id,
+              severity,
+              `Source "${src.display_name ?? src.id}" has failed ${String(src.failure_count)} consecutive times.`,
+              { consecutiveFailures: src.failure_count },
             );
           }
         }
-      }
 
-      // 2. SOURCE FAILURE STREAK
-      // Trigger when enabled source failure_count >= 2
-      const sources = db.prepare(`
-        SELECT id, display_name, provider_id, failure_count FROM sources WHERE enabled = 1
-      `).all() as { id: string; display_name: string | null; provider_id: string | null; failure_count: number }[];
-
-      for (const src of sources) {
-        // If provider is degraded, we suppress individual source failure alert
-        if (src.provider_id && degradedProviders.has(src.provider_id)) {
-          continue;
-        }
-
-        if (src.failure_count >= 2) {
-          const severity = src.failure_count >= 3 ? 'CRITICAL' : 'WARNING';
-          processAlert(
-            'source-failure-streak',
-            'source',
-            src.id,
-            severity,
-            `Source "${src.display_name ?? src.id}" has failed ${String(src.failure_count)} consecutive times.`,
-            { consecutiveFailures: src.failure_count },
-          );
-        }
-      }
-
-      // 3. SOURCE OVERDUE
-      // Scheduled source is overdue by >= 1 hour relative to next_run_at
-      const schedulerEnabledRow = db.prepare(`
+        // 3. SOURCE OVERDUE
+        // Scheduled source is overdue by >= 1 hour relative to next_run_at
+        const schedulerEnabledRow = db
+          .prepare(
+            `
         SELECT scheduler_enabled FROM discovery_settings WHERE id = 'default'
-      `).get() as { scheduler_enabled: number } | undefined;
-      const schedulerEnabled = Boolean(schedulerEnabledRow?.scheduler_enabled);
+      `,
+          )
+          .get() as { scheduler_enabled: number } | undefined;
+        const schedulerEnabled = Boolean(
+          schedulerEnabledRow?.scheduler_enabled,
+        );
 
-      if (schedulerEnabled) {
-        const scheduledSources = db.prepare(`
+        if (schedulerEnabled) {
+          const scheduledSources = db
+            .prepare(
+              `
           SELECT s.id, s.display_name, ss.next_run_at, cs.discovery_state, cs.health_status
             FROM sources s
             JOIN source_schedules ss ON ss.source_id = s.id
             LEFT JOIN career_sites cs ON cs.source_id = s.id
            WHERE s.enabled = 1 AND ss.enabled = 1 AND ss.next_run_at IS NOT NULL
-        `).all() as { id: string; display_name: string | null; next_run_at: string; discovery_state: string | null; health_status: string | null }[];
+        `,
+            )
+            .all() as {
+            id: string;
+            display_name: string | null;
+            next_run_at: string;
+            discovery_state: string | null;
+            health_status: string | null;
+          }[];
 
-        const oneHourAgo = new Date(this.now().getTime() - 60 * 60 * 1000).toISOString();
+          const oneHourAgo = new Date(
+            this.now().getTime() - 60 * 60 * 1000,
+          ).toISOString();
 
-        for (const ss of scheduledSources) {
-          if (
-            ss.next_run_at <= oneHourAgo &&
-            ss.discovery_state !== 'backoff' &&
-            ss.discovery_state !== 'retired' &&
-            ss.health_status !== 'retired'
-          ) {
-            processAlert(
-              'source-overdue',
-              'source',
-              ss.id,
-              'WARNING',
-              `Source "${ss.display_name ?? ss.id}" run is overdue (scheduled next run was ${ss.next_run_at}).`,
-              { nextRunAt: ss.next_run_at },
-            );
+          for (const ss of scheduledSources) {
+            if (
+              ss.next_run_at <= oneHourAgo &&
+              ss.discovery_state !== 'backoff' &&
+              ss.discovery_state !== 'retired' &&
+              ss.health_status !== 'retired'
+            ) {
+              processAlert(
+                'source-overdue',
+                'source',
+                ss.id,
+                'WARNING',
+                `Source "${ss.display_name ?? ss.id}" run is overdue (scheduled next run was ${ss.next_run_at}).`,
+                { nextRunAt: ss.next_run_at },
+              );
+            }
           }
         }
-      }
 
-      // 4. CAREERSITE BROKEN
-      const careerSites = db.prepare(`
-        SELECT cs.id, cs.url, e.name AS employer_name, cs.health_status, cs.health_message
+        // 4. CAREERSITE BROKEN
+        // Only genuinely broken or actively-degraded sites should alert. Sites
+        // that are merely reachable-but-unsupported, redirecting, or that changed
+        // ATS identity (health_failure_count = 0) are informational, not broken.
+        const careerSites = db
+          .prepare(
+            `
+        SELECT cs.id, cs.url, e.name AS employer_name, cs.health_status,
+               cs.health_message, cs.health_failure_count
           FROM career_sites cs
           JOIN employers e ON e.id = cs.employer_id
-         WHERE cs.health_status IN ('broken', 'warning')
-      `).all() as { id: string; url: string; employer_name: string; health_status: string; health_message: string | null }[];
+         WHERE cs.health_status = 'broken'
+            OR (cs.health_status = 'warning' AND cs.health_failure_count > 0)
+      `,
+          )
+          .all() as {
+          id: string;
+          url: string;
+          employer_name: string;
+          health_status: string;
+          health_message: string | null;
+          health_failure_count: number;
+        }[];
 
-      for (const cs of careerSites) {
-        const severity = cs.health_status === 'broken' ? 'CRITICAL' : 'WARNING';
-        processAlert(
-          'career-site-broken',
-          'career_site',
-          cs.id,
-          severity,
-          `Career site health check for ${cs.employer_name} is ${cs.health_status}: ${cs.health_message ?? 'unhealthy'}.`,
-          { healthStatus: cs.health_status, url: cs.url, message: cs.health_message },
-        );
-      }
+        for (const cs of careerSites) {
+          const severity =
+            cs.health_status === 'broken' ? 'CRITICAL' : 'WARNING';
+          processAlert(
+            'career-site-broken',
+            'career_site',
+            cs.id,
+            severity,
+            `Career site health check for ${cs.employer_name} is ${cs.health_status}: ${cs.health_message ?? 'unhealthy'}.`,
+            {
+              healthStatus: cs.health_status,
+              url: cs.url,
+              message: cs.health_message,
+              failureCount: cs.health_failure_count,
+            },
+          );
+        }
 
-      // 5. ZERO-YIELD STREAK
-      // 3 successful completed runs return 0 jobs, and previously yielded jobs
-      for (const src of sources) {
-        // Get last 3 completed successful runs for this source
-        const lastRuns = db.prepare(`
-          SELECT id, jobs_discovered
+        // 5. ZERO-YIELD STREAK
+        // ZERO_YIELD_MIN_CYCLES complete, non-truncated discovery cycles return 0
+        // jobs, and the source previously yielded jobs. Runs are grouped into a
+        // discovery cycle when they start within ZERO_YIELD_CYCLE_GAP_MS of one
+        // another (multi-query sources produce one run per query per tick).
+        for (const src of sources) {
+          // Get recent completed, non-truncated successful runs for this source
+          const recentRuns = db
+            .prepare(
+              `
+          SELECT id, jobs_discovered, started_at
             FROM runs
            WHERE source_id = ? AND status = 'succeeded'
+             AND complete_snapshot = 1 AND fetch_truncated = 0
            ORDER BY started_at DESC
-           LIMIT 3
-        `).all(src.id) as { id: string; jobs_discovered: number }[];
+           LIMIT 500
+        `,
+            )
+            .all(src.id) as {
+            id: string;
+            jobs_discovered: number;
+            started_at: string;
+          }[];
 
-        if (lastRuns.length >= 3 && lastRuns.every((r) => r.jobs_discovered === 0)) {
-          // Check if there's any older successful run with yield > 0
-          const hasHistoricalYield = db.prepare(`
+          // Group runs into discovery cycles (newest first).
+          const cycles: {
+            jobsDiscovered: number;
+            runIds: string[];
+            newestStartedAt: string;
+          }[] = [];
+          for (const run of recentRuns) {
+            const current = cycles[cycles.length - 1];
+            if (
+              current !== undefined &&
+              Date.parse(current.newestStartedAt) - Date.parse(run.started_at) <
+                ZERO_YIELD_CYCLE_GAP_MS
+            ) {
+              current.jobsDiscovered += run.jobs_discovered;
+              current.runIds.push(run.id);
+            } else {
+              cycles.push({
+                jobsDiscovered: run.jobs_discovered,
+                runIds: [run.id],
+                newestStartedAt: run.started_at,
+              });
+            }
+            if (cycles.length >= ZERO_YIELD_MIN_CYCLES) break;
+          }
+
+          if (
+            cycles.length >= ZERO_YIELD_MIN_CYCLES &&
+            cycles.every((cycle) => cycle.jobsDiscovered === 0)
+          ) {
+            // Check if there's any older successful run with yield > 0
+            const hasHistoricalYield = db
+              .prepare(
+                `
             SELECT COUNT(*) AS count
               FROM runs
              WHERE source_id = ? AND status = 'succeeded' AND jobs_discovered > 0
-          `).get(src.id) as { count: number };
+          `,
+              )
+              .get(src.id) as { count: number };
 
-          if (hasHistoricalYield.count > 0) {
-            processAlert(
-              'zero-yield-streak',
-              'source',
-              src.id,
-              'WARNING',
-              `Source "${src.display_name ?? src.id}" has successfully completed 3 runs but yielded 0 new jobs.`,
-              { runIds: lastRuns.map((r) => r.id) },
-            );
+            if (hasHistoricalYield.count > 0) {
+              processAlert(
+                'zero-yield-streak',
+                'source',
+                src.id,
+                'WARNING',
+                `Source "${src.display_name ?? src.id}" has completed ${String(ZERO_YIELD_MIN_CYCLES)} full discovery cycles but yielded 0 new jobs.`,
+                {
+                  runIds: cycles.flatMap((cycle) => cycle.runIds),
+                  cycles: cycles.map((cycle) => ({
+                    jobsDiscovered: cycle.jobsDiscovered,
+                    runCount: cycle.runIds.length,
+                  })),
+                },
+              );
+            }
           }
         }
-      }
 
-      // 6. DISCOVERY STALE
-      // Source stale
-      const scheduledCadences = db.prepare(`
+        // 6. DISCOVERY STALE
+        // Source stale
+        const scheduledCadences = db
+          .prepare(
+            `
         SELECT s.id, s.display_name, ss.cadence
           FROM sources s
           JOIN source_schedules ss ON ss.source_id = s.id
          WHERE s.enabled = 1 AND ss.enabled = 1
-      `).all() as { id: string; display_name: string | null; cadence: string }[];
+      `,
+          )
+          .all() as {
+          id: string;
+          display_name: string | null;
+          cadence: string;
+        }[];
 
-      for (const sc of scheduledCadences) {
-        let cadenceHours = 24;
-        if (sc.cadence === 'every-6-hours') cadenceHours = 6;
-        else if (sc.cadence === 'every-12-hours') cadenceHours = 12;
+        for (const sc of scheduledCadences) {
+          let cadenceHours = 24;
+          if (sc.cadence === 'every-6-hours') cadenceHours = 6;
+          else if (sc.cadence === 'every-12-hours') cadenceHours = 12;
 
-        const lastSuccess = db.prepare(`
+          const lastSuccess = db
+            .prepare(
+              `
           SELECT completed_at
             FROM runs
            WHERE source_id = ? AND status = 'succeeded'
            ORDER BY started_at DESC
            LIMIT 1
-        `).get(sc.id) as { completed_at: string } | undefined;
+        `,
+            )
+            .get(sc.id) as { completed_at: string } | undefined;
 
-        if (lastSuccess) {
-          const staleHours = (this.now().getTime() - Date.parse(lastSuccess.completed_at)) / 3600000;
-          if (staleHours > 3 * cadenceHours) {
-            processAlert(
-              'discovery-stale',
-              'source',
-              sc.id,
-              'WARNING',
-              `Source "${sc.display_name ?? sc.id}" is stale (last successful run was ${String(Math.round(staleHours))} hours ago, expected cadence is ${String(cadenceHours)} hours).`,
-              { lastSuccessfulRunAt: lastSuccess.completed_at, staleHours },
-            );
+          if (lastSuccess) {
+            const staleHours =
+              (this.now().getTime() - Date.parse(lastSuccess.completed_at)) /
+              3600000;
+            if (staleHours > 3 * cadenceHours) {
+              processAlert(
+                'discovery-stale',
+                'source',
+                sc.id,
+                'WARNING',
+                `Source "${sc.display_name ?? sc.id}" is stale (last successful run was ${String(Math.round(staleHours))} hours ago, expected cadence is ${String(cadenceHours)} hours).`,
+                { lastSuccessfulRunAt: lastSuccess.completed_at, staleHours },
+              );
+            }
           }
         }
-      }
 
-      // CareerSite stale
-      const activeSites = db.prepare(`
+        // CareerSite stale
+        const activeSites = db
+          .prepare(
+            `
         SELECT cs.id, cs.url, e.name AS employer_name, cs.discovery_state, cs.source_id
           FROM career_sites cs
           JOIN employers e ON e.id = cs.employer_id
          WHERE cs.health_status != 'retired' AND cs.discovery_state != 'retired'
-      `).all() as { id: string; url: string; employer_name: string; discovery_state: string; source_id: string | null }[];
+      `,
+          )
+          .all() as {
+          id: string;
+          url: string;
+          employer_name: string;
+          discovery_state: string;
+          source_id: string | null;
+        }[];
 
-       // To evaluate career sites, we check their scheduling class
-      const windowStart = new Date(this.now().getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const windowEnd = evaluatedAt;
+        // To evaluate career sites, we check their scheduling class
+        const windowStart = new Date(
+          this.now().getTime() - 30 * 24 * 60 * 60 * 1000,
+        ).toISOString();
+        const windowEnd = evaluatedAt;
 
-      for (const cs of activeSites) {
-        // Query site rows format for classifying
-        const row = db.prepare(`
+        for (const cs of activeSites) {
+          // Query site rows format for classifying
+          const row = db
+            .prepare(
+              `
           SELECT cs.id AS career_site_id, cs.employer_id, e.name AS employer_name,
                   cs.url, cs.source_id, cs.ats_detected_provider AS detected_provider,
                   cs.ats_confidence, cs.ats_support_state AS support_state,
@@ -365,27 +549,49 @@ export class DiscoveryAlertService {
                   cs.health_status, cs.health_failure_count, cs.health_checked_at,
                   s.enabled AS source_enabled, s.configuration_status,
                   s.health_status AS source_health_status,
-                  s.provider_id AS source_provider_id, cs.created_at
+                  s.provider_id AS source_provider_id, cs.created_at,
+                  ss.enabled AS source_schedule_enabled, ss.cadence AS source_cadence
              FROM career_sites cs
              JOIN employers e ON e.id = cs.employer_id
              LEFT JOIN sources s ON s.id = cs.source_id
+             LEFT JOIN source_schedules ss ON ss.source_id = cs.source_id
             WHERE cs.id = ?
-        `).get(cs.id) as CareerSiteDetailRow | undefined;
+        `,
+            )
+            .get(cs.id) as CareerSiteDetailRow | undefined;
 
-        if (!row) continue;
+          if (!row) continue;
 
-        // Classify scheduling class
-        const runsForSite = cs.source_id === null ? [] : (db.prepare(`
+          // Classify scheduling class
+          const runsForSite =
+            cs.source_id === null
+              ? []
+              : (db
+                  .prepare(
+                    `
           SELECT source_id, provider_id, status, started_at, completed_at, jobs_discovered
             FROM runs
            WHERE source_id = ? AND started_at >= ? AND started_at < ?
            ORDER BY started_at DESC
-        `).all(cs.source_id, windowStart, windowEnd) as RunRow[]);
+        `,
+                  )
+                  .all(cs.source_id, windowStart, windowEnd) as RunRow[]);
 
-        const successes = runsForSite.filter((run) => run.status === 'succeeded');
-        const lastSuccessAt = successes.map((run) => run.completed_at ?? run.started_at).sort().at(-1) ?? null;
+          const successes = runsForSite.filter(
+            (run) => run.status === 'succeeded',
+          );
+          const lastSuccessAt =
+            successes
+              .map((run) => run.completed_at ?? run.started_at)
+              .sort()
+              .at(-1) ?? null;
 
-        const activityRow = cs.source_id === null ? undefined : (db.prepare(`
+          const activityRow =
+            cs.source_id === null
+              ? undefined
+              : (db
+                  .prepare(
+                    `
           SELECT source_id,
                   COUNT(DISTINCT CASE WHEN active = 1 THEN job_id END) AS active_jobs,
                   COUNT(DISTINCT CASE WHEN active = 1 AND first_seen_at >= ? AND first_seen_at < ? THEN job_id END) AS jobs_first_seen,
@@ -393,55 +599,86 @@ export class DiscoveryAlertService {
              FROM job_sources
             WHERE source_id = ? AND job_id NOT IN (SELECT id FROM jobs WHERE user_removed = 1)
             GROUP BY source_id
-        `).get(windowStart, windowEnd, windowStart, windowEnd, cs.source_id) as ActivityRow | undefined);
+        `,
+                  )
+                  .get(
+                    windowStart,
+                    windowEnd,
+                    windowStart,
+                    windowEnd,
+                    cs.source_id,
+                  ) as ActivityRow | undefined);
 
-        const activityKnown = cs.source_id !== null && successes.length > 0;
-        const activity: SiteActivity = {
-          known: activityKnown,
-          activeJobs: activityKnown ? (activityRow?.active_jobs ?? 0) : null,
-          jobsFirstSeen: activityKnown ? (activityRow?.jobs_first_seen ?? 0) : null,
-          lastNewJobAt: activityKnown ? (activityRow?.last_new_job_at ?? null) : null,
-          lastSuccessfulDiscoveryAt: lastSuccessAt,
-          successfulRuns: successes.length,
-          failedRuns: runsForSite.filter((run) => run.status === 'failed').length,
-          zeroResultSuccessfulRuns: successes.filter((run) => run.jobs_discovered === 0).length,
-        };
+          const activityKnown = cs.source_id !== null && successes.length > 0;
+          const activity: SiteActivity = {
+            known: activityKnown,
+            activeJobs: activityKnown ? (activityRow?.active_jobs ?? 0) : null,
+            jobsFirstSeen: activityKnown
+              ? (activityRow?.jobs_first_seen ?? 0)
+              : null,
+            lastNewJobAt: activityKnown
+              ? (activityRow?.last_new_job_at ?? null)
+              : null,
+            lastSuccessfulDiscoveryAt: lastSuccessAt,
+            successfulRuns: successes.length,
+            failedRuns: runsForSite.filter((run) => run.status === 'failed')
+              .length,
+            zeroResultSuccessfulRuns: successes.filter(
+              (run) => run.jobs_discovered === 0,
+            ).length,
+          };
 
-        const schedulingClass = classifySchedulingClass(row, activity);
-        const cadenceHours = cadenceForClass(schedulingClass);
+          const schedulingClass = classifySchedulingClass(row, activity);
+          const cadenceHours = cadenceForClass(schedulingClass);
 
-        if (cadenceHours !== null && cs.discovery_state !== 'backoff') {
-          const anchor = activity.lastSuccessfulDiscoveryAt ?? row.created_at;
-          const staleHours = (this.now().getTime() - Date.parse(anchor)) / 3600000;
-          if (staleHours > 3 * cadenceHours) {
-            processAlert(
-              'discovery-stale',
-              'career_site',
-              cs.id,
-              'WARNING',
-              `Career site for ${cs.employer_name} is stale (last successful discovery was ${String(Math.round(staleHours))} hours ago, expected cadence is ${String(cadenceHours)} hours).`,
-              { lastDiscoveryAt: anchor, staleHours },
-            );
+          // A career site is only stale relative to an automatic re-discovery
+          // expectation. If a linked Source exists but its schedule is disabled
+          // or manual, there is no automatic cadence to be late against.
+          const hasAutomaticSourceSchedule =
+            row.source_id === null ||
+            (row.source_schedule_enabled === 1 &&
+              row.source_cadence !== null &&
+              row.source_cadence !== 'manual');
+
+          if (
+            cadenceHours !== null &&
+            cs.discovery_state !== 'backoff' &&
+            hasAutomaticSourceSchedule
+          ) {
+            const anchor = activity.lastSuccessfulDiscoveryAt ?? row.created_at;
+            const staleHours =
+              (this.now().getTime() - Date.parse(anchor)) / 3600000;
+            if (staleHours > 3 * cadenceHours) {
+              processAlert(
+                'discovery-stale',
+                'career_site',
+                cs.id,
+                'WARNING',
+                `Career site for ${cs.employer_name} is stale (last successful discovery was ${String(Math.round(staleHours))} hours ago, expected cadence is ${String(cadenceHours)} hours).`,
+                { lastDiscoveryAt: anchor, staleHours },
+              );
+            }
           }
         }
-      }
 
-      // --- RESOLVE ALERTS ---
-      // Resolve any active alerts that were not triggered in this evaluation pass
-      for (const active of activeAlerts) {
-        if (!triggeredAlertIds.has(active.id)) {
-          db.prepare(`
+        // --- RESOLVE ALERTS ---
+        // Resolve any active alerts that were not triggered in this evaluation pass
+        for (const active of activeAlerts) {
+          if (!triggeredAlertIds.has(active.id)) {
+            db.prepare(
+              `
             UPDATE discovery_alerts
                SET state = 'resolved', resolved_at = ?
              WHERE id = ?
-          `).run(evaluatedAt, active.id);
+          `,
+            ).run(evaluatedAt, active.id);
+          }
         }
-      }
-    })();
-  } finally {
-    this.running = false;
+      })();
+    } finally {
+      this.running = false;
+    }
   }
-}
 }
 
 interface DiscoveryAlertRow {
@@ -471,7 +708,9 @@ function mapRow(row: DiscoveryAlertRow): DiscoveryAlert {
     firstDetectedAt: ensureIsoUtc(row.first_detected_at),
     lastDetectedAt: ensureIsoUtc(row.last_detected_at),
     resolvedAt: row.resolved_at ? ensureIsoUtc(row.resolved_at) : null,
-    acknowledgedAt: row.acknowledged_at ? ensureIsoUtc(row.acknowledged_at) : null,
+    acknowledgedAt: row.acknowledged_at
+      ? ensureIsoUtc(row.acknowledged_at)
+      : null,
     message: row.message,
     evidenceJson: row.evidence_json,
     ruleVersion: row.rule_version,
@@ -498,6 +737,9 @@ function classifySchedulingClass(
     (row.support_state === 'unsupported' || row.detected_provider === null)
   )
     return 'unsupported';
+  // Sites whose discovery ended in a terminal unsupported state cannot be
+  // re-discovered through a Source and must not be flagged stale.
+  if (row.discovery_state === 'unsupported') return 'unsupported';
   if (
     row.health_status === 'warning' ||
     row.health_status === 'broken' ||
@@ -549,6 +791,8 @@ interface CareerSiteDetailRow {
   configuration_status: string | null;
   source_health_status: string | null;
   source_provider_id: string | null;
+  source_schedule_enabled: number | null;
+  source_cadence: string | null;
   created_at: string;
 }
 

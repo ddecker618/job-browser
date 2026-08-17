@@ -26,9 +26,11 @@ retained.
 > be handled by an explicit migration and compatibility plan, not by silently
 > reinterpreting existing data.
 
-> **Implemented migration head (2026-08-12):**
-> `026_explicit_job_lifecycle.sql`. Phase 8 Milestones 8.1 through 8.8 and
-> Employer Discovery 9.1 through 9.5 are complete and Architect-approved.
+> **Implemented migration head (2026-08-16):**
+> `030_employer_aliases.sql`. Phase 8 Milestones 8.1 through 8.8 and
+> Employer Discovery 9.1 through 9.5 are complete and Architect-approved; the
+> versioned Employer Seed Manifest Import (1.0.21) added `030` on top of the
+> `026` head described in the addendum below.
 
 Product behavior is owned by `JOB_BROWSER_PRD.md` and the feature
 specifications. Delivery order is owned by `IMPLEMENTATION_ROADMAP.md`. Runtime

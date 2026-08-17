@@ -60,7 +60,9 @@ export interface ResumeSnapshotReuseIdentity {
   parsingError: string | null;
 }
 
-export function snapshotReuseKey(identity: ResumeSnapshotReuseIdentity): string {
+export function snapshotReuseKey(
+  identity: ResumeSnapshotReuseIdentity,
+): string {
   return [
     identity.sourceResumeId ?? 'no-source',
     identity.contentHash,

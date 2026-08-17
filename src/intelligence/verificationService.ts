@@ -8,7 +8,10 @@ import type {
 } from '../domain/verification.js';
 import { classifyWorkArrangement } from '../domain/work-arrangement.js';
 import { nowUtc } from '../utilities/timestamps.js';
-import { US_STATE_BY_NAME, normalizeStateCode } from '../utilities/us-states.js';
+import {
+  US_STATE_BY_NAME,
+  normalizeStateCode,
+} from '../utilities/us-states.js';
 import {
   classifyActiveClearance,
   classifyProfessionalEngineeringBasicQualification,
@@ -301,8 +304,7 @@ function extractStateNames(text: string): string[] {
     }
   }
 
-  const stateList =
-    /(?:\b[A-Z]{2}\b\s*,\s*){1,}\s*\b[A-Z]{2}\b/g;
+  const stateList = /(?:\b[A-Z]{2}\b\s*,\s*){1,}\s*\b[A-Z]{2}\b/g;
   let listMatch: RegExpExecArray | null;
   while ((listMatch = stateList.exec(text)) !== null) {
     const token = /\b([A-Z]{2})\b/g;
@@ -440,8 +442,7 @@ function extractStructuredRequirements(text: string) {
   const reqYears = extractYears(text, EXPERIENCE_REQUIRED);
   const prefYears = extractYears(text, EXPERIENCE_PREFERRED);
   const clearance = classifyActiveClearance(text);
-  const engineering =
-    classifyProfessionalEngineeringBasicQualification(text);
+  const engineering = classifyProfessionalEngineeringBasicQualification(text);
 
   return {
     requiredYears: reqYears,
@@ -453,7 +454,8 @@ function extractStructuredRequirements(text: string) {
     clearanceMode: clearance.mode,
     clearanceLevel: clearance.level,
     clearanceEvidence: clearance.evidence,
-    occupationalSeries: extractOccupationalSeries(text) ?? engineering.occupationalSeries,
+    occupationalSeries:
+      extractOccupationalSeries(text) ?? engineering.occupationalSeries,
     professionalEngineering: engineering.explicit,
     professionalEngineeringEvidence: engineering.evidence,
     travelRequired: findMatches(text, TRAVEL).length > 0,

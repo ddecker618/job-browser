@@ -1,12 +1,7 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -31,8 +26,9 @@ describe('Search Profile UI', () => {
     renderPage(<SearchProfilePage />);
 
     await screen.findByText('Discovery configuration');
-    expect(screen.getByText(/42 job titles across 6 enabled role families/))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText(/42 job titles across 6 enabled role families/),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('checkbox', { name: /Splunk/ }));
     await user.click(screen.getByRole('button', { name: 'Save profile' }));
@@ -40,12 +36,14 @@ describe('Search Profile UI', () => {
     await waitFor(() =>
       expect(
         calls.some(
-          (call) => call.url.endsWith('/api/search-profile') && call.method === 'PUT',
+          (call) =>
+            call.url.endsWith('/api/search-profile') && call.method === 'PUT',
         ),
       ).toBe(true),
     );
     const put = calls.find(
-      (call) => call.url.endsWith('/api/search-profile') && call.method === 'PUT',
+      (call) =>
+        call.url.endsWith('/api/search-profile') && call.method === 'PUT',
     );
     const sent = JSON.parse(
       typeof put?.body === 'string' ? put.body : '{}',
@@ -88,14 +86,14 @@ function renderPage(element: ReactElement) {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/search-profile']}>{element}</MemoryRouter>
+      <MemoryRouter initialEntries={['/search-profile']}>
+        {element}
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
-function mockFetch(
-  handler: (url: string, init?: RequestInit) => unknown,
-) {
+function mockFetch(handler: (url: string, init?: RequestInit) => unknown) {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: string | URL | Request, init?: RequestInit) => {

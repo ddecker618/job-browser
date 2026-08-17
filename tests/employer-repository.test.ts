@@ -206,6 +206,21 @@ describe('employer repository', () => {
     expect(verified.verificationState).toBe('verified');
   });
 
+  it('reports never-fingerprinted sites as never-detected rather than unsupported', () => {
+    const repository = createRepository();
+    const employer = repository.createEmployer({
+      name: 'Acme',
+      websiteUrl: null,
+    });
+    repository.createCareerSite(employer.id, {
+      url: 'https://boards.greenhouse.io/acme',
+    });
+
+    const withSites = repository.listEmployersWithSites();
+
+    expect(withSites[0]!.careerSites[0]!.supportState).toBe('never-detected');
+  });
+
   it('lists employers with nested career site summaries', () => {
     const repository = createRepository();
     const employer = repository.createEmployer({

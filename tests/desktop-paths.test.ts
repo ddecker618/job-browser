@@ -83,7 +83,10 @@ describe('desktop paths', () => {
       projectRoot: install,
     });
     initializeDesktopPaths(first, join(process.cwd(), 'config'));
-    saveRuntimeDatabase(first.runtimeSettings, join(install, 'data', 'jobs.sqlite'));
+    saveRuntimeDatabase(
+      first.runtimeSettings,
+      join(install, 'data', 'jobs.sqlite'),
+    );
 
     expect(() =>
       assertDatabaseOutsideInstallDirectory(

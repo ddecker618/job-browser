@@ -60,10 +60,7 @@ export class IntelligenceEngine {
           analyzedAt,
           verification,
         );
-        const roleDetails = extractRoleDetails(
-          toRoleDetailsInput(job),
-          config,
-        );
+        const roleDetails = extractRoleDetails(toRoleDetailsInput(job), config);
         this.intelligenceRepository.saveIntelligence(profile.id, intelligence, {
           verification,
           scoreVersion,
@@ -219,7 +216,9 @@ function toRoleDetailsInput(job: {
     location: job.location,
     city: job.city,
     state: job.state,
-    remoteType: job.remoteType as Parameters<typeof extractRoleDetails>[0]['remoteType'],
+    remoteType: job.remoteType as Parameters<
+      typeof extractRoleDetails
+    >[0]['remoteType'],
     teleworkEligible: job.teleworkEligible,
     employmentType: job.employmentType as Parameters<
       typeof extractRoleDetails

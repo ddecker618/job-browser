@@ -2364,7 +2364,9 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .discovery-summary-card:hover {
@@ -2427,6 +2429,40 @@ kbd {
   margin-top: 1rem;
 }
 
+.alert-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  background: rgba(127, 127, 127, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.alert-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.2rem;
+}
+
+.alert-group-header strong {
+  font-size: 0.9rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.alert-group-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+
 .alert-item {
   display: grid;
   grid-template-columns: 80px minmax(150px, 1.2fr) 2fr auto auto;
@@ -2469,4 +2505,3 @@ kbd {
 .trend-item span {
   color: var(--muted);
 }
-

@@ -274,13 +274,8 @@ describe('DiscoveryEngine', () => {
     provider.closingDate = null;
     provider.closingDatePrecision = null;
     expect(
-      (
-        await engine.run(
-          'builtin',
-          request(),
-          fixtureOptions('source:active'),
-        )
-      ).crossSourceMerges,
+      (await engine.run('builtin', request(), fixtureOptions('source:active')))
+        .crossSourceMerges,
     ).toBe(1);
     expect(canonicalLifecycle(database)).toEqual({
       active: 1,
@@ -313,12 +308,12 @@ describe('DiscoveryEngine', () => {
       closingDatePrecision: 'date' as const,
       providerLifecycleStatus: 'unknown' as const,
     };
-    expect(
-      lifecycleFromEvidence(evidence, '2026-08-12T23:59:59.999Z'),
-    ).toEqual({ active: true, reason: 'active' });
-    expect(
-      lifecycleFromEvidence(evidence, '2026-08-13T00:00:00.000Z'),
-    ).toEqual({ active: false, reason: 'closing-date-expired' });
+    expect(lifecycleFromEvidence(evidence, '2026-08-12T23:59:59.999Z')).toEqual(
+      { active: true, reason: 'active' },
+    );
+    expect(lifecycleFromEvidence(evidence, '2026-08-13T00:00:00.000Z')).toEqual(
+      { active: false, reason: 'closing-date-expired' },
+    );
     expect(
       lifecycleFromEvidence(
         {
@@ -393,9 +388,10 @@ describe('DiscoveryEngine', () => {
     });
     expect(
       database
-        .prepare<[string], { status: string }>(
-          'SELECT status FROM applications WHERE job_id = ?',
-        )
+        .prepare<
+          [string],
+          { status: string }
+        >('SELECT status FROM applications WHERE job_id = ?')
         .get(jobId)?.status,
     ).toBe('applied');
   });
@@ -557,7 +553,10 @@ class SnapshotBuiltInProvider extends BuiltInProvider {
   public closingDate: string | null = null;
   public closingDatePrecision: 'date' | 'instant' | null = null;
 
-  public override normalize(rawJob: unknown, discoveredAt: string): NormalizedJob {
+  public override normalize(
+    rawJob: unknown,
+    discoveredAt: string,
+  ): NormalizedJob {
     return {
       ...super.normalize(rawJob, discoveredAt),
       closingDate: this.closingDate,
@@ -638,14 +637,17 @@ function lifecycle(database: JobDatabase, sourceId: string) {
         consecutive_snapshot_misses: number;
         lifecycle_reason: string;
       }
-    >(`SELECT active, consecutive_snapshot_misses, lifecycle_reason FROM job_sources WHERE source_id = ? LIMIT 1`)
+    >(
+      `SELECT active, consecutive_snapshot_misses, lifecycle_reason FROM job_sources WHERE source_id = ? LIMIT 1`,
+    )
     .get(sourceId);
 }
 
 function canonicalLifecycle(database: JobDatabase) {
   return database
-    .prepare<[], { active: number; lifecycle_reason: string }>(
-      'SELECT active, lifecycle_reason FROM jobs LIMIT 1',
-    )
+    .prepare<
+      [],
+      { active: number; lifecycle_reason: string }
+    >('SELECT active, lifecycle_reason FROM jobs LIMIT 1')
     .get();
 }

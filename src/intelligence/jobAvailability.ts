@@ -39,7 +39,11 @@ export async function verifyJobAvailability(
   }
   try {
     const response = await fetchPosting(postingUrl);
-    const verification = verifyPosting(response.text, postingUrl, response.status);
+    const verification = verifyPosting(
+      response.text,
+      postingUrl,
+      response.status,
+    );
     const available = verification.evidence.status !== 'closed';
     return {
       available,
@@ -48,6 +52,11 @@ export async function verifyJobAvailability(
       verifiedAt,
     };
   } catch {
-    return { available: false, statusCode: null, reason: 'unreachable', verifiedAt };
+    return {
+      available: false,
+      statusCode: null,
+      reason: 'unreachable',
+      verifiedAt,
+    };
   }
 }

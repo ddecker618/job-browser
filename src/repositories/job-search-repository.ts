@@ -512,7 +512,7 @@ function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
     materiallyUpdatedAt: row.materially_updated_at,
     closingDate: row.closing_date,
     favorite: Boolean(row.favorite),
-active: Boolean(row.active),
+    active: Boolean(row.active),
     lifecycleReason: row.lifecycle_reason,
     userRemoved: Boolean(row.user_removed),
     removedAt: row.removed_at,

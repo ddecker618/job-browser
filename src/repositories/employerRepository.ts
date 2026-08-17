@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { JobDatabase } from '../db/database.js';
 import { nowUtc } from '../utilities/timestamps.js';
 import { fingerprintCareerSiteUrl } from '../domain/atsFingerprint.js';
+import { normalizeEmployerName } from '../domain/urlIdentity.js';
 import type {
   CareerSite,
   CareerSiteDiscoveryState,
@@ -12,6 +13,7 @@ import type {
   CareerSiteFingerprint,
   CareerSiteSummary,
   Employer,
+  EmployerAlias,
   EmployerWithSites,
   EmployerSeed,
   EmployerSeedImportResult,
@@ -140,6 +142,15 @@ export class EmployerRepository {
         'SELECT * FROM career_sites WHERE employer_id = ? ORDER BY url ASC',
       )
       .all(employerId)
+      .map((row) => mapCareerSite(row));
+  }
+
+  public listAllCareerSites(): CareerSite[] {
+    return this.database
+      .prepare<[], Omit<CareerSiteRow, 'employer_name'>>(
+        'SELECT * FROM career_sites ORDER BY id',
+      )
+      .all()
       .map((row) => mapCareerSite(row));
   }
 
@@ -451,6 +462,14 @@ export class EmployerRepository {
     return updatedSite;
   }
 
+  public deleteCareerSite(id: string): void {
+    this.database.prepare('DELETE FROM career_sites WHERE id = ?').run(id);
+  }
+
+  public deleteEmployer(id: string): void {
+    this.database.prepare('DELETE FROM employers WHERE id = ?').run(id);
+  }
+
   public retireCareerSite(id: string, reason = 'Retired by user'): CareerSite {
     const timestamp = nowUtc();
     const site = this.getCareerSite(id);
@@ -529,12 +548,160 @@ export class EmployerRepository {
       }));
   }
 
-  public deleteCareerSite(id: string): void {
-    this.database.prepare('DELETE FROM career_sites WHERE id = ?').run(id);
+  public listAliases(): EmployerAlias[] {
+    const rows = this.database
+      .prepare<
+        [],
+        {
+          id: string;
+          employer_id: string;
+          normalized_alias: string;
+          provenance: string;
+          created_at: string;
+          updated_at: string;
+        }
+      >('SELECT * FROM employer_aliases ORDER BY normalized_alias, id')
+      .all();
+    return rows.map((row) => ({
+      id: row.id,
+      employerId: row.employer_id,
+      normalizedAlias: row.normalized_alias,
+      provenance: row.provenance,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
   }
 
-  public deleteEmployer(id: string): void {
-    this.database.prepare('DELETE FROM employers WHERE id = ?').run(id);
+  public addEmployerAlias(input: {
+    employerId: string;
+    alias: string;
+    provenance: string;
+    observedAt?: string;
+  }): 'added' | 'exists' | 'conflict' {
+    const normalizedAlias = normalizeEmployerName(input.alias);
+    if (normalizedAlias.length === 0) return 'conflict';
+    const timestamp = input.observedAt ?? nowUtc();
+    const existing = this.database
+      .prepare<
+        [string],
+        { employer_id: string }
+      >('SELECT employer_id FROM employer_aliases WHERE normalized_alias = ?')
+      .get(normalizedAlias);
+    if (existing !== undefined) {
+      return existing.employer_id === input.employerId ? 'exists' : 'conflict';
+    }
+    const canonical = this.database
+      .prepare<
+        [string],
+        { id: string }
+      >('SELECT id FROM employers WHERE normalized_name = ?')
+      .get(normalizedAlias);
+    if (canonical !== undefined) {
+      return canonical.id === input.employerId ? 'exists' : 'conflict';
+    }
+    this.database
+      .prepare(
+        `INSERT INTO employer_aliases (
+          id, employer_id, normalized_alias, provenance, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        randomUUID(),
+        input.employerId,
+        normalizedAlias,
+        input.provenance.slice(0, 120),
+        timestamp,
+        timestamp,
+      );
+    return 'added';
+  }
+
+  public addCareerSiteEvidence(input: {
+    careerSiteId: string;
+    kind: string;
+    detail: string;
+    confidence: number;
+    observedAt: string;
+  }): 'added' | 'exists' {
+    const existing = this.database
+      .prepare<[string, string, string], { id: string }>(
+        `SELECT id FROM career_site_evidence
+          WHERE career_site_id = ? AND kind = ? AND detail = ?`,
+      )
+      .get(input.careerSiteId, input.kind, input.detail);
+    if (existing !== undefined) return 'exists';
+    this.database
+      .prepare(
+        `INSERT INTO career_site_evidence (
+          id, career_site_id, kind, detail, confidence, observed_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        randomUUID(),
+        input.careerSiteId,
+        input.kind,
+        input.detail.slice(0, 1_000),
+        input.confidence,
+        input.observedAt,
+        input.observedAt,
+      );
+    return 'added';
+  }
+
+  public listEvidenceForEmployer(
+    employerId: string,
+  ): { careerSiteId: string; kind: string; detail: string }[] {
+    return this.database
+      .prepare<
+        [string],
+        { career_site_id: string; kind: string; detail: string }
+      >(
+        `SELECT e.career_site_id, e.kind, e.detail
+           FROM career_site_evidence e
+           JOIN career_sites cs ON cs.id = e.career_site_id
+          WHERE cs.employer_id = ?`,
+      )
+      .all(employerId)
+      .map((row) => ({
+        careerSiteId: row.career_site_id,
+        kind: row.kind,
+        detail: row.detail,
+      }));
+  }
+
+  public listAllEvidence(): {
+    employerId: string;
+    careerSiteId: string;
+    detail: string;
+  }[] {
+    return this.database
+      .prepare<
+        [],
+        { employer_id: string; career_site_id: string; detail: string }
+      >(
+        `SELECT cs.employer_id, e.career_site_id, e.detail
+           FROM career_site_evidence e
+           JOIN career_sites cs ON cs.id = e.career_site_id
+          ORDER BY cs.employer_id, e.career_site_id`,
+      )
+      .all()
+      .map((row) => ({
+        employerId: row.employer_id,
+        careerSiteId: row.career_site_id,
+        detail: row.detail,
+      }));
+  }
+
+  public linkCareerSiteSource(
+    careerSiteId: string,
+    sourceId: string,
+    observedAt: string,
+  ): void {
+    this.database
+      .prepare(
+        'UPDATE career_sites SET source_id = ?, updated_at = ? WHERE id = ?',
+      )
+      .run(sourceId, observedAt, careerSiteId);
   }
 
   private computeAndStoreFingerprint(id: string): void {
@@ -668,7 +835,7 @@ function mapCareerSiteSummary(row: CareerSiteRow): CareerSiteSummary {
       row.ats_support_state === 'structured-data-fallback-available' ||
       row.ats_support_state === 'unsupported'
         ? row.ats_support_state
-        : 'unsupported',
+        : 'never-detected',
     verificationState: row.verification_state,
     lastVerifiedAt: row.last_verified_at,
     discovery: mapDiscovery(row),
@@ -781,7 +948,7 @@ function parseFingerprintFromRow(row: {
       row.ats_support_state === 'structured-data-fallback-available' ||
       row.ats_support_state === 'unsupported'
         ? row.ats_support_state
-        : 'unsupported',
+        : 'never-detected',
     evidence,
     detectedVariant: null,
     listingsUrl: null,

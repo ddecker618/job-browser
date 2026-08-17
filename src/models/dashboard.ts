@@ -8,9 +8,9 @@ export interface DashboardSummary {
   newJobsToday: number;
   strongMatches: number;
   appliedJobs: number;
-hiddenJobs: number;
-expiredJobs: number;
-userRemovedJobs: number;
+  hiddenJobs: number;
+  expiredJobs: number;
+  userRemovedJobs: number;
   verifiedMatches: number;
   averageMatchScore: number;
   topEmployer: string | null;
@@ -41,7 +41,7 @@ export interface JobListItem {
   lastSeenAt: string;
   provider: string;
   favorite: boolean;
-active: boolean;
+  active: boolean;
   lifecycleReason: JobLifecycleReason;
   userRemoved: boolean;
   lastVerifiedAt: string | null;

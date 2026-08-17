@@ -49,40 +49,35 @@ export interface RoleDetailsInput {
   preferredQualifications: string | null;
 }
 
-const DEGREE_LEVEL_ORDER: readonly { level: DegreeLevel; patterns: RegExp[] }[] =
-  [
-    {
-      level: 'doctorate',
-      patterns: [
-        /(?:doctorate|doctoral|ph\.?d\.?)\s+degree/i,
-        /\bph\.?d\.?\b/i,
-      ],
-    },
-    {
-      level: 'master',
-      patterns: [
-        /master(?:'s)?\s+degree/i,
-        /\bm\.s\.\b/i,
-        /master(?:'s)?\s+in\s+(?:science|engineering|technology|administration|business)/i,
-      ],
-    },
-    {
-      level: 'bachelor',
-      patterns: [
-        /bachelor(?:'s)?\s+degree/i,
-        /\bb\.s\.\b/i,
-        /\bb\.a\.\b/i,
-      ],
-    },
-    {
-      level: 'associate',
-      patterns: [
-        /associate(?:'s)?\s+(?:degree|of\s+applied\s+science|certificate)/i,
-        /\ba\.a\.\b/i,
-        /\ba\.s\.\b/i,
-      ],
-    },
-  ];
+const DEGREE_LEVEL_ORDER: readonly {
+  level: DegreeLevel;
+  patterns: RegExp[];
+}[] = [
+  {
+    level: 'doctorate',
+    patterns: [/(?:doctorate|doctoral|ph\.?d\.?)\s+degree/i, /\bph\.?d\.?\b/i],
+  },
+  {
+    level: 'master',
+    patterns: [
+      /master(?:'s)?\s+degree/i,
+      /\bm\.s\.\b/i,
+      /master(?:'s)?\s+in\s+(?:science|engineering|technology|administration|business)/i,
+    ],
+  },
+  {
+    level: 'bachelor',
+    patterns: [/bachelor(?:'s)?\s+degree/i, /\bb\.s\.\b/i, /\bb\.a\.\b/i],
+  },
+  {
+    level: 'associate',
+    patterns: [
+      /associate(?:'s)?\s+(?:degree|of\s+applied\s+science|certificate)/i,
+      /\ba\.a\.\b/i,
+      /\ba\.s\.\b/i,
+    ],
+  },
+];
 
 const DEGREE_FIELD_PATTERNS: readonly RegExp[] = [
   /degree\s+in\s+([a-z\s&+]{2,40}?)(?:\s+(?:or\s+equivalent|required|is\s+required|preferred)|[,.]|$)/i,
@@ -124,15 +119,15 @@ const CONTINGENT_ON_AWARD_PATTERNS: readonly RegExp[] = [
 // colon-terminated labels) so a single retained description can still be
 // split into required vs preferred qualifications deterministically.
 const REQUIRED_SECTION_HEADINGS: readonly RegExp[] = [
-  /(?:^|\n)\s*(?:required|minimum|essential|core)\s+(?:qualifications?|requirements?|skills?)\s*[:.]?\s*$/mi,
+  /(?:^|\n)\s*(?:required|minimum|essential|core)\s+(?:qualifications?|requirements?|skills?)\s*[:.]?\s*$/im,
   /<h[1-6][^>]*>\s*(?:required|minimum)\s+(?:qualifications?|requirements?|skills?)\s*<\/h[1-6]>/i,
-  /(?:^|\n)\s*(?:required|minimum)\s*(?:qualifications?|requirements?|skills?)\s*[:.]?\s*$/mi,
+  /(?:^|\n)\s*(?:required|minimum)\s*(?:qualifications?|requirements?|skills?)\s*[:.]?\s*$/im,
 ];
 
 const PREFERRED_SECTION_HEADINGS: readonly RegExp[] = [
-  /(?:^|\n)\s*(?:preferred|desired|nice[-\s]?to[-\s]?have|bonus)\s+(?:qualifications?|requirements?|skills?|experience)\s*[:.]?\s*$/mi,
+  /(?:^|\n)\s*(?:preferred|desired|nice[-\s]?to[-\s]?have|bonus)\s+(?:qualifications?|requirements?|skills?|experience)\s*[:.]?\s*$/im,
   /<h[1-6][^>]*>\s*(?:preferred|desired|nice[-\s]?to[-\s]?have)\s+(?:qualifications?|requirements?|skills?|experience)\s*<\/h[1-6]>/i,
-  /(?:^|\n)\s*(?:preferred|desired)\s*(?:qualifications?|requirements?|skills?|experience)\s*[:.]?\s*$/mi,
+  /(?:^|\n)\s*(?:preferred|desired)\s*(?:qualifications?|requirements?|skills?|experience)\s*[:.]?\s*$/im,
 ];
 
 export function extractRoleDetails(
@@ -144,21 +139,19 @@ export function extractRoleDetails(
   const configured = extractTermsFromText(text, config.skills).map(
     (term) => term.name,
   );
-  const certTerms = extractTermsFromText(
-    text,
-    config.certifications,
-  ).map((term) => term.name);
-  const requirementsText =
-    input.requirements ?? sections.required ?? text;
-  const preferredText = input.preferredQualifications ?? sections.preferred ?? '';
+  const certTerms = extractTermsFromText(text, config.certifications).map(
+    (term) => term.name,
+  );
+  const requirementsText = input.requirements ?? sections.required ?? text;
+  const preferredText =
+    input.preferredQualifications ?? sections.preferred ?? '';
   const requirementsTerms = extractTermsFromText(
     requirementsText,
     config.skills,
   ).map((term) => term.name);
-  const preferredTerms = extractTermsFromText(
-    preferredText,
-    config.skills,
-  ).map((term) => term.name);
+  const preferredTerms = extractTermsFromText(preferredText, config.skills).map(
+    (term) => term.name,
+  );
   const requiredCertTerms = extractTermsFromText(
     requirementsText,
     config.certifications,
@@ -174,7 +167,8 @@ export function extractRoleDetails(
   const employment = classifyEmployment(input, text);
   const locations = classifyLocations(input, workplace.arrangement);
   const clearance = {
-    mode: verification.extractedRequirements.clearanceMode as RoleDetails['clearance']['mode'],
+    mode: verification.extractedRequirements
+      .clearanceMode as RoleDetails['clearance']['mode'],
     level: verification.extractedRequirements.clearanceLevel,
     sponsorable: verification.extractedRequirements.clearancesSponsorable,
     evidence: verification.extractedRequirements.clearanceEvidence,
@@ -213,12 +207,16 @@ export function extractRoleDetails(
     education,
     experience,
     skills: {
-      required: dedupe(requirementsTerms.length > 0 ? requirementsTerms : configured),
+      required: dedupe(
+        requirementsTerms.length > 0 ? requirementsTerms : configured,
+      ),
       preferred: dedupe(preferredTerms),
     },
     technologies: dedupe(configured),
     certifications: {
-      required: dedupe(requiredCertTerms.length > 0 ? requiredCertTerms : certTerms),
+      required: dedupe(
+        requiredCertTerms.length > 0 ? requiredCertTerms : certTerms,
+      ),
       preferred: dedupe(preferredCertTerms),
     },
     occupationalSeries:
@@ -248,53 +246,47 @@ export function extractRoleDetails(
         verification.extractedRequirements.physicalRequirements.length > 0
           ? verification.extractedRequirements.physicalRequirements
           : [
-              ...verification.extractedRequirements.professionalEngineeringEvidence,
+              ...verification.extractedRequirements
+                .professionalEngineeringEvidence,
               ...conditions.evidence,
             ],
     },
   };
 }
 
-const EMPLOYMENT_TEXT_PATTERNS: readonly { type: EmploymentType; patterns: RegExp[] }[] =
-  [
-    {
-      type: 'full-time',
-      patterns: [
-        /full[\s-]?time\b/i,
-        /\bforty\s+hours\s+[a-z\s]*per\s+week\b/i,
-      ],
-    },
-    {
-      type: 'part-time',
-      patterns: [
-        /part[\s-]?time\b/i,
-        /\bpart\s+time\s*$/i,
-      ],
-    },
-    {
-      type: 'contract',
-      patterns: [
-        /\bcontract\b/i,
-        /contractor\s+(?:role|position)/i,
-        /\bw-?2\b/i,
-        /\b1099\b/i,
-      ],
-    },
-    {
-      type: 'temporary',
-      patterns: [
-        /\btemporary\b/i,
-        /\btemp\s+(?:to\s+perm|position|role|assignment)\b/i,
-      ],
-    },
-    {
-      type: 'internship',
-      patterns: [
-        /\binternship\b/i,
-        /\bintern\s+(?:role|position|program)\b/i,
-      ],
-    },
-  ];
+const EMPLOYMENT_TEXT_PATTERNS: readonly {
+  type: EmploymentType;
+  patterns: RegExp[];
+}[] = [
+  {
+    type: 'full-time',
+    patterns: [/full[\s-]?time\b/i, /\bforty\s+hours\s+[a-z\s]*per\s+week\b/i],
+  },
+  {
+    type: 'part-time',
+    patterns: [/part[\s-]?time\b/i, /\bpart\s+time\s*$/i],
+  },
+  {
+    type: 'contract',
+    patterns: [
+      /\bcontract\b/i,
+      /contractor\s+(?:role|position)/i,
+      /\bw-?2\b/i,
+      /\b1099\b/i,
+    ],
+  },
+  {
+    type: 'temporary',
+    patterns: [
+      /\btemporary\b/i,
+      /\btemp\s+(?:to\s+perm|position|role|assignment)\b/i,
+    ],
+  },
+  {
+    type: 'internship',
+    patterns: [/\binternship\b/i, /\bintern\s+(?:role|position|program)\b/i],
+  },
+];
 
 // ONSITE_EVIDENCE_PATTERNS removed or unused
 
@@ -474,9 +466,7 @@ function inferDegreeLevel(text: string): DegreeLevel {
   return 'unknown';
 }
 
-function classifyExperience(
-  text: string,
-): RoleDetails['experience'] {
+function classifyExperience(text: string): RoleDetails['experience'] {
   const requiredYears = extractYears(text, [
     /(\d+)\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:relevant\s+)?experience\s+(?:is\s+)?required/i,
     /requires?\s+(?:at\s+least\s+)?(\d+)\+?\s*(?:years?|yrs?)/i,
@@ -556,14 +546,12 @@ function classifyConditions(text: string): {
   };
 }
 
-function splitQualificationSections(
-  text: string,
-): { required: string | null; preferred: string | null } {
+function splitQualificationSections(text: string): {
+  required: string | null;
+  preferred: string | null;
+} {
   const requiredHeading = findSectionHeading(text, REQUIRED_SECTION_HEADINGS);
-  const preferredHeading = findSectionHeading(
-    text,
-    PREFERRED_SECTION_HEADINGS,
-  );
+  const preferredHeading = findSectionHeading(text, PREFERRED_SECTION_HEADINGS);
 
   if (requiredHeading === null && preferredHeading === null) {
     return { required: null, preferred: null };
@@ -574,10 +562,11 @@ function splitQualificationSections(
 
   if (preferredHeading !== null) {
     preferred = text.slice(preferredHeading.end).trim();
-    if (requiredHeading !== null && requiredHeading.start < preferredHeading.start) {
-      required = text
-        .slice(requiredHeading.end, preferredHeading.start)
-        .trim();
+    if (
+      requiredHeading !== null &&
+      requiredHeading.start < preferredHeading.start
+    ) {
+      required = text.slice(requiredHeading.end, preferredHeading.start).trim();
     }
   }
   if (required === null && requiredHeading !== null) {
@@ -663,7 +652,5 @@ function findMatches(text: string, patterns: readonly RegExp[]): string[] {
 }
 
 function dedupe(values: string[]): string[] {
-  return [...new Set(values)].sort((left, right) =>
-    left.localeCompare(right),
-  );
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }

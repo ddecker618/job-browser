@@ -44,7 +44,9 @@ describe('role details integration', () => {
 
   let jobCounter = 0;
 
-  function insertJob(overrides: Partial<Parameters<typeof createJobFixture>[0]> = {}) {
+  function insertJob(
+    overrides: Partial<Parameters<typeof createJobFixture>[0]> = {},
+  ) {
     jobCounter += 1;
     const job = createJobFixture({
       externalId: `integration-${String(jobCounter)}`,
@@ -71,12 +73,10 @@ describe('role details integration', () => {
   describe('ingestion persistence', () => {
     it('persists Role Details for a new Job through the analysis engine', () => {
       const job = insertJob({
-        description: 'Monitor Splunk SIEM alerts. Active Top Secret clearance required.',
+        description:
+          'Monitor Splunk SIEM alerts. Active Top Secret clearance required.',
       });
-      new IntelligenceEngine(database).analyze(
-        loadCandidateProfile(),
-        CONFIG,
-      );
+      new IntelligenceEngine(database).analyze(loadCandidateProfile(), CONFIG);
       const stored = detailsFor(job.id);
       expect(stored?.role_details_json).not.toBeNull();
       const parsed = roleDetailsSchema.parse(
@@ -90,42 +90,46 @@ describe('role details integration', () => {
 
     it('persists evidence alongside derived facts', () => {
       const job = insertJob({
-        description: 'Requires at least 5 years of experience and a bachelor degree.',
+        description:
+          'Requires at least 5 years of experience and a bachelor degree.',
       });
-      new IntelligenceEngine(database).analyze(
-        loadCandidateProfile(),
-        CONFIG,
-      );
+      new IntelligenceEngine(database).analyze(loadCandidateProfile(), CONFIG);
       const parsed = roleDetailsSchema.parse(
         JSON.parse(detailsFor(job.id)!.role_details_json!) as unknown,
       );
       expect(parsed.experience.requiredYears).toBe(5);
-      expect(parsed.experience.evidence).toContain('Required experience: 5 years');
+      expect(parsed.experience.evidence).toContain(
+        'Required experience: 5 years',
+      );
       expect(parsed.education.degreeRequired).toBe('bachelor');
     });
 
     it('leaves the original description unchanged by persistence', () => {
-      const job = insertJob({ description: 'Original retained prose stays intact.' });
-      new IntelligenceEngine(database).analyze(
-        loadCandidateProfile(),
-        CONFIG,
-      );
+      const job = insertJob({
+        description: 'Original retained prose stays intact.',
+      });
+      new IntelligenceEngine(database).analyze(loadCandidateProfile(), CONFIG);
       const stored = detailsFor(job.id);
       expect(stored?.description).toBe('Original retained prose stays intact.');
     });
 
     it('preserves Job identity through persistence', () => {
-      const job = insertJob({ externalId: 'identity-check', title: 'Identity Analyst' });
+      const job = insertJob({
+        externalId: 'identity-check',
+        title: 'Identity Analyst',
+      });
       const before = database
-        .prepare<[string], { id: string; external_id: string }>(
-          `SELECT id, external_id FROM jobs WHERE id = ?`,
-        )
+        .prepare<
+          [string],
+          { id: string; external_id: string }
+        >(`SELECT id, external_id FROM jobs WHERE id = ?`)
         .get(job.id);
       new IntelligenceEngine(database).analyze(loadCandidateProfile(), CONFIG);
       const after = database
-        .prepare<[string], { id: string; external_id: string }>(
-          `SELECT id, external_id FROM jobs WHERE id = ?`,
-        )
+        .prepare<
+          [string],
+          { id: string; external_id: string }
+        >(`SELECT id, external_id FROM jobs WHERE id = ?`)
         .get(job.id);
       expect(after).toEqual(before);
     });
@@ -133,7 +137,8 @@ describe('role details integration', () => {
     it('routes USAJOBS-style retained requirements into Role Details', () => {
       const job = insertJob({
         description: 'Helpdesk role monitoring Windows Server.',
-        requirements: 'CompTIA Security+ required. Linux administration required.',
+        requirements:
+          'CompTIA Security+ required. Linux administration required.',
       });
       new IntelligenceEngine(database).analyze(loadCandidateProfile(), CONFIG);
       const parsed = roleDetailsSchema.parse(
@@ -258,16 +263,17 @@ This position is contingent upon program award.`,
     });
 
     it('reprocesses only stale-version rows on a second pass', () => {
-      const currentJob = insertJob({ externalId: 'current-v', description: 'Monitor.' });
+      const currentJob = insertJob({
+        externalId: 'current-v',
+        description: 'Monitor.',
+      });
       backfillRoleDetails(database, CONFIG);
       const staleJob = insertJob({
         externalId: 'stale-v',
         description: 'Different prose for a stale row.',
       });
       database
-        .prepare(
-          `UPDATE jobs SET role_details_json = ? WHERE id = ?`,
-        )
+        .prepare(`UPDATE jobs SET role_details_json = ? WHERE id = ?`)
         .run(
           JSON.stringify({
             version: 'role-details-v0',
@@ -288,7 +294,10 @@ This position is contingent upon program award.`,
 
     it('respects a bounded batch size', () => {
       for (let index = 0; index < 5; index += 1) {
-        insertJob({ externalId: `batch-${String(index)}`, description: 'Monitor.' });
+        insertJob({
+          externalId: `batch-${String(index)}`,
+          description: 'Monitor.',
+        });
       }
       const result = backfillRoleDetails(database, CONFIG, 3);
       expect(result.processed).toBeLessThanOrEqual(3);
@@ -302,15 +311,16 @@ This position is contingent upon program award.`,
       database
         .prepare(`UPDATE jobs SET active = 0, user_removed = 1 WHERE id = ?`)
         .run(job.id);
-      
+
       const result = backfillRoleDetails(database, CONFIG);
       expect(result.processed).toBe(0);
       expect(detailsFor(job.id)?.role_details_json).toBeNull();
-      
+
       const activeState = database
-        .prepare<[string], { active: number; user_removed: number }>(
-          `SELECT active, user_removed FROM jobs WHERE id = ?`,
-        )
+        .prepare<
+          [string],
+          { active: number; user_removed: number }
+        >(`SELECT active, user_removed FROM jobs WHERE id = ?`)
         .get(job.id);
       expect(activeState?.active).toBe(0);
       expect(activeState?.user_removed).toBe(1);
@@ -362,7 +372,10 @@ This position is contingent upon program award.`,
 
     it('is restart-safe: rows not yet processed remain pending', () => {
       for (let index = 0; index < 4; index += 1) {
-        insertJob({ externalId: `restart-${String(index)}`, description: 'Monitor.' });
+        insertJob({
+          externalId: `restart-${String(index)}`,
+          description: 'Monitor.',
+        });
       }
       backfillRoleDetails(database, CONFIG, 2);
       const remaining = database
@@ -388,9 +401,10 @@ This position is contingent upon program award.`,
     it('supports fresh databases with role_details_json', () => {
       insertJob({ description: 'Monitor security events.' });
       const row = database
-        .prepare<[], { name: string }>(
-          `SELECT name FROM pragma_table_info('jobs') WHERE name = 'role_details_json'`,
-        )
+        .prepare<
+          [],
+          { name: string }
+        >(`SELECT name FROM pragma_table_info('jobs') WHERE name = 'role_details_json'`)
         .get();
       expect(row?.name).toBe('role_details_json');
     });
@@ -410,9 +424,10 @@ This position is contingent upon program award.`,
           rawData: job,
         });
         const row = migrated
-          .prepare<[string], DetailsRow>(
-            `SELECT role_details_json, description FROM jobs WHERE id = ?`,
-          )
+          .prepare<
+            [string],
+            DetailsRow
+          >(`SELECT role_details_json, description FROM jobs WHERE id = ?`)
           .get(job.id);
         expect(row?.description).toBe('Upgrade keeps the description.');
       } finally {
@@ -442,7 +457,13 @@ This position is contingent upon program award.`,
         .filter(Boolean)
         .join('\n\n');
       const verification = verifyPosting(text, null, null);
-      return scoreJob(job, loadCandidateProfile(), CONFIG, analyzedAt, verification);
+      return scoreJob(
+        job,
+        loadCandidateProfile(),
+        CONFIG,
+        analyzedAt,
+        verification,
+      );
     }
 
     it('still hard-rejects a far onsite out-of-state role', () => {
@@ -488,7 +509,8 @@ This position is contingent upon program award.`,
 
     it('keeps the 0854 professional requirement blocking', () => {
       const job = createJobFixture({
-        description: 'Occupational series 0854. Professional engineering curriculum required.',
+        description:
+          'Occupational series 0854. Professional engineering curriculum required.',
       });
       const result = verifyAndScore(job);
       expect(result.eligibilityPassed).toBe(false);
@@ -519,7 +541,8 @@ This position is contingent upon program award.`,
 
     it('eligible clearance mode stays non-blocking', () => {
       const job = createJobFixture({
-        description: 'Candidate must be eligible for a Secret security clearance.',
+        description:
+          'Candidate must be eligible for a Secret security clearance.',
       });
       const result = verifyAndScore(job);
       expect(result.eligibilityPassed).toBe(true);
@@ -533,9 +556,10 @@ This position is contingent upon program award.`,
         .prepare(`UPDATE jobs SET active = 0, user_removed = 1 WHERE id = ?`)
         .run(job.id);
       const rowCount = database
-        .prepare<[], { count: number }>(
-          `SELECT COUNT(*) AS count FROM jobs WHERE active = 1 AND user_removed = 0`,
-        )
+        .prepare<
+          [],
+          { count: number }
+        >(`SELECT COUNT(*) AS count FROM jobs WHERE active = 1 AND user_removed = 0`)
         .get()!.count;
       expect(rowCount).toBe(0);
     });

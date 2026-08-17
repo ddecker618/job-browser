@@ -493,7 +493,9 @@ describe('scoring engine', () => {
         verification,
       );
       expect(result.eligibilityPassed).toBe(false);
-      expect(result.eligibilityRejection).toBe('professional_engineering_required');
+      expect(result.eligibilityRejection).toBe(
+        'professional_engineering_required',
+      );
       expect(result.recommendationStatus).toBe('Hard No');
     });
 

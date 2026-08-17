@@ -27,6 +27,7 @@ import { detectAts, type AtsDetectorOptions } from '../domain/atsDetector.js';
 import type { AtsDetectionResult } from '../models/source-management.js';
 import type { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
 import { EmployerDiscoveryService } from '../discovery/employerDiscoveryService.js';
+import { EmployerSeedImporter } from '../discovery/employerSeedImporter.js';
 import { CareerSiteHealthService } from '../discovery/careerSiteHealthService.js';
 import { EmployerDiscoveryIntelligenceService } from '../discovery/employerDiscoveryIntelligenceService.js';
 import { DiscoveryAlertService } from '../discovery/discoveryAlertService.js';
@@ -82,6 +83,7 @@ import {
   sourceInputSchema,
 } from '../schemas/source-management.js';
 import { jobSearchQuerySchema } from '../schemas/job-search.js';
+import { parseEmployerManifest } from '../schemas/employer-manifest.js';
 import { enforceLoopbackRequest } from './loopbackSecurity.js';
 
 export interface AppOptions {
@@ -165,7 +167,8 @@ export function createApp(
   const discoveryAlertService =
     options.discoveryAlertService ?? new DiscoveryAlertService(database);
   const discoveryAnalyticsService =
-    options.discoveryAnalyticsService ?? new DiscoveryAnalyticsService(database);
+    options.discoveryAnalyticsService ??
+    new DiscoveryAnalyticsService(database);
   const resumeDirectory =
     options.resumeDirectory ?? resolve(process.cwd(), 'data', 'resumes');
   mkdirSync(resumeDirectory, { recursive: true });
@@ -615,6 +618,26 @@ export function createApp(
     response.json(employerRepository.importSeeds(body.seeds));
   });
 
+  app.post('/api/employer-discovery/import', (request, response) => {
+    const body = z
+      .strictObject({
+        format: z.enum(['json', 'csv']),
+        contents: z.string().min(1).max(10_000_000),
+        dryRun: z.boolean().default(false),
+      })
+      .parse(request.body);
+    const parsed = parseEmployerManifest({
+      format: body.format,
+      contents: body.contents,
+    });
+    const importer = new EmployerSeedImporter(
+      database,
+      employerRepository,
+      sourceRepository,
+    );
+    response.json(importer.importManifest(parsed, { dryRun: body.dryRun }));
+  });
+
   app.get('/api/profile', (_request, response) =>
     response.json({
       profile: loadCandidateProfile(profilePath, profilePreferencesPath),
@@ -811,8 +834,7 @@ export function createApp(
     );
     const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
     if (unified !== null) settings.targetRoles = [...unified.sourceQueryRoles];
-    settings.databaseLocation =
-      options.databasePath ?? defaultDatabasePath();
+    settings.databaseLocation = options.databasePath ?? defaultDatabasePath();
     response.json(settings);
   });
   app.put('/api/settings', (request, response) => {
@@ -974,7 +996,11 @@ export function createApp(
   });
 
   app.get('/api/discovery/alerts', (request, response) => {
-    const state = request.query['state'] as 'active' | 'acknowledged' | 'resolved' | undefined;
+    const state = request.query['state'] as
+      | 'active'
+      | 'acknowledged'
+      | 'resolved'
+      | undefined;
     response.json(discoveryAlertService.listAlerts(state ? { state } : {}));
   });
 

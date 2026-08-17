@@ -180,4 +180,3 @@ export interface DiscoveryAlert {
   evidenceJson: string;
   ruleVersion: string;
 }
-

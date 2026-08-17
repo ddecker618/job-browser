@@ -1,23 +1,27 @@
 # Discovery Engine PRD
 
 ## 1. Vision
+
 - Purpose
 - Philosophy
 - Product Goals
 - Success Metrics
 
 ## 2. Scope
+
 - Goals
 - Non-Goals
 - Milestone Boundaries
 
 ## 3. Discovery Architecture
+
 - High-Level Architecture
 - Data Flow
 - Components
 - Subsystems
 
 ## 4. Conceptual Data Model
+
 Employer
 CareerSite
 ATS
@@ -35,6 +39,7 @@ Location
 Brand
 
 For each:
+
 - Purpose
 - Lifecycle
 - Relationships

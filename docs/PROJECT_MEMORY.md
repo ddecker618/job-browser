@@ -54,8 +54,9 @@ Phase 7 discovery and source-management work is complete.
 
 Phase 8 Milestones 8.1 through 8.8 are complete and Architect-approved. Phase 8
 is complete as of 2026-08-12. The independent Employer Discovery 9.1 through
-9.5 workstream is also complete and Architect-approved. Migration head is
-`026_explicit_job_lifecycle.sql`; version remains 1.0.14.
+9.5 workstream is also complete and Architect-approved. The versioned Employer
+Seed Manifest Import (1.0.21) is complete. Migration head is
+`030_employer_aliases.sql`; current version is 1.0.21.
 
 The current implementation additionally provides explicit non-destructive Job
 availability lifecycle. Two complete source-snapshot misses remain required for
@@ -215,3 +216,20 @@ Implementation is governed by the authoritative design contained in
 Discovery_Enigine_PROD.md. (An earlier draft referenced a nonexistent
 EMPLOYER_DISCOVERY_PLATFORM.md; the actual repository spec is
 Discovery_Enigine_PROD.md.)
+
+## Employer Seed Manifest Import (1.0.21)
+
+Employers and career sites can be imported in bulk from versioned JSON/CSV
+manifests (`employer-seed-manifest-v1`) through the `EmployerSeedImporter`
+(`src/discovery/employerSeedImporter.ts`), the `npm run employers:import` CLI
+(`src/discovery/cli/import-employers.ts`), and `POST /api/employer-discovery/import`.
+Identity resolution is deterministic and idempotent: employers by exact
+normalized domain → alias (`030_employer_aliases.sql`) → normalized name; career
+sites by exact URL → URL identity (`src/domain/urlIdentity.ts`) → ATS
+family+tenant → health effective URL → retained evidence; Sources by site link →
+URL identity → canonical configuration JSON → ATS tenant. Writes are batched in
+transactions of ≤25 with full-batch rollback on database errors; `--dry-run`
+performs no writes. Imported sites are URL-fingerprinted (no network) and
+importer evidence is added after verification so it survives the evidence wipe.
+Retired sites are reused as-is; existing disabled/archived Sources are never
+auto-re-enabled.

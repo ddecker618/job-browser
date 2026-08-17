@@ -357,7 +357,9 @@ function applyVerification(
       explanations.push(`${arrangementLabel}: ${evidence}`);
     }
     if (gate.block && gate.explanation !== null) {
-      explanations.push(`Location eligibility gate failed: ${gate.explanation}`);
+      explanations.push(
+        `Location eligibility gate failed: ${gate.explanation}`,
+      );
       return {
         hardBlock: true,
         eligibilityPassed: false,
@@ -510,9 +512,7 @@ function scoreLocation(
     geo.knowledge === 'known_distant' ||
     geo.knowledge === 'known_state_ineligible'
   ) {
-    explanations.push(
-      'Worksite is outside the configured commute boundary.',
-    );
+    explanations.push('Worksite is outside the configured commute boundary.');
     return 0;
   }
   explanations.push(

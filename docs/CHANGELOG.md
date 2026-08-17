@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.23] - 2026-08-16
+
+### Discovery Alert Rule Reconciliation and Imported Source Remediation
+
+- **Zero-yield streak rule corrected.** `zero-yield-streak` no longer counts every `succeeded` run regardless of snapshot quality. It now requires completed, non-truncated runs (`complete_snapshot = 1 AND fetch_truncated = 0`), groups runs that start within 60 seconds into a single discovery cycle (multi-query sources produce one run per query per scheduled tick), and fires only after 3 distinct complete cycles all yield 0 jobs on a source with historical yield. On the production dataset this clears 15 of 17 active alerts; only PaloAltoNetworks and ZipRecruiter are genuinely zero-yield.
+- **Career-site-broken rule narrowed.** `career-site-broken` no longer fires for informational warnings with no fetch failures (reachable-but-unsupported, redirects, ATS-identity changes). It fires CRITICAL only for `health_status = 'broken'` and WARNING only when `health_status = 'warning' AND health_failure_count > 0`. On the production dataset this clears 18 of 22 active alerts.
+- **Discovery-stale career-site rule corrected.** Sites whose discovery ended in a terminal `unsupported` state can never be re-discovered through a Source and are no longer flagged stale. Career sites linked to a Source with a disabled or manual schedule have no automatic cadence to be late against and are no longer flagged stale. All 8 active discovery-stale alerts were false positives and clear.
+- **DNS resolution failures are no longer classified as invalid URLs.** `boundedPublicFetch` now rethrows `Public host could not be resolved` when the URL policy reports the host could not be resolved, and `atsDetector` maps that message to the `unreachable` failure category (transient warning) instead of `invalid_url` (broken). Datadog and GitHub were previously misclassified as broken CRITICAL; they now surface as transient warnings and recover when DNS resolves.
+- **CrowdStrike fingerprint boundary unified.** The CrowdStrike special-case in `atsFingerprint.ts` was removed so `.myworkdayjobs.com` hosts are uniformly fingerprinted as the `workday` provider with `{origin, tenant, site}` configuration, matching the ATS detector's behavior. `crowdstrike` remains a valid registered provider for manual/managed Sources.
+- **Operations Console triage improvements.** The active alerts panel in `EmployersPage.tsx` now sorts CRITICAL before WARNING, groups alerts by rule with per-rule counts, and shows full local date-time strings for first/observed detection.
+- New regression coverage: `tests/discovery-alerts.test.ts` (career-site-broken filtering, zero-yield completeness/cycle semantics, discovery-stale exclusions for unsupported and manual-schedule sites, and the enabled-schedule stale case), `tests/bounded-public-fetch.test.ts` (DNS resolution failure reported distinctly from validation failure), and `tests/ats-detector.test.ts` (DNS resolution failures classified as `unreachable`, SSRF/validation still `invalid_url`).
+- **Never-fingerprinted career sites no longer masquerade as unsupported.** Career sites with no ATS fingerprint yet (`ats_support_state` NULL) are now reported as a distinct `never-detected` support state instead of `unsupported`. Previously the default employers view hid every freshly seeded site behind the candidate-backlog filter, which surfaced as an empty Employers page and a desktop smoke failure. New regression test in `tests/employer-repository.test.ts` covers the mapping.
+- **Desktop smoke test passes again.** `npm run desktop:smoke` renders the seeded Employers page, including the `Check health` action on the first two career sites of each collapsed employer card, and completes all `asserting-*` stages.
+- Final verification: `npm run verify` passes completely clean (format, lint, strict typecheck, full test suite — 99 files / 1004 tests).
+
+## [1.0.22] - 2026-08-16
+
+### Health Audit Remediation and Installer Build
+
+- Resolved and cleared remaining ESLint warnings and code style formatting check issues, allowing `npm run verify` check to pass completely clean.
+- Rebuilt installer at `release/Job-Browser-Setup-1.0.22.exe`.
+
+## [1.0.21] - 2026-08-16
+
+### Versioned Employer Seed Manifest Import
+
+- New database migration `030_employer_aliases.sql` adds the `employer_aliases` table with a unique constraint on `(employer_id, normalized_alias)` and a global unique index on `normalized_alias`, so an alias never silently targets a second employer.
+- New `src/domain/urlIdentity.ts` provides deterministic canonicalization: `normalizeUrlIdentity` (lowercased host, `www.` stripped only when a second-level label remains, fragments/default ports/known tracking params removed, remaining query params preserved and sorted, repeated slashes collapsed, trailing slash trimmed), `normalizeDomainIdentity`, `normalizeEmployerName`, `canonicalConfigJson` (recursive key-sorted for Source configuration equality), and `atsTenantIdentity` (Greenhouse boardToken, Lever site, Ashby boardName, Workday tenant[:site], SmartRecruiters companyIdentifier, BambooHR companyDomain, Recruitee/Teamtailor/Workday company, Workable subdomain, iCIMS company).
+- New versioned manifest schema in `src/models/employer-manifest.ts` and `src/schemas/employer-manifest.ts`: JSON (`{version, imports[]}`) and CSV inputs (exact column set, quoted fields, `true/1/yes` and `false/0/no` enabled parsing, case-insensitive columns), validated with zod and row-level `superRefine` requiring at least one of `employerName`, `rootDomain`, or `careersUrl`. Malformed/version-mismatched inputs throw bounded errors; invalid rows are collected, not aborted.
+- New `src/discovery/employerSeedImporter.ts` imports manifests idempotently without duplicate Employers, CareerSites, or Sources. Employer identity resolves by exact normalized domain, then alias, then normalized name (two distinct domains/names → `ambiguous`, no writes). CareerSite identity resolves by exact URL, URL identity, ATS family + tenant (re-fingerprinting stored URLs), health effective URL, then retained evidence; cross-employer claims are flagged ambiguous. Sources resolve by `career_sites.source_id`, providerId + URL identity, providerId + canonical configuration JSON, then providerId + ATS tenant; archived and disabled sources are reused as-is and never auto-re-enabled.
+- Batched writes: rows are processed in transactions of at most 25 with SQLite savepoints; per-row soft failures do not abort, and any database error rolls the whole batch back (`rejected` rows explain that nothing was persisted) and rebuilds the importer indexes from the database.
+- Imported career sites are URL-fingerprinted (no network), and importer evidence (`manifest-provenance`, `manifest-batch`, `manifest-notes`, `manifest-expected-ats`, `manifest-expected-tenant`, `manifest-submitted-url`) is added after verification so verification's evidence wipe cannot delete it. Retired sites are reused as-is and never given new evidence or Sources.
+- Dry-run mode performs no writes: reads are hypothetical (`new:<key>` identities) while counters mirror a live import.
+- New CLI `npm run employers:import -- <manifest.json|csv> [--dry-run]` (`src/discovery/cli/import-employers.ts`) runs migrations + curated registry seeding, parses the file by extension, and prints the full summary plus a `rowsByStatus` breakdown.
+- New `POST /api/employer-discovery/import` accepts `{format: 'json'|'csv', contents, dryRun}` and reuses the existing Employer/Source repositories.
+- Bugfixes surfaced by the new test suite: `normalizeUrlIdentity` dropped every query parameter (URLSearchParams is live-bound, so clearing `search` before re-reading values discarded them); CSV column matching was case-sensitive against a lowercased header so camelCase columns never matched; JSON manifests that were arrays were not rejected as non-objects.
+- New deterministic coverage: `tests/url-identity.test.ts`, `tests/employer-manifest.test.ts` (JSON + CSV parsing), `tests/employer-seed-importer.test.ts` (14 integration tests including in-batch duplicates, domain/alias/ATS-tenant reuse, unsupported ATS, dry-run, idempotent re-import, disabled-source preservation, retired-site preservation, rollback via an injected SQLite trigger, and curated-starter stability), and `tests/employer-import-api.test.ts`; migration-list expectations updated for `030`.
+- Final verification: lint (`npm run lint`), strict typecheck (`npm run typecheck`), build (`npm run build`), and the full test suite (99 files / 1005 tests) pass; the CLI was smoke-tested against an isolated database in both dry-run and live modes, including an idempotent second import.
+
 ## [1.0.20] - 2026-08-16
 
 ### Clarified Discovery operational states and alert timestamp normalizations
@@ -88,7 +127,7 @@ work that is included in this 1.0.15 release.
 
 - Manual Remove / Restore of current jobs via a durable `jobs.user_removed`
   marker (migration `027_manual_job_removal.sql`); `PATCH
-  /api/jobs/:id/availability` exposes `remove` / `restore` / `verify`. The Jobs
+/api/jobs/:id/availability` exposes `remove` / `restore` / `verify`. The Jobs
   list and Job detail panel label removed jobs ("Removed"), and the dashboard
   surfaces a separate "Removed" count.
 - User removals survive rediscovery and canonical recomputation: a provider

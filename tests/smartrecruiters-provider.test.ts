@@ -46,7 +46,10 @@ describe('SmartRecruiters provider', () => {
       { query: 'security', location: null, remoteOnly: false, limit: 20 },
       {
         fixtureOnly: true,
-        configuration: { companyIdentifier: 'FixtureCorp', company: 'Fixture Corp' },
+        configuration: {
+          companyIdentifier: 'FixtureCorp',
+          company: 'Fixture Corp',
+        },
       },
     );
     expect(search.target).toBe(
@@ -69,7 +72,10 @@ describe('SmartRecruiters provider', () => {
       ['https://jobs.smartrecruiters.com/boschgroup', 'boschgroup'],
       ['https://jobs.smartrecruiters.com/boschgroup/74400001', 'boschgroup'],
       ['https://careers.smartrecruiters.com/Bosch-Group', 'Bosch-Group'],
-      ['https://careers.smartrecruiters.com/Bosch-Group/74400001', 'Bosch-Group'],
+      [
+        'https://careers.smartrecruiters.com/Bosch-Group/74400001',
+        'Bosch-Group',
+      ],
     ];
     for (const [input, expected] of cases) {
       await expect(
@@ -207,9 +213,9 @@ describe('SmartRecruiters provider', () => {
       truncated: true,
       unfilteredCount: 100,
     });
-    expect(
-      calls.some((url) => url.searchParams.get('offset') === '100'),
-    ).toBe(true);
+    expect(calls.some((url) => url.searchParams.get('offset') === '100')).toBe(
+      true,
+    );
   });
 
   it('fails the run when the first page fails', async () => {
@@ -250,7 +256,10 @@ describe('SmartRecruiters provider', () => {
           return Promise.resolve(
             response({
               content: Array.from({ length: 100 }, (_, index) =>
-                smartJob(String(offset + index + 1), `Engineer ${String(offset + index + 1)}`),
+                smartJob(
+                  String(offset + index + 1),
+                  `Engineer ${String(offset + index + 1)}`,
+                ),
               ),
               totalFound: 150,
             }),
@@ -274,11 +283,11 @@ describe('SmartRecruiters provider', () => {
       truncated: false,
       unfilteredCount: 200,
     });
-    expect(
-      calls.some((url) => url.searchParams.get('offset') === '0'),
-    ).toBe(true);
-    expect(
-      calls.some((url) => url.searchParams.get('offset') === '100'),
-    ).toBe(true);
+    expect(calls.some((url) => url.searchParams.get('offset') === '0')).toBe(
+      true,
+    );
+    expect(calls.some((url) => url.searchParams.get('offset') === '100')).toBe(
+      true,
+    );
   });
 });

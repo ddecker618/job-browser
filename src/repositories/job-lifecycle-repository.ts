@@ -22,7 +22,9 @@ export class JobLifecycleRepository {
     limit = 500,
   ): { checked: number; changed: number } {
     if (!Number.isInteger(limit) || limit < 1 || limit > 1_000) {
-      throw new RangeError('Lifecycle reconciliation limit must be 1 through 1000');
+      throw new RangeError(
+        'Lifecycle reconciliation limit must be 1 through 1000',
+      );
     }
     const rows = this.database
       .prepare<[string, string, string, string, number], SourceEvidenceRow>(

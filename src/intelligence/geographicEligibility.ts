@@ -108,7 +108,9 @@ export function analyzeGeographicEligibility(
   const evidence =
     worksites.length === 0
       ? ['Job lists no physical worksite location.']
-      : evaluated.map((entry) => worksiteEvidence(entry.worksite, entry.status));
+      : evaluated.map((entry) =>
+          worksiteEvidence(entry.worksite, entry.status),
+        );
 
   return {
     worksites,
@@ -159,7 +161,8 @@ export function recommendationCapFor(
   geo: GeographicEligibility,
 ): RecommendationCap {
   if (arrangement === 'remote') return 'none';
-  if (arrangement !== 'unknown' && geo.knowledge === 'known_local') return 'none';
+  if (arrangement !== 'unknown' && geo.knowledge === 'known_local')
+    return 'none';
   return 'strong';
 }
 
@@ -273,9 +276,7 @@ function worksiteEvidence(
   const label =
     worksite.city === null
       ? `Worksite in ${worksite.state ?? 'an unknown location'}`
-      : [worksite.city, worksite.state]
-          .filter(Boolean)
-          .join(', ');
+      : [worksite.city, worksite.state].filter(Boolean).join(', ');
   switch (status) {
     case 'within':
       return `${label}: within the configured commute boundary.`;
