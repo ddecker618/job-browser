@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, historical-audit documentation amendments, validated employer source additions, and version 1.0.25 release preparation are complete. Current version is `1.0.25`. Migration head is `030`. Nothing has been pushed or published.
+Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, historical-audit documentation amendments, validated employer source additions, and version 1.0.25 release preparation are complete. Current version is `1.0.25`. Migration head is `030`. Recent development commits remain local-only: `origin/main` points at `e1e2499` (the 1.0.19-era README update), so every commit from `a6d0d8b` (1.0.20) through the current HEAD is unpushed; the GitHub repository itself (`ddecker618/job-browser`) has been public since early August 2026 following a PII review.
 
 Commit history of the completed arc (all on `main`):
 
@@ -19,7 +19,9 @@ Commit history of the completed arc (all on `main`):
   custom careers.amd.com domain. AMD remains a documented blocker requiring
   a future approved architectural extension or controlled manual source
   configuration.
-- `d11dfb2 release: prepare version 1.0.25` — current HEAD.
+- `d11dfb2 release: prepare version 1.0.25` — release-preparation commit;
+  parent of the shipped installer artifact.
+- `4a389ec docs: reconcile 1.0.25 handoff state` — current HEAD.
 
 ## Session Checkpoint (2026-08-21 — Validated Source Additions and Legacy-Source Review: COMPLETE; version 1.0.25 release preparation)
 
@@ -86,7 +88,9 @@ labels stop reading as demo rows. No rows were modified during this review.
 
 ### Release state and verification (authoritative)
 
-- Current HEAD: `d11dfb2 release: prepare version 1.0.25` on `main`.
+- Current HEAD: `4a389ec docs: reconcile 1.0.25 handoff state` on `main`
+  (documentation-only reconciliation atop the release-preparation commit
+  `d11dfb2`, which remains the provenance of the built installer).
 - Version: `1.0.25`. Migration head: `030`.
 - Installer: `release\Job-Browser-Setup-1.0.25.exe`, 249,955,225 bytes,
   SHA256 `9D8371E6E35B97F42A055E65BA948E5E2734D887A4FD1543167F81BBF8D82665`,
@@ -94,7 +98,14 @@ labels stop reading as demo rows. No rows were modified during this review.
 - Full verification: format, lint, strict typecheck, Vitest **101 files /
   1041 tests**; application build passed; desktop smoke passed; packaged
   smoke passed; production integrity check passed.
-- Nothing has been pushed or published.
+- Verification limitation (recorded 2026-08-21): the installed-app upgrade
+  smoke (`desktop:smoke --installed --upgrade`) was not run for 1.0.25;
+  development smoke and packaged smoke passed. The installed desktop build
+  version on this machine is unconfirmed until checked or upgraded.
+- Push/publish state (clarified 2026-08-21): nothing has been pushed since
+  `e1e2499`; commits `a6d0d8b` … `4a389ec` exist only locally. The repository
+  itself is public on GitHub (`ddecker618/job-browser`, public since early
+  August 2026 following a PII review).
 
 ### Source counts (before → after validated additions)
 
@@ -109,6 +120,38 @@ sources were re-enabled or modified. Preserved counts remain: jobs 2597,
 applications 2, job observations 14,458, job-status history 2620. All seven
 protected sources remain enabled: Wellfound, ZipRecruiter, USAJOBS, LinkedIn,
 Dice, Indeed, Handshake.
+
+### Documentation reconciliation (2026-08-21 audit follow-up)
+
+Documentation-only amendments applied from the comprehensive historical-audit
+review; no code, database, source, manifest, or installer file was changed:
+
+- **Publication state clarified.** `origin/main` remains at `e1e2499`
+  (1.0.19 era). Commits `a6d0d8b` … `4a389ec` (versions 1.0.20 through
+  1.0.25) exist only locally. The repository has been public on GitHub since
+  early August 2026 following a PII review.
+- **Dice policy transition recorded (approved).** Dice was originally excluded
+  on 2026-07-20 because its Terms prohibited automated retrieval and no
+  supported public API or feed existed. On 2026-07-25 the user explicitly
+  approved a Dice visible-browser connector modeled on the approved LinkedIn
+  approach (manual login, persistent local session). Dice therefore remains a
+  protected browser-session source; CAPTCHA, security-check, login-control,
+  and anti-bot bypass remain prohibited.
+- **Workable disposition recorded.** Workable is fully implemented,
+  fixture-tested, and live-validated (2026-07-20) but has no production
+  Source today; it is available capacity for future employers, not active
+  coverage.
+- **Worktree artifact inventory (accurate; none staged).** Deleted but
+  uncommitted: `_query_db.mts`. Untracked: the two required-employer seed
+  manifests `data/employer-seeds/target-employers-2026-08-16.json` and
+  `data/employer-seeds/target-employers-operational-2026-08-16.json` (the
+  import records for the fourteen target employers), eleven
+  `scripts/_tmp_*.mjs` diagnostics, `react-router-8.3.0.tgz`, and
+  `data/employer-candidates/`. Committing the two manifests is recommended at
+  the next approved documentation commit so required-employer provenance is
+  not lost.
+- **Installed-upgrade smoke limitation recorded** — see the release-state
+  section above.
 
 ### Authoritative next actions
 

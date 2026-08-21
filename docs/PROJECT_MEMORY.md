@@ -56,7 +56,7 @@ Phase 8 Milestones 8.1 through 8.8 are complete and Architect-approved. Phase 8
 is complete as of 2026-08-12. The independent Employer Discovery 9.1 through
 9.5 workstream is also complete and Architect-approved. The versioned Employer
 Seed Manifest Import (1.0.21) is complete. Migration head is
-`030_employer_aliases.sql`; current version is 1.0.21.
+`030_employer_aliases.sql`; current version is 1.0.25.
 
 The current implementation additionally provides explicit non-destructive Job
 availability lifecycle. Two complete source-snapshot misses remain required for

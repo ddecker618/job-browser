@@ -51,7 +51,7 @@ The default database is `data/job-browser.sqlite`. Set `JOB_BROWSER_DB_PATH` to 
 
 ## Windows Desktop Application
 
-Install with `release/Job-Browser-Setup-1.0.14.exe` (249,839,217 bytes; SHA-256 `0B8823AB8ACC7254705E6C411AC3946C88F573D0D8359FAC5A77087C1C5B2AEA`). The current-user NSIS installer creates Desktop and Start Menu shortcuts and does not delete application data during uninstall. The unpacked executable is `release/win-unpacked/Job Browser.exe`.
+Install with `release/Job-Browser-Setup-1.0.25.exe` (249,955,225 bytes; SHA-256 `9D8371E6E35B97F42A055E65BA948E5E2734D887A4FD1543167F81BBF8D82665`). The current-user NSIS installer creates Desktop and Start Menu shortcuts and does not delete application data during uninstall. The unpacked executable is `release/win-unpacked/Job Browser.exe`.
 
 The desktop application:
 

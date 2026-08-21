@@ -280,9 +280,10 @@ persistence-set backup/restore.
 **Objective:** Make the external career-document boundary recoverable before
 ResumeSnapshots can ship.
 
-**Status:** Implementation and completion gate finished in the current worktree
-on 2026-08-12. Final Architect acceptance is being requested. Phase 8 remains
-incomplete.
+**Status: COMPLETE; ARCHITECT APPROVED** — Implemented and completion-gate
+verified on 2026-08-12 (migration `019_persistence_set_backup.sql`,
+`src/db/persistenceSetCoordinator.ts`), then accepted together with the
+integrated Milestone 8.8 release verification the same day.
 
 **Required work:**
 
@@ -308,8 +309,8 @@ blocked on this gate.
 analytics without corrupting source identity.
 
 **Status: COMPLETE; ARCHITECT APPROVED** — Implemented and accepted on
-2026-08-12 with migration `021_company_identity.sql`. Phase 8 remains
-incomplete.
+2026-08-12 with migration `021_company_identity.sql`. Phase 8 was completed
+by Milestone 8.8 acceptance later the same day.
 
 **Required work:**
 
@@ -330,8 +331,8 @@ explicit unknown Company bucket.
 **Objective:** Calculate transparent local application evidence from retained
 facts without new cache or prediction entities.
 
-**Status: COMPLETE; ARCHITECT APPROVED** — Accepted 2026-08-12. Phase 8 remains
-incomplete pending Milestone 8.8 acceptance.
+**Status: COMPLETE; ARCHITECT APPROVED** — Accepted 2026-08-12. Phase 8 was
+completed when Milestone 8.8 was accepted later the same day.
 
 **Required work:**
 
