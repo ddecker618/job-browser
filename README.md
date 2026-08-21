@@ -176,27 +176,31 @@ No registry, discovery-engine, database, or CLI switch statement needs modificat
 
 Built-in providers:
 
-| Provider        | Source configuration                                                        | Network behavior                                        |
-| --------------- | --------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Greenhouse      | Board token and optional company name                                       | Public Greenhouse job-board API                         |
-| Lever           | Site slug and optional company name                                         | Public Lever postings API                               |
-| Ashby           | Board name and optional company name                                        | Public Ashby job-board API                              |
-| Workday         | HTTPS origin, tenant, site, and optional company name                       | Public Workday CXS endpoint                             |
-| USAJOBS         | Search terms, filters, and local browser profile                            | Visible Chromium search session; login.gov supported    |
-| Structured data | Public HTTPS feed or careers-page URL                                       | Bounded JSON-LD, JSON, RSS, or Atom fetch               |
-| SmartRecruiters | Company identifier or `jobs.`/`careers.` careers URL, optional company name | Public SmartRecruiters Posting API                      |
-| BambooHR        | BambooHR company subdomain and company name                                 | Public BambooHR careers endpoints                       |
-| Recruitee       | Public careers origin and optional company name                             | Public Recruitee careers JSON endpoint                  |
-| Teamtailor      | Public jobs RSS URL and company name                                        | Public Teamtailor RSS feed                              |
-| Workable        | Account subdomain and optional company name                                 | Public Workable account API                             |
-| iCIMS           | Modern careers portal origin and optional company name                      | Public iCIMS/Jibe `/api/jobs` endpoint                  |
-| Built In        | Search terms and optional location                                          | Public HTML cards and JSON-LD detail pages              |
-| LinkedIn Jobs   | Search terms, filters, and local browser profile                            | Visible Chromium search session                         |
-| Dice            | Search terms, filters, and local browser profile                            | Visible Chromium search session; authorization required |
-| Handshake       | Search terms, work arrangement, and local browser profile                   | Visible Chromium session; school/SSO login required     |
-| Indeed          | Search terms, filters, and local browser profile                            | Visible Chromium search session                         |
-| Wellfound       | Search terms, filters, and local browser profile                            | Visible Chromium search session                         |
-| ZipRecruiter    | Search terms, filters, and local browser profile                            | Visible Chromium search session                         |
+| Provider        | Source configuration                                                        | Network behavior                                          |
+| --------------- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Greenhouse      | Board token and optional company name                                       | Public Greenhouse job-board API                           |
+| Lever           | Site slug and optional company name                                         | Public Lever postings API                                 |
+| Ashby           | Board name and optional company name                                        | Public Ashby job-board API                                |
+| Workday         | HTTPS origin, tenant, site, and optional company name                       | Public Workday CXS endpoint                               |
+| Cisco           | No configuration; fixed Workday CXS tenant                                  | Public Workday CXS endpoint through the Workday connector |
+| CrowdStrike     | No configuration; fixed Workday CXS tenant                                  | Public Workday CXS endpoint through the Workday connector |
+| USAJOBS         | Search terms, filters, and local browser profile                            | Visible Chromium search session; login.gov supported      |
+| Structured data | Public HTTPS feed or careers-page URL                                       | Bounded JSON-LD, JSON, RSS, or Atom fetch                 |
+| SmartRecruiters | Company identifier or `jobs.`/`careers.` careers URL, optional company name | Public SmartRecruiters Posting API                        |
+| BambooHR        | BambooHR company subdomain and company name                                 | Public BambooHR careers endpoints                         |
+| Recruitee       | Public careers origin and optional company name                             | Public Recruitee careers JSON endpoint                    |
+| Teamtailor      | Public jobs RSS URL and company name                                        | Public Teamtailor RSS feed                                |
+| Workable        | Account subdomain and optional company name                                 | Public Workable account API                               |
+| iCIMS           | Modern careers portal origin and optional company name                      | Public iCIMS/Jibe `/api/jobs` endpoint                    |
+| Built In        | Search terms and optional location                                          | Public HTML cards and JSON-LD detail pages                |
+| LinkedIn Jobs   | Search terms, filters, and local browser profile                            | Visible Chromium search session                           |
+| Dice            | Search terms, filters, and local browser profile                            | Visible Chromium search session; authorization required   |
+| Handshake       | Search terms, work arrangement, and local browser profile                   | Visible Chromium session; school/SSO login required       |
+| Indeed          | Search terms, filters, and local browser profile                            | Visible Chromium search session                           |
+| Wellfound       | Search terms, filters, and local browser profile                            | Visible Chromium search session                           |
+| ZipRecruiter    | Search terms, filters, and local browser profile                            | Visible Chromium search session                           |
+
+Cisco and CrowdStrike are separately registered convenience provider identifiers that subclass the Workday connector against their fixed `.myworkdayjobs.com` CXS tenants. ATS fingerprinting uniformly maps those hosts to the `workday` provider configuration, so each tenant should be represented by exactly one enabled Source regardless of which identifier created it.
 
 The Sources editor can inspect a public careers URL and suggest a supported provider configuration. Detection uses hostname patterns, redirect destinations, page metadata, structured links, and bounded non-executing HTML inspection. It never executes scripts. The suggestion is not applied until the user confirms it, and a newly saved source remains disabled until explicitly enabled.
 
@@ -375,7 +379,7 @@ Search runs store provider ID, serialized search parameters, execution time, ins
 
 Migration files live in `src/db/migrations` and use immutable numeric names such as `001_initial_schema.sql`, `002_discovery_engine.sql`, and `003_job_intelligence.sql`.
 
-Phase 7 adds `007_expanded_discovery.sql` for discovery accounting, posting verification and removal, provider confidence, source snapshot state, identity-conflict diagnostics, source archival state, and search indexes. `008_job_search_salary.sql` adds the preserved salary-search index. The current checked-in migration head is `026_explicit_job_lifecycle.sql`, which adds explicit retained availability reasons and normalized source/observation closing evidence without manufacturing legacy expiry. Migration tests preserve existing Jobs, Sources, statuses, Applications, events, snapshots, Company identity, and history.
+Phase 7 adds `007_expanded_discovery.sql` for discovery accounting, posting verification and removal, provider confidence, source snapshot state, identity-conflict diagnostics, source archival state, and search indexes. `008_job_search_salary.sql` adds the preserved salary-search index. `026_explicit_job_lifecycle.sql` adds explicit retained availability reasons and normalized source/observation closing evidence without manufacturing legacy expiry. The current checked-in migration head is `030_employer_aliases.sql`, which adds the unique `employer_aliases` table used by versioned employer seed manifest import. Migration tests preserve existing Jobs, Sources, statuses, Applications, events, snapshots, Company identity, and history.
 
 The migration runner:
 

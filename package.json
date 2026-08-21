@@ -42,6 +42,7 @@
     "discover:test": "tsx src/discovery/cli.ts --fixture",
     "employers:import": "tsx src/discovery/cli/import-employers.ts",
     "employers:cleanup": "tsx src/discovery/cli/cleanup-remediation.ts",
+    "sources:remediate": "tsx src/discovery/cli/remediate-sources.ts",
     "analyze": "tsx src/intelligence/cli.ts",
     "analyze:test": "tsx src/intelligence/cli.ts --fixture",
     "role-details:backfill": "tsx src/db/cli/backfill-role-details.ts",
