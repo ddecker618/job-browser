@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { JobDatabase } from '../db/database.js';
 import { ensureIsoUtc } from '../utilities/timestamps.js';
+import {
+  classifyCareerSiteHealth,
+  classifySourceFailure,
+  isBrowserSessionProvider,
+  type AlertClassification,
+} from './alertClassification.js';
 
 export interface DiscoveryAlert {
   id: string;
@@ -18,7 +24,7 @@ export interface DiscoveryAlert {
   ruleVersion: string;
 }
 
-const RULE_VERSION = 'discovery-alert-rules-v1';
+const RULE_VERSION = 'discovery-alert-rules-v2';
 
 // A "zero-yield" streak requires a minimum number of full, non-truncated
 // discovery cycles that each yielded zero jobs. Multi-query sources produce one
@@ -26,6 +32,22 @@ const RULE_VERSION = 'discovery-alert-rules-v1';
 // ZERO_YIELD_CYCLE_GAP_MS of one another are grouped into one discovery cycle.
 const ZERO_YIELD_MIN_CYCLES = 3;
 const ZERO_YIELD_CYCLE_GAP_MS = 60_000;
+
+function withClassification(
+  message: string,
+  classification: AlertClassification,
+  action: string,
+): string {
+  return `${message} Classification: ${classification}. Action: ${action}`;
+}
+
+function capSeverity(
+  severity: 'INFO' | 'WARNING' | 'CRITICAL',
+  cap: 'WARNING' | 'CRITICAL',
+): 'INFO' | 'WARNING' | 'CRITICAL' {
+  if (severity === 'CRITICAL' && cap === 'WARNING') return 'WARNING';
+  return severity;
+}
 
 export class DiscoveryAlertService {
   private running = false;
@@ -236,8 +258,13 @@ export class DiscoveryAlertService {
                 'provider',
                 p.provider_id,
                 'WARNING',
-                `Provider ${p.provider_id} is degraded: ${String(p.failed)}/${String(p.total)} runs failed in the last 24 hours across ${String(failedSources.count)} sources.`,
+                withClassification(
+                  `Provider ${p.provider_id} is degraded: ${String(p.failed)}/${String(p.total)} runs failed in the last 24 hours across ${String(failedSources.count)} sources.`,
+                  'chronic-provider-failure',
+                  'Inspect the provider endpoint health and recent run errors across its sources before individual source actions.',
+                ),
                 {
+                  classification: 'chronic-provider-failure',
                   totalRuns: p.total,
                   failedRuns: p.failed,
                   failureRate,
@@ -249,11 +276,14 @@ export class DiscoveryAlertService {
         }
 
         // 2. SOURCE FAILURE STREAK
-        // Trigger when enabled source failure_count >= 2
+        // Trigger when enabled source failure_count >= 2. Failures are
+        // classified so browser-session, pending-credential, anti-bot, and
+        // transient failures stay visible without being labeled broken.
         const sources = db
           .prepare(
             `
-        SELECT id, display_name, provider_id, failure_count, health_status FROM sources WHERE enabled = 1
+        SELECT id, display_name, provider_id, failure_count, health_status,
+               configuration_status FROM sources WHERE enabled = 1
       `,
           )
           .all() as {
@@ -262,6 +292,7 @@ export class DiscoveryAlertService {
           provider_id: string | null;
           failure_count: number;
           health_status: string | null;
+          configuration_status: string | null;
         }[];
 
         for (const src of sources) {
@@ -271,20 +302,60 @@ export class DiscoveryAlertService {
           }
 
           if (src.failure_count >= 2) {
-            const severity = src.failure_count >= 3 ? 'CRITICAL' : 'WARNING';
+            const latestError = db
+              .prepare(
+                `
+            SELECT error_message FROM runs
+             WHERE source_id = ? AND status = 'failed'
+             ORDER BY started_at DESC LIMIT 1
+          `,
+              )
+              .get(src.id) as { error_message: string | null } | undefined;
+            const classified = classifySourceFailure(
+              src.provider_id,
+              src.configuration_status,
+              latestError?.error_message ?? null,
+            );
+            const severity = capSeverity(
+              src.failure_count >= 3 ? 'CRITICAL' : 'WARNING',
+              classified.severityCap,
+            );
             processAlert(
               'source-failure-streak',
               'source',
               src.id,
               severity,
-              `Source "${src.display_name ?? src.id}" has failed ${String(src.failure_count)} consecutive times.`,
-              { consecutiveFailures: src.failure_count },
+              withClassification(
+                `Source "${src.display_name ?? src.id}" has failed ${String(src.failure_count)} consecutive times.`,
+                classified.classification,
+                classified.action,
+              ),
+              {
+                classification: classified.classification,
+                consecutiveFailures: src.failure_count,
+                latestError: latestError?.error_message ?? null,
+                recommendedAction: classified.action,
+              },
             );
           }
         }
 
         // 3. SOURCE OVERDUE
-        // Scheduled source is overdue by >= 1 hour relative to next_run_at
+        // Scheduled source is overdue by >= 1 hour relative to next_run_at.
+        // Time while the desktop application was closed does not imply provider
+        // failure: when no run of ANY source has happened recently, per-source
+        // overdue/stale alerts are suppressed in favor of one aggregate
+        // scheduler-inactive notice.
+        const appLastActivityRow = db
+          .prepare('SELECT MAX(started_at) AS last_activity FROM runs')
+          .get() as { last_activity: string | null };
+        const appLastActivityAt = appLastActivityRow.last_activity;
+        const hoursSince = (iso: string): number =>
+          (this.now().getTime() - Date.parse(iso)) / 3600000;
+        const downtimeActive = (cadenceHours: number): boolean =>
+          appLastActivityAt !== null &&
+          hoursSince(appLastActivityAt) > 3 * cadenceHours;
+
         const schedulerEnabledRow = db
           .prepare(
             `
@@ -300,7 +371,8 @@ export class DiscoveryAlertService {
           const scheduledSources = db
             .prepare(
               `
-          SELECT s.id, s.display_name, ss.next_run_at, cs.discovery_state, cs.health_status
+          SELECT s.id, s.display_name, ss.next_run_at, ss.cadence,
+                 cs.discovery_state, cs.health_status
             FROM sources s
             JOIN source_schedules ss ON ss.source_id = s.id
             LEFT JOIN career_sites cs ON cs.source_id = s.id
@@ -311,6 +383,7 @@ export class DiscoveryAlertService {
             id: string;
             display_name: string | null;
             next_run_at: string;
+            cadence: string | null;
             discovery_state: string | null;
             health_status: string | null;
           }[];
@@ -320,21 +393,56 @@ export class DiscoveryAlertService {
           ).toISOString();
 
           for (const ss of scheduledSources) {
+            let cadenceHours = 24;
+            if (ss.cadence === 'every-6-hours') cadenceHours = 6;
+            else if (ss.cadence === 'every-12-hours') cadenceHours = 12;
+
             if (
               ss.next_run_at <= oneHourAgo &&
               ss.discovery_state !== 'backoff' &&
               ss.discovery_state !== 'retired' &&
-              ss.health_status !== 'retired'
+              ss.health_status !== 'retired' &&
+              !downtimeActive(cadenceHours)
             ) {
               processAlert(
                 'source-overdue',
                 'source',
                 ss.id,
                 'WARNING',
-                `Source "${ss.display_name ?? ss.id}" run is overdue (scheduled next run was ${ss.next_run_at}).`,
-                { nextRunAt: ss.next_run_at },
+                withClassification(
+                  `Source "${ss.display_name ?? ss.id}" run is overdue (scheduled next run was ${ss.next_run_at}).`,
+                  'overdue-run',
+                  'The application is running and the schedule is enabled but the run did not start. Inspect scheduler state and the source health before manual runs.',
+                ),
+                {
+                  classification: 'overdue-run',
+                  nextRunAt: ss.next_run_at,
+                },
               );
             }
+          }
+
+          if (
+            appLastActivityAt !== null &&
+            hoursSince(appLastActivityAt) > 24 &&
+            scheduledSources.length > 0
+          ) {
+            processAlert(
+              'scheduler-inactive',
+              'provider',
+              'scheduler',
+              'INFO',
+              withClassification(
+                `Discovery scheduler has been inactive since ${appLastActivityAt}; ${String(scheduledSources.length)} scheduled source(s) have pending runs.`,
+                'scheduler-downtime',
+                'Expected while the desktop application is closed. Runs resume automatically on the configured cadence after relaunch; no provider action is required.',
+              ),
+              {
+                classification: 'scheduler-downtime',
+                lastActivityAt: appLastActivityAt,
+                pendingSources: scheduledSources.length,
+              },
+            );
           }
         }
 
@@ -363,19 +471,31 @@ export class DiscoveryAlertService {
         }[];
 
         for (const cs of careerSites) {
-          const severity =
-            cs.health_status === 'broken' ? 'CRITICAL' : 'WARNING';
+          const classified = classifyCareerSiteHealth(
+            cs.health_status,
+            cs.health_message,
+          );
+          const severity = capSeverity(
+            cs.health_status === 'broken' ? 'CRITICAL' : 'WARNING',
+            classified.severityCap,
+          );
           processAlert(
             'career-site-broken',
             'career_site',
             cs.id,
             severity,
-            `Career site health check for ${cs.employer_name} is ${cs.health_status}: ${cs.health_message ?? 'unhealthy'}.`,
+            withClassification(
+              `Career site health check for ${cs.employer_name} is ${cs.health_status}: ${cs.health_message ?? 'unhealthy'}.`,
+              classified.classification,
+              classified.action,
+            ),
             {
+              classification: classified.classification,
               healthStatus: cs.health_status,
               url: cs.url,
               message: cs.health_message,
               failureCount: cs.health_failure_count,
+              recommendedAction: classified.action,
             },
           );
         }
@@ -389,6 +509,7 @@ export class DiscoveryAlertService {
         // exhausted (no new jobs to discover), not malfunctioning.
         for (const src of sources) {
           if (src.health_status === 'healthy') continue;
+          if (isBrowserSessionProvider(src.provider_id)) continue;
           // Get recent completed, non-truncated successful runs for this source
           const recentRuns = db
             .prepare(
@@ -453,8 +574,13 @@ export class DiscoveryAlertService {
                 'source',
                 src.id,
                 'WARNING',
-                `Source "${src.display_name ?? src.id}" has completed ${String(ZERO_YIELD_MIN_CYCLES)} full discovery cycles but yielded 0 new jobs.`,
+                withClassification(
+                  `Source "${src.display_name ?? src.id}" has completed ${String(ZERO_YIELD_MIN_CYCLES)} full discovery cycles but yielded 0 new jobs.`,
+                  'zero-yield-regression',
+                  'The source previously yielded jobs but recent complete discovery cycles found none. Verify the employer is still hiring at this endpoint before disabling.',
+                ),
                 {
+                  classification: 'zero-yield-regression',
                   runIds: cycles.flatMap((cycle) => cycle.runIds),
                   cycles: cycles.map((cycle) => ({
                     jobsDiscovered: cycle.jobsDiscovered,
@@ -504,14 +630,25 @@ export class DiscoveryAlertService {
             const staleHours =
               (this.now().getTime() - Date.parse(lastSuccess.completed_at)) /
               3600000;
-            if (staleHours > 3 * cadenceHours) {
+            if (
+              staleHours > 3 * cadenceHours &&
+              !downtimeActive(cadenceHours)
+            ) {
               processAlert(
                 'discovery-stale',
                 'source',
                 sc.id,
                 'WARNING',
-                `Source "${sc.display_name ?? sc.id}" is stale (last successful run was ${String(Math.round(staleHours))} hours ago, expected cadence is ${String(cadenceHours)} hours).`,
-                { lastSuccessfulRunAt: lastSuccess.completed_at, staleHours },
+                withClassification(
+                  `Source "${sc.display_name ?? sc.id}" is stale (last successful run was ${String(Math.round(staleHours))} hours ago, expected cadence is ${String(cadenceHours)} hours).`,
+                  'overdue-run',
+                  'Verify the source still succeeds on its cadence; if failures persist, inspect the latest run error before changing configuration.',
+                ),
+                {
+                  classification: 'overdue-run',
+                  lastSuccessfulRunAt: lastSuccess.completed_at,
+                  staleHours,
+                },
               );
             }
           }
@@ -647,7 +784,8 @@ export class DiscoveryAlertService {
           if (
             cadenceHours !== null &&
             cs.discovery_state !== 'backoff' &&
-            hasAutomaticSourceSchedule
+            hasAutomaticSourceSchedule &&
+            !downtimeActive(cadenceHours)
           ) {
             const anchor = activity.lastSuccessfulDiscoveryAt ?? row.created_at;
             const staleHours =

@@ -113,6 +113,22 @@ describe('atsTenantIdentity', () => {
     expect(atsTenantIdentity('icims', { company: 'acme' })).toBe('icims:acme');
   });
 
+  it('maps the cisco and crowdstrike identifiers onto their workday tenants', () => {
+    expect(atsTenantIdentity('cisco', {})).toBe('workday:cisco:Cisco_Careers');
+    expect(
+      atsTenantIdentity('workday', { tenant: 'cisco', site: 'Cisco_Careers' }),
+    ).toBe('workday:cisco:Cisco_Careers');
+    expect(atsTenantIdentity('crowdstrike', {})).toBe(
+      'workday:crowdstrike:crowdstrikecareers',
+    );
+    expect(
+      atsTenantIdentity('workday', {
+        tenant: 'crowdstrike',
+        site: 'crowdstrikecareers',
+      }),
+    ).toBe('workday:crowdstrike:crowdstrikecareers');
+  });
+
   it('returns null when no tenant can be derived', () => {
     expect(atsTenantIdentity('greenhouse', {})).toBeNull();
     expect(atsTenantIdentity('greenhouse', { boardToken: '' })).toBeNull();

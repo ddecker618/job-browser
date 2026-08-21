@@ -4,16 +4,171 @@
 
 Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, and discovery error remediation (failure categorization + zero-yield fix) 1.0.24 are complete and Architect-approved. Current version is `1.0.24`. Migration head is `030`.
 
-Completed and verified (unreleased): controlled source
-remediation — see the session checkpoint below. The LIVE remediation was
-applied on 2026-08-21 against the installed production database and fully
-verified; the user has accepted the reconciliation evidence. Still pending:
-final review of this consolidated handoff and a decision on the proposed
-next-stage cleanup plan (not implemented).
+Controlled source remediation is COMPLETED AND COMMITTED at `986681c feat:
+add controlled source remediation` on `main` (live run applied and verified
+2026-08-21).
 
-## Session Checkpoint (2026-08-21 — Controlled Source Remediation: IMPLEMENTATION AND LIVE RUN COMPLETE AND VERIFIED; next-stage cleanup pending approval)
+Milestone "Source Health Reconciliation and Alert Classification" is
+IMPLEMENTED, VERIFIED (101 files / 1041 tests; desktop smoke green), and
+DRY-RUN COMPLETE against a production snapshot copy; it awaits its scoped
+commit — see the newest session checkpoint below, the only authoritative
+resume point.
 
+Production source creation for Datadog, MongoDB, Intel, and AMD is NOT yet
+applied; those validated configurations remain pending a separate user
+approval after this milestone.
+
+## Session Checkpoint (2026-08-21 — Source Health Reconciliation and Alert Classification: IMPLEMENTED AND VERIFIED; DRY RUN COMPLETE; UNCOMMITTED)
+
+Starting point: commit `986681c` (remediation checkpoint) atop `dc91fd7`.
 This is the authoritative resume point. Do not rely on chat history.
+
+### Status buckets
+
+- **Completed this milestone:** repository/production evidence collection;
+  bounded career-site validation probes; alert-classification implementation
+  (`discovery-alert-rules-v2`); ATS-tenant identity fix closing the
+  cisco/crowdstrike duplicate-recreation gap; 16 new regression tests; full
+  verification suites; production-safe dry run against a SQLite-backup
+  snapshot copy.
+- **Pending user decision:** review of this milestone and approval to commit
+  it; approval of any live actions from the dry-run action table.
+- **Prohibited scope (unchanged):** restoring Remote OK; disabling any
+  protected source (Wellfound, ZipRecruiter, USAJOBS, LinkedIn, Dice, Indeed,
+  Handshake); CAPTCHA/auth/anti-bot bypass; automatic applications;
+  directory consolidations; god-file refactors; embeddings; notifications/
+  exports; cross-platform packaging; Playwright changes; unrelated UI;
+  scoring/resume/application-tracking changes; version bumps; commits or
+  pushes without explicit instruction; ANY writes to the production database
+  during this milestone.
+
+### Files changed in this milestone (uncommitted)
+
+- Added `src/discovery/alertClassification.ts`: shared taxonomy
+  (`unsupported-platform`, `pending-credentials`, `browser-session`,
+  `anti-bot`, `transient-network`, `invalid-url`,
+  `chronic-provider-failure`, `legitimate-zero-openings`,
+  `zero-yield-regression`, `scheduler-downtime`, `overdue-run`, `broken`),
+  browser-session provider set, and deterministic failure/site-health
+  classifiers with recommended actions.
+- Modified `src/discovery/discoveryAlertService.ts`: rule version bumped to
+  `discovery-alert-rules-v2`; every alert message now ends with
+  "Classification: … Action: …" and evidence carries `classification`;
+  browser-session/pending-credential/anti-bot/transient failures cap at
+  WARNING (never CRITICAL); unsupported-platform and invalid-url career sites
+  downgrade from CRITICAL to WARNING; scheduler-downtime detection suppresses
+  per-source overdue/stale when no run of ANY source occurred within 3×
+  cadence and emits one aggregate INFO `scheduler-inactive` instead;
+  zero-yield-streak skips browser-session providers entirely.
+- Modified `src/domain/urlIdentity.ts`: `atsTenantIdentity` now maps the
+  `cisco` and `crowdstrike` identifiers onto their fixed Workday tenants
+  (`workday:cisco:Cisco_Careers`,
+  `workday:crowdstrike:crowdstrikecareers`), so employer-seed import and
+  employer-discovery dedup can no longer recreate the duplicate Sources that
+  controlled remediation disabled.
+- Added `tests/alert-classification.test.ts` (16 tests) covering every
+  classification; updated `tests/discovery-alerts.test.ts` (message-format
+  assertion); extended `tests/url-identity.test.ts` (tenant-identity
+  mapping).
+- No migration was created or needed: classification lives in
+  `evidence_json` under the bumped rule version.
+
+### Repository and database evidence (read-only)
+
+- Production snapshot taken via SQLite backup API into temp
+  (`milestone-snapshot.sqlite`); production never opened read-write this
+  milestone; no WAL/SHM touched; desktop app state unchanged.
+- Employers registry is clean: single canonical rows for Cisco/CrowdStrike/
+  Workday; case variants exist only in legacy Source display names
+  (`cisco`, `crowdstrike`, `workday`, `greenhouse`, `icims`, `linkedin`,
+  `mux`, five lowercase `smartrecruiters` demo sources). Three legitimate
+  aliases exist (aws→Amazon, google cloud→Google, wgu→WGU). No duplicate
+  ATS-tenant groups remain among enabled sources after remediation.
+- Bounded public probes (hardened client, ~17 requests total):
+  - GitHub: `www.github.careers` AND apex both DNS-unresolvable; Greenhouse
+    board/API 404 → dead stored URL, no supported ATS found.
+  - Datadog: `careers.datadoghq.com` DNS-dead; official board CONFIRMED at
+    Greenhouse token `datadog` (API 200, 448 live jobs).
+  - MongoDB: stored URL 404s; Greenhouse token `mongodb` CONFIRMED (API 200,
+    411 live jobs); boards.greenhouse.io/mongodb redirects to MongoDB's own
+    custom careers site.
+  - Intel: `jobs.intel.com` root 403 via anti-bot redirector; Workday CXS
+    tenant CONFIRMED at `intel.wd1.myworkdayjobs.com/Intel_External` (200).
+  - AMD: modern iCIMS endpoint CONFIRMED at `careers.amd.com/api/jobs`
+    (200, ~343 KB JSON) — future Source creation candidate.
+  - One transient local-DNS failure observed for boards.greenhouse.io mid-run
+    (same host resolved seconds earlier/later) — reinforces transient-network
+    classification.
+
+### Implemented behavior (summary)
+
+Alerts now distinguish unsupported platform vs pending credentials vs
+browser-session vs anti-bot vs transient network vs invalid URL vs chronic
+provider failure vs legitimate zero openings vs zero-yield regression vs
+scheduler downtime vs overdue-run vs genuinely broken. Pending-credential and
+browser-session sources can never appear CRITICAL/broken; HTTP 403/429 stays
+visible as anti-bot; DNS/transient failures are retry-aware; healthy
+zero-opening results never alert; zero-yield regression still requires ≥3
+complete non-truncated cycles plus historical yield; stale/overdue alerts do
+not fire while the desktop-local scheduler was inactive (aggregate INFO
+notice instead). Resolution continues to flow exclusively through
+`evaluateRules()`; history and audit columns untouched; APIs/UI consume the
+same fields (messages are richer strings), so compatibility is preserved
+without migration.
+
+### Verification results
+
+- Targeted: `alert-classification`, `discovery-alerts`, `url-identity`,
+  `remediate-sources` — 60/60 green during development.
+- `npm run verify` fully green: format, lint, strict typecheck, Vitest
+  **101 files / 1041 tests** (was 100/1025 at checkpoint `986681c`).
+- `npm run desktop:smoke` passed.
+
+### Production-safe dry run (snapshot copy only)
+
+Ran `discovery-alert-rules-v2` evaluation against a writable temp copy of the
+production snapshot:
+
+| Before (unresolved) | After (unresolved) |
+| --- | --- |
+| CRITICAL career-site-broken ×3; WARNING career-site-broken ×1; WARNING discovery-stale ×14; WARNING source-overdue ×14 (32 total) | INFO scheduler-inactive (scheduler-downtime) ×1; WARNING invalid-url ×2 (GitHub, Datadog); WARNING unsupported-platform ×1 (MongoDB); WARNING anti-bot ×1 (Intel) — 5 total, 0 CRITICAL |
+
+Proposed live actions (NOT applied; require separate approval):
+
+| Employer | Proposed action | Evidence | Rows affected | Rollback |
+| --- | --- | --- | --- | --- |
+| Datadog | Create enabled greenhouse Source `{boardToken:"datadog"}`; correct career-site URL to `https://boards.greenhouse.io/datadog`; re-run health check | API 200 / 448 jobs | 1 new source row; 1 career-site row URL/health update | Delete created source; restore prior site values from snapshot |
+| MongoDB | Same with `{boardToken:"mongodb"}` and current official careers URL | API 200 / 411 jobs | same shape | same |
+| Intel | Create workday Source `{origin:"https://intel.wd1.myworkdayjobs.com",tenant:"intel",site:"Intel_External"}` | CXS 200 | same shape | same |
+| AMD | Candidate icims Source `{portalUrl:"https://careers.amd.com"}` after user confirms interest | `/api/jobs` 200 | 1 new source row | delete created source |
+| GitHub | Manual follow-up: official careers domain does not resolve; no supported ATS detected | DNS + 404 probes | none | n/a |
+| Legacy demo sources (five lowercase `smartrecruiters`, demo `Recruitee`, `mux`) | Optional future Disable-with-reason pass pending user yield review | 68–206 runs, ≤27 lifetime jobs | source rows only | re-enable rows |
+
+No jobs, applications, observations, or history would be deleted by any
+proposed action; protected sources stay enabled in every proposed state.
+
+### Remaining unresolved items
+
+- GitHub disposition (manual external follow-up).
+- User decisions on proposed Datadog/MongoDB/Intel/AMD source creation.
+- Optional legacy-demo-source disable pass.
+- Career-site warnings for reachable-but-unsupported custom platforms
+  (Adobe, Airbnb, Amazon, Atlassian, Cloudflare, IBM, ServiceNow, Spotify,
+  Dell, Apple, Meta, Microsoft, Salesforce, Stripe, Uber, Oracle) remain
+  informational registry context; Oracle Recruiting Cloud stays documented
+  unsupported.
+
+### Exact next action
+
+User reviews this milestone. On approval: commit the milestone (scoped files
+only), then optionally approve specific live actions from the dry-run table
+as a separate controlled step with its own backup. Do not start live actions
+or further milestones without approval.
+
+## Historical Checkpoint (2026-08-21 — Controlled Source Remediation: COMPLETED, LIVE RUN APPLIED AND VERIFIED, COMMITTED AT `986681c`)
+
+Superseded as a resume point by the newest checkpoint above; retained for
+evidence, backup paths, rollback instructions, and historical results.
 
 ### Status buckets
 

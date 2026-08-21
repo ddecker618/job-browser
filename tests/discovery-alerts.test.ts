@@ -137,9 +137,11 @@ describe('Discovery Alerts & Analytics Sprint', () => {
       ruleId: 'career-site-broken',
       severity: 'CRITICAL',
       entityId: site.id,
-      message:
-        'Career site health check for Acme is broken: Failed to fetch ATS.',
     });
+    expect(list[0]?.message).toContain(
+      'Career site health check for Acme is broken: Failed to fetch ATS.',
+    );
+    expect(list[0]?.message).toContain('Classification: broken.');
   });
 
   it('does not alert career-site-broken for informational warnings with zero failures', () => {

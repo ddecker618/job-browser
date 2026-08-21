@@ -151,6 +151,10 @@ export function atsTenantIdentity(
         ? null
         : `workday:${tenant}${site === null ? '' : `:${site}`}`;
     }
+    case 'cisco':
+      return 'workday:cisco:Cisco_Careers';
+    case 'crowdstrike':
+      return 'workday:crowdstrike:crowdstrikecareers';
     case 'smartrecruiters': {
       const identifier = value('companyIdentifier');
       return identifier === null ? null : `smartrecruiters:${identifier}`;
