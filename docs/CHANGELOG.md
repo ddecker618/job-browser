@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.25] - 2026-08-21
+
+### Validated Employer Source Additions and Documentation Hardening
+
+- **Three validated employer sources added to discovery.** Datadog (Greenhouse board `datadog`, 448 live postings confirmed via public API), MongoDB (Greenhouse board `mongodb`, 411 live postings), and Intel (Workday CXS `intel.wd1.myworkdayjobs.com/Intel_External`) were imported through the idempotent employer-seed-manifest pipeline (`data/employer-seeds/validated-sources-2026-08-21.json`, provenance `controlled-source-addition-2026-08-21`). Dry-run and live runs produced identical counts (employers reused 4, career sites created 4, sources created 3, invalid 0, ambiguous 0). Production totals: 37 sources, 31 enabled.
+- **AMD stopped with a documented blocker.** Its careers portal is a custom-domain iCIMS instance (`careers.amd.com`; `/api/jobs` confirmed working manually), but URL fingerprinting only recognizes iCIMS on `*.icims.com` hosts, so the supported import architecture cannot derive a Source configuration. A career-site evidence row was recorded; adding AMD requires manual creation through the Sources UI or a future approved explicit-config manifest extension.
+- **Legacy demo-source review retained all seven candidates.** The five lowercase SmartRecruiters entries target real company boards (SanDisk, Anexinet, Wix, Netcompany, Bosch Group) with nonzero recent yield, the "Recruitee" entry targets bunq's live Recruitee board, and `mux` is a real employer on Ashby — none are provably obsolete demo/duplicate/legacy rows, so none were disabled and no data was touched. A separately approved rename pass is recommended so placeholder display names stop reading as demo rows.
+- **Safety process.** Changes were applied only after a verified SQLite backup (`pre-source-addition-2026-08-21T18-54-50-758Z.sqlite`, integrity ok); preserved counts were identical before/after (jobs 2597, applications 2, observations 14458, status history 2620); all seven protected browser-session sources remain enabled; nothing was pushed or published.
+- **Documentation hardening.** SESSION_HANDOFF now records that profile-preferences UI stages beyond Stage 0B remain deferred pending approval, and that USAJOBS login.gov occasionally rejects known devices (site-side authentication behavior, not automatically a connector defect).
+- Ships commits `986681c` (controlled source remediation) and `bfe22d0` (discovery source-health alert classification) alongside this release work.
+
 ## [Unreleased] - 2026-08-21 (Milestone: Source Health Reconciliation and Alert Classification)
 
 - **Alert classification (`discovery-alert-rules-v2`).** Every discovery alert now carries a machine-readable `classification` in its evidence and ends with "Classification: … Action: …" text. Twelve classes distinguish unsupported platform, pending credentials, browser-session, anti-bot, transient network/DNS, invalid URL, chronic provider failure, legitimate zero openings, zero-yield regression, scheduler downtime, overdue runs, and genuinely broken. Browser-session (LinkedIn, Dice, Indeed, Wellfound, ZipRecruiter, Handshake, USAJOBS), pending-credential, anti-bot, and transient failures cap at WARNING and can never present as broken; unsupported-platform and invalid-url career sites downgrade from CRITICAL to WARNING with repair guidance.

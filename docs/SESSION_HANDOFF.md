@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, and discovery error remediation (failure categorization + zero-yield fix) 1.0.24 are complete and Architect-approved. Current version is `1.0.24`. Migration head is `030`.
+Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, and validated source additions are complete. Current version is `1.0.25`. Migration head is `030`.
 
 Controlled source remediation is COMPLETED AND COMMITTED at `986681c feat:
 add controlled source remediation` on `main` (live run applied and verified
