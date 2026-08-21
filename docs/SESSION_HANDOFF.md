@@ -2,23 +2,28 @@
 
 ## Current Phase
 
-Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, and validated source additions are complete. Current version is `1.0.25`. Migration head is `030`.
+Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, historical-audit documentation amendments, validated employer source additions, and version 1.0.25 release preparation are complete. Current version is `1.0.25`. Migration head is `030`. Nothing has been pushed or published.
 
-Controlled source remediation is COMPLETED AND COMMITTED at `986681c feat:
-add controlled source remediation` on `main` (live run applied and verified
-2026-08-21).
+Commit history of the completed arc (all on `main`):
 
-Milestone "Source Health Reconciliation and Alert Classification" is
-IMPLEMENTED, VERIFIED (101 files / 1041 tests; desktop smoke green), and
-DRY-RUN COMPLETE against a production snapshot copy; it awaits its scoped
-commit — see the newest session checkpoint below, the only authoritative
-resume point.
-
-Production source creation for Datadog, MongoDB, Intel, and AMD is NOT yet
-applied; those validated configurations remain pending a separate user
-approval after this milestone.
+- `986681c feat: add controlled source remediation` — controlled source
+  remediation completed; live run applied and verified 2026-08-21.
+- `bfe22d0 feat: classify discovery source health alerts` — Source Health
+  Reconciliation and Alert Classification completed (`discovery-alert-rules-v2`).
+- `cedc01b docs: record deferred profile UI and USAJOBS login guidance` —
+  historical-audit documentation amendments.
+- `092adb2 feat: add validated employer discovery sources` — Datadog,
+  MongoDB, and Intel sources added and enabled through the idempotent
+  manifest pipeline; AMD received a career-site evidence row but no Source
+  because the existing iCIMS fingerprint architecture does not support its
+  custom careers.amd.com domain. AMD remains a documented blocker requiring
+  a future approved architectural extension or controlled manual source
+  configuration.
+- `d11dfb2 release: prepare version 1.0.25` — current HEAD.
 
 ## Session Checkpoint (2026-08-21 — Validated Source Additions and Legacy-Source Review: COMPLETE; version 1.0.25 release preparation)
+
+This is the authoritative resume point. Do not rely on chat history.
 
 Starting point: commit `cedc01b` atop `bfe22d0`. Production changes were
 performed through the established controlled process (verified backup →
@@ -79,10 +84,48 @@ Recommended follow-up (requires separate approval): rename these sources'
 display names/employers to the real companies they cover so the placeholder
 labels stop reading as demo rows. No rows were modified during this review.
 
-## Session Checkpoint (2026-08-21 — Source Health Reconciliation and Alert Classification: IMPLEMENTED AND VERIFIED; DRY RUN COMPLETE; UNCOMMITTED)
+### Release state and verification (authoritative)
 
-Starting point: commit `986681c` (remediation checkpoint) atop `dc91fd7`.
-This is the authoritative resume point. Do not rely on chat history.
+- Current HEAD: `d11dfb2 release: prepare version 1.0.25` on `main`.
+- Version: `1.0.25`. Migration head: `030`.
+- Installer: `release\Job-Browser-Setup-1.0.25.exe`, 249,955,225 bytes,
+  SHA256 `9D8371E6E35B97F42A055E65BA948E5E2734D887A4FD1543167F81BBF8D82665`,
+  built from `d11dfb2` (includes commits `986681c` and `bfe22d0`).
+- Full verification: format, lint, strict typecheck, Vitest **101 files /
+  1041 tests**; application build passed; desktop smoke passed; packaged
+  smoke passed; production integrity check passed.
+- Nothing has been pushed or published.
+
+### Source counts (before → after validated additions)
+
+| Metric | Before | After |
+| --- | --- | --- |
+| Total sources | 34 | 37 |
+| Enabled sources | 28 | 31 |
+| Disabled sources | 6 | 6 |
+
+Three sources were created and enabled. None of the six remediation-disabled
+sources were re-enabled or modified. Preserved counts remain: jobs 2597,
+applications 2, job observations 14,458, job-status history 2620. All seven
+protected sources remain enabled: Wellfound, ZipRecruiter, USAJOBS, LinkedIn,
+Dice, Indeed, Handshake.
+
+### Authoritative next actions
+
+1. Run and verify the first discovery cycles for Datadog, MongoDB, and Intel.
+2. Decide whether to implement explicit custom-domain iCIMS configuration for
+   AMD.
+3. Decide whether to rename the seven placeholder source display names to
+   their actual employers.
+4. Continue external investigation of GitHub's careers endpoint.
+5. Advanced Resume Tailoring and profile-preferences Stage 1+ remain
+   deferred.
+
+## Historical Checkpoint (2026-08-21 — Source Health Reconciliation and Alert Classification: COMPLETED AND COMMITTED AT `bfe22d0`)
+
+Superseded as a resume point by the newest checkpoint above; retained for
+evidence, dry-run results, and historical record. Starting point: commit
+`986681c` (remediation checkpoint) atop `dc91fd7`.
 
 ### Status buckets
 
@@ -105,7 +148,7 @@ This is the authoritative resume point. Do not rely on chat history.
   pushes without explicit instruction; ANY writes to the production database
   during this milestone.
 
-### Files changed in this milestone (uncommitted)
+### Files changed in this milestone (committed at `bfe22d0`)
 
 - Added `src/discovery/alertClassification.ts`: shared taxonomy
   (`unsupported-platform`, `pending-credentials`, `browser-session`,
@@ -227,10 +270,10 @@ proposed action; protected sources stay enabled in every proposed state.
 
 ### Exact next action
 
-User reviews this milestone. On approval: commit the milestone (scoped files
-only), then optionally approve specific live actions from the dry-run table
-as a separate controlled step with its own backup. Do not start live actions
-or further milestones without approval.
+RESOLVED 2026-08-21: this milestone was committed as `bfe22d0` and its
+alert-classification behavior shipped in the 1.0.25 release preparation.
+The dry-run live actions it proposed were superseded by the validated
+source additions recorded in the newest checkpoint above.
 
 ## Historical Checkpoint (2026-08-21 — Controlled Source Remediation: COMPLETED, LIVE RUN APPLIED AND VERIFIED, COMMITTED AT `986681c`)
 
