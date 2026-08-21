@@ -33,6 +33,8 @@ This is the authoritative resume point. Do not rely on chat history.
   snapshot copy.
 - **Pending user decision:** review of this milestone and approval to commit
   it; approval of any live actions from the dry-run action table.
+- **Deferred scope:** profile-preferences UI stages beyond Stage 0B remain
+  deferred pending approval; file authority unchanged.
 - **Prohibited scope (unchanged):** restoring Remote OK; disabling any
   protected source (Wellfound, ZipRecruiter, USAJOBS, LinkedIn, Dice, Indeed,
   Handshake); CAPTCHA/auth/anti-bot bypass; automatic applications;
@@ -152,6 +154,10 @@ proposed action; protected sources stay enabled in every proposed state.
 - GitHub disposition (manual external follow-up).
 - User decisions on proposed Datadog/MongoDB/Intel/AMD source creation.
 - Optional legacy-demo-source disable pass.
+- USAJOBS browser login may occasionally reject a known device through
+  login.gov. Retry in the visible browser or re-authenticate manually. This
+  is a site-side authentication issue, not automatically evidence of a
+  connector defect.
 - Career-site warnings for reachable-but-unsupported custom platforms
   (Adobe, Airbnb, Amazon, Atlassian, Cloudflare, IBM, ServiceNow, Spotify,
   Dell, Apple, Meta, Microsoft, Salesforce, Stripe, Uber, Oracle) remain
