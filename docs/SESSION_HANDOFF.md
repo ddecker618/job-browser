@@ -18,6 +18,67 @@ Production source creation for Datadog, MongoDB, Intel, and AMD is NOT yet
 applied; those validated configurations remain pending a separate user
 approval after this milestone.
 
+## Session Checkpoint (2026-08-21 — Validated Source Additions and Legacy-Source Review: COMPLETE; version 1.0.25 release preparation)
+
+Starting point: commit `cedc01b` atop `bfe22d0`. Production changes were
+performed through the established controlled process (verified backup →
+manifest dry-run → idempotent import → post-verification).
+
+### Controlled source additions (applied to production)
+
+Fresh verified backup BEFORE changes:
+`%APPDATA%\Job Browser\backups\pre-source-addition-2026-08-21T18-54-50-758Z.sqlite`
+(209,895,424 bytes, created 2026-08-21T18:54:51.730Z, integrity_check ok,
+baseline counts matched: sources 34, jobs 2597).
+
+Manifest `data/employer-seeds/validated-sources-2026-08-21.json`
+(copy of record; imported via `npm run employers:import`). Dry-run and live
+run produced identical counts: employers reused 4, career sites created 4,
+sources created 3, unsupported candidates 1, invalid 0, ambiguous 0.
+
+| Employer | Provider | Configuration | Source ID | State |
+| --- | --- | --- | --- | --- |
+| Datadog | greenhouse | `{boardToken:"datadog"}` | `1023cd71…` | enabled, never-run |
+| MongoDB | greenhouse | `{boardToken:"mongodb"}` | `96c1d582…` | enabled, never-run |
+| Intel | workday | `{origin:"https://intel.wd1.myworkdayjobs.com",tenant:"intel",site:"Intel_External"}` | `445f1b99…` | enabled, never-run |
+| AMD | — | — | none | **STOPPED: blocker documented** |
+
+AMD blocker: its careers portal is a custom-domain iCIMS instance
+(`careers.amd.com`, `/api/jobs` confirmed working manually), but URL
+fingerprinting only recognizes iCIMS on `*.icims.com` hosts, so the
+supported manifest-import architecture cannot derive a Source configuration
+for it. A career-site row was recorded as unsupported evidence. Adding AMD
+requires either manual creation through the Sources UI with
+`{portalUrl:"https://careers.amd.com"}` or a future approved extension for
+explicit-config manifests. No fabrication was attempted.
+
+Production totals after additions: **37 sources, 31 enabled**. Preserved
+counts unchanged (jobs 2597, applications 2, observations 14458, status
+history 2620). All seven protected sources remain enabled. New sources are
+persisted in SQLite and survive application restart.
+
+### Legacy demo-source review (evidence-based retention; zero disables)
+
+Inspection disproved the "demo/legacy" classification for every candidate:
+each points at a real company's live board with nonzero recent yield, and
+each is the ONLY source covering that employer. Disabling them would remove
+real coverage, so all seven were retained per the rule "disable only entries
+proven to be obsolete demo, duplicate, or legacy rows."
+
+| Source ID | Display name | Actual board | Jobs (recent 30d) | Disposition |
+| --- | --- | --- | --- | --- |
+| `6ae3f2f4…` | smartrecruiters | SanDisk (`Sandisk`) | 16 (16) | Retained |
+| `b8c93993…` | smartrecruiters | Anexinet (`Anexinet1`) | 1 (1) | Retained |
+| `d785aa69…` | smartrecruiters | Wix (`wix2`) | 2 (2) | Retained |
+| `b457325c…` | smartrecruiters | Netcompany (`Netcompany1`) | 6 (6) | Retained |
+| `1772613c…` | smartrecruiters | Bosch Group (`boschgroup`) | 6 (6) | Retained |
+| `5a333069…` | Recruitee | bunq (`bunq.recruitee.com`) | 2 (2) | Retained |
+| `98c90f61…` | mux | Mux (Ashby `mux`) | 27 (3) | Retained |
+
+Recommended follow-up (requires separate approval): rename these sources'
+display names/employers to the real companies they cover so the placeholder
+labels stop reading as demo rows. No rows were modified during this review.
+
 ## Session Checkpoint (2026-08-21 — Source Health Reconciliation and Alert Classification: IMPLEMENTED AND VERIFIED; DRY RUN COMPLETE; UNCOMMITTED)
 
 Starting point: commit `986681c` (remediation checkpoint) atop `dc91fd7`.

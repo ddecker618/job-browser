@@ -1,0 +1,37 @@
+{
+  "version": "employer-seed-manifest-v1",
+  "imports": [
+    {
+      "employerName": "Datadog",
+      "rootDomain": "datadoghq.com",
+      "careersUrl": "https://boards.greenhouse.io/datadog",
+      "enabled": true,
+      "provenance": "controlled-source-addition-2026-08-21",
+      "notes": "Greenhouse board token datadog confirmed via public API (448 jobs)."
+    },
+    {
+      "employerName": "MongoDB",
+      "rootDomain": "mongodb.com",
+      "careersUrl": "https://boards.greenhouse.io/mongodb",
+      "enabled": true,
+      "provenance": "controlled-source-addition-2026-08-21",
+      "notes": "Greenhouse board token mongodb confirmed via public API (411 jobs)."
+    },
+    {
+      "employerName": "Intel",
+      "rootDomain": "intel.com",
+      "careersUrl": "https://intel.wd1.myworkdayjobs.com/Intel_External",
+      "enabled": true,
+      "provenance": "controlled-source-addition-2026-08-21",
+      "notes": "Workday CXS tenant intel site Intel_External confirmed via public endpoint."
+    },
+    {
+      "employerName": "AMD",
+      "rootDomain": "amd.com",
+      "careersUrl": "https://careers.amd.com",
+      "enabled": true,
+      "provenance": "controlled-source-addition-2026-08-21",
+      "notes": "Custom-domain iCIMS portal; /api/jobs confirmed manually. URL fingerprint may not support creation."
+    }
+  ]
+}
