@@ -29,7 +29,10 @@ All notable changes to this project will be documented in this file.
   raised Greenhouse limit; `tests/discovery-scheduler.test.ts` proves stop waits
   for in-flight health checks.
 - **Verification.** Full gate green: format, lint, strict typecheck, Vitest 101
-  files / 1044 tests. Application build passed.
+  files / 1044 tests. Application build passed. Packaged and installed
+  smoke tests passed. Installer: `release\Job-Browser-Setup-1.0.26.exe`,
+  249,956,140 bytes, SHA-256
+  `68C995A473191C7B662263D985DE54061A6C8EFE79A4A8EA7BF2C3AE21192298`.
 
 ## [1.0.25] - 2026-08-21
 

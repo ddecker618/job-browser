@@ -23,9 +23,11 @@ Commit history of the completed arc (all on `main`):
   parent of the shipped installer artifact.
 - `4a389ec docs: reconcile 1.0.25 handoff state` — documentation
   reconciliation atop 1.0.25.
-- Pending commits (1.0.26) — operational audit fixes (Greenhouse response
-  size, log propagation, scheduler shutdown), regression tests, and release
-  preparation; staged but not yet committed.
+- `9b6b778 fix: discovery runtime defects — response size, log propagation,
+  scheduler shutdown` — Greenhouse response-size fix, desktop log propagation,
+  scheduler graceful shutdown, and regression tests.
+- `06b4b4f release: prepare version 1.0.26` — version bump, CHANGELOG,
+  session handoff.
 
 ## Session Checkpoint (2026-08-26 — Discovery Operational Audit: COMPLETE, version 1.0.26)
 
@@ -80,6 +82,14 @@ regression tests:
 
 Full gate green after all changes: format, lint, strict typecheck, Vitest
 **101 files / 1044 tests**. Application build passed (`npm run build`).
+Packaged smoke test passed (`npm run desktop:smoke:packaged`). Installed-app
+smoke test passed (`npm run desktop:smoke:installed`).
+
+Installer: `release\Job-Browser-Setup-1.0.26.exe`, 249,956,140 bytes,
+SHA-256 `68C995A473191C7B662263D985DE54061A6C8EFE79A4A8EA7BF2C3AE21192298`,
+built from commits `9b6b778` and `06b4b4f` on `main`. Blockmap:
+`release\Job-Browser-Setup-1.0.26.exe.blockmap` (259,774 bytes). Unpacked:
+`release\win-unpacked\Job Browser.exe` (226,578,432 bytes).
 
 ### Remaining known items (not blockers)
 
