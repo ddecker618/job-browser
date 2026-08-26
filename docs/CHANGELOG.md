@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.26] - 2026-08-26
+
+### Discovery Operational Audit and Runtime Fixes
+
+- **Greenhouse large-board response-size fix.** Datadog's Greenhouse board
+  (`datadog`, 5.66 MB content response) deterministically exceeded the shared
+  HTTP client's `maxResponseBytes` default of 5 MB, causing every fetch to fail
+  with "response exceeded size limit". `ProviderHttpClient` now accepts an
+  optional per-request `maxResponseBytes` override, and `GreenhouseProvider`
+  applies an 8 MB ceiling for full-board requests (`GREENHOUSE_MAX_RESPONSE_BYTES`).
+  The global default remains 5 MB; all other providers are unaffected.
+- **Discovery desktop log propagation.** Discovery runs now write structured
+  log entries to the desktop log file (`%APPDATA%/Job Browser/logs/`) instead of
+  only stdout, so operator-visible evidence survives application restart.
+  `DiscoveryCoordinator` accepts an optional `writeLog` option; `backend.ts`
+  passes the running `logger`; `DiscoveryEngine` falls back to `log` when no
+  writer is provided.
+- **Scheduler graceful shutdown.** `DiscoveryScheduler.stop()` now waits for
+  any in-flight health-check evaluation to complete before resolving, preventing
+  orphaned async work from continuing after application shutdown. Concurrent
+  evaluation is guarded by a promise-tracking flag so only one evaluation runs
+  at a time.
+- **Regression tests.** `tests/provider-http-client.test.ts` covers per-request
+  `maxResponseBytes` override; `tests/greenhouse-provider.test.ts` asserts the
+  raised Greenhouse limit; `tests/discovery-scheduler.test.ts` proves stop waits
+  for in-flight health checks.
+- **Verification.** Full gate green: format, lint, strict typecheck, Vitest 101
+  files / 1044 tests. Application build passed.
+
 ## [1.0.25] - 2026-08-21
 
 ### Validated Employer Source Additions and Documentation Hardening

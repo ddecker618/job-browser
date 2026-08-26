@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, historical-audit documentation amendments, validated employer source additions, and version 1.0.25 release preparation are complete. Current version is `1.0.25`. Migration head is `030`. Recent development commits remain local-only: `origin/main` points at `e1e2499` (the 1.0.19-era README update), so every commit from `a6d0d8b` (1.0.20) through the current HEAD is unpushed; the GitHub repository itself (`ddecker618/job-browser`) has been public since early August 2026 following a PII review.
+Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, historical-audit documentation amendments, validated employer source additions, version 1.0.25 release preparation, and discovery operational audit with runtime fixes 1.0.26 are complete. Current version is `1.0.26`. Migration head is `030`. Recent development commits remain local-only: `origin/main` points at `e1e2499` (the 1.0.19-era README update), so every commit from `a6d0d8b` (1.0.20) through the current HEAD is unpushed; the GitHub repository itself (`ddecker618/job-browser`) has been public since early August 2026 following a PII review.
 
 Commit history of the completed arc (all on `main`):
 
@@ -21,11 +21,217 @@ Commit history of the completed arc (all on `main`):
   configuration.
 - `d11dfb2 release: prepare version 1.0.25` — release-preparation commit;
   parent of the shipped installer artifact.
-- `4a389ec docs: reconcile 1.0.25 handoff state` — current HEAD.
+- `4a389ec docs: reconcile 1.0.25 handoff state` — documentation
+  reconciliation atop 1.0.25.
+- Pending commits (1.0.26) — operational audit fixes (Greenhouse response
+  size, log propagation, scheduler shutdown), regression tests, and release
+  preparation; staged but not yet committed.
 
-## Session Checkpoint (2026-08-21 — Validated Source Additions and Legacy-Source Review: COMPLETE; version 1.0.25 release preparation)
+## Session Checkpoint (2026-08-26 — Discovery Operational Audit: COMPLETE, version 1.0.26)
 
 This is the authoritative resume point. Do not rely on chat history.
+
+### What changed
+
+Three evidence-based production defects were identified and repaired with
+regression tests:
+
+1. **Greenhouse large-board response size.** Datadog's full Greenhouse board
+   response (5.66 MB, `?content=true`) deterministically exceeded the shared
+   HTTP client's `maxResponseBytes` default of 5 MB. `ProviderHttpClient`
+   gained a per-request `maxResponseBytes` override; `GreenhouseProvider`
+   applies an 8 MB ceiling (`GREENHOUSE_MAX_RESPONSE_BYTES`). All other
+   providers unaffected; global default unchanged.
+
+2. **Desktop log propagation for discovery runs.** Discovery runs (source
+   fetches, health checks, employer discovery) were writing structured logs
+   only to stdout, not to the desktop log files. `DiscoveryCoordinator` now
+   accepts an optional `writeLog: LogWriter`; `backend.ts` passes the running
+   desktop `logger`; `DiscoveryEngine` falls back to the module-level `log`
+   when no writer is provided. Operator-visible evidence now survives
+   application restart.
+
+3. **Scheduler graceful shutdown.** `DiscoveryScheduler.stop()` did not wait
+   for in-flight health-check evaluations to complete before resolving,
+   potentially leaving orphaned async work running after application shutdown.
+   `stop()` now tracks and awaits any in-flight `evaluate()` promise.
+   Concurrent evaluation is guarded by a promise-tracking flag so only one
+   evaluation runs at a time.
+
+### Files changed
+
+- `src/providers/providerHttpClient.ts` — per-request `maxResponseBytes`
+  override on `ProviderHttpRequest` interface; validation and forwarding
+  through `request()` and `execute()`.
+- `src/providers/greenhouse.provider.ts` — `GREENHOUSE_MAX_RESPONSE_BYTES`
+  constant (8 MB); applied to board-fetch request.
+- `src/discovery/discoveryCoordinator.ts` — optional `writeLog` option;
+  forwarded to `DiscoveryEngine`.
+- `src/server/backend.ts` — passes desktop `logger` as `writeLog` to
+  `DiscoveryCoordinator`.
+- `src/discovery/discoveryScheduler.ts` — `evaluation` promise tracking;
+  `stop()` awaits in-flight evaluation; concurrent-evaluation guard.
+- `tests/provider-http-client.test.ts` — per-request override test (default
+  rejected, override accepted).
+- `tests/greenhouse-provider.test.ts` — raised Greenhouse limit assertion.
+- `tests/discovery-scheduler.test.ts` — stop-waits-for-inflight test.
+
+### Verification
+
+Full gate green after all changes: format, lint, strict typecheck, Vitest
+**101 files / 1044 tests**. Application build passed (`npm run build`).
+
+### Remaining known items (not blockers)
+
+1. **Intel Workday CXS** — configured tenant/site returns HTTP 404. Correct
+   site slug needs external re-verification. Source remains enabled but
+   non-functional.
+2. **Cisco source enabled state** — observed `enabled=1` in production
+   despite expected controlled-disabled status. Requires investigation before
+   any action; do not silently change.
+3. **MongoDB career-site inconsistency** — source healthy with 25+ linked
+   jobs while its career-site health row still reports "no supported ATS".
+   Informational; reconcile through the supported health-check path later.
+4. **GitHub career-site URL invalid** — stored URL does not resolve. No
+   supported ATS detected. Disposition pending user decision.
+5. **Datadog career-site URL invalid** — same pattern as GitHub; Greenhouse
+   source itself works after the response-size fix, but the linked career-site
+   row remains broken.
+6. **Placeholder source display names** — seven sources have non-descriptive
+   display names. Rename decision deferred.
+7. **AMD** — custom-domain iCIMS (`careers.amd.com`) not supported by the
+   fingerprint architecture. Requires manual source creation or architectural
+   extension.
+8. **Profile-preferences Stage 1+** and **Advanced Resume Tailoring** remain
+   deferred.
+
+### Authoritative next actions
+
+1. Push commits when approved (local only, `origin/main` at `e1e2499`).
+2. Verify Intel Workday CXS site slug externally; correct Source config if
+   confirmed.
+3. Investigate Cisco `enabled=1` state against controlled-disabled list.
+4. Re-run a second MongoDB discovery cycle to exercise rediscovery semantics.
+5. Rename placeholder source display names (deferred, requires approval).
+6. AMD architectural decision (deferred, requires approval).
+
+## Historical Checkpoint (2026-08-21 — First Discovery-Cycle Validation for Datadog, MongoDB, and Intel: COMPLETE; MongoDB productive, Datadog and Intel blocked)
+
+This is the authoritative resume point. Do not rely on chat history.
+
+Operational validation only — no code, configuration, migration, installer, or
+commit changes. Executed from `d2614d7` on `main` with the desktop application
+closed (process check + exclusive file open both clean).
+
+### Backup evidence (verified BEFORE any run)
+
+`%APPDATA%\Job Browser\backups\pre-first-cycles-2026-08-21T20-15-42-423Z.sqlite`
+(209,903,616 bytes, created 2026-08-21T20:15:43.942Z via the SQLite backup
+API, integrity_check ok, all ten checked table counts matched live:
+sources 37, jobs 2597, applications 2, application_history 2, observations
+14458, status history 2620, runs 2405, career_sites 40, employers 57,
+job_sources 2641).
+
+### Exact execution method
+
+Supported CLI path only: `npx tsx src/discovery/cli.ts --source <sourceId>`
+(DiscoveryCoordinator.runSource through the application's own coordinator;
+no ad hoc SQL, no scheduler, no unrelated sources, one sequential cycle per
+source in the order Datadog → MongoDB → Intel).
+
+### Per-source results (first cycles)
+
+| Source | Provider | Config | Run result | Detail |
+| --- | --- | --- | --- | --- |
+| Datadog `1023cd71…` | greenhouse | `{boardToken:"datadog",company:"datadog"}` | **FAILED** | Run `3013aaed`: HTTP 200 from `boards-api.greenhouse.io/v1/boards/datadog/jobs` (616,604 wire bytes) but body read aborted — "Greenhouse response exceeded size limit". Deterministic payload-size failure, not transient; no retry attempted. Source health `failed`, 0 linked jobs. |
+| MongoDB `96c1d582…` | greenhouse | `{boardToken:"mongodb",company:"mongodb"}` | **SUCCEEDED** | Run `4a0c21da`: board list 200 (873 KB), content fetch 200 (4.58 MB, parsed 406 / filtered 381), imported **25 new canonical jobs** (+25 observations, +25 initial status rows), 0 duplicates/merges/rejections, `fetch_truncated=1`, `complete_snapshot=0` (per-run bounded import of the limit-25 search parameters). Source health `healthy`. |
+| Intel `445f1b99…` | workday | `{origin:"https://intel.wd1.myworkdayjobs.com",tenant:"intel",site:"Intel_External"}` | **FAILED** | Run `e8efd049`: CXS POST `/wday/cxs/intel/Intel_External/jobs` rejected — run error "Workday tenant or site not found", source health_message "HTTP 404: Board not found or inactive". Four bounded read-only diagnostic probes (hardened client) returned HTTP 400 on the CXS paths and Workday XML "Requested page not found /Intel_External" for the landing path — deterministic site-path rejection, not transient; no retry attempted. |
+
+### Before-and-after production counts
+
+| Metric | Before | After |
+| --- | --- | --- |
+| Jobs total | 2597 | 2622 (+25, all MongoDB) |
+| Jobs active / inactive | 1841 / 756 | 1866 / 756 |
+| Applications | 2 | 2 (unchanged) |
+| Application history | 2 | 2 (unchanged) |
+| Job observations | 14458 | 14483 (+25) |
+| Job-status history | 2620 | 2645 (+25 initial rows for new jobs) |
+| Discovery runs | 2405 | 2408 (+3) |
+| Sources total/enabled/disabled | 37 / 31 / 6 | 37 / 31 / 6 (unchanged) |
+
+Post-run integrity_check: ok. All seven protected sources remain enabled and
+unchanged (Wellfound, ZipRecruiter, USAJOBS, LinkedIn, Dice, Indeed,
+Handshake). All six controlled-remediation sources remain disabled (encyclis,
+Etsy, cisco, crowdstrike, icims, Hooli). Both tracked applied jobs preserved.
+
+### Alert evaluation (rules-v2 via `DiscoveryAlertService.evaluateRules()`)
+
+Before: 32 active alerts (3 CRITICAL career-site-broken; 29 WARNING).
+After: **0 CRITICAL**, 32 active WARNING, plus resolved history. Changes:
+
+- GitHub and Datadog career-site alerts downgraded CRITICAL → WARNING,
+  classification `invalid-url`; MongoDB downgraded CRITICAL → WARNING,
+  classification `unsupported-platform` (stale career-site evidence — the
+  MongoDB Source itself now works, but its linked career_site health row still
+  reports "no supported ATS signals"; reconcile later, do not fabricate).
+- Intel remains WARNING `anti-bot` from stored health evidence.
+- The 14 discovery-stale + 14 source-overdue warnings re-classified
+  `overdue-run` and legitimately re-fired: real runs occurred, lifting the
+  scheduler-downtime suppression; every OTHER scheduled source is genuinely
+  overdue against its cadence while the app stays closed.
+- rules-v2 produced **no misleading CRITICALs**: zero-yield/transient/
+  anti-bot/browser-session/scheduler-inactive conditions stayed at INFO/
+  WARNING, and the two single-run failures did not trigger failure-streak
+  alerts (≥3-consecutive threshold not met).
+
+### Verification gate (after operational work)
+
+Targeted: greenhouse/workday provider + coordinator/engine/alerts suites —
+5 files / 50 tests passed. Full gate: `npm run verify` green — format, lint,
+strict typecheck, Vitest **101 files / 1041 tests**. `npm run desktop:smoke`
+passed ("Desktop smoke test passed").
+
+### Documented blockers (decisions required; nothing changed)
+
+1. **Datadog:** full-board response exceeds the shared HTTP client's
+   `maxResponseBytes` bound after decompression (client default 5 MB,
+   `providerHttpClient.ts`). Fixing requires an approved code/config change
+   (e.g., Greenhouse paging strategy or raised/streamed bound) — prohibited
+   in this milestone.
+2. **Intel:** the configured Workday site path is deterministically rejected
+   today despite yesterday's confirming probe; correct site slug/endpoint
+   needs external re-verification before another attempt. Configuration
+   changes were prohibited here.
+3. **MongoDB career-site row:** source healthy with 25 linked jobs while its
+   career_site health record still claims no supported ATS — informational
+   inconsistency to reconcile through the supported health-check path later.
+
+### Rollback procedure
+
+Close Job Browser, restore
+`%APPDATA%\Job Browser\backups\pre-first-cycles-2026-08-21T20-15-42-423Z.sqlite`
+over `%APPDATA%\Job Browser\data\jobs.sqlite`, delete the restored database's
+stale `-wal`/`-shm` sidecars before relaunching (SQLite recreates them). The
+backup predates all three runs, so restoring returns every row — including
+the three source rows' health fields and the 25 MongoDB jobs/observations/run
+rows — to its exact prior state.
+
+### Authoritative next actions
+
+1. Decide the Datadog fix approach (bounded code/config milestone, approval
+   required).
+2. Externally re-verify Intel's Workday CXS site slug, then decide whether to
+   correct the Source configuration through the supported Sources editor.
+3. Optional: run a second MongoDB cycle to exercise rediscovery/duplicate
+   semantics against the now-existing 25 canonical jobs.
+4. Placeholder rename decision, AMD decision, and Advanced Resume Tailoring /
+   profile-preferences Stage 1+ remain deferred.
+
+## Historical Checkpoint (2026-08-21 — Validated Source Additions and Legacy-Source Review: COMPLETE; version 1.0.25 release preparation)
+
+Superseded as the resume point by the newest checkpoint above; retained for
+controlled-addition evidence, legacy-review results, and release verification.
 
 Starting point: commit `cedc01b` atop `bfe22d0`. Production changes were
 performed through the established controlled process (verified backup →
