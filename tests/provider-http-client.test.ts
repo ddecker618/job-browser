@@ -103,6 +103,29 @@ describe('ProviderHttpClient', () => {
     ).rejects.toThrow('content type');
   });
 
+  it('allows a bounded per-request response limit without changing the default', async () => {
+    const transport: ProviderHttpTransport = () =>
+      Promise.resolve(
+        new Response('123456', {
+          headers: { ...jsonHeaders, 'Content-Length': '6' },
+        }),
+      );
+    const client = createClient({
+      transport,
+      maxResponseBytes: 5,
+    });
+
+    await expect(
+      client.request('https://example.test/jobs', {
+        provider: 'Example',
+        maxResponseBytes: 6,
+      }),
+    ).resolves.toMatchObject({ status: 200 });
+    await expect(
+      client.request('https://example.test/jobs', { provider: 'Example' }),
+    ).rejects.toThrow('size limit');
+  });
+
   it('injects the resolver and never logs query strings or headers', async () => {
     const resolve = vi.fn((url: URL) => Promise.resolve({ pinned: url.host }));
     const transport = vi.fn<ProviderHttpTransport>(() =>

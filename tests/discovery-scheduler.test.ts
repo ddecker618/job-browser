@@ -163,4 +163,35 @@ describe('discovery scheduler', () => {
     expect(health.runEligible).toHaveBeenCalledWith(25);
     await scheduler.stop();
   });
+
+  it('waits for an in-flight health check before stopping', async () => {
+    let resolveHealth: (() => void) | undefined;
+    const healthRun = new Promise<void>((resolve) => {
+      resolveHealth = resolve;
+    });
+    const health = { runEligible: vi.fn().mockReturnValue(healthRun) };
+    const scheduler = new DiscoveryScheduler(
+      {
+        getSchedulerEnabled: () => true,
+        listDue: () => [],
+      } as never,
+      { runSource: vi.fn(), stop: vi.fn() } as never,
+      1000,
+      undefined,
+      () => new Date('2026-01-01T00:00:00.000Z'),
+      health as never,
+    );
+
+    const evaluation = scheduler.evaluate();
+    await vi.waitFor(() => expect(health.runEligible).toHaveBeenCalledOnce());
+    let stopped = false;
+    const stopping = scheduler.stop().then(() => {
+      stopped = true;
+    });
+    await Promise.resolve();
+    expect(stopped).toBe(false);
+    resolveHealth?.();
+    await Promise.all([evaluation, stopping]);
+    expect(stopped).toBe(true);
+  });
 });

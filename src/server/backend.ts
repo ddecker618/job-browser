@@ -239,6 +239,7 @@ export async function startBackend(
     const coordinator = new DiscoveryCoordinator(database, providerRegistry, {
       credentialResolver:
         options.credentialResolver ?? unavailableCredentialResolver,
+      writeLog: logger,
       ...(options.profilePreferencesPath === undefined
         ? {}
         : { profilePreferencesPath: options.profilePreferencesPath }),

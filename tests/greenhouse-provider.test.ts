@@ -78,4 +78,33 @@ describe('GreenhouseProvider', () => {
       ProviderFetchError,
     );
   });
+
+  it('uses a larger but bounded limit for full-board responses', async () => {
+    type HttpRequest = (
+      url: URL,
+      options: { maxResponseBytes?: number },
+    ) => Promise<{ status: number; json: () => unknown }>;
+    const httpRequest = vi.fn<HttpRequest>().mockResolvedValue({
+      status: 200,
+      json: () => ({ jobs: [] }),
+    });
+    const provider = new GreenhouseProvider({ request: httpRequest } as never);
+    const search = await provider.search(request, {
+      fixtureOnly: false,
+      configuration,
+    });
+
+    await provider.fetch(search);
+
+    expect(httpRequest).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({
+        maxResponseBytes: expect.any(Number) as unknown as number,
+      }),
+    );
+    const callArgs = httpRequest.mock.calls[0] as
+      | [URL, { maxResponseBytes?: number }]
+      | undefined;
+    expect(callArgs?.[1].maxResponseBytes).toBeGreaterThan(5 * 1024 * 1024);
+  });
 });

@@ -37,6 +37,7 @@ export interface ProviderHttpRequest {
   body?: string;
   signal?: AbortSignal | undefined;
   contentTypes?: readonly string[];
+  maxResponseBytes?: number;
 }
 
 export type ProviderHttpResolver = (
@@ -148,6 +149,12 @@ export class ProviderHttpClient {
     input: string | URL,
     request: ProviderHttpRequest,
   ): Promise<ProviderHttpResponse> {
+    const maxResponseBytes =
+      request.maxResponseBytes ?? this.options.maxResponseBytes;
+    if (!Number.isInteger(maxResponseBytes) || maxResponseBytes <= 0)
+      throw new ProviderFetchError(
+        `${request.provider} response size limit must be a positive integer`,
+      );
     const timeout = AbortSignal.timeout(this.options.timeoutMs);
     const signal =
       request.signal === undefined
@@ -157,7 +164,7 @@ export class ProviderHttpClient {
     let releaseGlobal: (() => void) | undefined;
     try {
       releaseGlobal = await this.globalLimiter.acquire(signal);
-      return await this.execute(initial, request, signal);
+      return await this.execute(initial, request, signal, maxResponseBytes);
     } catch (error) {
       if (error instanceof ProviderFetchError) throw error;
       if (request.signal?.aborted === true)
@@ -181,6 +188,7 @@ export class ProviderHttpClient {
     initial: URL,
     request: ProviderHttpRequest,
     signal: AbortSignal,
+    maxResponseBytes: number,
   ): Promise<ProviderHttpResponse> {
     let url = initial;
     let redirects = 0;
@@ -256,7 +264,7 @@ export class ProviderHttpClient {
         }
         const body = await readBoundedBody(
           response,
-          this.options.maxResponseBytes,
+          maxResponseBytes,
           request.provider,
           signal,
         );

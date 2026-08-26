@@ -12,6 +12,7 @@ export class DiscoveryScheduler {
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
   private healthEligibleAfter: number | null = null;
+  private evaluation: Promise<void> | null = null;
 
   public constructor(
     private readonly sources: SourceRepository,
@@ -41,11 +42,26 @@ export class DiscoveryScheduler {
     this.stopped = true;
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = null;
-    await this.coordinator.stop();
+    try {
+      await this.coordinator.stop();
+    } finally {
+      await this.evaluation?.catch(() => undefined);
+    }
   }
 
-  public async evaluate(): Promise<void> {
-    if (this.stopped) return;
+  public evaluate(): Promise<void> {
+    if (this.stopped) return Promise.resolve();
+    if (this.evaluation !== null) return this.evaluation;
+    const evaluation = this.evaluateInternal();
+    this.evaluation = evaluation;
+    void evaluation.then(
+      () => this.clearEvaluation(evaluation),
+      () => this.clearEvaluation(evaluation),
+    );
+    return evaluation;
+  }
+
+  private async evaluateInternal(): Promise<void> {
     const evaluatedAt = this.now();
     this.jobLifecycle?.reconcileKnownClosures(evaluatedAt.toISOString());
     if (!this.sources.getSchedulerEnabled()) {
@@ -77,6 +93,10 @@ export class DiscoveryScheduler {
       await this.careerSiteHealth.runEligible(25);
     }
     this.alerts?.evaluateRules();
+  }
+
+  private clearEvaluation(evaluation: Promise<void>): void {
+    if (this.evaluation === evaluation) this.evaluation = null;
   }
 
   private scheduleNext(): void {

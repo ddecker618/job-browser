@@ -13,12 +13,14 @@ import type { ProviderRegistry } from '../providers/providerRegistry.js';
 import { SourceRepository } from '../repositories/source-repository.js';
 import { DiscoveryEngine } from './discoveryEngine.js';
 import type { CredentialResolver } from './credentialResolver.js';
+import type { LogWriter } from '../logging/logger.js';
 
 export interface CoordinatorOptions {
   credentialResolver: CredentialResolver;
   profilePreferencesPath?: string;
   analyze?: () => void;
   evaluateAlerts?: () => void;
+  writeLog?: LogWriter;
 }
 
 export class DiscoveryCoordinator {
@@ -39,7 +41,7 @@ export class DiscoveryCoordinator {
       database,
       options.profilePreferencesPath,
     );
-    this.engine = new DiscoveryEngine(database, registry);
+    this.engine = new DiscoveryEngine(database, registry, options.writeLog);
     this.store = new DiscoveryStore(database);
   }
 

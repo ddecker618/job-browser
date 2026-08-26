@@ -68,6 +68,7 @@ const jobSchema = z.object({
 const responseSchema = z.object({ jobs: z.array(z.unknown()) });
 type GreenhouseJob = z.infer<typeof jobSchema>;
 const MAX_BOARD_JOBS = 10_000;
+const GREENHOUSE_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 
 export class GreenhouseProvider extends BaseProvider {
   public readonly id = 'greenhouse';
@@ -200,6 +201,7 @@ export class GreenhouseProvider extends BaseProvider {
           Accept: 'application/json',
           'User-Agent': 'job-browser/1.0 (local job discovery)',
         },
+        maxResponseBytes: GREENHOUSE_MAX_RESPONSE_BYTES,
       });
       httpStatus = response.status;
       payload = await response.json();
