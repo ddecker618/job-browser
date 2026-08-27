@@ -183,6 +183,7 @@ while Job Browser is open").
 
 Full gate green: format, lint, strict typecheck, Vitest
 **101 files / 1046 tests** (14 intelligence tests pass, including 2 new).
+Installer: `release\Job-Browser-Setup-1.0.27.exe`, 249,956,655 bytes.
 
 ### Remaining known items (unchanged from 1.0.26)
 

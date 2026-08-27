@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.27] - 2026-08-26
+
+### Employer Discovery Eligibility Cadence Fix
+
+- **Cadence anchor bug fix.** The intelligence service used `lastSuccessAt`
+  from source runs (job-fetching operations) as the cadence anchor for
+  employer discovery eligibility. Since the source scheduler runs sources
+  every ~30 seconds, this always pushed `cadenceEligibleAt` 24–72 hours into
+  the future for ALL executable sites, making `eligibleSiteIds()` always
+  return an empty array. Fixed by querying `career_site_discovery_attempts`
+  for `MAX(attempted_at)` per site and using that as the cadence anchor.
+  Source run data is still used for activity metrics and priority.
+- **Regression tests.** Two new tests in
+  `tests/employer-discovery-intelligence.test.ts`: one verifying cadence uses
+  discovery attempt time (not source run time), one verifying recent source
+  runs don't block employer discovery eligibility.
+- **Verification.** Full gate green: format, lint, strict typecheck, Vitest
+  101 files / 1046 tests.
+
 ## [1.0.26] - 2026-08-26
 
 ### Discovery Operational Audit and Runtime Fixes
