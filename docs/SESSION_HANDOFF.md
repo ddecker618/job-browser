@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, historical-audit documentation amendments, validated employer source additions, version 1.0.25 release preparation, and discovery operational audit with runtime fixes 1.0.26 are complete. Current version is `1.0.26`. Migration head is `030`. Recent development commits remain local-only: `origin/main` points at `e1e2499` (the 1.0.19-era README update), so every commit from `a6d0d8b` (1.0.20) through the current HEAD is unpushed; the GitHub repository itself (`ddecker618/job-browser`) has been public since early August 2026 following a PII review.
+Phase 8, Employer Discovery, Manual Lifecycle, and Structured Role Details v1.0.15, stale role-details invalidation/reconciliation 1.0.17, geographic-eligibility 1.0.18, advanced discovery alerting/analytics 1.0.19, operational-state + timestamp bugfixes 1.0.20, versioned employer seed manifest import 1.0.21, health-audit remediation 1.0.22, discovery-alert reconciliation / imported-source remediation 1.0.23, discovery error remediation (failure categorization + zero-yield fix) 1.0.24, controlled source remediation, source-health alert classification, historical-audit documentation amendments, validated employer source additions, version 1.0.25 release preparation, discovery operational audit with runtime fixes 1.0.26, and employer discovery eligibility cadence fix are complete. Current version is `1.0.26`. Migration head is `030`. Recent development commits remain local-only: `origin/main` points at `e1e2499` (the 1.0.19-era README update), so every commit from `a6d0d8b` (1.0.20) through the current HEAD is unpushed; the GitHub repository itself (`ddecker618/job-browser`) has been public since early August 2026 following a PII review.
 
 Commit history of the completed arc (all on `main`):
 
@@ -124,6 +124,77 @@ built from commits `9b6b778` and `06b4b4f` on `main`. Blockmap:
 4. Re-run a second MongoDB discovery cycle to exercise rediscovery semantics.
 5. Rename placeholder source display names (deferred, requires approval).
 6. AMD architectural decision (deferred, requires approval).
+
+## Session Checkpoint (2026-08-26 — Employer Discovery Eligibility Cadence Fix)
+
+This is the authoritative resume point. Do not rely on chat history.
+
+### Root cause
+
+Employer Discovery was permanently blocked from finding eligible CareerSites
+due to a cadence anchor bug. The intelligence service's `decision()` function
+used `lastSuccessAt` from SOURCE runs (job-fetching operations) as the cadence
+anchor for employer discovery eligibility. Since the source scheduler runs
+sources every ~30 seconds, `lastSuccessAt` was always recent, pushing
+`cadenceEligibleAt` 24–72 hours into the future for ALL executable sites.
+Result: `eligibleSiteIds()` always returned an empty array; "Run Discovery Now"
+always returned "0 attempted"; "CareerSites eligible now" always showed 0.
+
+Additionally, `employer_discovery_enabled = 0` in `discovery_settings` (the
+default from migration 024), causing the UI to display "Employer Discovery:
+Disabled". This is by design per ARCHITECTURE.md ("retains its default-off
+setting") but the user wants it enabled.
+
+### What changed
+
+1. **Cadence anchor fix** (`employerDiscoveryIntelligenceService.ts`):
+   - Added `lastDiscoveryAttemptRows()` method querying
+     `career_site_discovery_attempts` for `MAX(attempted_at)` per site.
+   - Changed `cadenceAnchor` from `lastSuccessAt ?? health_checked_at ?? created_at`
+     to `lastDiscoveryAttemptAt ?? health_checked_at ?? created_at`.
+   - Removed the `source_id === null` special case in `cadenceEligibleAt`
+     computation (now handled automatically by the discovery attempt anchor).
+   - The `lastSuccessAt` from source runs is still used for activity metrics
+     and priority computation (unchanged).
+
+2. **Regression tests** (`employer-discovery-intelligence.test.ts`):
+   - `anchors employer discovery cadence on discovery attempts, not source runs`
+     — verifies cadence uses discovery attempt time, not source run time.
+   - `does not treat recent source run success as blocking employer discovery
+     eligibility` — verifies sites with active sources are eligible when no
+     employer discovery has been run on them.
+
+### Production state after fix
+
+With the code fix deployed, the 9 executable sites (Cigna, Cisco, CrowdStrike,
+Datadog, KBR, MongoDB, NVIDIA, Washington University, Workday) become eligible
+for employer discovery because their last discovery attempts (2026-08-18 or
+2026-08-21) are more than 24 hours ago. The `employer_discovery_enabled`
+setting remains at 0 until the user enables it through the Settings page
+checkbox ("Discover up to 25 eligible Employer CareerSites every six hours
+while Job Browser is open").
+
+### Files changed
+
+- `src/discovery/employerDiscoveryIntelligenceService.ts` — cadence anchor fix.
+- `tests/employer-discovery-intelligence.test.ts` — 2 new regression tests.
+
+### Verification
+
+Full gate green: format, lint, strict typecheck, Vitest
+**101 files / 1046 tests** (14 intelligence tests pass, including 2 new).
+
+### Remaining known items (unchanged from 1.0.26)
+
+1. Intel Workday CXS — configured tenant/site returns HTTP 404.
+2. Cisco source enabled state — `enabled=1` in production despite expected
+   controlled-disabled status.
+3. MongoDB career-site inconsistency — source healthy while career-site health
+   reports "no supported ATS".
+4. GitHub/Datadog career-site URL invalid — no supported ATS detected.
+5. Placeholder source display names — seven sources need rename.
+6. AMD — custom-domain iCIMS not supported.
+7. Profile-preferences Stage 1+ and Advanced Resume Tailoring deferred.
 
 ## Historical Checkpoint (2026-08-21 — First Discovery-Cycle Validation for Datadog, MongoDB, and Intel: COMPLETE; MongoDB productive, Datadog and Intel blocked)
 

@@ -60,6 +60,11 @@ interface AttemptRow {
   result: string;
 }
 
+interface DiscoveryAttemptRow {
+  career_site_id: string;
+  last_attempt_at: string;
+}
+
 interface ProviderRow {
   provider_id: string;
   provider_name: string;
@@ -110,6 +115,12 @@ export class EmployerDiscoveryIntelligenceService {
       providers.map((provider) => [provider.providerId, provider]),
     );
     const runsBySource = groupRunsBySource(runs);
+    const lastDiscoveryAttempts = new Map(
+      this.lastDiscoveryAttemptRows().map((row) => [
+        row.career_site_id,
+        row.last_attempt_at,
+      ]),
+    );
     const allDecisions = rows
       .map((row) =>
         decision(
@@ -122,6 +133,7 @@ export class EmployerDiscoveryIntelligenceService {
           providersById.get(
             row.source_provider_id ?? row.detected_provider ?? '',
           ),
+          lastDiscoveryAttempts.get(row.career_site_id) ?? null,
         ),
       )
       .sort(compareDecisions);
@@ -291,6 +303,16 @@ export class EmployerDiscoveryIntelligenceService {
       .all(start, end, start, end, start, end);
   }
 
+  private lastDiscoveryAttemptRows(): DiscoveryAttemptRow[] {
+    return this.database
+      .prepare<[], DiscoveryAttemptRow>(
+        `SELECT career_site_id, MAX(attempted_at) AS last_attempt_at
+           FROM career_site_discovery_attempts
+          GROUP BY career_site_id`,
+      )
+      .all();
+  }
+
   private attemptRows(start: string, end: string): AttemptRow[] {
     return this.database
       .prepare<[string, string], AttemptRow>(
@@ -387,6 +409,7 @@ function decision(
   activityRow: ActivityRow | undefined,
   runs: RunRow[],
   provider: ProviderSuccessMetrics | undefined,
+  lastDiscoveryAttemptAt: string | null,
 ): CareerSiteIntelligenceDecision {
   const successes = runs.filter((run) => run.status === 'succeeded');
   const failures = runs.filter((run) => run.status === 'failed');
@@ -418,15 +441,13 @@ function decision(
   );
   const safety = safetyDecision(row, evaluatedAt);
   const cadenceAnchor =
-    lastSuccessAt ?? row.health_checked_at ?? row.created_at;
+    lastDiscoveryAttemptAt ?? row.health_checked_at ?? row.created_at;
   const cadenceEligibleAt =
     cadenceHours === null
       ? null
-      : row.source_id === null
-        ? row.created_at
-        : new Date(
-            Date.parse(cadenceAnchor) + cadenceHours * 60 * 60 * 1000,
-          ).toISOString();
+      : new Date(
+          Date.parse(cadenceAnchor) + cadenceHours * 60 * 60 * 1000,
+        ).toISOString();
   const nextEligibleAt = latestIso(
     cadenceEligibleAt,
     row.next_discovery_attempt_at,

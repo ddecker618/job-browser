@@ -317,6 +317,80 @@ describe('EmployerDiscoveryIntelligenceService', () => {
       activity: { known: true, zeroResultSuccessfulRuns: 1 },
     });
   });
+
+  it('anchors employer discovery cadence on discovery attempts, not source runs', () => {
+    const fixture = setupSite({ confidence: 0.95 });
+    fixture.database
+      .prepare(`UPDATE career_sites SET created_at = '2026-08-01T00:00:00.000Z' WHERE id = ?`)
+      .run(fixture.siteId);
+    seedRun(fixture.database, fixture.sourceId, 'succeeded', 3,
+      '2026-08-12T11:00:00.000Z');
+    seedJob(fixture.database, fixture.sourceId, '2026-08-12T11:00:00.000Z');
+
+    const noAttempt = new EmployerDiscoveryIntelligenceService(
+      fixture.database,
+      () => AS_OF,
+    ).decision(fixture.siteId)!;
+    expect(noAttempt.eligible).toBe(true);
+    expect(noAttempt.schedulingClass).toBe('high-priority');
+
+    fixture.database
+      .prepare(
+        `INSERT INTO career_site_discovery_attempts
+         (id, career_site_id, provenance, result, provider_id, source_id, detail,
+          attempted_at, next_eligible_at)
+         VALUES (?, ?, 'test', 'source-reused', 'greenhouse', ?, 'test',
+                 ?, NULL)`,
+      )
+      .run('attempt-1', fixture.siteId, fixture.sourceId,
+        '2026-08-11T08:00:00.000Z');
+
+    const afterAttempt = new EmployerDiscoveryIntelligenceService(
+      fixture.database,
+      () => AS_OF,
+    ).decision(fixture.siteId)!;
+    expect(afterAttempt.eligible).toBe(true);
+
+    fixture.database
+      .prepare(
+        `INSERT INTO career_site_discovery_attempts
+         (id, career_site_id, provenance, result, provider_id, source_id, detail,
+          attempted_at, next_eligible_at)
+         VALUES (?, ?, 'test', 'source-reused', 'greenhouse', ?, 'test',
+                 ?, NULL)`,
+      )
+      .run('attempt-2', fixture.siteId, fixture.sourceId,
+        '2026-08-12T11:30:00.000Z');
+
+    const recentAttempt = new EmployerDiscoveryIntelligenceService(
+      fixture.database,
+      () => AS_OF,
+    ).decision(fixture.siteId)!;
+    expect(recentAttempt.eligible).toBe(false);
+
+    const laterService = new EmployerDiscoveryIntelligenceService(
+      fixture.database,
+      () => new Date('2026-08-13T12:00:00.000Z'),
+    );
+    expect(laterService.decision(fixture.siteId)!.eligible).toBe(true);
+  });
+
+  it('does not treat recent source run success as blocking employer discovery eligibility', () => {
+    const fixture = setupSite({ confidence: 0.95 });
+    fixture.database
+      .prepare(`UPDATE career_sites SET created_at = '2026-08-01T00:00:00.000Z' WHERE id = ?`)
+      .run(fixture.siteId);
+    seedRun(fixture.database, fixture.sourceId, 'succeeded', 3,
+      '2026-08-12T11:30:00.000Z');
+    seedJob(fixture.database, fixture.sourceId, '2026-08-12T11:30:00.000Z');
+
+    const decision = new EmployerDiscoveryIntelligenceService(
+      fixture.database,
+      () => AS_OF,
+    ).decision(fixture.siteId)!;
+    expect(decision.executable).toBe(true);
+    expect(decision.eligible).toBe(true);
+  });
 });
 
 function setupSite(options: {
