@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [1.0.28] - 2026-09-08
 
+### Dependency Security Hardening
+
+Applied after the 1.0.28 initial cut; the rebuilt installer below incorporates
+these changes.
+
+- **Runtime dependencies (ship inside the installer):**
+  - `multer` 2.2.0 → 2.3.0 (four advisories, three high: arbitrary file write /
+    DoS via crafted multipart uploads).
+  - `qs` 6.15.3 → 6.16.0 (two moderate DoS advisories, via `express` /
+    `body-parser`).
+  - `@xmldom/xmldom` 0.8.13 → 0.8.15 (nine advisories across 0.7/0.8 lines;
+    mammoth's docx parsing requires the 0.8 API, so the patched LTS release is
+    used instead of the 0.9 major). Overridden for `mammoth` and `plist`.
+- **Build/runtime shell:**
+  - `electron` 42.0.0 → 42.11.3 (Chromium sandbox/url-handling fixes and the
+    `extract-zip` advisory chain; `extract-zip` is no longer in the dependency
+    tree).
+- **Development toolchain:**
+  - `sharp` 0.35.3 → 0.35.4 (icon build), `js-yaml` 4.3.0 → 4.3.2
+    (electron-builder/eslint), `vitest` 4.1.10 → 4.1.11 + `@vitest/mocker`,
+    `browserslist` → 4.28.9, `baseline-browser-mapping` → 2.11.21,
+    `fast-uri` → 3.1.7, `postcss` → 8.5.28, `nanoid` → 3.3.18,
+    `undici` → 7.29.1, and `brace-expansion` 2.x forced to 2.1.4 via override.
+- **Known residual (dev-only, not in the GitHub advisory list).**
+  `brace-expansion` 1.x (used only by `minimatch@3` inside `glob@7`/eslint
+  tooling) has no patched 1.x release; leaving it untouched avoids breaking
+  asar packing. No runtime or shipped code is affected.
+- **Line-ending hygiene.** Added `.gitattributes` (`* text=auto eol=lf`) so
+  checkouts on Windows no longer flip files to CRLF, which previously caused
+  spurious prettier format failures.
+- **Verification.** Full gate green: format, lint, strict typecheck, Vitest
+  104 files / 1057 tests on the upgraded dependency set. Installer rebuilt and
+  re-smoke-tested; distribution privacy scan re-run against the new `app.asar`.
+
+## [1.0.28] - 2026-09-08
+
 ### Clean-Install Privacy and Data-Preservation Guarantees
 
 - **Developer path leak removed from shipped code.** The discovery
