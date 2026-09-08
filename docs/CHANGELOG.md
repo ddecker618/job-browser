@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.28] - 2026-09-08
+
+### Clean-Install Privacy and Data-Preservation Guarantees
+
+- **Developer path leak removed from shipped code.** The discovery
+  remediation CLI (`src/discovery/cli/cleanup-remediation.ts`) hardcoded the
+  development machine's absolute paths (the local user's per-user application
+  data directory holding the database, and its backups directory). Because
+  tests compile into `dist/` and ship inside every installer's `app.asar`, this
+  personal path data was embedded in the packaged application. It now uses the
+  platform default database path resolution and derives the backups directory
+  from it, so no machine-specific paths exist in the codebase or the
+  distribution.
+- **Fresh installs contain zero developer personal data.** Verified by new
+  regression tests (`tests/privacy-fresh-install-isolation.test.ts`) using
+  isolated temporary user-data directories: a brand-new install starts with
+  empty `jobs`, `applications`, `application_history`, `resumes`,
+  `job_observations`, and `career_site_discovery_attempts` tables; seeded
+  sources and the employer registry contain no demo records; employer
+  discovery is disabled by default; the default candidate profile is a generic
+  template; and no personal-data markers appear anywhere in the created
+  user-data tree.
+- **Existing-user data is preserved on upgrade and reinstall.** Verified by
+  new regression tests (`tests/privacy-existing-data-preservation.test.ts`):
+  the database is never replaced (integrity check then open), pending
+  migrations run against the existing database, an optional pre-migration
+  backup is written only when configured, and user files (candidate profile,
+  resumes, database) survive an upgrade boot. A guard
+  (`assertDatabaseOutsideInstallDirectory`) rejects database locations inside
+  the installation directory.
+- **Distribution privacy gate.** `tests/privacy-distribution.test.ts` scans
+  tracked repository files, compiled output, and the packaged `app.asar` for
+  personal-data markers (machine home directories, per-user application data
+  folders, developer names, personal email domains) and forbidden personal file
+  types, failing the build if any are found. Third-party dependency source
+  files (`node_modules`) are excluded from the marker scan because they contain
+  maintainer addresses, not user data.
+- **Documentation and hygiene.** Session handoff notes are no longer tracked
+  (`docs/SESSION_HANDOFF.md` removed from git; the file remains gitignored for
+  local use). Developer-only working artifacts (temp migration scripts,
+  employer candidate/seed lists, packaged download archives) are gitignored.
+- **Breaking/should-be-none.** No changes to the database schema or migration
+  head (`030`). Backward-compatible.
+- **Verification.** Full gate green: format, lint, strict typecheck, Vitest
+  (all suites). Six desktop smoke scenarios (dev/packaged/installed x
+  fresh/upgrade) pass with isolated temporary user-data directories.
+
 ## [1.0.27] - 2026-08-26
 
 ### Employer Discovery Eligibility Cadence Fix

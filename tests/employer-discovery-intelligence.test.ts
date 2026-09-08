@@ -321,10 +321,17 @@ describe('EmployerDiscoveryIntelligenceService', () => {
   it('anchors employer discovery cadence on discovery attempts, not source runs', () => {
     const fixture = setupSite({ confidence: 0.95 });
     fixture.database
-      .prepare(`UPDATE career_sites SET created_at = '2026-08-01T00:00:00.000Z' WHERE id = ?`)
+      .prepare(
+        `UPDATE career_sites SET created_at = '2026-08-01T00:00:00.000Z' WHERE id = ?`,
+      )
       .run(fixture.siteId);
-    seedRun(fixture.database, fixture.sourceId, 'succeeded', 3,
-      '2026-08-12T11:00:00.000Z');
+    seedRun(
+      fixture.database,
+      fixture.sourceId,
+      'succeeded',
+      3,
+      '2026-08-12T11:00:00.000Z',
+    );
     seedJob(fixture.database, fixture.sourceId, '2026-08-12T11:00:00.000Z');
 
     const noAttempt = new EmployerDiscoveryIntelligenceService(
@@ -342,8 +349,12 @@ describe('EmployerDiscoveryIntelligenceService', () => {
          VALUES (?, ?, 'test', 'source-reused', 'greenhouse', ?, 'test',
                  ?, NULL)`,
       )
-      .run('attempt-1', fixture.siteId, fixture.sourceId,
-        '2026-08-11T08:00:00.000Z');
+      .run(
+        'attempt-1',
+        fixture.siteId,
+        fixture.sourceId,
+        '2026-08-11T08:00:00.000Z',
+      );
 
     const afterAttempt = new EmployerDiscoveryIntelligenceService(
       fixture.database,
@@ -359,8 +370,12 @@ describe('EmployerDiscoveryIntelligenceService', () => {
          VALUES (?, ?, 'test', 'source-reused', 'greenhouse', ?, 'test',
                  ?, NULL)`,
       )
-      .run('attempt-2', fixture.siteId, fixture.sourceId,
-        '2026-08-12T11:30:00.000Z');
+      .run(
+        'attempt-2',
+        fixture.siteId,
+        fixture.sourceId,
+        '2026-08-12T11:30:00.000Z',
+      );
 
     const recentAttempt = new EmployerDiscoveryIntelligenceService(
       fixture.database,
@@ -378,10 +393,17 @@ describe('EmployerDiscoveryIntelligenceService', () => {
   it('does not treat recent source run success as blocking employer discovery eligibility', () => {
     const fixture = setupSite({ confidence: 0.95 });
     fixture.database
-      .prepare(`UPDATE career_sites SET created_at = '2026-08-01T00:00:00.000Z' WHERE id = ?`)
+      .prepare(
+        `UPDATE career_sites SET created_at = '2026-08-01T00:00:00.000Z' WHERE id = ?`,
+      )
       .run(fixture.siteId);
-    seedRun(fixture.database, fixture.sourceId, 'succeeded', 3,
-      '2026-08-12T11:30:00.000Z');
+    seedRun(
+      fixture.database,
+      fixture.sourceId,
+      'succeeded',
+      3,
+      '2026-08-12T11:30:00.000Z',
+    );
     seedJob(fixture.database, fixture.sourceId, '2026-08-12T11:30:00.000Z');
 
     const decision = new EmployerDiscoveryIntelligenceService(

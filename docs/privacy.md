@@ -15,6 +15,23 @@ However, user privacy takes priority.
 7. Store the minimum information necessary for analysis.
 8. Clearly distinguish observed outcomes from predictions.
 
+All notable changes: see `CHANGELOG.md`.
+
+## Install Distribution Guarantees
+
+1. A fresh install never writes developer personal data to the user-data
+   directory. It is a clean slate: empty application tables, generic
+   candidate profile, no demo records, employer discovery disabled.
+2. An existing install is never destroyed. The database is integrity-checked
+   and reopened in place (never replaced); pending migrations run against it;
+   the optional pre-migration backup is written only when configured; user
+   files (candidate profile, resumes, backups) survive upgrades and
+   reinstalls.
+3. The packaged installer contains no machine-specific paths or developer
+   personal data. `tests/privacy-distribution.test.ts` enforces this on
+   tracked files, compiled output, and the packaged `app.asar`.
+4. Uninstalling does not delete app data (`deleteAppDataOnUninstall: false`).
+
 ## Example
 
 Acceptable:

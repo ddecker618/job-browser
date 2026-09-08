@@ -105,7 +105,7 @@ function populateSet(root: string): {
   );
   writeFileSync(
     paths.candidateProfilePath,
-    JSON.stringify({ name: 'Dustin' }),
+    JSON.stringify({ name: 'River' }),
     'utf8',
   );
   writeFileSync(
@@ -129,8 +129,8 @@ function populateSet(root: string): {
     )
     .run(
       RESUME_1,
-      'Dustin.txt',
-      'Dustin.txt',
+      'River.txt',
+      'River.txt',
       join(paths.resumeDirectory, `${RESUME_1}.txt`),
       'text/plain',
       RESUME_1_BODY.length,
@@ -300,7 +300,7 @@ describe('persistence set backup and restore', () => {
     expect(
       JSON.parse(readFileSync(targetPaths.candidateProfilePath, 'utf8')),
     ).toEqual({
-      name: 'Dustin',
+      name: 'River',
     });
     expect(
       JSON.parse(readFileSync(targetPaths.scoringConfigPath, 'utf8')),
@@ -528,7 +528,7 @@ describe('persistence set backup and restore', () => {
     rmSync(paths.candidateProfilePath, { recursive: true });
     writeFileSync(
       paths.candidateProfilePath,
-      JSON.stringify({ name: 'Dustin' }),
+      JSON.stringify({ name: 'River' }),
       'utf8',
     );
     const retry = await createPersistenceSetBackup(database, paths);
@@ -760,7 +760,7 @@ describe('serialized persistence-set writes', () => {
           'utf8',
         ),
       ) as { name: string };
-      expect(captured).toEqual({ name: 'Dustin' });
+      expect(captured).toEqual({ name: 'River' });
 
       releaseHeldRead();
       await heldRead;
@@ -826,7 +826,7 @@ describe('serialized persistence-set writes', () => {
     ) as { theme: string };
 
     const coherent =
-      (capturedCandidate.name === 'Dustin' &&
+      (capturedCandidate.name === 'River' &&
         capturedPreferences.theme === 'dark') ||
       (capturedCandidate.name === 'Second' &&
         capturedPreferences.theme === 'light');

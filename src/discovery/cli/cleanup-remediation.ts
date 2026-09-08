@@ -1,4 +1,7 @@
-import { openDatabase } from '../../db/database.js';
+import { mkdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+
+import { defaultDatabasePath, openDatabase } from '../../db/database.js';
 import { EmployerRepository } from '../../repositories/employerRepository.js';
 import { SourceRepository } from '../../repositories/source-repository.js';
 import { log } from '../../logging/logger.js';
@@ -20,10 +23,9 @@ const dryRun = arguments_.includes('--dry-run');
 
 console.log(`Starting cleanup remediation (dryRun: ${String(dryRun)})...`);
 
-const database = openDatabase(
-  process.env['JOB_BROWSER_DB_PATH'] ??
-    'C:\\Users\\dusti\\AppData\\Roaming\\Job Browser\\data\\jobs.sqlite',
-);
+const databasePath =
+  process.env['JOB_BROWSER_DB_PATH'] ?? defaultDatabasePath();
+const database = openDatabase(databasePath);
 const employerRepo = new EmployerRepository(database);
 const sourceRepo = new SourceRepository(database);
 
@@ -213,11 +215,10 @@ try {
   } else {
     // Perform database backup before cleanup
     const backupDir =
-      'C:\\Users\\dusti\\AppData\\Roaming\\Job Browser\\backups';
-    const fs = await import('node:fs');
-    const path = await import('node:path');
-    fs.mkdirSync(backupDir, { recursive: true });
-    const backupPath = path.join(
+      process.env['JOB_BROWSER_BACKUP_DIR'] ??
+      resolve(dirname(databasePath), '..', 'backups');
+    mkdirSync(backupDir, { recursive: true });
+    const backupPath = join(
       backupDir,
       `job-browser-${new Date().toISOString().replace(/[:.]/g, '-')}.sqlite`,
     );

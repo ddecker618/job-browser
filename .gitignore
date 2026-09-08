@@ -39,5 +39,16 @@ hunterhub-test-package.zip
 index.html
 inspect_db_2.js
 
+# Ad-hoc development artifacts that must never be committed
+_query_db.mts
+scripts/_tmp_*.mjs
+scripts/_tmp_*.ts
+state2full.txt
+react-router-8.3.0.tgz
+data/employer-candidates/
+data/employer-seeds/
+data/seed-lists/
+*.sqlite.copy
+
 .DS_Store
 Thumbs.db
