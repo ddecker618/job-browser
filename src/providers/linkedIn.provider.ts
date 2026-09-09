@@ -24,6 +24,7 @@ import {
   closeBrowserSession,
   waitForLogin,
   navigateWithRetry,
+  waitForContent,
   isLoggedIn,
   takeDiagnosticScreenshot,
   detectSecurityChallenge,
@@ -345,7 +346,11 @@ export class LinkedInProvider extends BaseProvider {
         await navigateWithRetry(page, queryUrl, { retries: 3 });
 
         checkCancelled();
-        await page.waitForTimeout(3000);
+        await waitForContent(
+          page,
+          ['.job-card-container', '.jobs-search-results__list-item'],
+          3000,
+        );
 
         const hasResults = await waitForSearchResults(page, 30_000);
         if (!hasResults) {
@@ -357,7 +362,11 @@ export class LinkedInProvider extends BaseProvider {
           continue;
         }
 
-        await page.waitForTimeout(2000);
+        await waitForContent(
+          page,
+          ['.job-card-container', '.jobs-search-results__list-item'],
+          2000,
+        );
 
         const cards = await this.collectCards(
           page,
@@ -630,7 +639,11 @@ export class LinkedInProvider extends BaseProvider {
             waitUntil: 'domcontentloaded',
             timeout: 30_000,
           });
-          await page.waitForTimeout(1500);
+          await waitForContent(
+            page,
+            ['.jobs-description__content', '.show-more-less-html__markup'],
+            1500,
+          );
 
           const detail = await extractJobDetail(page);
           enriched.push({
