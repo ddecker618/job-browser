@@ -25,6 +25,9 @@ Screenshots use clearly fictional fixture data.
 - Keep future employer connectors isolated and limited to approved public sources.
 - Preserve all source URLs and raw source records used for debugging.
 
+Behavior that looks odd is often deliberate. See [Known Quirks](docs/KNOWN_QUIRKS.md)
+for the index of intentional behaviors and their workarounds.
+
 ## Requirements
 
 - Windows, macOS, or Linux
