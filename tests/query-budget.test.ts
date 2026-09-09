@@ -18,6 +18,7 @@ vi.mock('../src/providers/linkedIn/browserSession.js', () => ({
   })),
   closeBrowserSession: vi.fn(() => Promise.resolve(undefined)),
   navigateWithRetry: vi.fn(() => Promise.resolve(undefined)),
+  waitForCardCount: vi.fn(() => Promise.resolve(true)),
   takeDiagnosticScreenshot: vi.fn(() => Promise.resolve(undefined)),
 }));
 

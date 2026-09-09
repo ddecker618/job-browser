@@ -25,6 +25,7 @@ import {
   waitForLogin,
   navigateWithRetry,
   waitForContent,
+  waitForCardCount,
   isLoggedIn,
   takeDiagnosticScreenshot,
   detectSecurityChallenge,
@@ -591,7 +592,7 @@ export class LinkedInProvider extends BaseProvider {
           window.scrollBy(0, 800);
         }
       });
-      await page.waitForTimeout(2000);
+      await waitForCardCount(() => extractJobCards(page), previousCount, 2000);
 
       if (allCards.length === previousCount) {
         staleScrollCount++;

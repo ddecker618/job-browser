@@ -248,6 +248,26 @@ export async function waitForContent(
   }
 }
 
+export async function waitForCardCount<T>(
+  extract: () => Promise<readonly T[]>,
+  baseline: number,
+  timeoutMs: number,
+  pollMs = 200,
+): Promise<boolean> {
+  const start = Date.now();
+  for (;;) {
+    let count: number;
+    try {
+      count = (await extract()).length;
+    } catch {
+      count = baseline;
+    }
+    if (count > baseline) return true;
+    if (Date.now() - start >= timeoutMs) return false;
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+}
+
 export async function navigateWithRetry(
   page: Page,
   url: string,

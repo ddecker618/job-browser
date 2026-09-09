@@ -26,6 +26,7 @@ import {
   closeBrowserSession,
   navigateWithRetry,
   waitForContent,
+  waitForCardCount,
 } from './linkedIn/browserSession.js';
 import { extractJobDetail } from './dice/jobDetailExtractor.js';
 
@@ -529,7 +530,11 @@ export class DiceProvider extends BaseProvider {
 
       const prevCount = jobs.length;
       await page.evaluate(() => window.scrollBy(0, 800));
-      await page.waitForTimeout(2000);
+      await waitForCardCount(
+        () => page.$$('[data-testid="job-card"]'),
+        prevCount,
+        2000,
+      );
 
       if (jobs.length === prevCount) staleCount++;
       else staleCount = 0;

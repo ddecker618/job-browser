@@ -14,6 +14,7 @@ import {
   closeBrowserSession,
   launchBrowserSession,
   navigateWithRetry,
+  waitForCardCount,
 } from './linkedIn/browserSession.js';
 
 export interface BrowserJobRecord {
@@ -125,7 +126,7 @@ export async function runBrowserSearch<T extends BrowserJobRecord>(
           options.securityTimeout,
         );
         await options.waitForResults?.(page);
-        await page.waitForTimeout(2_000);
+        await waitForCardCount(() => options.extractCards(page), 0, 2_000);
 
         let staleScrolls = 0;
         while (newCards.length < maxResultsPerQuery && staleScrolls < 3) {
@@ -168,7 +169,11 @@ export async function runBrowserSearch<T extends BrowserJobRecord>(
           await page.evaluate(() =>
             window.scrollBy(0, Math.max(window.innerHeight, 800)),
           );
-          await page.waitForTimeout(1_500);
+          await waitForCardCount(
+            () => options.extractCards(page),
+            newCards.length,
+            1_500,
+          );
           staleScrolls =
             newCards.length === previousCount ? staleScrolls + 1 : 0;
         }

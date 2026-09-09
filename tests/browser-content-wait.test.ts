@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Page } from 'playwright';
-import { waitForContent } from '../src/providers/linkedIn/browserSession.js';
+import {
+  waitForContent,
+  waitForCardCount,
+} from '../src/providers/linkedIn/browserSession.js';
 
 interface FakeSelector {
   selector: string;
@@ -104,5 +107,61 @@ describe('waitForContent', () => {
     await expect(
       waitForContent(page, ['[data-testid="job-card"]'], 4000, 50),
     ).resolves.toBe(true);
+  });
+});
+
+interface CardSource {
+  count: number;
+  growAfterPolls?: number;
+  throwFirst?: boolean;
+}
+
+function cardSource(count: number): CardSource {
+  return { count };
+}
+
+function pagedCardSource(source: CardSource): () => Promise<string[]> {
+  let polls = 0;
+  return () => {
+    polls++;
+    if (source.throwFirst && polls === 1)
+      return Promise.reject(new Error('navigation in progress'));
+    if (source.growAfterPolls !== undefined && polls >= source.growAfterPolls) {
+      return Promise.resolve(Array.from({ length: source.count + 1 }, String));
+    }
+    return Promise.resolve(Array.from({ length: source.count }, String));
+  };
+}
+
+describe('waitForCardCount', () => {
+  it('resolves immediately when cards already exceed the baseline', async () => {
+    await expect(
+      waitForCardCount(pagedCardSource(cardSource(5)), 4, 4000, 50),
+    ).resolves.toBe(true);
+  });
+
+  it('proceeds as soon as lazy-loaded cards appear instead of sleeping the full budget', async () => {
+    const extract = pagedCardSource({ count: 5, growAfterPolls: 3 });
+    const started = Date.now();
+    await expect(waitForCardCount(extract, 5, 4000, 50)).resolves.toBe(true);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(100);
+    expect(Date.now() - started).toBeLessThan(4000);
+  });
+
+  it('returns false without exceeding the timeout when the list never grows', async () => {
+    const extract = pagedCardSource(cardSource(5));
+    const started = Date.now();
+    await expect(waitForCardCount(extract, 5, 200, 50)).resolves.toBe(false);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(200);
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('tolerates extract throws mid-navigation', async () => {
+    const extract = pagedCardSource({
+      count: 3,
+      throwFirst: true,
+      growAfterPolls: 3,
+    });
+    await expect(waitForCardCount(extract, 3, 4000, 50)).resolves.toBe(true);
   });
 });
