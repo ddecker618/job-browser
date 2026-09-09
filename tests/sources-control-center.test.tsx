@@ -122,6 +122,19 @@ describe('sources control center', () => {
     ).toBeInTheDocument();
   });
 
+  it('opens the add-source workflow prefilled from a quick-add chip', async () => {
+    mockApi([]);
+    renderPage();
+    await screen.findByText('Add your first source');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Handshake' }));
+
+    expect(
+      screen.getByRole('region', { name: 'Source editor' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Provider')).toHaveValue('handshake');
+  });
+
   it('renders Daily and next run date when daily schedule is enabled', async () => {
     mockApi([
       {

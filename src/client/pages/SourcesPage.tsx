@@ -15,6 +15,7 @@ import { invalidateScoreQueries } from '../scoreCache.js';
 export function SourcesPage() {
   const client = useQueryClient();
   const [editing, setEditing] = useState<ConfiguredSource | 'new' | null>(null);
+  const [initialProvider, setInitialProvider] = useState<string | null>(null);
   const [deletingSource, setDeletingSource] = useState<ConfiguredSource | null>(
     null,
   );
@@ -105,7 +106,10 @@ export function SourcesPage() {
         <button
           className="button primary"
           type="button"
-          onClick={() => setEditing('new')}
+          onClick={() => {
+            setInitialProvider(null);
+            setEditing('new');
+          }}
         >
           Add source
         </button>
@@ -137,6 +141,9 @@ export function SourcesPage() {
       {editing === null ? null : (
         <SourceEditor
           providers={providers.data}
+          {...(editing === 'new' && initialProvider !== null
+            ? { initialProviderId: initialProvider }
+            : {})}
           {...(editing === 'new' ? {} : { source: editing })}
           onValidate={api.validateSource}
           onDetect={api.detectSource}
@@ -155,10 +162,33 @@ export function SourcesPage() {
           <button
             className="button primary"
             type="button"
-            onClick={() => setEditing('new')}
+            onClick={() => {
+              setInitialProvider(null);
+              setEditing('new');
+            }}
           >
             Add a source
           </button>
+          <div className="quick-add" aria-label="Quick add provider">
+            <span className="quick-add-label">Start with a board:</span>
+            {providers.data
+              .filter((provider) =>
+                QUICK_ADD_PROVIDER_IDS.includes(provider.id),
+              )
+              .map((provider) => (
+                <button
+                  key={provider.id}
+                  className="button quick-add-chip"
+                  type="button"
+                  onClick={() => {
+                    setInitialProvider(provider.id);
+                    setEditing('new');
+                  }}
+                >
+                  {provider.name}
+                </button>
+              ))}
+          </div>
         </div>
       ) : (
         <div className="source-list">
@@ -302,6 +332,8 @@ export function SourcesPage() {
     </>
   );
 }
+
+const QUICK_ADD_PROVIDER_IDS = ['dice', 'linkedin', 'usajobs', 'handshake'];
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (

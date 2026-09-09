@@ -12,6 +12,7 @@ import type {
 interface SourceEditorProps {
   providers: ProviderDescriptor[];
   source?: ConfiguredSource;
+  initialProviderId?: string;
   onSave: (input: SourceInput) => Promise<void>;
   onValidate: (
     providerId: string,
@@ -24,13 +25,17 @@ interface SourceEditorProps {
 export function SourceEditor({
   providers,
   source,
+  initialProviderId,
   onSave,
   onValidate,
   onDetect,
   onCancel,
 }: SourceEditorProps) {
   const [providerId, setProviderId] = useState(
-    source?.providerId ?? providers[0]?.id ?? 'smartrecruiters',
+    source?.providerId ??
+      initialProviderId ??
+      providers[0]?.id ??
+      'smartrecruiters',
   );
   const [displayName, setDisplayName] = useState(source?.displayName ?? '');
   const [employer, setEmployer] = useState(source?.employer ?? '');

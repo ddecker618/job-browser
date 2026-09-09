@@ -2580,6 +2580,21 @@ kbd {
 .source-empty .button {
   margin-top: 0.5rem;
 }
+.quick-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.quick-add-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.quick-add-chip {
+  padding: 0.4rem 0.7rem;
+  font-weight: 700;
+}
 
 :root[data-theme='light'] .first-run-step-number {
   color: #fff;
