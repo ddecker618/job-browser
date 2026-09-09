@@ -135,6 +135,28 @@ describe('sources control center', () => {
     expect(screen.getByLabelText('Provider')).toHaveValue('handshake');
   });
 
+  it('surfaces sign-in progress while a credential-backed source runs', async () => {
+    mockApi([sourceFixture()], 'usajobs');
+    renderPage();
+    expect(
+      await screen.findByText(/USAJOBS login\.gov sign-in required/i),
+    ).toBeInTheDocument();
+  });
+
+  it('calls out verification failures in the recent-run history', async () => {
+    mockApi(
+      [sourceFixture()],
+      null,
+      'Verification required: Complete the security check or log in',
+    );
+    renderPage();
+    expect(
+      await screen.findByText(
+        /complete sign-in in the browser window, then run again/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('renders Daily and next run date when daily schedule is enabled', async () => {
     mockApi([
       {
@@ -164,7 +186,11 @@ function renderPage() {
   );
 }
 
-function mockApi(sources: unknown[] = [sourceFixture()]) {
+function mockApi(
+  sources: unknown[] = [sourceFixture()],
+  runningActiveSourceId: string | null = null,
+  runError = 'Rate limited',
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: string | URL | Request, init?: RequestInit) => {
@@ -316,16 +342,16 @@ function mockApi(sources: unknown[] = [sourceFixture()]) {
                 jobsUpdated: 2,
                 duplicatesMerged: 2,
                 jobsFailed: 1,
-                error: 'Rate limited',
+                error: runError,
               },
             ],
             discovery: {
-              running: false,
+              running: runningActiveSourceId !== null,
               queuedSourceIds: [],
-              activeSourceId: null,
+              activeSourceId: runningActiveSourceId,
               startedAt: null,
-              completedSources: 0,
-              totalSources: 0,
+              completedSources: runningActiveSourceId === null ? 0 : 1,
+              totalSources: runningActiveSourceId === null ? 0 : 2,
               lastError: null,
             },
             schedulerEnabled: true,

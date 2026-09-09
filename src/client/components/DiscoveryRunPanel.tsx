@@ -1,5 +1,12 @@
 import type { DiscoveryRunView } from '../../models/source-management.js';
 
+function isSignInError(message: string): boolean {
+  return (
+    message.startsWith('Verification required') ||
+    message.startsWith('Authentication required')
+  );
+}
+
 export function DiscoveryRunPanel({ runs }: { runs: DiscoveryRunView[] }) {
   return (
     <section className="run-panel">
@@ -31,10 +38,15 @@ export function DiscoveryRunPanel({ runs }: { runs: DiscoveryRunView[] }) {
                   className={
                     run.status === 'interrupted'
                       ? 'source-note'
-                      : 'source-error'
+                      : isSignInError(run.error)
+                        ? 'source-note-strong'
+                        : 'source-error'
                   }
                 >
                   {run.error}
+                  {isSignInError(run.error)
+                    ? ' — complete sign-in in the browser window, then run again.'
+                    : null}
                 </span>
               )}
             </div>

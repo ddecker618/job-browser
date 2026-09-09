@@ -2573,6 +2573,11 @@ kbd {
   color: var(--muted);
   font-size: 0.82rem;
 }
+.source-note-strong {
+  color: var(--amber);
+  font-weight: 700;
+}
+
 .source-empty {
   align-items: flex-start;
   gap: 0.35rem;

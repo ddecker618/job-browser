@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import type {
   ConfiguredSource,
+  ProviderDescriptor,
   SourceInput,
 } from '../../models/source-management.js';
 import { api } from '../api.js';
@@ -123,9 +124,24 @@ export function SourcesPage() {
           Run Enabled Sources
         </button>
         <span role="status">
-          {control.data.discovery?.running === true
-            ? `Running ${control.data.discovery.activeSourceId ?? 'discovery'} · ${String(control.data.discovery.completedSources)}/${String(control.data.discovery.totalSources)}`
-            : `Last run ${formatDate(summary.lastDiscoveryRun)}`}
+          {control.data.discovery?.running === true ? (
+            <>
+              {`Running ${control.data.discovery.activeSourceId ?? 'discovery'} · ${String(control.data.discovery.completedSources)}/${String(control.data.discovery.totalSources)}`}
+              {loginHint(
+                control.data.discovery.activeSourceId,
+                providers.data,
+              ) === null ? null : (
+                <span className="source-note" role="note">
+                  {loginHint(
+                    control.data.discovery.activeSourceId,
+                    providers.data,
+                  )}
+                </span>
+              )}
+            </>
+          ) : (
+            `Last run ${formatDate(summary.lastDiscoveryRun)}`
+          )}
         </span>
       </div>
       {runAll.isError ? (
@@ -334,6 +350,33 @@ export function SourcesPage() {
 }
 
 const QUICK_ADD_PROVIDER_IDS = ['dice', 'linkedin', 'usajobs', 'handshake'];
+
+function loginHint(
+  activeSourceId: string | null,
+  providers: ProviderDescriptor[],
+): string | null {
+  if (activeSourceId === null) return null;
+  const provider = providers.find((item) => item.id === activeSourceId);
+  if (
+    provider === undefined ||
+    !provider.capabilities.requiresCredentials ||
+    provider.credentialStatus.configured
+  ) {
+    return null;
+  }
+  return (
+    {
+      dice: 'Dice sign-in required — complete login in the browser window that opened.',
+      linkedin:
+        'LinkedIn sign-in required — complete login in the browser window that opened.',
+      usajobs:
+        'USAJOBS login.gov sign-in required — complete it in the browser window that opened.',
+      handshake:
+        'Handshake school sign-in required — complete SSO/MFA in the browser window that opened.',
+    }[provider.id] ??
+    `${provider.name} sign-in required — complete login in the browser window that opened.`
+  );
+}
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
