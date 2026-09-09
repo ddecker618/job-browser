@@ -9,8 +9,11 @@ import type {
   SearchRequest,
 } from '../models/discovery.js';
 import type { ProviderRegistry } from '../providers/providerRegistry.js';
+import { closeBrowserSession } from '../providers/linkedIn/browserSession.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import { nowUtc } from '../utilities/timestamps.js';
+
+export const DEFAULT_RUN_TIMEOUT_MS = 30 * 60_000;
 
 export class DiscoveryEngine {
   private readonly store: DiscoveryStore;
@@ -23,6 +26,47 @@ export class DiscoveryEngine {
   ) {
     this.store = new DiscoveryStore(database);
     this.jobRepository = new JobRepository(database);
+  }
+
+  private async runWithDeadline<T>(
+    task: () => Promise<T>,
+    runTimeoutMs: number,
+    providerId: string,
+    runId: string,
+  ): Promise<T> {
+    const teardownTimer = setTimeout(() => {
+      log(
+        'warn',
+        'Discovery run exceeded its deadline; forcing browser cleanup',
+        {
+          provider: providerId,
+          runId,
+          runTimeoutMs,
+        },
+      );
+      void closeBrowserSession().catch(() => undefined);
+    }, runTimeoutMs);
+
+    try {
+      const outcome = await new Promise<
+        { kind: 'ok'; value: T } | { kind: 'error'; error: unknown } | 'timeout'
+      >((resolve) => {
+        task().then(
+          (value) => resolve({ kind: 'ok', value }),
+          (error: unknown) => resolve({ kind: 'error', error }),
+        );
+        setTimeout(() => resolve('timeout'), runTimeoutMs);
+      });
+      if (outcome === 'timeout') {
+        throw new Error(
+          `Discovery run exceeded the ${String(runTimeoutMs)}ms deadline for provider ${providerId}`,
+        );
+      }
+      if (outcome.kind === 'error') throw outcome.error;
+      return outcome.value;
+    } finally {
+      clearTimeout(teardownTimer);
+    }
   }
 
   public async run(
@@ -41,8 +85,15 @@ export class DiscoveryEngine {
     });
 
     try {
-      const search = await provider.search(request, options);
-      const fetchResult = await provider.fetch(search);
+      const fetchResult = await this.runWithDeadline(
+        async () => {
+          const search = await provider.search(request, options);
+          return provider.fetch(search);
+        },
+        options.runTimeoutMs ?? DEFAULT_RUN_TIMEOUT_MS,
+        provider.id,
+        run.runId,
+      );
       const rawJobs = fetchResult.records;
       const emptyNotice =
         rawJobs.length === 0 && !options.fixtureOnly

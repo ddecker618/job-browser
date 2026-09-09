@@ -529,6 +529,29 @@ describe('DiscoveryEngine', () => {
       },
     );
   }
+
+  it('fails the run when a provider exceeds the run deadline', async () => {
+    registry.register(
+      new (class NeverCompletingProvider extends BuiltInProvider {
+        public override readonly id = 'never-completing' as 'builtin';
+        public override fetch(): Promise<ProviderFetchResult> {
+          return new Promise(() => undefined);
+        }
+      })(),
+    );
+    const started = Date.now();
+    await expect(
+      createEngine().run('never-completing', request(), {
+        ...fixtureOptions(),
+        runTimeoutMs: 50,
+      }),
+    ).rejects.toThrow(/deadline/);
+    expect(Date.now() - started).toBeLessThan(5000);
+    const runRow = database
+      .prepare<[], { status: string }>('SELECT status FROM runs LIMIT 1')
+      .get();
+    expect(runRow?.status).toBe('failed');
+  });
 });
 
 function request() {

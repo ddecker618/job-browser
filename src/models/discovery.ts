@@ -15,6 +15,7 @@ export interface DiscoveryOptions {
   trigger?: DiscoveryTrigger;
   credentials?: Readonly<Record<string, string>>;
   signal?: AbortSignal;
+  runTimeoutMs?: number;
 }
 
 export type DiscoveryTrigger =

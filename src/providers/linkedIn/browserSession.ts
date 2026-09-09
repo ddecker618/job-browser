@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ChildProcess } from 'node:child_process';
 import {
   chromium,
   type Browser,
@@ -161,24 +162,69 @@ export async function launchBrowserSession(
   return session;
 }
 
-export async function closeBrowserSession(): Promise<void> {
-  if (activeSession !== null) {
-    const { persistentContext, underlyingBrowser } = activeSession;
+export const DEFAULT_SESSION_CLOSE_TIMEOUT_MS = 10_000;
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () =>
+        reject(
+          new Error(label + ' timed out after ' + String(timeoutMs) + 'ms'),
+        ),
+      timeoutMs,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
+}
+
+export async function closeBrowserSession(timeoutMs?: number): Promise<void> {
+  const session = activeSession;
+  if (session === null) return;
+  activeSession = null;
+  await closeSession(session, timeoutMs);
+}
+
+export async function closeSession(
+  session: BrowserSession,
+  timeoutMs = DEFAULT_SESSION_CLOSE_TIMEOUT_MS,
+): Promise<void> {
+  const { persistentContext, underlyingBrowser } = session;
+  const gracefulClose = (async () => {
+    await persistentContext.close().catch(() => {
+      /* ignore */
+    });
+    await underlyingBrowser.close().catch(() => {
+      /* ignore */
+    });
+  })();
+  try {
+    await withTimeout(gracefulClose, timeoutMs, 'Browser session close');
+  } catch {
+    log('warn', 'Browser session close timed out; forcing browser shutdown', {
+      profileDir: session.profileDir,
+      closeTimeoutMs: timeoutMs,
+    });
     try {
-      await persistentContext.close().catch(() => {
-        /* ignore */
-      });
+      const processHandle = (
+        underlyingBrowser as unknown as { process(): ChildProcess | null }
+      ).process();
+      processHandle?.kill();
     } catch {
       // ignore
     }
-    try {
-      await underlyingBrowser.close().catch(() => {
-        /* ignore */
-      });
-    } catch {
-      // ignore
-    }
-    activeSession = null;
   }
 }
 
