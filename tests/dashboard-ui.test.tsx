@@ -462,6 +462,50 @@ describe('dashboard UI', () => {
 
     await waitFor(() => expect(calls).toContain('PUT'));
   });
+
+  it('distinguishes filtered and unfiltered empty job results', async () => {
+    const user = userEvent.setup();
+    mockFetch((url) => {
+      if (url.endsWith('/api/saved-filters')) return [];
+      return searchResponse([]);
+    });
+    renderPage(
+      <>
+        <JobsPage />
+        <LocationProbe />
+      </>,
+      ['/jobs?company=Beta%20Systems'],
+    );
+
+    expect(
+      await screen.findByText('No jobs match these filters'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Show all jobs' })).toHaveAttribute(
+      'href',
+      '/jobs',
+    );
+
+    await user.click(screen.getByRole('link', { name: 'Show all jobs' }));
+    expect(screen.getByTestId('location')).not.toHaveTextContent('company=');
+  });
+
+  it('guides empty jobs view toward discovery setup', async () => {
+    mockFetch((url) => {
+      if (url.endsWith('/api/saved-filters')) return [];
+      return searchResponse([]);
+    });
+    renderPage(
+      <>
+        <JobsPage />
+      </>,
+      ['/jobs'],
+    );
+
+    expect(await screen.findByText('No jobs yet')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Check your sources/ }),
+    ).toHaveAttribute('href', '/sources');
+  });
 });
 
 function renderPage(element: ReactElement, entries = ['/']) {

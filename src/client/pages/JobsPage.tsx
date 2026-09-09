@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import type { JobSearchQuery } from '../../models/job-search.js';
 import { api } from '../api.js';
@@ -428,9 +428,18 @@ export function JobsPage() {
         <p className="jobs-updating">Updating results…</p>
       ) : null}
       {rows.length === 0 ? (
-        <EmptyState title="No jobs found">
-          Adjust filters or run discovery to populate this view.
-        </EmptyState>
+        hasUrlFilters ? (
+          <EmptyState title="No jobs match these filters">
+            Try broadening or clearing your filters to see more roles.{' '}
+            <Link to="/jobs">Show all jobs</Link>.
+          </EmptyState>
+        ) : (
+          <EmptyState title="No jobs yet">
+            Run discovery to populate this view.{' '}
+            <Link to="/sources">Check your sources</Link> are enabled, or open
+            the Discovery Engine to start a run.
+          </EmptyState>
+        )
       ) : (
         <div className="table-wrap jobs-table-scroll" ref={setScrollElement}>
           <table className="jobs-table">

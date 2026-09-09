@@ -259,13 +259,20 @@ export function SourcesPage() {
                 </div>
               </dl>
               {source.healthMessage === null ? null : (
-                <p
-                  className={
-                    source.healthStatus === 'failed' ? 'source-error' : ''
-                  }
-                >
-                  {source.healthMessage}
-                </p>
+                <>
+                  <p
+                    className={
+                      source.healthStatus === 'failed' ? 'source-error' : ''
+                    }
+                  >
+                    {source.healthMessage}
+                  </p>
+                  {sourceErrorGuidance(source.healthMessage) === null ? null : (
+                    <p className="source-note">
+                      {sourceErrorGuidance(source.healthMessage)}
+                    </p>
+                  )}
+                </>
               )}
               <div className="card-actions">
                 <button type="button" onClick={() => setEditing(source)}>
@@ -350,6 +357,22 @@ export function SourcesPage() {
 }
 
 const QUICK_ADD_PROVIDER_IDS = ['dice', 'linkedin', 'usajobs', 'handshake'];
+
+function sourceErrorGuidance(message: string): string | null {
+  if (message.startsWith('Verification required'))
+    return 'Run this source and complete the sign-in or security check in the browser window that opens.';
+  if (message.startsWith('Authentication required'))
+    return 'Review and update the credentials used by this source, then run it again.';
+  if (message.startsWith('Timeout'))
+    return 'The provider did not respond in time. Run the source again or use Validate to re-check it.';
+  if (message.startsWith('HTTP 404'))
+    return 'This board or careers page looks inactive. Edit the source URL or remove the source.';
+  if (message.startsWith('Provider unavailable'))
+    return 'The provider hosts could not be reached. Check network access, then Run or Validate.';
+  if (message.startsWith('No open positions'))
+    return 'The board responds, but no matching positions were found. Broaden the search criteria.';
+  return null;
+}
 
 function loginHint(
   activeSourceId: string | null,

@@ -157,6 +157,21 @@ describe('sources control center', () => {
     ).toBeInTheDocument();
   });
 
+  it('explains what to do for a verification-required source', async () => {
+    const source = {
+      ...sourceFixture(),
+      healthMessage:
+        'Verification required: Complete the security check or log in',
+    };
+    mockApi([source]);
+    renderPage();
+    expect(
+      await screen.findByText(
+        /complete the sign-in or security check in the browser window that opens/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('renders Daily and next run date when daily schedule is enabled', async () => {
     mockApi([
       {
