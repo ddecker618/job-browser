@@ -111,7 +111,7 @@ Phase 1 (browser reliability) WORKING STATE:
 
 ## Commits Created (sprint, local only — NONE pushed)
 
-- (none yet — checkpoint commit after full verify)
+- `811a26b` — fix: bound browser session close and discovery run deadline (Units A+C, phase-11 tests, tracker). Verify green 105/1064. 2026-09-09.
 
 ## Known Remaining Work
 
