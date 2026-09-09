@@ -22,6 +22,7 @@ import {
   runMigrations,
 } from '../db/migration-runner.js';
 import { seedKnownApplications } from '../db/seeds/known-applications.js';
+import { ensureInstalledAt } from '../database/adoptionMarkers.js';
 import { seedEmployerRegistry } from '../db/seeds/employerRegistry.js';
 import type { LogWriter } from '../logging/logger.js';
 import { log } from '../logging/logger.js';
@@ -155,6 +156,7 @@ export async function startBackend(
     seedEmployerRegistry(database);
     options.onStartupProgress?.('starting-local-service');
     seedKnownApplications(database);
+    ensureInstalledAt(database);
     await providerRegistry.loadProviders();
     if (options.linkedinProfile) {
       const linkedIn = providerRegistry.get('linkedin');

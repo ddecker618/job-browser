@@ -50,7 +50,9 @@ import { verifyJobAvailability } from '../intelligence/jobAvailability.js';
 import { JobSearchRepository } from '../repositories/job-search-repository.js';
 import { ResumeSnapshotRepository } from '../repositories/resume-snapshot-repository.js';
 import { SourceRepository } from '../repositories/source-repository.js';
+import { markFirstSourceAt } from '../database/adoptionMarkers.js';
 import { EmployerRepository } from '../repositories/employerRepository.js';
+import { readAdoptionMarkers } from '../database/adoptionMarkers.js';
 import {
   employerInputSchema,
   careerSiteInputSchema,
@@ -514,6 +516,7 @@ export function createApp(
         credentialStatus?.configured === false
           ? 'credentials-required'
           : 'valid';
+      markFirstSourceAt(database);
       response.status(201).json(sourceRepository.create(input, status));
     }),
   );
