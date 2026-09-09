@@ -97,6 +97,7 @@ Phase 1 (browser reliability) WORKING STATE:
 | Baseline (`8998fde`) | `npm run verify`                                                                                                 | 104 files / 1057 tests, green                                              |
 | 2026-09-09           | `tests/browser-session-close.test.ts` + engine-deadline test                                                     | focused run green                                                          |
 | 2026-09-09           | `npm run verify` full AFTER phase-1 units A+C + tests (format+lint+typecheck+test)                               | 105 files / 1064 tests, green                                              |
+| 2026-09-09           | `npm run verify` full AFTER abort-interrupt unit (signal-aware run deadline)                                     | 105 files / 1065 tests, green                                              |
 | 2026-09-09           | Installed reinstall tail: silent install `12F9AAFE…`, installed asar == packaged asar, `desktop:smoke:installed` | all green (exit 0, asar `8F951906…` match at installed path, smoke passed) |
 | Release (phase 10)   | packaged smoke + distribution privacy scan + installer asar hash (re-run at boundary)                            | pending                                                                    |
 | Outage post-incident | drift scan + app start (`Backend started` 2026-09-09T00:37:02Z, `pendingMigrations:[]`)                          | clean                                                                      |
@@ -115,6 +116,12 @@ Phase 1 (browser reliability) WORKING STATE:
 - `811a26b` — fix: bound browser session close and discovery run deadline (Units A+C, phase-11 tests, tracker). Verify green 105/1064. 2026-09-09.
 - `d28e4fe` — docs: tracker checkpoint after `811a26b`.
 - (this update) — docs: tracker close-out of installed reinstall tail (silent install + asar match + installed smoke). NOT pushed.
+- `bad8614` — fix: abort interruptive browser teardown (signal-aware run deadline resolves `interrupted` promptly even when provider ignores the signal) + scrub personal path from tracker. Verify green 105/1065. NOT pushed.
+
+## Phase 1 bake-in status
+
+- Interruptive cancellation: LANDED (`bad8614`). A stop/abort now force-tears-down the owned browser at the engine boundary, so a provider wedged in a browser wait that ignores the signal is interrupted promptly (recorded as `interrupted`, not failure), no longer waiting out default timeouts or the 30-min deadline.
+- Remaining Phase 1 bake-in: provider-side error classification → health status (`needs-verification` for verification/auth-wall vs generic failure; timeout vs exhausted). Then Phase 2 performance.
 
 ## Known Remaining Work
 
