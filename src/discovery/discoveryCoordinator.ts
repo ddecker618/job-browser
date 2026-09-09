@@ -111,7 +111,7 @@ export class DiscoveryCoordinator {
       return result;
     } catch (error) {
       const userMessage = translateError(error);
-      const status = userMessage.startsWith('Authentication')
+      const status = requiresUserAction(userMessage)
         ? 'credentials-required'
         : 'failed';
       this.sources.setHealth(sourceId, status, userMessage);
@@ -245,10 +245,11 @@ export class DiscoveryCoordinator {
           if (!runStarted)
             this.store.recordPreflightFailure(source, sourceId, trigger, error);
           if (source !== null) {
-            const credentialsRequired = translated.startsWith('Authentication');
             this.sources.setHealth(
               source.id,
-              credentialsRequired ? 'credentials-required' : 'failed',
+              requiresUserAction(translated)
+                ? 'credentials-required'
+                : 'failed',
               translated,
             );
           }
@@ -312,6 +313,19 @@ function idleStatus(): DiscoveryStatus {
 export function translateError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
 
+  if (
+    message.toLowerCase().includes('login timed out') ||
+    message.toLowerCase().includes('please log in manually') ||
+    message.toLowerCase().includes('authwall') ||
+    message.toLowerCase().includes('auth wall') ||
+    message.toLowerCase().includes('security challenge') ||
+    message.toLowerCase().includes('complete verification') ||
+    message.toLowerCase().includes('verification required') ||
+    message.toLowerCase().includes('checkpoint') ||
+    message.toLowerCase().includes('captcha')
+  ) {
+    return 'Verification required: Complete the security check or log in';
+  }
   if (
     message.includes('404') ||
     message.toLowerCase().includes('not found') ||
@@ -403,4 +417,11 @@ export function translateError(error: unknown): string {
   }
 
   return `Provider unavailable: ${message}`;
+}
+
+function requiresUserAction(translated: string): boolean {
+  return (
+    translated.startsWith('Authentication') ||
+    translated.startsWith('Verification')
+  );
 }

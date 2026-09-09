@@ -240,6 +240,30 @@ describe('discovery coordinator', () => {
     ).not.toBe('failed');
   });
 
+  it('marks a source as needing user action when a browser source reports a login or verification wall', async () => {
+    const database = createDatabase();
+    const registry = new ProviderRegistry();
+    registry.register(new VerificationRequiredAshbyProvider());
+    prepareAshbySource(database, registry);
+    const coordinator = createCoordinator(database, registry);
+    await coordinator.runFixture('provider:ashby');
+    const row = database
+      .prepare<
+        [],
+        { health_status: string; health_message: string | null }
+      >("SELECT health_status, health_message FROM sources WHERE id = 'provider:ashby'")
+      .get();
+    expect(row).toEqual({
+      health_status: 'credentials-required',
+      health_message:
+        'Verification required: Complete the security check or log in',
+    });
+    expect(coordinator.status().lastError).toBe(
+      'Verification required: Complete the security check or log in',
+    );
+    await coordinator.stop();
+  });
+
   it('keeps a source healthy with a notice when discovery finds no jobs', async () => {
     const database = createDatabase();
     const registry = new ProviderRegistry();
@@ -392,6 +416,14 @@ class FixtureAshbyProvider extends AshbyProvider {
     options: DiscoveryOptions,
   ): Promise<ProviderSearch> {
     return super.search(request, { ...options, fixtureOnly: true });
+  }
+}
+
+class VerificationRequiredAshbyProvider extends FixtureAshbyProvider {
+  public override fetch(): Promise<ProviderFetchResult> {
+    return Promise.reject(
+      new Error('Dice login timed out. Please log in manually and try again.'),
+    );
   }
 }
 
@@ -585,5 +617,29 @@ describe('translateError', () => {
     expect(translateError(error)).toBe(
       'Provider unavailable: DNS resolution failed for host',
     );
+  });
+
+  it('classifies browser login and verification walls as needing verification', () => {
+    expect(
+      translateError(
+        new Error(
+          'Dice login timed out. Please log in manually and try again.',
+        ),
+      ),
+    ).toBe('Verification required: Complete the security check or log in');
+    expect(
+      translateError(
+        new Error('Failed to navigate to https://www.linkedin.com/checkpoint/'),
+      ),
+    ).toBe('Verification required: Complete the security check or log in');
+    expect(translateError(new Error('Hit an authwall during sign-in'))).toBe(
+      'Verification required: Complete the security check or log in',
+    );
+  });
+
+  it('still classifies plain authentication failures as credential problems', () => {
+    expect(
+      translateError(new Error('Authentication failed: invalid credentials')),
+    ).toBe('Authentication required: Invalid or missing credentials');
   });
 });
