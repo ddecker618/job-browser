@@ -552,6 +552,36 @@ describe('DiscoveryEngine', () => {
       .get();
     expect(runRow?.status).toBe('failed');
   });
+
+  it('interrupts a hung provider promptly even when it ignores the abort signal', async () => {
+    registry.register(
+      new (class HungProvider extends BuiltInProvider {
+        public override readonly id = 'hung' as 'builtin';
+        public override search(): Promise<ProviderSearch> {
+          return new Promise(() => undefined);
+        }
+        public override fetch(): Promise<ProviderFetchResult> {
+          return new Promise(() => undefined);
+        }
+      })(),
+    );
+    const controller = new AbortController();
+    const started = Date.now();
+    const runPromise = createEngine().run('hung', request(), {
+      ...fixtureOptions(),
+      signal: controller.signal,
+      runTimeoutMs: 30_000,
+    });
+    controller.abort();
+    await expect(runPromise).rejects.toThrow(
+      'Discovery was interrupted when Job Browser stopped',
+    );
+    expect(Date.now() - started).toBeLessThan(5000);
+    const runRow = database
+      .prepare<[], { status: string }>('SELECT status FROM runs LIMIT 1')
+      .get();
+    expect(runRow?.status).toBe('interrupted');
+  });
 });
 
 function request() {

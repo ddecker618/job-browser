@@ -63,7 +63,7 @@ Phase 0 audit complete:
   `12F9AAFE20AFA615D45363DB37EB512D61EDEE68544F40E44D990C0FD1C5007A`
   (supersedes `7BF04A32…` → `D67AEBED…`). Packaged `app.asar` = 73,658,296 B (SHA `8F951906AA56FA091E80FB06D3E5AF34B0EADB086E855C78996B793DE8B3B365`).
 - Installed app is still the PREVIOUS hardened build; reinstall waited on the app being closed (see Blockers).
-- Production DB: fine. One historical migration checksum diverged (`030_employer_aliases.sql`); USER-APPROVED one-row reconcile on `2026-09-09T00:35Z`; backup `C:\Users\dusti\AppData\Local\Temp\opencode\jobs.sqlite.pre-030-reconcile-2026-09-09T00-35-56-114Z.sqlite`; drift scan = NO DRIFT.
+- Production DB: fine. One historical migration checksum diverged (`030_employer_aliases.sql`); USER-APPROVED one-row reconcile on `2026-09-09T00:35Z`; backup taken first (scratch temp dir, file `jobs.sqlite.pre-030-reconcile-2026-09-09T00-35-56-114Z.sqlite`); drift scan = NO DRIFT.
 
 Phase 1 (browser reliability) WORKING STATE:
 

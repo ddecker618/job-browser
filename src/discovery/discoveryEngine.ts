@@ -33,6 +33,7 @@ export class DiscoveryEngine {
     runTimeoutMs: number,
     providerId: string,
     runId: string,
+    signal?: AbortSignal,
   ): Promise<T> {
     const teardownTimer = setTimeout(() => {
       log(
@@ -49,14 +50,28 @@ export class DiscoveryEngine {
 
     try {
       const outcome = await new Promise<
-        { kind: 'ok'; value: T } | { kind: 'error'; error: unknown } | 'timeout'
+        | { kind: 'ok'; value: T }
+        | { kind: 'error'; error: unknown }
+        | 'timeout'
+        | 'aborted'
       >((resolve) => {
         task().then(
           (value) => resolve({ kind: 'ok', value }),
           (error: unknown) => resolve({ kind: 'error', error }),
         );
         setTimeout(() => resolve('timeout'), runTimeoutMs);
+        if (signal?.aborted) {
+          resolve('aborted');
+        } else {
+          signal?.addEventListener('abort', () => resolve('aborted'), {
+            once: true,
+          });
+        }
       });
+      if (outcome === 'aborted') {
+        void closeBrowserSession().catch(() => undefined);
+        throw new Error('Discovery was interrupted when Job Browser stopped');
+      }
       if (outcome === 'timeout') {
         throw new Error(
           `Discovery run exceeded the ${String(runTimeoutMs)}ms deadline for provider ${providerId}`,
@@ -93,6 +108,7 @@ export class DiscoveryEngine {
         options.runTimeoutMs ?? DEFAULT_RUN_TIMEOUT_MS,
         provider.id,
         run.runId,
+        options.signal,
       );
       const rawJobs = fetchResult.records;
       const emptyNotice =
