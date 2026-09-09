@@ -17,6 +17,19 @@ However, user privacy takes priority.
 
 All notable changes: see `CHANGELOG.md`.
 
+## Transmission
+
+Job Browser is fully offline-first. Nothing you enter or store — jobs,
+applications, candidate profile, resumes, or analytics — is ever transmitted
+off your machine. There is no telemetry, no crash reporting, and no usage
+analytics sent to any third party.
+
+The only outbound network activity is fetching public job listings from
+provider feeds (SmartRecruiters, Workday, Lever, USAJobs, Dice, LinkedIn,
+Handshake, etc.) during discovery. Those requests send only the normal URL
+referrers for the provider pages being fetched and occur only when you run or
+validate a source. No stored user data is included in any request.
+
 ## Install Distribution Guarantees
 
 1. A fresh install never writes developer personal data to the user-data
