@@ -36,7 +36,7 @@
 | ----- | -------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
 | 0     | Audit docs, verify baseline, record outstanding work                                                                 | [x]    | Audit done; outstanding installed-reinstall tail recorded in Known Remaining Work                                        |
 | 1     | Browser-backed discovery reliability inventory + fix failure class                                                   | [~]    | 1A inventory done; DEF-001 root-cause fixed (units A+C + abort-interrupt); provider error classification → health LANDED |
-| 2     | Performance (browser cycles: wall-clock, dom-idle/greedy loads, parallelization)                                     | [>]    | Fixed-sleep → bounded content/card-count waits landed for dice/linkedin/usajobs/shared runner                            |
+| 2     | Performance (browser cycles: wall-clock, dom-idle/greedy loads, parallelization)                                     | [~]    | Fixed-sleep → bounded content/card-count waits landed for dice/linkedin/usajobs/shared runner; goto/load audit clean; parallelization deferred to phase 15 (D-008) |
 | 3     | First-run UX (branding, zero-state, 1-click add employer)                                                            | [ ]    |                                                                                                                          |
 | 4     | Log-in UX (status of login progress, verification)                                                                   | [ ]    |                                                                                                                          |
 | 5     | Empty-state/error-state UX (per-provider errors, no jobs found, health)                                              | [ ]    |                                                                                                                          |
@@ -97,6 +97,7 @@ Phase 2 (performance) WORKING STATE:
 - D-005 (2026-09-09): Phase 11 regression tests for this failure class are unit-level (mock/fake sessions); no live-browser dependence in CI.
 - D-006 (2026-09-09): Verification/auth-wall failures reuse the existing `credentials-required` source status rather than adding a new `needs-verification` status — the latter requires a table-rebuild migration because `sources.health_status` has CHECK constraints in `006_multi_source_discovery.sql`. The distinct health_message (`Verification required: Complete the security check or log in`) preserves the semantic difference without schema churn.
 - D-007 (2026-09-09): Per-job anti-bot pacing sleeps after returning from detail pages (Dice/LinkedIn 1500 + randomized 1000–2000ms; USAJobs 500–1500ms) are KEPT, not converted to content-waits — bandwidth/CPU are not the constraint there; pacing is deliberate rate-limit/CAPTCHA mitigation. Scroll/pager content-load waits ARE converted (the DOM renders lazily, so polling measures real load and strictly reduces wall-clock).
+- D-008 (2026-09-09): Cross-source discovery parallelization is DEFFERED to phase 15, gated on an explicit concurrency cap (target ≤2) + coordinator sequencing/stop-semantics review. Phase 2 ships the wait optimizations only; parallelizing now would entangle browser-reliability fixes (DEF-001) with a scheduling change and raise rate-limit/CAPTCHA exposure across sources.
 
 ## Defects Discovered
 
@@ -158,7 +159,8 @@ Phase 2 (performance) WORKING STATE:
 ## Phase 2 bake-in status
 
 - Fixed-sleep replacement: LANDED for dice/linkedin/usajobs/shared runner (`481bd38`, `53624a5`, `ab025cd`) — post-nav and pre-extract waits are now content-driven (selector presence) and scroll loops are card-count-driven, both bounded at the previous sleep budget. Anti-bot pacing after detail pages deliberately kept (D-007).
-- Remaining: `domcontentloaded`/goto timeout audit (all providers already use `domcontentloaded` with 30–45s caps — verify only), then parallelization evaluation (likely deferred to phase 15 with explicit concurrency caps, no unbounded fan-out).
+- goTo/load-event audit: CLEAN (2026-09-09) — all `page.goto` sites use `waitUntil: 'domcontentloaded'` with 30–45s caps (dice login/detail, linkedin login/detail, usajobs detail, plus `navigateWithRetry` in browserSession); zero `load`/`networkidle` uses anywhere (memory-saver). No code change needed.
+- Parallelization: DEFFERED to phase 15 by decision D-008 — cross-source parallel discovery is gated on the concurrency-cap design + coordinator sequencing review, and is intentionally NOT in phase 2 to avoid conflating browser-reliability fixes with a scheduling change.
 
 ## Known Remaining Work
 
