@@ -25,6 +25,7 @@ import {
   launchBrowserSession,
   closeBrowserSession,
   navigateWithRetry,
+  waitForContent,
 } from './linkedIn/browserSession.js';
 import { extractJobDetail } from './dice/jobDetailExtractor.js';
 
@@ -275,7 +276,7 @@ export class DiceProvider extends BaseProvider {
         log('info', `Dice: searching for "${q.keywords}"`);
         try {
           await navigateWithRetry(page, url, { retries: 3 });
-          await page.waitForTimeout(3000);
+          await waitForContent(page, ['[data-testid="job-card"]'], 3000);
 
           const cards = await this.collectCards(
             page,
@@ -552,7 +553,14 @@ export class DiceProvider extends BaseProvider {
           waitUntil: 'domcontentloaded',
           timeout: 30_000,
         });
-        await page.waitForTimeout(2000);
+        await waitForContent(
+          page,
+          [
+            '[data-testid="jobDetailStructuredData"]',
+            '[data-testid="job-detail-header-card"]',
+          ],
+          2000,
+        );
 
         const detail = await extractJobDetail(page);
         job.description = detail.description ?? job.description;

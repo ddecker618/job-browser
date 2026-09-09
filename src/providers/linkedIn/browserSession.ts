@@ -228,6 +228,26 @@ export async function closeSession(
   }
 }
 
+export async function waitForContent(
+  page: Page,
+  selectors: readonly string[],
+  timeoutMs: number,
+  pollMs = 250,
+): Promise<boolean> {
+  const start = Date.now();
+  for (;;) {
+    for (const selector of selectors) {
+      try {
+        if ((await page.$(selector)) !== null) return true;
+      } catch {
+        // page may be mid-navigation; keep polling
+      }
+    }
+    if (Date.now() - start >= timeoutMs) return false;
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+}
+
 export async function navigateWithRetry(
   page: Page,
   url: string,
