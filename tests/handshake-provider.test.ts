@@ -181,6 +181,23 @@ describe('HandshakeProvider', () => {
     expect(ensureHandshakeLogin).toHaveBeenCalledOnce();
     expect(closeBrowserSession).toHaveBeenCalledOnce();
   });
+
+  it('closes the browser session even when a live load fails mid-run', async () => {
+    const provider = new HandshakeProvider();
+    vi.spyOn(
+      provider as unknown as HandshakePrivateApi,
+      'loadSearchPage',
+    ).mockRejectedValue(new Error('browser crashed'));
+
+    const result = await provider.fetch(liveSearch());
+
+    expect(result).toMatchObject({
+      records: [],
+      complete: false,
+      failedQueries: 2,
+    });
+    expect(closeBrowserSession).toHaveBeenCalledOnce();
+  });
 });
 
 function liveSearch(): ProviderSearch {
