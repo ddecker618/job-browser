@@ -37,7 +37,7 @@
 | 0     | Audit docs, verify baseline, record outstanding work                                                                 | [x]    | Audit done; outstanding installed-reinstall tail recorded in Known Remaining Work                                                                                  |
 | 1     | Browser-backed discovery reliability inventory + fix failure class                                                   | [~]    | 1A inventory done; DEF-001 root-cause fixed (units A+C + abort-interrupt); provider error classification → health LANDED                                           |
 | 2     | Performance (browser cycles: wall-clock, dom-idle/greedy loads, parallelization)                                     | [~]    | Fixed-sleep → bounded content/card-count waits landed for dice/linkedin/usajobs/shared runner; goto/load audit clean; parallelization deferred to phase 15 (D-008) |
-| 3     | First-run UX (branding, zero-state, 1-click add employer)                                                            | [ ]    |                                                                                                                                                                    |
+| 3     | First-run UX (branding, zero-state, 1-click add employer)                                                            | [~]    | First-run onboarding panel on dashboard (zero jobs) + quick-add chips for browser boards (dice/linkedin/usajobs/handshake) LANDED                                  |
 | 4     | Log-in UX (status of login progress, verification)                                                                   | [ ]    |                                                                                                                                                                    |
 | 5     | Empty-state/error-state UX (per-provider errors, no jobs found, health)                                              | [ ]    |                                                                                                                                                                    |
 | 6     | Privacy (already largely covered): do-not-collect claims, distribution privacy test, personal-data exclusions re-run | [ ]    | Existing work `3/3` green at `8998fde`; re-run at release                                                                                                          |
@@ -121,6 +121,8 @@ Phase 2 (performance) WORKING STATE:
 | 2026-09-09           | `npm run verify` full AFTER perf unit 1: `waitForContent` + Dice fixed-sleep→content-wait (`481bd38`)            | 106 files / 1073 tests, green                                              |
 | 2026-09-09           | `npm run verify` full AFTER perf unit 2: LinkedIn + USAJobs content-waits (`53624a5`)                            | 106 files / 1073 tests, green                                              |
 | 2026-09-09           | `npm run verify` full AFTER perf unit 3: scroll-loop card-count waits incl. shared runner (`ab025cd`)            | 106 files / 1077 tests, green                                              |
+| 2026-09-09           | `npm run verify` full AFTER first-run onboarding panel + dashboard/sources zero-state (`f09acdf`)                | 106 files / 1079 tests, green                                              |
+| 2026-09-09           | `npm run verify` full AFTER 1-click quick-add chips (`1afc84b`)                                                  | 106 files / 1080 tests, green                                              |
 | 2026-09-09           | Installed reinstall tail: silent install `12F9AAFE…`, installed asar == packaged asar, `desktop:smoke:installed` | all green (exit 0, asar `8F951906…` match at installed path, smoke passed) |
 | Release (phase 10)   | packaged smoke + distribution privacy scan + installer asar hash (re-run at boundary)                            | pending                                                                    |
 | Outage post-incident | drift scan + app start (`Backend started` 2026-09-09T00:37:02Z, `pendingMigrations:[]`)                          | clean                                                                      |
@@ -150,6 +152,8 @@ Phase 2 (performance) WORKING STATE:
 - `481bd38` — perf: `waitForContent` helper + convert Dice fixed sleeps (post-nav, pre-extract) to bounded content waits. Verify green 106/1073. NOT pushed.
 - `53624a5` — perf: LinkedIn + USAJobs fixed sleeps → bounded content waits. Verify green 106/1073. NOT pushed.
 - `ab025cd` — perf: scroll-loop fixed sleeps → `waitForCardCount` lazy-load waits (dice/linkedin/shared runner). Verify green 106/1077. NOT pushed.
+- `f09acdf` — feat: first-run onboarding panel (dashboard when zero jobs, adapts to source count) + first-source zero-state on Sources page. Verify green 106/1079. NOT pushed.
+- `1afc84b` — feat: 1-click quick-add chips for browser boards (dice/linkedin/usajobs/handshake) prefilling the source editor. Verify green 106/1080. NOT pushed.
 
 ## Phase 1 bake-in status
 
@@ -166,7 +170,8 @@ Phase 2 (performance) WORKING STATE:
 
 - [x] Reinstall current installer (`12F9AAFE…`): silent install exit 0; installed asar == packaged asar (`8F951906…`); `desktop:smoke:installed` passed. App was confirmed closed (no Job Browser/electron process, no 6783 listener) before install. CLOSED 2026-09-09.
 - [x] Phase 1 bake-in: interruptible-cancellation semantics + provider-side error classification → health status. CLOSED 2026-09-09 (D-006; verify 105/1068 at `68abd20`).
-- [~] Phase 2 perf: fixed-sleep → content/card-count waits LANDED; goto/load-event audit + parallelization eval remain.
+- [~] Phase 2 perf: fixed-sleep → content/card-count waits + goto/load audit LANDED; parallelization deferred to phase 15 (D-008).
+- [~] Phase 3 first-run UX: onboarding panel + first-source zero state + 1-click quick-add chips LANDED (`f09acdf`, `1afc84b`); branding polish re-check at release.
 - [ ] Full phase list 2–9, 12–18 per Phase Progress.
 - [ ] Final privacy scan + distribution scan at release boundary.
 - [ ] Final report + version bump (phase 17) + READY/NOT READY verdict.
