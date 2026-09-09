@@ -40,6 +40,28 @@ these changes.
 
 ## [1.0.28] - 2026-09-08
 
+### Manifest and Packaging Hardening
+
+Applied after the security-hardened rebuild; the installer below incorporates
+these changes.
+
+- **App identity.** `appId` moved to a neutral `com.jobbrowser.app` so the
+  distributed application no longer embeds the publisher's personal identity
+  string. Resolved from a different, unrelated desktop shortcut folder; the
+  production data directory is unaffected.
+- **Smaller packaged payload.** Compiled tests, ad-hoc packaging/development
+  scripts, and `dist` sourcemaps are excluded from the installer. The packed
+  `app.asar` dropped from ~77.2 MB to ~73.7 MB (tests/scripts absent, only
+  third-party `node_modules` maps remain).
+- **Test-port robustness.** The backend lifecycle test no longer hardcodes a
+  conventional port; it claims an OS-assigned ephemeral port, so unrelated
+  local processes (e.g., a leftover dev server) can no longer cause a spurious
+  `EADDRINUSE` failure.
+- **Verification.** Full gate green (104 files / 1057 tests); distribution
+  privacy scan clean; packaged smokes pass for fresh and upgrade scenarios.
+
+## [1.0.28] - 2026-09-08
+
 ### Clean-Install Privacy and Data-Preservation Guarantees
 
 - **Developer path leak removed from shipped code.** The discovery

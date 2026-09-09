@@ -1,4 +1,4 @@
-appId: com.dustindecker.jobbrowser
+appId: com.jobbrowser.app
 productName: Job Browser
 artifactName: Job-Browser-Setup-${version}.${ext}
 directories:
@@ -6,6 +6,9 @@ directories:
 files:
   - dist/**/*
   - package.json
+  - '!dist/tests/**'
+  - '!dist/scripts/**'
+  - '!dist/**/*.map'
 asar: true
 npmRebuild: true
 asarUnpack:

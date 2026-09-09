@@ -1,4 +1,4 @@
-import { createServer } from 'node:net';
+import { createServer, type AddressInfo } from 'node:net';
 import {
   copyFileSync,
   existsSync,
@@ -48,7 +48,7 @@ describe('backend lifecycle', () => {
     expect(handle.database.open).toBe(false);
   });
 
-  it('preserves existing database records and avoids conventional-port collisions', async () => {
+  it('avoids binding a port already claimed by another process', async () => {
     const directory = temporary();
     const databasePath = join(directory, 'jobs.sqlite');
     const first = await backend(directory, { databasePath });
@@ -58,13 +58,16 @@ describe('backend lifecycle', () => {
     await first.stop();
 
     const occupied = createServer();
-    await new Promise<void>((resolve) =>
-      occupied.listen(4173, '127.0.0.1', resolve),
-    );
+    const occupiedPort = await new Promise<number>((resolve, reject) => {
+      occupied.once('error', reject);
+      occupied.listen(0, '127.0.0.1', () => {
+        resolve((occupied.address() as AddressInfo).port);
+      });
+    });
     try {
       const second = await backend(directory, { databasePath });
       handles.push(second);
-      expect(new URL(second.url).port).not.toBe('4173');
+      expect(new URL(second.url).port).not.toBe(String(occupiedPort));
       expect(
         second.database
           .prepare<
