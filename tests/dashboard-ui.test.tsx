@@ -85,6 +85,52 @@ describe('dashboard UI', () => {
     expect(screen.getByText('Analyst changed to applied')).toBeInTheDocument();
   });
 
+  it('shows first-run onboarding in place of the summary when no jobs exist', async () => {
+    mockFetch((url) => {
+      if (url.endsWith('/api/sources/control-center')) {
+        return { sources: [] };
+      }
+      if (url.endsWith('/api/discovery-alerts')) return [];
+      return dashboard();
+    });
+    renderPage(<DashboardPage />);
+
+    expect(
+      await screen.findByText('Set up discovery in three steps'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Add your first source' }),
+    ).toHaveAttribute('href', '/sources');
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'Set up discovery in three steps',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Add sources')).toBeInTheDocument();
+    expect(screen.getByText('Let discovery run')).toBeInTheDocument();
+    expect(screen.getByText('Review and apply')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Job summary')).not.toBeInTheDocument();
+  });
+
+  it('adapts first-run onboarding when sources are already configured', async () => {
+    mockFetch((url) => {
+      if (url.endsWith('/api/sources/control-center')) {
+        return { sources: [{ id: 's1' }] };
+      }
+      if (url.endsWith('/api/discovery-alerts')) return [];
+      return dashboard();
+    });
+    renderPage(<DashboardPage />);
+
+    expect(
+      await screen.findByRole('link', { name: 'Manage sources' }),
+    ).toHaveAttribute('href', '/sources');
+    expect(
+      screen.getByRole('link', { name: 'Open discovery control' }),
+    ).toHaveAttribute('href', '/employers');
+  });
+
   it('sends URL-backed filters to server search and replaces typing history', async () => {
     const user = userEvent.setup();
     const calls: string[] = [];

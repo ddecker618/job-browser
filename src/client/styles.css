@@ -2505,3 +2505,82 @@ kbd {
 .trend-item span {
   color: var(--muted);
 }
+
+.first-run {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1rem;
+  margin-top: 0.9rem;
+}
+.first-run-hero {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+.first-run-hero h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.first-run-hero p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 46ch;
+}
+.first-run-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+.first-run-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.first-run-steps li {
+  display: flex;
+  gap: 0.8rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+}
+.first-run-step-number {
+  flex: 0 0 auto;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--green);
+  color: #07130f;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+.first-run-steps strong {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+.first-run-steps p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.source-empty {
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+.source-empty .button {
+  margin-top: 0.5rem;
+}
+
+:root[data-theme='light'] .first-run-step-number {
+  color: #fff;
+}

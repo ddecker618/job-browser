@@ -9,7 +9,7 @@ import { api } from '../api.js';
 import { DiscoveryRunPanel } from '../components/DiscoveryRunPanel.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { SourceEditor } from '../components/SourceEditor.js';
-import { EmptyState, ErrorState, LoadingState } from '../components/States.js';
+import { ErrorState, LoadingState } from '../components/States.js';
 import { invalidateScoreQueries } from '../scoreCache.js';
 
 export function SourcesPage() {
@@ -145,9 +145,21 @@ export function SourcesPage() {
         />
       )}
       {control.data.sources.length === 0 ? (
-        <EmptyState title="No configured sources">
-          Add a supported public source to begin discovery.
-        </EmptyState>
+        <div className="state-card empty-state source-empty">
+          <strong>Add your first source</strong>
+          <span>
+            Connect a public job board or an employer careers page to start
+            discovery. Browser-backed providers guide you through sign-in on
+            first use.
+          </span>
+          <button
+            className="button primary"
+            type="button"
+            onClick={() => setEditing('new')}
+          >
+            Add a source
+          </button>
+        </div>
       ) : (
         <div className="source-list">
           {control.data.sources.map((source) => (

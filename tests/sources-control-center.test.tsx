@@ -115,7 +115,10 @@ describe('sources control center', () => {
     mockApi([]);
     renderPage();
     expect(
-      await screen.findByText('No configured sources'),
+      await screen.findByText('Add your first source'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add a source' }),
     ).toBeInTheDocument();
   });
 

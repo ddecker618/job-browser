@@ -2,11 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 
 import { api } from '../api.js';
+import { FirstRunPanel } from '../components/FirstRunPanel.js';
 import { ErrorState, LoadingState } from '../components/States.js';
 import { PageHeader } from '../components/PageHeader.js';
 
 export function DashboardPage() {
   const summary = useQuery({ queryKey: ['dashboard'], queryFn: api.dashboard });
+  const control = useQuery({
+    queryKey: ['source-control-center'],
+    queryFn: api.sourceControlCenter,
+  });
   const alerts = useQuery({
     queryKey: ['discovery-alerts'],
     queryFn: () => api.discoveryAlerts(),
@@ -14,6 +19,22 @@ export function DashboardPage() {
   if (summary.isPending) return <LoadingState label="Building your overview" />;
   if (summary.isError)
     return <ErrorState error={summary.error} title="Dashboard unavailable" />;
+
+  const hasSources =
+    Array.isArray(control.data?.sources) && control.data.sources.length > 0;
+
+  if (summary.data.totalJobs === 0) {
+    return (
+      <>
+        <PageHeader
+          eyebrow="Daily brief"
+          title="Opportunity command center"
+          description="Prioritize the strongest roles, monitor applications, and spot market signals."
+        />
+        <FirstRunPanel hasSources={hasSources} />
+      </>
+    );
+  }
 
   const cards = [
     ['Total jobs', summary.data.totalJobs, 'All discovered opportunities'],
