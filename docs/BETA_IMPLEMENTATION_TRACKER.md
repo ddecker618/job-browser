@@ -92,13 +92,14 @@ Phase 1 (browser reliability) WORKING STATE:
 
 ## Verification Ledger
 
-| When                 | What                                                                                          | Result                        |
-| -------------------- | --------------------------------------------------------------------------------------------- | ----------------------------- |
-| Baseline (`8998fde`) | `npm run verify`                                                                              | 104 files / 1057 tests, green |
-| 2026-09-09           | `tests/browser-session-close.test.ts` + engine-deadline test                      | focused run green                                    |
-| 2026-09-09           | `npm run verify` full AFTER phase-1 units A+C + tests (format+lint+typecheck+test) | 105 files / 1064 tests, green                        |
-| Release (phase 10)   | packaged smoke + distribution privacy scan + installer asar hash + installed reinstall smokes | pending                       |
-| Outage post-incident | drift scan + app start (`Backend started` 2026-09-09T00:37:02Z, `pendingMigrations:[]`)       | clean                         |
+| When                 | What                                                                                                             | Result                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Baseline (`8998fde`) | `npm run verify`                                                                                                 | 104 files / 1057 tests, green                                              |
+| 2026-09-09           | `tests/browser-session-close.test.ts` + engine-deadline test                                                     | focused run green                                                          |
+| 2026-09-09           | `npm run verify` full AFTER phase-1 units A+C + tests (format+lint+typecheck+test)                               | 105 files / 1064 tests, green                                              |
+| 2026-09-09           | Installed reinstall tail: silent install `12F9AAFE…`, installed asar == packaged asar, `desktop:smoke:installed` | all green (exit 0, asar `8F951906…` match at installed path, smoke passed) |
+| Release (phase 10)   | packaged smoke + distribution privacy scan + installer asar hash (re-run at boundary)                            | pending                                                                    |
+| Outage post-incident | drift scan + app start (`Backend started` 2026-09-09T00:37:02Z, `pendingMigrations:[]`)                          | clean                                                                      |
 
 ## Files Changed (this sprint, so far)
 
@@ -112,10 +113,12 @@ Phase 1 (browser reliability) WORKING STATE:
 ## Commits Created (sprint, local only — NONE pushed)
 
 - `811a26b` — fix: bound browser session close and discovery run deadline (Units A+C, phase-11 tests, tracker). Verify green 105/1064. 2026-09-09.
+- `d28e4fe` — docs: tracker checkpoint after `811a26b`.
+- (this update) — docs: tracker close-out of installed reinstall tail (silent install + asar match + installed smoke). NOT pushed.
 
 ## Known Remaining Work
 
-- [ ] Reinstall current installer (`12F9AAFE…`) once the app is closed; verify installed asar == packaged asar; run installed smoke scenarios. INSTALLED COPY IS STALE.
+- [x] Reinstall current installer (`12F9AAFE…`): silent install exit 0; installed asar == packaged asar (`8F951906…`); `desktop:smoke:installed` passed. App was confirmed closed (no Job Browser/electron process, no 6783 listener) before install. CLOSED 2026-09-09.
 - [ ] Phase 1 bake-in: interruptible-cancellation semantics review + provider-side classify errors as `needs-verification` / shape of health status; then Phase 2 perf.
 - [ ] Full phase list 2–9, 12–18 per Phase Progress.
 - [ ] Final privacy scan + distribution scan at release boundary.
@@ -123,7 +126,6 @@ Phase 1 (browser reliability) WORKING STATE:
 
 ## Blockers
 
-- [!] App is CURRENTLY RUNNING (as of last session end, 4 processes) — final reinstall of `12F9AAFE…` build blocked until the user closes it. Do NOT force-kill an app the user is using.
 - [ ] No push until sprint end (user rule — actively enforced, not a bug).
 
 ## Resume Instructions
