@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       19 (semantic normalization/embedding design) - Stage 20 is next
-CURRENT_TASK:        Begin Stage 20 (semantic role matching shadow mode)
-LAST_COMPLETED:      Stage 19 - semantic design document; npm run verify (126 files / 1312 tests)
-NEXT_ACTION:         Stage 20 - build an offline, shadow-only role matching adapter with deterministic fallback
-FILES_IN_PROGRESS:   docs/NLP_SEMANTIC_DESIGN.md
-TESTS_TO_RUN:        npm run verify (docs-only stage)
+CURRENT_STAGE:       20 (semantic role matching shadow mode) - Stage 21 is next
+CURRENT_TASK:        Begin Stage 21 (semantic skill normalization shadow mode)
+LAST_COMPLETED:      Stage 20 - role fallback/persistence adapter + 6 tests; npm run verify (127 files / 1318 tests)
+NEXT_ACTION:         Stage 21 - compare extracted skills with canonical concepts and relationship labels
+FILES_IN_PROGRESS:   src/intelligence/nlp/roleMatching.ts, tests/job-nlp-role-matching.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-role-matching.test.ts (6 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 19 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 20 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -172,7 +172,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 17    | Representative job evaluation                | [x]    |
 | 18    | Shadow-mode acceptance gate                  | [x]    |
 | 19    | Semantic normalization / embedding design    | [x]    |
-| 20    | Semantic role matching shadow mode           | [ ]    |
+| 20    | Semantic role matching shadow mode           | [x]    |
 | 21    | Semantic skill normalization shadow mode     | [ ]    |
 | 22    | Resume evidence matching shadow mode         | [ ]    |
 | 23    | Requirement coverage model                   | [ ]    |
@@ -508,7 +508,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
 - **Current task:** complete.
-- **Exact next action:** Stage 19 delivered (design-only; no runtime/model dependency); begin Stage 20 - semantic role matching shadow mode.
+- **Exact next action:** Stage 20 delivered (deterministic fallback and explicit shadow persistence target); begin Stage 21 - semantic skill normalization shadow mode.
 
 ---
 
@@ -591,9 +591,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 20 — Semantic Role Matching Shadow Mode
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Similarity job title <-> target role/canonical family; persist similarity/version/canonical role/evidence; compare vs deterministic role matching; positive + adversarial examples.
-- **Current task / exact next action:** defined on completion of Stage 19.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/roleMatching.ts` (new): `matchRoleShadow` deterministic-fallback adapter over configured role-family titles; token overlap, exact-title tie-break, threshold/margin abstention, bounded candidates, deterministic reconciliation, and `runRoleMatchingShadow` explicit persistence target; no embedding/runtime dependency or production operation.
+  - `tests/job-nlp-role-matching.test.ts` (new, 6 tests): exact title, close-title token overlap, weak/ambiguous abstention, deterministic conflict, bounds/non-mutation, and shadow-record persistence.
+- **Files/components involved:** `src/intelligence/nlp/roleMatching.ts`, `tests/job-nlp-role-matching.test.ts`, `src/config/search-profile.ts`.
+- **Architectural decisions:**
+  - D-NLP-043: until a measured semantic runtime exists, role matching is a clearly labeled deterministic fallback and never claims embedding semantics.
+  - D-NLP-044: persistence is an explicit additive target interface for shadow records; no `jobs` score/eligibility/ranking/archive field or database migration is touched.
+- **Tests:** 6 role-matching tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-role-matching.test.ts` = 6 pass; `npm run verify` = 127 files / 1318 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** token overlap is not semantic similarity and cannot infer unseen role concepts; persistence is caller-provided and not wired to a production database; Stage 21 owns canonical skill relationships.
+- **Current task:** complete.
+- **Exact next action:** Stage 21 - semantic skill normalization shadow mode with exact/alias/related/unknown relationship labels and adversarial tests.
 
 ---
 

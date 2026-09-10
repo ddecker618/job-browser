@@ -372,6 +372,12 @@ records durable architectural truth only.
   future adapters require pinned artifact/tokenizer/runtime versions, source
   hash invalidation, calibrated thresholds, abstention, redacted explainability,
   and offline package/performance/license measurements (D-NLP-041/042).
+- **Role matching shadow mode (Stage 20):**
+  `src/intelligence/nlp/roleMatching.ts` compares configured role-family titles
+  with a deterministic token-overlap fallback, abstains on weak/ambiguous
+  matches, reconciles against deterministic title families, and persists only
+  through an explicit caller target. It has no embedding/runtime or production
+  score path (D-NLP-043/044).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
