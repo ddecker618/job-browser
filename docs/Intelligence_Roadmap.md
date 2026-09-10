@@ -34,19 +34,20 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       2 (segmenter) - Stage 3 is next
-CURRENT_TASK:        Begin Stage 3 (requirement category classification)
-LAST_COMPLETED:      Stage 2 - segmenter + 17 tests green; npm run verify (110 files / 1135 tests)
-NEXT_ACTION:         Stage 3 - classify meaningful segments (multi-label categories)
-FILES_IN_PROGRESS:   src/intelligence/nlp/segmenter.ts, tests/job-nlp-segmenter.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-segmenter.test.ts tests/job-nlp-schema.test.ts (34 pass); full npm run verify
+CURRENT_STAGE:       3 (category classifier) - Stage 4 is next
+CURRENT_TASK:        Begin Stage 4 (requirement strength/modality)
+LAST_COMPLETED:      Stage 3 - category classifier + 20 tests green; npm run verify (111 files / 1155 tests)
+NEXT_ACTION:         Stage 4 - classify strength/modality per segment/fact
+FILES_IN_PROGRESS:   src/intelligence/nlp/categorizer.ts, tests/job-nlp-categorizer.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-categorizer.test.ts (20 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 2 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 3 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated (charEnd >= charStart); never touch production scoring;
-                     heading detector must reject prose (sentences starting with
-                     "Remote", "Schedule", etc. are NOT headings)
-SAFE_RESUME_POINT:   Stage 3 start
+                     heading detector must reject prose; certification rule must be
+                     present in CATEGORY_RULES and escape '+' in cert labels; do NOT
+                     read "our cleared team" as applicant clearance
+SAFE_RESUME_POINT:   Stage 4 start
 ```
 
 ---
@@ -199,7 +200,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stage 2 delivered segmentation (`src/intelligence/nlp/segmenter.ts`) with source-field + span tracing; proceed to Stage 3.
+- **Exact next action:** Stage 2 delivered segmentation (`src/intelligence/nlp/segmenter.ts`) with source-field + span tracing; Stage 3 delivered multi-label category classification (`src/intelligence/nlp/categorizer.ts`); proceed to Stage 4.
 
 ---
 
@@ -225,9 +226,24 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 3 — Requirement Category Classification
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Classify meaningful segments (skill/experience/education/certification/clearance/citizenship/location/work arrangement/travel/schedule/responsibility/compensation/benefit/company description/EEO/unknown) with multi-label support.
-- **Current task / exact next action:** defined on completion of Stage 2.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/categorizer.ts` (new): deterministic, explainable multi-label classifier (`classifySegment`/`classifySegments`) over all 17 categories; per-category pattern rule lists on normalized text; `CATEGORY_CLASSIFIER_VERSION = 'category-classifier-v1'`; confidence mapping (strong categories 0.85, weak/unknown 0.4-0.7, EEO 0.9); `asSegmentInputs` helper for isolated segment feeding.
+  - Clearance guard: `clearance` category fires ONLY with clearance vocabulary AND applicant-directed language (must/required/ability/eligible/possess/hold/candidate); "Our cleared team supports Secret environments." -> `company-description`, never `clearance`.
+  - EEO dominance: `legal-eeo-boilerplate` is mutually exclusive with non-company categories.
+  - Experience signal hardened: bare word "experience" alone (e.g., "or equivalent experience") does NOT trigger `experience`; requires years/duration/hands-on/prior/experienced/domain patterns.
+  - Failure found + fixed during development: certification rule was missing from `CATEGORY_RULES` (unknown returned for "Security+ required."); `+` in cert labels is a regex quantifier and must be escaped.
+  - `tests/job-nlp-categorizer.test.ts` (new, 20 tests): one assertion per category, multi-label (employment-type+schedule, compensation+benefit), experience/education equivalency, EEO dominance, clearance-vs-company adversarial guard, skill-vs-tool (Splunk SIEM not clearance), indices propagation, confidence bounds, method/version reporting.
+- **Files/components involved:** `src/intelligence/nlp/categorizer.ts`, `tests/job-nlp-categorizer.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-010: classification is a deterministic rule pass producing `SegmentClassification` per segment (segmentIndex + categories + confidence + method/version); factual `NlpFact` documents are NOT emitted yet — strength/modality (Stage 4) + entity/evidence assembly feed fact construction.
+  - D-NLP-011: multi-label by design; category ordering deterministic; unknown only when no rule fires.
+- **Tests:** 20 classifier tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-categorizer.test.ts` = 20 pass; `npm run verify` = 111 files / 1155 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** category classification is vocabulary-pattern based — no skill entity normalization yet (Stage 10), no strength/modality (Stage 4), clearance level/citizenship detail extraction (Stage 8), compensation entity parsing (Stage 11/12).
+- **Current task:** complete.
+- **Exact next action:** Stage 4 - strength/modality classifier (required/preferred/nice-to-have/alternative/equivalency/future/post-hire/ability-to-obtain/informational) with extensive paraphrase + adversarial tests.
 
 ---
 

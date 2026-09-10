@@ -271,6 +271,15 @@ records durable architectural truth only.
   D-NLP-009. Heading detection rejects prose (punctuation `.?!;,`, length > 60)
   so sentences beginning "Remote ..." are never headings. Classification
   (Stage 3+) consumes these segments.
+- **Category classification (Stage 3):** `src/intelligence/nlp/categorizer.ts`
+  is a deterministic multi-label classifier over the 17 contract categories
+  (`CATEGORY_CLASSIFIER_VERSION = 'category-classifier-v1'`), emitting
+  `SegmentClassification` (segmentIndex + categories + confidence +
+  method/version) but NOT yet `NlpFact` documents. `clearance` requires
+  applicant-directed language ("our cleared team" -> `company-description`).
+  `legal-eeo-boilerplate` is dominant/mutually exclusive. Bare "experience"
+  alone does not trigger `experience`. Certification labels with `+` must be
+  regex-escaped. Confidence: strong 0.85, weak/unknown 0.4-0.7, EEO 0.9.
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
