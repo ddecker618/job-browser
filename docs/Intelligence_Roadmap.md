@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       9 (location/remote/hybrid) - Stage 10 is next
-CURRENT_TASK:        Begin Stage 10 (skill and technology extraction)
-LAST_COMPLETED:      Stage 9 - location/remote/hybrid intelligence + 17 tests; npm run verify (117 files / 1250 tests)
-NEXT_ACTION:         Stage 10 - extract skills and technologies while preserving required/preferred/mentioned/environment/responsibility distinctions
-FILES_IN_PROGRESS:   src/intelligence/nlp/location.ts, tests/job-nlp-location.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-location.test.ts; full npm run verify
+CURRENT_STAGE:       10 (skills/technology) - Stage 11 is next
+CURRENT_TASK:        Begin Stage 11 (boilerplate and non-requirement filtering)
+LAST_COMPLETED:      Stage 10 - skill/technology extraction + 12 tests; npm run verify (118 files / 1262 tests)
+NEXT_ACTION:         Stage 11 - filter EEO, benefits, marketing, legal, accommodation, compensation, culture, and non-requirement content conservatively
+FILES_IN_PROGRESS:   src/intelligence/nlp/skills.ts, tests/job-nlp-skills.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-skills.test.ts; full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 9 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 10 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -54,10 +54,13 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      infer unrestricted remote from technical remote terminology;
                      preserve remote-vs-deterministic conflicts (especially
                      occasional onsite) instead of changing a gate; excluded states
-                     and commute miles are evidence only; segment helper must use the
-                     real NlpSegment shape (index/text/normalized/kind/sourceField/
-                     charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 10 start
+                     and commute miles are evidence only; skill aliases must be
+                     boundary-aware and overlapping aliases must prefer the longest
+                     evidence; raw skill text must remain separate from canonical
+                     names; per-mention context is clause-scoped; segment helper
+                     must use the real NlpSegment shape (index/text/normalized/kind/
+                     sourceField/charStart/charEnd), not base/meta
+SAFE_RESUME_POINT:   Stage 11 start
 ```
 
 ---
@@ -137,7 +140,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 7     | Certification intelligence                   | [x]    |
 | 8     | Clearance and citizenship intelligence       | [x]    |
 | 9     | Location / remote / hybrid intelligence      | [x]    |
-| 10    | Skill and technology extraction              | [ ]    |
+| 10    | Skill and technology extraction              | [x]    |
 | 11    | Boilerplate and non-requirement filtering    | [ ]    |
 | 12    | Deterministic + NLP reconciliation           | [ ]    |
 | 13    | Shadow-mode persistence                      | [ ]    |
@@ -210,7 +213,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stages 2-9 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid); proceed to Stage 10.
+- **Exact next action:** Stages 2-10 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology); proceed to Stage 11.
 
 ---
 
@@ -373,9 +376,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 10 — Skill and Technology Extraction
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Extract skills/technologies; distinguish required/preferred/mentioned/environment/responsibility; normalize aliases conservatively preserving original entity.
-- **Current task / exact next action:** defined on completion of Stage 9.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/skills.ts` (new): `extractSkills(segment, catalog?)` -> `SkillExtraction` with `SKILL_INTELLIGENCE_VERSION = 'skill-intelligence-v1'`; configurable catalog entries plus a conservative default catalog; boundary-aware alias matching; raw alias/canonical name/normalized name/span preservation; skill vs technology kind; per-mention context (`required`, `preferred`, `mentioned`, `environment`, `responsibility`) using nearest clause-scoped markers; overlap dedupe prefers longer evidence; `extractSkillsBatch` gated on the `skill` category.
+  - `tests/job-nlp-skills.test.ts` (new, 12 tests): canonical technologies and aliases; embedded-word negative case; skill/technology separation; overlapping alias preference; required/preferred labels; environment/responsibility labels; unqualified mentions; clause isolation; raw/span integrity; batch gate; metadata/confidence; conservative empty output.
+- **Files/components involved:** `src/intelligence/nlp/skills.ts`, `tests/job-nlp-skills.test.ts`; configured catalog reference `src/skills/skillExtractor.ts` and `config/scoring-config.json`.
+- **Architectural decisions:**
+  - D-NLP-023: catalog normalization preserves exact raw evidence and never changes the existing production skill extractor or scoring catalog; caller-supplied catalogs take precedence over the standalone default catalog.
+  - D-NLP-024: skill/technology kind and contextual role are independent annotations; context is per mention and semicolon-scoped so a later required/preferred clause cannot bleed into an earlier entity.
+- **Tests:** 12 skill/technology tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-skills.test.ts` = 12 pass; `npm run verify` = 118 files / 1262 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** default technology classification is a curated fallback; unknown skills are not guessed; context is lexical and clause-scoped; no semantic synonym expansion or production catalog mutation exists yet.
+- **Current task:** complete.
+- **Exact next action:** Stage 11 - boilerplate and non-requirement filtering (EEO, benefits, marketing, legal, accommodation, compensation, cultural, and description content; preserve real soft-skill requirements).
 
 ---
 

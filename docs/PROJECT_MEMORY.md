@@ -315,6 +315,11 @@ records durable architectural truth only.
   relocation, and travel without changing geographic eligibility. It reports
   conflicts with the existing arrangement classifier rather than resolving them
   in production (D-NLP-021/022).
+- **Skill/technology intelligence (Stage 10):**
+  `src/intelligence/nlp/skills.ts` uses boundary-aware configurable aliases,
+  preserves raw evidence, separates skill vs technology entities, and labels
+  each mention as required/preferred/mentioned/environment/responsibility. It
+  never mutates the production scoring catalog (D-NLP-023/024).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
