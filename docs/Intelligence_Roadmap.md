@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       28 (full regression and upgrade validation) - Stage 29 is next
-CURRENT_TASK:        Begin Stage 29 (documentation and final intelligence handoff)
-LAST_COMPLETED:      Stage 28 - score regression + package/install/upgrade smoke; npm run verify (135 files / 1343 tests)
-NEXT_ACTION:         Stage 29 - reconcile handoff documents and publish the final shadow-mode validation status
-FILES_IN_PROGRESS:   tests/job-nlp-shadow-regression.test.ts, docs/NLP_REGRESSION_UPGRADE_VALIDATION.md
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-shadow-regression.test.ts (1 pass); npm run verify (135 files / 1343 tests); desktop smoke sequence
+CURRENT_STAGE:       29 (documentation and final intelligence handoff) - complete
+CURRENT_TASK:        No further NLP stage; future promotion requires new authorization
+LAST_COMPLETED:      Stage 29 - 43-point handoff; npm run verify (136 files / 1344 tests)
+NEXT_ACTION:         Any Level 3/4 promotion must begin with a new field-specific authorization
+FILES_IN_PROGRESS:   none
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-final-handoff.test.ts (1 pass); npm run verify (136 files / 1344 tests); npm run privacy:check (11 pass)
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 24 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 29 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -181,7 +181,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 26    | Intelligence UX prototype                    | [x]    |
 | 27    | Promotion design for production scoring      | [x]    |
 | 28    | Full regression and upgrade validation       | [x]    |
-| 29    | Documentation and final intelligence handoff | [ ]    |
+| 29    | Documentation and final intelligence handoff | [x]    |
 
 ---
 
@@ -771,9 +771,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 29 — Documentation and Final Intelligence Handoff
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Reconcile roadmap + Project Memory + README/CHANGELOG/SESSION_HANDOFF/architecture; exact promotion status; final report (43-point) with explicit NLP SHADOW MODE VALIDATED / NOT YET VALIDATED status.
-- **Current task / exact next action:** defined on completion of Stage 28.
+- **Implementation tasks:**
+  - `docs/NLP_FINAL_HANDOFF.md` (new): exactly 43 reconciled report points with explicit `NLP SHADOW MODE VALIDATED` and `NLP PRODUCTION PROMOTION NOT YET VALIDATED` status.
+  - `tests/job-nlp-final-handoff.test.ts` (new, 1 test): verifies the 43-point count and final status language.
+  - `README.md`, `docs/CHANGELOG.md`, `docs/ARCHITECTURE.md`, `docs/PROJECT_MEMORY.md`, and local `SESSION_HANDOFF.md`: reconciled shadow boundary, validation evidence, and next-authorization rule.
+- **Architectural decisions:**
+  - D-NLP-065: the final handoff validates shadow mode only; production promotion remains explicitly not yet validated and not authorized.
+  - D-NLP-066: any future promotion must name a field, evidence cohort, threshold, owner, rollout, rollback trigger, and release in a new authorization.
+- **Tests:** 1 final-handoff test (see tasks); complete project, privacy, package, install, and upgrade evidence is recorded.
+- **Validation evidence:** `npx vitest run tests/job-nlp-final-handoff.test.ts` = 1 pass; `npm run verify` = 136 files / 1344 tests green; `npm run privacy:check` = 3 files / 11 tests green; `npm run nlp:security-audit` = 3 pass; package/install/upgrade smoke evidence is recorded above.
+- **Known limitations:** the final status is not a claim of live-provider or cross-platform accuracy; no Level 3/4 promotion exists; `SESSION_HANDOFF.md` is intentionally gitignored and remains a local handoff note.
+- **Current task:** complete.
+- **Exact next action:** none for the authorized shadow program; restart at Stage 27 with new authorization if production promotion is requested.
 
 ---
 
@@ -789,3 +800,4 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                  |
 | 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                     |
 | 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS |
+| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated  |

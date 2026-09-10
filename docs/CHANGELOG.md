@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### NLP Intelligence Shadow Program
+
+- Added deterministic, versioned NLP extraction, reconciliation, additive
+  persistence, reprocessing, evaluation, acceptance, performance, security,
+  privacy, and regression validation through Stages 0-29.
+- Added a drawer-local Job Intelligence preview that shows traceable job text
+  and explicit `Unknown` resume coverage without changing production scoring or
+  eligibility.
+- Validated shadow mode with `npm run verify` (136 files / 1344 tests),
+  `npm run privacy:check` (11 tests), and Windows packaged/installed/upgrade
+  smoke. Production promotion remains not yet validated or authorized.
+- Final evidence: `docs/NLP_FINAL_HANDOFF.md`.
+
 ## [1.1.0] - 2026-09-09
 
 ### External Beta Hardening

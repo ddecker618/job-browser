@@ -33,6 +33,11 @@ Release status: **1.1.0 — READY FOR EXTERNAL BETA**. See the
 evidence), the [beta plan](docs/BETA_PLAN.md), and the
 [beta-testing guide](docs/BETA_TESTING.md).
 
+NLP intelligence status: **SHADOW MODE VALIDATED; PRODUCTION PROMOTION NOT YET
+VALIDATED**. See the [NLP final handoff](docs/NLP_FINAL_HANDOFF.md). Shadow NLP
+does not change production scoring, eligibility, ranking, filtering, lifecycle,
+or removal behavior.
+
 ## Requirements
 
 - Windows, macOS, or Linux

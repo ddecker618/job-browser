@@ -232,6 +232,26 @@ implemented within their approved boundaries.
 - Packaged providers remain inside `app.asar`; Electron's virtual filesystem
   supports registry enumeration and relative ESM imports without `asarUnpack`.
 
+### NLP Shadow Plane
+
+The NLP program is an additive, local shadow plane. Its versioned contract is
+`job-nlp-v1` in `src/schemas/job-nlp.ts`; enrichment records are stored in the
+separate `job_nlp_enrichments` table and are invalidated by extraction version
+and source-text hash. `src/intelligence/nlp/*` may segment, classify, extract,
+reconcile, inspect, compare parsed resume evidence, and expose diagnostic UI,
+but it does not write production score, recommendation, eligibility, ranking,
+filtering, active/status/lifecycle, or removal fields.
+
+The read-only Job Intelligence preview is rendered in the existing job detail
+drawer. It consumes the existing `JobDetail` query, labels itself shadow-only,
+shows source/interpreted-as wording, and leaves disconnected resume coverage as
+`Unknown`. Stored NLP data is not exposed as an implicit production score.
+
+The current maximum promotion level is Level 2: additive persisted shadow data
+and labeled diagnostics. Levels 3-4 require the field-specific hard gate in
+`docs/NLP_PROMOTION_DESIGN.md`, a new authorization, and a reversible rollout.
+See `docs/NLP_FINAL_HANDOFF.md` for the validated/not-yet-validated boundary.
+
 Operational diagnostics retained from the existing architecture:
 
 1. Logs: `%APPDATA%\Job Browser\logs\job-browser-YYYY-MM-DD.log`

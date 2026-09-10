@@ -1,0 +1,68 @@
+# NLP Intelligence Final Handoff
+
+Date: 2026-09-10
+
+## Final Status
+
+**NLP SHADOW MODE VALIDATED**
+
+**NLP PRODUCTION PROMOTION NOT YET VALIDATED**
+
+The validation covers the local deterministic shadow contract, evidence,
+persistence boundary, diagnostics, UI labeling, evaluation gate, performance
+baseline, privacy checks, production-score regression, and Windows package
+smoke. It does not authorize Level 3 user-assisted suggestions or Level 4
+production scoring/gate integration.
+
+## 43-Point Report
+
+1. [PASS] The NLP roadmap is maintained separately from the long-term product roadmap.
+2. [PASS] NLP remains an additive shadow plane and does not become a production authority.
+3. [PASS] Deterministic eligibility, location, clearance, schedule, physical, and lifecycle gates remain authoritative.
+4. [PASS] Production score, recommendation, eligibility, ranking, filtering, and removal fields are not written by NLP.
+5. [PASS] Manual removal/archive behavior remains user-controlled.
+6. [PASS] Requirement category and requirement strength remain independent axes.
+7. [PASS] The contract is independently versioned as `job-nlp-v1`.
+8. [PASS] Material extracted facts retain source field, segment index, character span, method, version, and confidence.
+9. [PASS] Confidence is documented as method/evidence reliability, not probability or qualification certainty.
+10. [PASS] Position-preserving segmentation retains traceable source spans.
+11. [PASS] Category classification is deterministic, explainable, and multi-label.
+12. [PASS] Strength classification is deterministic, clause-local, and single-valued per statement.
+13. [PASS] Education extraction preserves degree level, field, equivalency, and substitution distinctions.
+14. [PASS] Experience extraction preserves ranges, modifiers, months, domains, and alternatives without fabricated years.
+15. [PASS] Certification extraction uses a reviewed catalog and blocks known false positives such as grade `A+`.
+16. [PASS] Clearance and citizenship extraction separates applicant requirements from employer/team context.
+17. [PASS] Location, remote, hybrid, travel, and arrangement extraction does not override deterministic gates.
+18. [PASS] Skill and technology extraction preserves raw mentions and conservative context.
+19. [PASS] Boilerplate and non-requirement filtering has adversarial coverage.
+20. [PASS] Deterministic/NLP reconciliation exposes agreement, conflict, and missing-side states.
+21. [PASS] Shadow enrichment persistence uses a separate `job_nlp_enrichments` table.
+22. [PASS] Version/hash invalidation and bounded reprocessing are idempotent and failure-tolerant.
+23. [PASS] Inspector output is read-only, deterministically ordered, hash-based, and redacted.
+24. [PASS] The base synthetic corpus contains 42 explicitly labeled local cases.
+25. [PASS] The representative evaluation corpus contains 54 labeled local cases.
+26. [PASS] The Stage 18 acceptance gate passes category, strength, entity, arrangement, disagreement, and critical-failure thresholds with explicit safety evidence.
+27. [PASS] Semantic design remains design-first with no embedding runtime, model artifact, or silent download.
+28. [SHADOW] Role matching is a deterministic fallback with threshold/margin abstention, not embedding semantics.
+29. [SHADOW] Skill normalization uses only exact, alias, and reviewed relationships; unknown phrases remain unknown.
+30. [SHADOW] Resume evidence consumes parsed evidence only and never claims candidate possession.
+31. [SHADOW] Requirement coverage preserves direct/related/missing/unknown distinctions and has `productionEffect: 'none'`.
+32. [PASS] The offline performance harness measures segmentation, classification, extraction, resume comparison, reprocessing, memory deltas, and cold import.
+33. [PASS] Performance/cache identity uses a stable SHA-256 fingerprint over versioned inputs and corpus content.
+34. [PASS] Temporary SQLite growth and serialized shadow payload size are recorded with limitations.
+35. [PASS] Source/dependency/privacy audit finds no hosted AI, network, telemetry, secret, developer-path, or unlicensed-model artifact.
+36. [SHADOW] The Job Intelligence drawer preview shows traceable job text and interpreted-as wording while all disconnected resume coverage remains unknown.
+37. [PASS] Promotion Levels 0-4 and field-specific promotion states are documented.
+38. [PASS] Promotion requires representative labels, FP/FN consequences, abstention, corroboration, production-vs-shadow diffs, rollback, and explicit authorization.
+39. [PASS] Deterministic production scoring is byte-for-byte unchanged before and after representative shadow operations.
+40. [PASS] `npm run verify` passes: 136 files and 1344 tests.
+41. [PASS] `npm run privacy:check` passes: 3 files and 11 tests.
+42. [PASS] Current Windows package validation passes packaged, installed, and packaged-upgrade smoke; installer SHA-256 is `B0DCA751C245DCAF4BF71E511D7F724BB15C46BBAAEF3EE7CF4716C4C3A25DCE` and `app.asar` SHA-256 is `5C9A474B5924EF6A74D36A652E1E30FD8086DD8EB6AE75C8621F45C1A810CA53`.
+43. [PASS] Roadmap, Project Memory, README, changelog, architecture, session handoff, audit documents, and release boundary are reconciled.
+
+## Handoff Rule
+
+Any future production promotion must begin with a new authorization that names
+the field, evidence cohort, threshold, owner, rollout, rollback trigger, and
+release. Until then, keep the shadow modules, UI, and persistence additive and
+retain `productionEffect: 'none'`.

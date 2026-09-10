@@ -425,6 +425,11 @@ records durable architectural truth only.
   operations leave deterministic `scoreJob` output and source input unchanged.
   The full verification, privacy gate, rebuilt Windows installer, packaged
   smoke, installed smoke, and packaged upgrade smoke all pass (D-NLP-063/064).
+- **Final handoff (Stage 29):**
+  `docs/NLP_FINAL_HANDOFF.md` records exactly 43 points and the final boundary:
+  NLP shadow mode is validated, while production promotion is not yet validated
+  or authorized. README, changelog, architecture, roadmap, and local session
+  handoff point to this status (D-NLP-065/066).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
