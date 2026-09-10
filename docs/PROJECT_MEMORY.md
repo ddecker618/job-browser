@@ -295,6 +295,10 @@ records durable architectural truth only.
   education/credential/combination/none), substitution years, combined flag,
   and degree spans. Field values are normalized to known vocabulary or kept
   as conservative lowercased originals - never fabricated (D-NLP-014/015).
+- **Experience intelligence (Stage 6):** `src/intelligence/nlp/experience.ts`
+  extracts min/preferred years, ranges, nested clauses, months (never
+  converted to years), domains (stopword-filtered), and or-alternatives.
+  Years are never fabricated (D-NLP-016/017).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

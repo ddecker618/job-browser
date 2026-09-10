@@ -34,20 +34,20 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       5 (education) - Stage 6 is next
-CURRENT_TASK:        Begin Stage 6 (experience intelligence)
-LAST_COMPLETED:      Stage 5 - education intelligence + 14 tests; npm run verify (113 files / 1188 tests)
-NEXT_ACTION:         Stage 6 - extract min/preferred years, ranges, domain, alternatives
-FILES_IN_PROGRESS:   src/intelligence/nlp/education.ts, tests/job-nlp-education.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-education.test.ts (14 pass); full npm run verify
+CURRENT_STAGE:       6 (experience) - Stage 7 is next
+CURRENT_TASK:        Begin Stage 7 (certification intelligence)
+LAST_COMPLETED:      Stage 6 - experience intelligence + 13 tests; npm run verify (114 files / 1201 tests)
+NEXT_ACTION:         Stage 7 - normalize known certs, required/preferred/equivalent/after-hire
+FILES_IN_PROGRESS:   src/intelligence/nlp/experience.ts, tests/job-nlp-experience.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-experience.test.ts (13 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 5 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 6 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
-                     validated; never touch production scoring; field capture must not
-                     swallow separators ("Computer Science required." -> "computer
-                     science"); field X "degree" must not auto-imply a level; permissions
-                     on imports (no unused vars), optional-chaining style
-SAFE_RESUME_POINT:   Stage 6 start
+                     validated; never touch production scoring; parse primary years from
+                     the FULL segment (not the pre-'or' chunk); matchAll needs global
+                     regexes (use a clone helper); domain stopwords must be filtered
+                     ('experience in X' -> X); String#includes for '+' checks
+SAFE_RESUME_POINT:   Stage 7 start
 ```
 
 ---
@@ -200,7 +200,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stage 2 segmentation, Stage 3 categories, Stage 4 strength, Stage 5 education delivered; proceed to Stage 6.
+- **Exact next action:** Stages 2-6 delivered (segmentation, categories, strength, education, experience); proceed to Stage 7.
 
 ---
 
@@ -288,9 +288,21 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 6 — Experience Intelligence
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Extract min/preferred years, ranges, domain, role context, nested experience, alternatives; never fabricate years; preserve ranges.
-- **Current task / exact next action:** defined on completion of Stage 5.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/experience.ts` (new): `extractExperience(segment)` -> `ExperienceExtraction` with `EXPERIENCE_INTELLIGENCE_VERSION = 'experience-intelligence-v1'`; primary `years` (range / at-least / at-most / unknown via range, explicit min/max, "or more", "+" markers with deterministic precedence); `nestedYears` ("including 2 years of X", "5 of which in X"); `months` kept separate (never converted to years); `domains` with stopword filtering and known-phrase capture; `alternatives` split on bare "or"; role `context`; ranges preserved end-to-end (3-5 stays min 3 max 5).
+  - Regex hygiene: `matchAll` clone helper for global matching (avoids shared-regex state); primary years parsed from the FULL segment (not the pre-'or' chunk); `String#includes('+')` instead of regex for plus-sign detection.
+  - `tests/job-nlp-experience.test.ts` (new, 13 tests): bare years unknown-modifier; nested clauses; range preservation; explicit min/max; plus-sign; or-more; months-not-years; of-which nesting; domains; no-fabrication (no years -> years null, low confidence); or-alternatives; method/version metadata.
+- **Files/components involved:** `src/intelligence/nlp/experience.ts`, `tests/job-nlp-experience.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-016: years are NEVER fabricated or converted (months are not years; no rounding); modifiers are only assigned from explicit wording.
+  - D-NLP-017: domain extraction filters stopwords so "experience in X operations" captures `X operations`, never the literal word "experience".
+- **Tests:** 13 experience tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-experience.test.ts` = 13 pass; `npm run verify` = 114 files / 1201 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** no semantic range interpretation ("2-4" may mean preferred range not literal); alternatives limited to "or" + year clauses; role-context capture is phrase heuristics only.
+- **Current task:** complete.
+- **Exact next action:** Stage 7 - certification intelligence (normalize known certs: Security+, Network+, A+, CySA+, SecurityX/CASP+, CISSP, CISM, CCNA, Microsoft/Azure/AWS families; required/preferred/equivalent/after-hire/must-obtain; no false equivalencies).
 
 ---
 
