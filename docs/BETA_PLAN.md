@@ -60,3 +60,22 @@ browser-reliability regressions; the privacy guarantees hold.
 - Phase 13: privacy audit final pass.
 - Phase 17: version bump to 1.1.0, CSP, version checks, final gates.
 - Phase 18: final report + READY / NOT READY FOR EXTERNAL BETA.
+
+## Status
+
+All milestones reached (2026-09-09). Exit criteria:
+
+1. Full gate green (`npm run verify`, 108 files / 1101 tests) + `npm run
+privacy:check` (11/11). ✅
+2. Packaged smoke + installed smoke pass on the 1.1.0 artifact; upgrade
+   preservation verified with a seeded synthetic database. ✅
+3. No unresolved data-integrity or privacy defects from beta findings
+   (no external findings yet; pre-release audit clean). ✅
+4. Beta findings triaged; release blockers fixed. Cross-source
+   parallelization waived for 1.1.0 with reason (tracker decision D-010). ✅
+
+Beta artifact: `release\Job-Browser-Setup-1.1.0.exe`
+(253,533,832 B, SHA-256
+`E68D623699A46DE8C3C8534DB38FF54CE4887428A865AC0838F8F8512D8FBAD9`).
+
+Verdict: **READY FOR EXTERNAL BETA**.

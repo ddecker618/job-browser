@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-09-09
+
+### External Beta Hardening
+
+Browser-backed discovery reliability, UX, privacy, and release validation
+landed in the beta sprint leading up to the 1.1.0 external beta.
+
+- **Browser reliability (DEF-001).** Root-caused and fixed the Dice
+  detail-page stall failure class: bounded `closeBrowserSession()` with a
+  forced process kill as a last resort, plus a per-run deadline watchdog in
+  `DiscoveryEngine` that force-closes the session on breach. Abort/stop now
+  interrupts in-flight browser waits promptly (`interrupted`, not a failure).
+  Provider verification/auth-wall failures classify to
+  `credentials-required` with a `Verification required: Complete the security
+check or log in` health message instead of a generic failure.
+- **Discovery performance.** Replaced per-provider fixed sleeps with bounded
+  content/card-count waits (`waitForContent`, `waitForCardCount`) for
+  Dice/LinkedIn/USAJobs and the shared browser runner. Anti-bot pacing after
+  detail pages deliberately kept. All `page.goto` sites audited: consistently
+  `domcontentloaded` with 30–45s caps.
+- **First-run UX.** Dashboard onboarding panel (zero jobs) that adapts to
+  source count, first-source zero state on the Sources page, and 1-click
+  quick-add chips for browser boards (Dice/LinkedIn/USAJobs/Handshake).
+- **Log-in UX.** Running-status sign-in hint for credential-backed sources and
+  an amber "complete sign-in in the browser window, then run again" callout
+  when verification/authentication failures appear in run history.
+- **Empty/error-state UX.** Per-provider "what to do next" guidance under
+  failed source health messages (verification/auth/timeout/404/unavailable/
+  no positions); the Jobs page differentiates "no jobs match these filters"
+  (with a Show-all link) from "no jobs yet" (with guidance to add sources).
+- **Privacy.** Documented offline-first, no-telemetry transmission policy
+  (`docs/privacy.md`); added `npm run privacy:check` — distribution scans of
+  tracked files, compiled `dist/`, and the packaged `app.asar` for personal
+  data and personal file types, plus fresh-install isolation and
+  existing-data preservation tests. Local-only adoption markers
+  (`adoption.installedAt` / `adoption.firstSourceAt`) recorded in SQLite,
+  exposed read-only on the Settings page; never transmitted.
+- **Testing & release validation.** Browser regression suite (session cleanup
+  guarantees, navigation retry); known-quirks index (`docs/KNOWN_QUIRKS.md`);
+  beta plan (`docs/BETA_PLAN.md`). Full gate green at 108 files / 1101 tests
+  and `privacy:check` 11/11. Packaged smoke, installed smoke, and
+  upgrade-preservation smoke pass on the built 1.1.0 artifact. Installer:
+  `release\Job-Browser-Setup-1.1.0.exe`, 253,533,832 B,
+  SHA-256 `E68D623699A46DE8C3C8534DB38FF54CE4887428A865AC0838F8F8512D8FBAD9`.
+
 ## [1.0.28] - 2026-09-08
 
 ### Dependency Security Hardening
