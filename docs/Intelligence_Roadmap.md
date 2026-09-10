@@ -34,16 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       14 (invalidation/reprocessing) - Stage 15 is next
-CURRENT_TASK:        Begin Stage 15 (NLP debug and intelligence inspector)
-LAST_COMPLETED:      Stage 14 - invalidation/reprocessing + 7 tests; npm run verify (122 files / 1298 tests)
-NEXT_ACTION:         Stage 15 - expose evidence, categories, strengths, entities, confidence, source, method, version, and reconciliation state without secret/personal leakage
-FILES_IN_PROGRESS:   src/intelligence/nlp/reprocessing.ts, tests/job-nlp-reprocessing.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-reprocessing.test.ts (7 pass); full npm run verify
-FILES_IN_PROGRESS:   src/intelligence/nlp/reprocessing.ts, tests/job-nlp-reprocessing.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-reprocessing.test.ts; full npm run verify
+CURRENT_STAGE:       15 (NLP debug/intelligence inspector) - Stage 16 is next
+CURRENT_TASK:        Begin Stage 16 (synthetic NLP evaluation corpus)
+LAST_COMPLETED:      Stage 15 - read-only inspector + 4 tests; npm run verify (123 files / 1302 tests)
+NEXT_ACTION:         Stage 16 - create a deterministic paraphrase and adversarial corpus covering every NLP category
+FILES_IN_PROGRESS:   src/intelligence/nlp/inspector.ts, tests/job-nlp-inspector.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-inspector.test.ts (4 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 14 checkpoint)
+LATEST_CHECKPOINT:   NLP Stage 15 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -71,8 +69,11 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                         and never update jobs; reprocessing must sort/dedupe
                         candidates, bound each batch, skip fresh rows, preserve
                         completed saves after failures, validate builder version/hash,
-                        and never expose archive/score/eligibility operations;
-                        segment helper must use the real
+                         and never expose archive/score/eligibility operations;
+                         inspector must be read-only, deterministically ordered,
+                         and redact emails, phones, SSNs, secrets, profiles, and
+                         street addresses before exposing evidence;
+                         segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
 SAFE_RESUME_POINT:   Stage 15 start
@@ -160,7 +161,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 12    | Deterministic + NLP reconciliation           | [x]    |
 | 13    | Shadow-mode persistence                      | [x]    |
 | 14    | Invalidation and reprocessing                | [x]    |
-| 15    | NLP debug / intelligence inspector           | [ ]    |
+| 15    | NLP debug / intelligence inspector           | [x]    |
 | 16    | Synthetic NLP evaluation corpus              | [ ]    |
 | 17    | Representative job evaluation                | [ ]    |
 | 18    | Shadow-mode acceptance gate                  | [ ]    |
@@ -488,9 +489,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 15 — NLP Debug / Intelligence Inspector
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Developer-facing inspector: evidence | category | strength | entities | confidence | source | method | version | reconciliation state per job; no secret/personal leakage.
-- **Current task / exact next action:** defined on completion of Stage 14.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/inspector.ts` (new): read-only `inspectJobNlp` projection with inspector/extraction versions, source hash, segmentation metadata, evidence spans, category, strength, entities, confidence/bands, extraction method, and reconciliation state; facts/entities are deterministically ordered and user-derived text is redacted for email, phone, SSN, secret assignment, LinkedIn profile, and street-address patterns.
+  - `tests/job-nlp-inspector.test.ts` (new, 4 tests): diagnostic projection, redaction across all user-derived fields, deterministic ordering/non-mutation, and empty-confidence behavior.
+- **Files/components involved:** `src/intelligence/nlp/inspector.ts`, `tests/job-nlp-inspector.test.ts`, `src/schemas/job-nlp.ts`.
+- **Architectural decisions:**
+  - D-NLP-033: inspector output is a derived, read-only projection; it never persists, scores, ranks, filters, archives, or changes production fields.
+  - D-NLP-034: evidence remains span-addressable but user-derived text is redacted before projection; segmentation metadata exposes counts/method only, not a second unredacted text channel.
+- **Tests:** 4 inspector tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
+- **Current task:** complete.
+- **Exact next action:** Stage 16 - synthetic NLP evaluation corpus (paraphrases, adversarial examples, and critical false-positive/false-negative cases).
 
 ---
 

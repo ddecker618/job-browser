@@ -340,6 +340,12 @@ records durable architectural truth only.
   per-job execution. Current version/source-hash rows are skipped, completed
   saves survive later failures, and builder mismatches fail safely without
   touching archive, score, eligibility, or lifecycle state (D-NLP-031/032).
+- **Debug inspector (Stage 15):**
+  `src/intelligence/nlp/inspector.ts` exposes a deterministic, read-only
+  projection of evidence, category, strength, entities, confidence, source,
+  method, version, and reconciliation state. User-derived text is redacted for
+  common personal and secret patterns before projection; no persistence or
+  production-field path exists (D-NLP-033/034).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
