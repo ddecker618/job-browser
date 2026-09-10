@@ -420,6 +420,11 @@ records durable architectural truth only.
   promotion gate. The current maximum is Level 2 additive shadow output; no
   production scoring, eligibility, ranking, filtering, lifecycle, or removal
   promotion is authorized (D-NLP-060/061/062).
+- **Regression and upgrade validation (Stage 28):**
+  `tests/job-nlp-shadow-regression.test.ts` proves representative shadow
+  operations leave deterministic `scoreJob` output and source input unchanged.
+  The full verification, privacy gate, rebuilt Windows installer, packaged
+  smoke, installed smoke, and packaged upgrade smoke all pass (D-NLP-063/064).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

@@ -34,12 +34,12 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       27 (promotion design) - Stage 28 is next
-CURRENT_TASK:        Begin Stage 28 (full regression and upgrade validation)
-LAST_COMPLETED:      Stage 27 - promotion design + 1 test; npm run verify (134 files / 1342 tests)
-NEXT_ACTION:         Stage 28 - verify full regression, production-score preservation, and packaged upgrade behavior
-FILES_IN_PROGRESS:   docs/NLP_PROMOTION_DESIGN.md, tests/job-nlp-promotion-design.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-promotion-design.test.ts (1 pass); npm run verify (134 files / 1342 tests)
+CURRENT_STAGE:       28 (full regression and upgrade validation) - Stage 29 is next
+CURRENT_TASK:        Begin Stage 29 (documentation and final intelligence handoff)
+LAST_COMPLETED:      Stage 28 - score regression + package/install/upgrade smoke; npm run verify (135 files / 1343 tests)
+NEXT_ACTION:         Stage 29 - reconcile handoff documents and publish the final shadow-mode validation status
+FILES_IN_PROGRESS:   tests/job-nlp-shadow-regression.test.ts, docs/NLP_REGRESSION_UPGRADE_VALIDATION.md
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-shadow-regression.test.ts (1 pass); npm run verify (135 files / 1343 tests); desktop smoke sequence
 KNOWN_FAILURES:      none
 LATEST_CHECKPOINT:   NLP Stage 24 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
@@ -180,7 +180,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 25    | Security / privacy / packaging audit         | [x]    |
 | 26    | Intelligence UX prototype                    | [x]    |
 | 27    | Promotion design for production scoring      | [x]    |
-| 28    | Full regression and upgrade validation       | [ ]    |
+| 28    | Full regression and upgrade validation       | [x]    |
 | 29    | Documentation and final intelligence handoff | [ ]    |
 
 ---
@@ -752,9 +752,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 28 — Full Regression and Upgrade Validation
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Full project verification; demonstrate existing production recommendation scores unchanged during shadow-mode; no substituting focused tests for the complete gate.
-- **Current task / exact next action:** defined on completion of Stage 27.
+- **Implementation tasks:**
+  - `tests/job-nlp-shadow-regression.test.ts` (new, 1 test): computes deterministic production scoring before and after representative shadow NLP operations and requires exact equality plus input immutability.
+  - `docs/NLP_REGRESSION_UPGRADE_VALIDATION.md` (new): full gate, privacy, package, desktop smoke, upgrade, and shadow-boundary checklist.
+- **Files/components involved:** `src/intelligence/scoringEngine.ts`, `src/intelligence/nlp/*`, `tests/job-nlp-shadow-regression.test.ts`, desktop package/smoke scripts.
+- **Architectural decisions:**
+  - D-NLP-063: production recommendation output is the regression oracle; shadow work is allowed only when score, eligibility, ranking inputs, lifecycle, and source job data remain unchanged.
+  - D-NLP-064: focused tests cannot replace `npm run verify` or packaged/installed upgrade smoke; release artifacts must be rebuilt after source changes.
+- **Tests:** 1 shadow-regression test (see tasks), plus the complete repository and desktop validation sequence.
+- **Validation evidence:** `npx vitest run tests/job-nlp-shadow-regression.test.ts` = 1 pass; `npm run verify` = 135 files / 1343 tests green; `npm run privacy:check` = 3 files / 11 tests green; packaged, installed, and packaged-upgrade desktop smoke passed. Installer: 253,570,850 B, SHA-256 `B0DCA751C245DCAF4BF71E511D7F724BB15C46BBAAEF3EE7CF4716C4C3A25DCE`; `app.asar`: 73,882,150 B, SHA-256 `5C9A474B5924EF6A74D36A652E1E30FD8086DD8EB6AE75C8621F45C1A810CA53`.
+- **Known limitations:** no cross-platform installer run is available in this Windows session; production-vs-shadow evidence covers the deterministic in-process score path and additive storage boundaries.
+- **Current task:** complete.
+- **Exact next action:** Stage 29 - final documentation reconciliation and 43-point handoff report.
 
 ---
 
@@ -768,13 +779,13 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Verification Ledger (NLP program)
 
-| Date       | Action                   | Result                                                                    |
-| ---------- | ------------------------ | ------------------------------------------------------------------------- |
-| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                     |
-| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean |
-| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`        |
-| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark   |
-| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                     |
-| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                |
-| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                   |
-| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                |
+| Date       | Action                   | Result                                                                      |
+| ---------- | ------------------------ | --------------------------------------------------------------------------- |
+| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                       |
+| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean   |
+| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`          |
+| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark     |
+| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                       |
+| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                  |
+| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                     |
+| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS |
