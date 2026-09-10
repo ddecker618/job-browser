@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       18 (shadow-mode acceptance gate) - Stage 19 is next
-CURRENT_TASK:        Begin Stage 19 (semantic normalization/embedding design)
-LAST_COMPLETED:      Stage 18 - acceptance thresholds + 3 tests; npm run verify (126 files / 1312 tests)
-NEXT_ACTION:         Stage 19 - design local semantic normalization/embedding options without adding runtime model dependencies
-FILES_IN_PROGRESS:   src/intelligence/nlp/acceptance.ts, tests/job-nlp-acceptance.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-acceptance.test.ts (3 pass); full npm run verify
+CURRENT_STAGE:       19 (semantic normalization/embedding design) - Stage 20 is next
+CURRENT_TASK:        Begin Stage 20 (semantic role matching shadow mode)
+LAST_COMPLETED:      Stage 19 - semantic design document; npm run verify (126 files / 1312 tests)
+NEXT_ACTION:         Stage 20 - build an offline, shadow-only role matching adapter with deterministic fallback
+FILES_IN_PROGRESS:   docs/NLP_SEMANTIC_DESIGN.md
+TESTS_TO_RUN:        npm run verify (docs-only stage)
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 18 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 19 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -171,7 +171,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 16    | Synthetic NLP evaluation corpus              | [x]    |
 | 17    | Representative job evaluation                | [x]    |
 | 18    | Shadow-mode acceptance gate                  | [x]    |
-| 19    | Semantic normalization / embedding design    | [ ]    |
+| 19    | Semantic normalization / embedding design    | [x]    |
 | 20    | Semantic role matching shadow mode           | [ ]    |
 | 21    | Semantic skill normalization shadow mode     | [ ]    |
 | 22    | Resume evidence matching shadow mode         | [ ]    |
@@ -508,7 +508,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
 - **Current task:** complete.
-- **Exact next action:** Stage 18 delivered (acceptance gate passes corrected 54-case report with all safety evidence); begin Stage 19 - semantic normalization/embedding design.
+- **Exact next action:** Stage 19 delivered (design-only; no runtime/model dependency); begin Stage 20 - semantic role matching shadow mode.
 
 ---
 
@@ -573,9 +573,19 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 19 — Semantic Normalization / Embedding Design
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Research + design only: local embedding runtime, model selection/licensing/redistribution, versioning, cache, canonical representations, thresholds, explainability, invalidation; measure size/startup/latency/memory/disk/CPU/packaging impact; NEVER silently add hundreds of MB or download models at runtime.
-- **Current task / exact next action:** defined on completion of Stage 18.
+- **Implementation tasks:**
+  - `docs/NLP_SEMANTIC_DESIGN.md` (new): design-only semantic input/concept/match records; deterministic-first and shadow-only decisions; local runtime options; license/redistribution checklist; model/tokenizer/runtime versioning; source-hash cache key; threshold calibration and abstention; redacted explainability; offline benchmark matrix; rollout/non-goals.
+- **Files/components involved:** `docs/NLP_SEMANTIC_DESIGN.md`, `src/schemas/job-nlp.ts`, `src/intelligence/nlp/inspector.ts`, `src/intelligence/nlp/reprocessing.ts`, `package.json`.
+- **Architectural decisions:**
+  - D-NLP-041: no semantic runtime, model artifact, network fetch, or package dependency is added until an offline benchmark records quality, license, size, startup, latency, memory, CPU, disk, cache, and packaging impact.
+  - D-NLP-042: semantic output is a versioned, abstention-capable shadow suggestion; deterministic evidence and hard gates remain authoritative, and cache entries are disposable derived data.
+- **Tests:** no new runtime tests; the design is validated by the full repository gate.
+- **Validation evidence:** `npm run verify` = 126 files / 1312 tests green; no semantic dependency or model artifact added; no network/model download path added.
+- **Known limitations:** model/runtime selection remains open pending benchmark evidence; thresholds and package budgets are intentionally not invented; future semantic work must remain behind an adapter and acceptance gate.
+- **Current task:** complete.
+- **Exact next action:** Stage 20 - semantic role matching shadow mode using deterministic fallback and no production scoring/eligibility integration.
 
 ---
 

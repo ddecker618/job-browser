@@ -366,6 +366,12 @@ records durable architectural truth only.
   explicit evidence for production-field preservation, persistence/versioning,
   stale reprocessing, evidence retention, conflict visibility, and inspector
   behavior (D-NLP-039/040).
+- **Semantic design (Stage 19):**
+  `docs/NLP_SEMANTIC_DESIGN.md` is the design-only boundary for future local
+  semantic normalization. No model/runtime/dependency/download is approved;
+  future adapters require pinned artifact/tokenizer/runtime versions, source
+  hash invalidation, calibrated thresholds, abstention, redacted explainability,
+  and offline package/performance/license measurements (D-NLP-041/042).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
