@@ -320,6 +320,11 @@ records durable architectural truth only.
   preserves raw evidence, separates skill vs technology entities, and labels
   each mention as required/preferred/mentioned/environment/responsibility. It
   never mutates the production scoring catalog (D-NLP-023/024).
+- **Boilerplate intelligence (Stage 11):**
+  `src/intelligence/nlp/boilerplate.ts` identifies EEO, benefits, marketing,
+  legal, accommodation, compensation, culture, and company-description signals
+  without destructively filtering segments. Applicant-directed requirements and
+  generic soft skills are preserved for reconciliation (D-NLP-025/026).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

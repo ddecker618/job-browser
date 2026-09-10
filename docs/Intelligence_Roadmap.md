@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       10 (skills/technology) - Stage 11 is next
-CURRENT_TASK:        Begin Stage 11 (boilerplate and non-requirement filtering)
-LAST_COMPLETED:      Stage 10 - skill/technology extraction + 12 tests; npm run verify (118 files / 1262 tests)
-NEXT_ACTION:         Stage 11 - filter EEO, benefits, marketing, legal, accommodation, compensation, culture, and non-requirement content conservatively
-FILES_IN_PROGRESS:   src/intelligence/nlp/skills.ts, tests/job-nlp-skills.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-skills.test.ts; full npm run verify
+CURRENT_STAGE:       11 (boilerplate/filtering) - Stage 12 is next
+CURRENT_TASK:        Begin Stage 12 (deterministic and NLP reconciliation)
+LAST_COMPLETED:      Stage 11 - boilerplate/non-requirement filtering + 14 tests; npm run verify (119 files / 1276 tests)
+NEXT_ACTION:         Stage 12 - compare deterministic facts and NLP facts, record agreement/conflict, and preserve deterministic authority
+FILES_IN_PROGRESS:   src/intelligence/nlp/boilerplate.ts, tests/job-nlp-boilerplate.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-boilerplate.test.ts; full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 10 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 11 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -57,10 +57,14 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      and commute miles are evidence only; skill aliases must be
                      boundary-aware and overlapping aliases must prefer the longest
                      evidence; raw skill text must remain separate from canonical
-                     names; per-mention context is clause-scoped; segment helper
-                     must use the real NlpSegment shape (index/text/normalized/kind/
-                     sourceField/charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 11 start
+                      names; per-mention context is clause-scoped; boilerplate
+                      signals must never discard applicant-directed requirements;
+                      generic soft skills such as excellent communication remain
+                      requirements; broad company-description patterns must not
+                      swallow EEO sentences; segment helper must use the real
+                      NlpSegment shape (index/text/normalized/kind/sourceField/
+                      charStart/charEnd), not base/meta
+SAFE_RESUME_POINT:   Stage 12 start
 ```
 
 ---
@@ -141,7 +145,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 8     | Clearance and citizenship intelligence       | [x]    |
 | 9     | Location / remote / hybrid intelligence      | [x]    |
 | 10    | Skill and technology extraction              | [x]    |
-| 11    | Boilerplate and non-requirement filtering    | [ ]    |
+| 11    | Boilerplate and non-requirement filtering    | [x]    |
 | 12    | Deterministic + NLP reconciliation           | [ ]    |
 | 13    | Shadow-mode persistence                      | [ ]    |
 | 14    | Invalidation and reprocessing                | [ ]    |
@@ -213,7 +217,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stages 2-10 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology); proceed to Stage 11.
+- **Exact next action:** Stages 2-11 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology, boilerplate filtering); proceed to Stage 12.
 
 ---
 
@@ -395,9 +399,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 11 — Boilerplate and Non-Requirement Filtering
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Identify EEO/benefits/marketing/legal/accommodation/compensation/cultural/description content; conservative with generic soft skills ("excellent communication" may be a real requirement).
-- **Current task / exact next action:** defined on completion of Stage 10.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/boilerplate.ts` (new): `extractBoilerplate(segment)` -> `BoilerplateExtraction` with `BOILERPLATE_INTELLIGENCE_VERSION = 'boilerplate-intelligence-v1'`; signal kinds for EEO, benefits, marketing, legal, accommodation, compensation, culture, and company description; exact signal spans; requirement-signal detection; conservative disposition (`boilerplate`, `requirement`, `mixed`, `unknown`); `isBoilerplate` is false whenever applicant-directed or genuine soft-skill requirement evidence exists; `extractBoilerplateBatch` remains additive and never deletes segments.
+  - `tests/job-nlp-boilerplate.test.ts` (new, 14 tests): EEO, benefits, compensation, marketing/company description, legal/accommodation, culture, soft-skill preservation, mixed benefits requirement, compensation responsibility, required background check, unrelated prose, span evidence, batch behavior, metadata/confidence.
+- **Files/components involved:** `src/intelligence/nlp/boilerplate.ts`, `tests/job-nlp-boilerplate.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-025: boilerplate classification is a later-stage signal, not a destructive filter; segments remain available for reconciliation and diagnostics.
+  - D-NLP-026: any applicant-directed requirement, responsibility, or real generic soft-skill signal changes disposition to `requirement`/`mixed` and sets `preserveRequirement = true`; EEO/company-description overlap is kept separate and broad company patterns do not swallow EEO evidence.
+- **Tests:** 14 boilerplate/filtering tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-boilerplate.test.ts` = 14 pass; `npm run verify` = 119 files / 1276 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** phrase rules are conservative and English-only; no section-level filtering context or fact assembler exists yet; mixed statements intentionally require later reconciliation rather than automatic removal.
+- **Current task:** complete.
+- **Exact next action:** Stage 12 - deterministic + NLP reconciliation (agreement/conflict states, deterministic authority, value/modality/entity/scope conflict details, still shadow-only).
 
 ---
 
