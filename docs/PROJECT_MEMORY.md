@@ -401,6 +401,13 @@ records durable architectural truth only.
   runtime, model artifact, network request, or production effect is present
   (D-NLP-051/052/053). Baseline details live in
   `docs/NLP_PERFORMANCE_AUDIT.md`.
+- **Security/privacy/packaging audit (Stage 25):**
+  `npm run nlp:security-audit` statically checks the shadow NLP scope for model,
+  hosted-AI, network, secret, developer-path, and prohibited dependency markers;
+  it also verifies fresh NLP persistence is empty and inspector output redacts
+  sensitive values. `npm run privacy:check` remains the distribution gate
+  (D-NLP-054/055/056). Findings live in
+  `docs/NLP_SECURITY_PRIVACY_PACKAGING_AUDIT.md`.
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

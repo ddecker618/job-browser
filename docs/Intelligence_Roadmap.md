@@ -34,12 +34,12 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       24 (NLP/semantic performance audit) - Stage 25 is next
-CURRENT_TASK:        Begin Stage 25 (security/privacy/packaging audit)
-LAST_COMPLETED:      Stage 24 - offline performance audit + 2 tests; npm run verify (131 files / 1336 tests)
-NEXT_ACTION:         Stage 25 - audit source, artifacts, caches, diagnostics, and fresh-install privacy boundaries
-FILES_IN_PROGRESS:   docs/NLP_PERFORMANCE_AUDIT.md, src/intelligence/nlp/performanceAudit.ts, tests/job-nlp-performance-audit.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-performance-audit.test.ts (2 pass); full npm run verify (131 files / 1336 tests)
+CURRENT_STAGE:       25 (security/privacy/packaging audit) - Stage 26 is next
+CURRENT_TASK:        Begin Stage 26 (intelligence UX prototype)
+LAST_COMPLETED:      Stage 25 - security/privacy/packaging audit + 3 tests; privacy:check (11 tests)
+NEXT_ACTION:         Stage 26 - add a read-only Job Intelligence preview to the existing job detail drawer
+FILES_IN_PROGRESS:   docs/NLP_SECURITY_PRIVACY_PACKAGING_AUDIT.md, tests/job-nlp-security-packaging.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-security-packaging.test.ts (3 pass); npm run privacy:check (11 pass); npm run verify (132 files / 1339 tests)
 KNOWN_FAILURES:      none
 LATEST_CHECKPOINT:   NLP Stage 24 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
@@ -177,7 +177,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 22    | Resume evidence matching shadow mode         | [x]    |
 | 23    | Requirement coverage model                   | [x]    |
 | 24    | NLP / semantic performance audit             | [x]    |
-| 25    | Security / privacy / packaging audit         | [ ]    |
+| 25    | Security / privacy / packaging audit         | [x]    |
 | 26    | Intelligence UX prototype                    | [ ]    |
 | 27    | Promotion design for production scoring      | [ ]    |
 | 28    | Full regression and upgrade validation       | [ ]    |
@@ -689,9 +689,22 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 25 — Security / Privacy / Packaging Audit
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Audit model files, runtime, caches, NLP DB records, fixtures, diagnostics, build inputs, packaged files, installer; verify no telemetry/external transmission/secrets/personal data/dev paths; fresh installs have neutral NLP state; verify model licensing if packaged.
-- **Current task / exact next action:** defined on completion of Stage 24.
+- **Implementation tasks:**
+  - `tests/job-nlp-security-packaging.test.ts` (new, 3 tests): static source/dependency scan, fresh shadow-table neutrality and separation from production job fields, and inspector redaction.
+  - `docs/NLP_SECURITY_PRIVACY_PACKAGING_AUDIT.md` (new): model/runtime inventory, privacy boundary, fresh-install, diagnostics, and packaging findings.
+  - `npm run nlp:security-audit`: repeatable focused audit; existing `npm run privacy:check` remains the distribution-level privacy gate.
+- **Files/components involved:** `src/intelligence/nlp/*`, `src/schemas/job-nlp.ts`, `src/database/jobNlpEnrichmentRepository.ts`, `src/db/migrations/031_nlp_enrichments.sql`, `tests/job-nlp-security-packaging.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-054: no hosted AI, model/runtime dependency, network acquisition, telemetry, secret, developer-path, or personal-data leak is permitted in the shadow layer.
+  - D-NLP-055: fresh installs have zero NLP rows; shadow persistence remains a separate table and never adds production score/eligibility/lifecycle columns.
+  - D-NLP-056: diagnostics retain only a source hash and redacted evidence; future model licensing requires a fresh artifact and redistribution review.
+- **Tests:** 3 security/privacy/packaging tests (see tasks); `npm run privacy:check` = 3 files / 11 tests.
+- **Validation evidence:** `npm run nlp:security-audit` = 3 pass; `npm run privacy:check` = 11 pass; `npm run verify` = 132 files / 1339 tests green; source/dependency scan found no prohibited runtime/model/network/path/secret marker.
+- **Known limitations:** no installer rebuild is required for the absent model/runtime artifact; final packaged smoke and artifact inventory remain part of Stage 28 after the UX prototype changes.
+- **Current task:** complete.
+- **Exact next action:** Stage 26 - Job Intelligence UI prototype, read-only and explicitly shadow-labeled.
 
 ---
 
@@ -733,5 +746,6 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | ---------- | ------------------------ | ------------------------------------------------------------------------- |
 | 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                     |
 | 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean |
-| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`       |
-| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark |
+| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`        |
+| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark   |
+| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                     |
