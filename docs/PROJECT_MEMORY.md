@@ -352,6 +352,13 @@ records durable architectural truth only.
   forbidden-category, and arrangement labels. Adversarial cases remain labeled
   for critical false positives such as team clearance, grade A+, and technical
   remote terminology (D-NLP-035/036).
+- **Representative evaluation (Stage 17):**
+  `src/intelligence/nlp/evaluation.ts` runs the 42-case corpus plus 12
+  additional synthetic descriptions and reports category/strength/entity/
+  arrangement precision, recall, exact accuracy, critical FP/FN, and label
+  disagreement without changing labels or production behavior. Current report:
+  54 cases, category exact 83.3%, strength 94.4%, entity exact 92.6%, and 3/7
+  critical adversarial cases failing (D-NLP-037/038).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

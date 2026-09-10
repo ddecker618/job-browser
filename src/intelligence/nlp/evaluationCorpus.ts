@@ -30,6 +30,7 @@ export interface SyntheticNlpCase {
   expectedStrength: NlpRequirementStrength;
   expectedEntities: readonly SyntheticEntityExpectation[];
   forbiddenCategories: readonly NlpRequirementCategory[];
+  forbiddenEntities?: readonly SyntheticEntityExpectation[];
   expectedArrangement?: RemoteType;
   rationale: string;
 }
@@ -178,7 +179,7 @@ export const SYNTHETIC_NLP_CORPUS = [
       { type: 'text', value: '50 miles' },
     ],
     forbiddenCategories: [],
-    expectedArrangement: 'onsite',
+    expectedArrangement: 'unknown',
     rationale:
       'Commute and residency constraint, not unrestricted remote work.',
   },
@@ -193,7 +194,7 @@ export const SYNTHETIC_NLP_CORPUS = [
       { type: 'state', value: 'IL' },
     ],
     forbiddenCategories: [],
-    expectedArrangement: 'onsite',
+    expectedArrangement: 'unknown',
     rationale: 'Location evidence is distinct from work arrangement evidence.',
   },
   {
@@ -466,6 +467,7 @@ export const SYNTHETIC_NLP_CORPUS = [
     expectedStrength: 'informational',
     expectedEntities: [],
     forbiddenCategories: ['clearance'],
+    forbiddenEntities: [{ type: 'clearance-level', value: 'secret' }],
     rationale:
       'Customer/program clearance context is not an applicant requirement.',
   },

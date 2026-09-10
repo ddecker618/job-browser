@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       16 (synthetic NLP evaluation corpus) - Stage 17 is next
-CURRENT_TASK:        Begin Stage 17 (representative job evaluation)
-LAST_COMPLETED:      Stage 16 - 43 labeled corpus cases + 3 tests; npm run verify (124 files / 1305 tests)
-NEXT_ACTION:         Stage 17 - evaluate representative descriptions for category/strength/entity accuracy and critical FP/FN cases
-FILES_IN_PROGRESS:   src/intelligence/nlp/evaluationCorpus.ts, tests/job-nlp-evaluation-corpus.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-evaluation-corpus.test.ts (3 pass); full npm run verify
+CURRENT_STAGE:       17 (representative job evaluation) - Stage 18 is next
+CURRENT_TASK:        Begin Stage 18 (shadow-mode acceptance gate)
+LAST_COMPLETED:      Stage 17 - 54-case evaluation report + 4 tests; npm run verify (125 files / 1309 tests)
+NEXT_ACTION:         Stage 18 - define and verify the shadow-mode acceptance gate against observed quality and safety metrics
+FILES_IN_PROGRESS:   src/intelligence/nlp/evaluation.ts, src/intelligence/nlp/representativeCorpus.ts, tests/job-nlp-evaluation.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-evaluation.test.ts (4 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 16 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 17 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -166,7 +166,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 14    | Invalidation and reprocessing                | [x]    |
 | 15    | NLP debug / intelligence inspector           | [x]    |
 | 16    | Synthetic NLP evaluation corpus              | [x]    |
-| 17    | Representative job evaluation                | [ ]    |
+| 17    | Representative job evaluation                | [x]    |
 | 18    | Shadow-mode acceptance gate                  | [ ]    |
 | 19    | Semantic normalization / embedding design    | [ ]    |
 | 20    | Semantic role matching shadow mode           | [ ]    |
@@ -505,7 +505,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
 - **Current task:** complete.
-- **Exact next action:** Stage 16 delivered (43 labeled synthetic cases); begin Stage 17 - representative job evaluation.
+- **Exact next action:** Stage 17 delivered (54-case evaluation report); begin Stage 18 - shadow-mode acceptance gate.
 
 ---
 
@@ -514,7 +514,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Status:** [x]
 - **Objective:** Deterministic paraphrase corpus covering all categories + adversarial examples (e.g. "our cleared team supports Secret environments" must not imply applicant clearance).
 - **Implementation tasks:**
-  - `src/intelligence/nlp/evaluationCorpus.ts` (new): 43 synthetic/local labeled cases covering all 17 requirement categories and all 8 strength labels, with expected entities, forbidden categories, arrangement expectations, and rationale; includes paraphrases, multi-label duties, and critical clearance/A+/technical-remote/remote-denial adversarial cases.
+  - `src/intelligence/nlp/evaluationCorpus.ts` (new): 42 synthetic/local labeled cases covering all 17 requirement categories and all 8 strength labels, with expected entities, forbidden categories/entities, arrangement expectations, and rationale; includes paraphrases, multi-label duties, and critical clearance/A+/technical-remote/remote-denial adversarial cases.
   - `tests/job-nlp-evaluation-corpus.test.ts` (new, 3 tests): contract category/strength coverage, unique/non-empty labels with at least two cases per category, and critical negative/arrangement case retention.
 - **Files/components involved:** `src/intelligence/nlp/evaluationCorpus.ts`, `tests/job-nlp-evaluation-corpus.test.ts`, `src/schemas/job-nlp.ts`.
 - **Architectural decisions:**
@@ -530,9 +530,21 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 17 — Representative Job Evaluation
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Evaluate NLP against ~50-100 representative descriptions (synthetic/labeled local fixture if live data unsafe); measure category/strength/entity accuracy + critical FP/FN + disagreement rate; no inventing ground truth.
-- **Current task / exact next action:** defined on completion of Stage 16.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/representativeCorpus.ts` (new): 12 additional synthetic labeled descriptions, bringing the evaluated local corpus to 54 cases.
+  - `src/intelligence/nlp/evaluation.ts` (new): deterministic category/strength/entity/arrangement evaluator, precision/recall/exact metrics, critical forbidden-category/entity and missing-category failures, and label disagreement rate; uses current extractors without changing labels or production behavior.
+  - `tests/job-nlp-evaluation.test.ts` (new, 4 tests): 50-plus corpus/report integrity, bounded metrics, surfaced technical-remote critical false positive, clean team-clearance distinction, and employer-clearance entity false positive.
+- **Files/components involved:** `src/intelligence/nlp/evaluation.ts`, `src/intelligence/nlp/representativeCorpus.ts`, `tests/job-nlp-evaluation.test.ts`, Stage 16 corpus and extractors.
+- **Architectural decisions:**
+  - D-NLP-037: live job descriptions are not used as unreviewed ground truth; evaluation uses only explicitly labeled synthetic/local cases.
+  - D-NLP-038: labels are immutable evaluation inputs; known false positives/negatives are reported rather than hidden by changing fixtures or production behavior.
+- **Tests:** 4 evaluation tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-evaluation.test.ts` = 4 pass; `npm run verify` = 125 files / 1309 tests green; eslint clean; `tsc --noEmit` clean; prettier clean. Observed report: category exact 83.3% (precision/recall 88.1%), strength accuracy 94.4%, entity exact 92.6% (precision 93.3%, recall 90.3%), arrangement 7/8, label disagreement 16.7%, critical adversarial failures 3/7 (3 FP, 2 FN).
+- **Known limitations:** results are synthetic/local and not representative of live provider distributions; category and entity misses remain to be triaged; the report measures disagreement against explicit labels, not deterministic production-score changes.
+- **Current task:** complete.
+- **Exact next action:** Stage 18 - shadow-mode acceptance gate with documented quality thresholds and production-invariance checks.
 
 ---
 
