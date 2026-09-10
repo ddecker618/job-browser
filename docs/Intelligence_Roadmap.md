@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       22 (resume evidence matching shadow mode) - Stage 23 is next
-CURRENT_TASK:        Begin Stage 23 (requirement coverage model)
-LAST_COMPLETED:      Stage 22 - resume evidence matcher + 5 tests; npm run verify (129 files / 1329 tests)
-NEXT_ACTION:         Stage 23 - define direct/related/missing/unknown requirement coverage without production scoring
-FILES_IN_PROGRESS:   src/intelligence/nlp/resumeEvidence.ts, tests/job-nlp-resume-evidence.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-resume-evidence.test.ts (5 pass); full npm run verify
+CURRENT_STAGE:       23 (requirement coverage model) - Stage 24 is next
+CURRENT_TASK:        Begin Stage 24 (NLP/semantic performance audit)
+LAST_COMPLETED:      Stage 23 - coverage projection + 5 tests; npm run verify (130 files / 1334 tests)
+NEXT_ACTION:         Stage 24 - measure runtime, memory, database, cache, reprocessing, and packaging impact
+FILES_IN_PROGRESS:   src/intelligence/nlp/requirementCoverage.ts, tests/job-nlp-requirement-coverage.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-requirement-coverage.test.ts (5 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 22 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 23 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -175,7 +175,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 20    | Semantic role matching shadow mode           | [x]    |
 | 21    | Semantic skill normalization shadow mode     | [x]    |
 | 22    | Resume evidence matching shadow mode         | [x]    |
-| 23    | Requirement coverage model                   | [ ]    |
+| 23    | Requirement coverage model                   | [x]    |
 | 24    | NLP / semantic performance audit             | [ ]    |
 | 25    | Security / privacy / packaging audit         | [ ]    |
 | 26    | Intelligence UX prototype                    | [ ]    |
@@ -508,7 +508,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
 - **Current task:** complete.
-- **Exact next action:** Stage 22 delivered (evidence-only matching with no possession claim); begin Stage 23 - requirement coverage model.
+- **Exact next action:** Stage 23 delivered (diagnostic modality-weighted coverage with no production effect); begin Stage 24 - performance audit.
 
 ---
 
@@ -648,9 +648,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 23 — Requirement Coverage Model
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Data model for future "Requirement Coverage" UI; direct/related/missing/unknown evidence distinguished; weighted by required/preferred/nice-to-have; separate from production scoring until promoted.
-- **Current task / exact next action:** defined on completion of Stage 22.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/requirementCoverage.ts` (new): projects Stage 22 statuses into `DIRECT`, `STRONG_RELATED`, `WEAK_RELATED`, `MISSING`, and `UNKNOWN`; applies explicit modality weights and diagnostic contribution factors; preserves evidence; exposes no production score/write/eligibility path.
+  - `tests/job-nlp-requirement-coverage.test.ts` (new, 5 tests): state mapping, modality-weighted diagnostic ratio, informational exclusion, identity validation, evidence preservation, and no production operation.
+- **Files/components involved:** `src/intelligence/nlp/requirementCoverage.ts`, `tests/job-nlp-requirement-coverage.test.ts`, `src/intelligence/nlp/resumeEvidence.ts`.
+- **Architectural decisions:**
+  - D-NLP-049: coverage statuses distinguish direct, reviewed related, missing, and unknown evidence; related evidence never becomes direct possession.
+  - D-NLP-050: modality weights are diagnostic/UI metadata only; `productionEffect` is explicitly `none` and no score/eligibility field is exposed.
+- **Tests:** 5 requirement-coverage tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-requirement-coverage.test.ts` = 5 pass; `npm run verify` = 130 files / 1334 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** the model currently consumes skill/certification evidence rows; experience/education/clearance-specific evidence adapters and UI rendering remain future work; weights require later product calibration.
+- **Current task:** complete.
+- **Exact next action:** Stage 24 - NLP/semantic performance audit with stable fingerprints and no correctness regressions.
 
 ---
 

@@ -389,6 +389,11 @@ records durable architectural truth only.
   labels, provenance, parser/source-normalization versions, and normalization
   scores. It explicitly makes no possession claim and has no production write or
   scoring path (D-NLP-047/048).
+- **Requirement coverage (Stage 23):**
+  `src/intelligence/nlp/requirementCoverage.ts` projects evidence into direct,
+  strong-related, weak-related, missing, and unknown rows, with explicit
+  modality weights and diagnostic contribution factors. Coverage is a UI/shadow
+  projection only and has `productionEffect: 'none'` (D-NLP-049/050).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
