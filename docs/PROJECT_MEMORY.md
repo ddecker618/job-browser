@@ -280,6 +280,15 @@ records durable architectural truth only.
   `legal-eeo-boilerplate` is dominant/mutually exclusive. Bare "experience"
   alone does not trigger `experience`. Certification labels with `+` must be
   regex-escaped. Confidence: strong 0.85, weak/unknown 0.4-0.7, EEO 0.9.
+- **Strength/modality (Stage 4):** `src/intelligence/nlp/strength.ts`
+  classifies exactly one strength per statement
+  (`STRENGTH_CLASSIFIER_VERSION = 'modality-classifier-v1'`) with precedence
+  required-after-hire > ability-to-obtain > equivalent-accepted > required >
+  preferred > nice-to-have > informational > unknown. Modality markers apply
+  only to requirement categories (skill/experience/education/certification/
+  clearance/citizenship); other categories default to `informational` when
+  unmarked. "be able to obtain" must resolve to ability-to-obtain BEFORE
+  required (D-NLP-012/013).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

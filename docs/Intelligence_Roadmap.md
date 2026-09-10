@@ -34,20 +34,21 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       3 (category classifier) - Stage 4 is next
-CURRENT_TASK:        Begin Stage 4 (requirement strength/modality)
-LAST_COMPLETED:      Stage 3 - category classifier + 20 tests green; npm run verify (111 files / 1155 tests)
-NEXT_ACTION:         Stage 4 - classify strength/modality per segment/fact
-FILES_IN_PROGRESS:   src/intelligence/nlp/categorizer.ts, tests/job-nlp-categorizer.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-categorizer.test.ts (20 pass); full npm run verify
+CURRENT_STAGE:       4 (strength/modality) - Stage 5 is next
+CURRENT_TASK:        Begin Stage 5 (education intelligence)
+LAST_COMPLETED:      Stage 4 - strength/modality classifier + 19 tests; npm run verify (112 files / 1174 tests)
+NEXT_ACTION:         Stage 5 - extract/normalize degree level, field, equivalency, substitution
+FILES_IN_PROGRESS:   src/intelligence/nlp/strength.ts, tests/job-nlp-strength.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-strength.test.ts (19 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 3 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 4 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
-                     validated (charEnd >= charStart); never touch production scoring;
-                     heading detector must reject prose; certification rule must be
-                     present in CATEGORY_RULES and escape '+' in cert labels; do NOT
-                     read "our cleared team" as applicant clearance
-SAFE_RESUME_POINT:   Stage 4 start
+                     validated; never touch production scoring; cert labels need '+'
+                     regex-escape; "be able to obtain" must classify ability-to-obtain
+                     BEFORE required; modalities only apply to true requirement
+                     categories (skill/experience/education/certification/clearance/
+                     citizenship) - bare descriptions are informational
+SAFE_RESUME_POINT:   Stage 5 start
 ```
 
 ---
@@ -200,7 +201,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stage 2 delivered segmentation (`src/intelligence/nlp/segmenter.ts`) with source-field + span tracing; Stage 3 delivered multi-label category classification (`src/intelligence/nlp/categorizer.ts`); proceed to Stage 4.
+- **Exact next action:** Stage 2 delivered segmentation; Stage 3 delivered category classification; Stage 4 delivered strength/modality classification; proceed to Stage 5.
 
 ---
 
@@ -249,9 +250,21 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 4 — Requirement Strength / Modality
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Distinguish required/preferred/nice-to-have/alternative/equivalency/future/post-hire/ability-to-obtain/informational with extensive paraphrase + adversarial tests.
-- **Current task / exact next action:** defined on completion of Stage 3.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/strength.ts` (new): `classifyStrength(segment, categories)` -> `SegmentStrength` with `STRENGTH_CLASSIFIER_VERSION = 'modality-classifier-v1'`; exactly ONE strength per statement; deterministic precedence `required-after-hire > ability-to-obtain > equivalent-accepted > required > preferred > nice-to-have > informational > unknown`; phrase-paraphrase rules per strength; `be able to obtain` handled so ability-to-obtain beats required.
+  - D-NLP-012: modality markers apply ONLY to requirement categories (skill, experience, education, certification, clearance, citizenship); the other categories (benefit, compensation, company-description, legal-eeo-boilerplate, responsibility, location, work-arrangement, travel, schedule, employment-type, unknown) default to `informational` when no marker is present — bare "Remote position." reads informational.
+  - 19 tests: explicit required/preferred; post-hire timeline; ability-to-obtain beats required; equivalency (incl. precedence over "preferred"); bare requirement -> unknown (low confidence); EEO/benefits/pure-responsibility -> informational; skill-bearing responsibility -> unknown; remote-vs-must-reside; travel+required; paraphrases (we require / mandatory / ideally / desired / a plus / nice to have / in lieu of / substitute / eligibility); method+version reporting; strength coexists with category.
+- **Files/components involved:** `src/intelligence/nlp/strength.ts`, `tests/job-nlp-strength.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-012 (definition): see tasks.
+  - D-NLP-013: strength is per-statement, not per-category; category+strength of a segment become the axes of future `NlpFact` documents (Stages 5-11 fill in entities, Stage 12 reconciliation).
+- **Tests:** 19 strength tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-strength.test.ts` = 19 pass; `npm run verify` = 112 files / 1174 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** section context ("Preferred Qualifications" heading) not yet used to boost intent (Stage 5-11 area); no chained compound requirements ("required for X, preferred for Y") disambiguation.
+- **Current task:** complete.
+- **Exact next action:** Stage 5 - education intelligence (degree level, field, required/preferred, equivalency, experience substitution, combined education/experience).
 
 ---
 
