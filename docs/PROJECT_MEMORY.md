@@ -394,6 +394,13 @@ records durable architectural truth only.
   strong-related, weak-related, missing, and unknown rows, with explicit
   modality weights and diagnostic contribution factors. Coverage is a UI/shadow
   projection only and has `productionEffect: 'none'` (D-NLP-049/050).
+- **Performance audit (Stage 24):**
+  `src/intelligence/nlp/performanceAudit.ts` and `npm run nlp:benchmark` measure
+  the deterministic local pipeline, temporary shadow persistence, reprocessing,
+  heap deltas, cold module import, and stable cache fingerprints. No embedding
+  runtime, model artifact, network request, or production effect is present
+  (D-NLP-051/052/053). Baseline details live in
+  `docs/NLP_PERFORMANCE_AUDIT.md`.
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

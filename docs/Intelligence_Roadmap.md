@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       23 (requirement coverage model) - Stage 24 is next
-CURRENT_TASK:        Begin Stage 24 (NLP/semantic performance audit)
-LAST_COMPLETED:      Stage 23 - coverage projection + 5 tests; npm run verify (130 files / 1334 tests)
-NEXT_ACTION:         Stage 24 - measure runtime, memory, database, cache, reprocessing, and packaging impact
-FILES_IN_PROGRESS:   src/intelligence/nlp/requirementCoverage.ts, tests/job-nlp-requirement-coverage.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-requirement-coverage.test.ts (5 pass); full npm run verify
+CURRENT_STAGE:       24 (NLP/semantic performance audit) - Stage 25 is next
+CURRENT_TASK:        Begin Stage 25 (security/privacy/packaging audit)
+LAST_COMPLETED:      Stage 24 - offline performance audit + 2 tests; npm run verify (131 files / 1336 tests)
+NEXT_ACTION:         Stage 25 - audit source, artifacts, caches, diagnostics, and fresh-install privacy boundaries
+FILES_IN_PROGRESS:   docs/NLP_PERFORMANCE_AUDIT.md, src/intelligence/nlp/performanceAudit.ts, tests/job-nlp-performance-audit.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-performance-audit.test.ts (2 pass); full npm run verify (131 files / 1336 tests)
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 23 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 24 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -176,7 +176,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 21    | Semantic skill normalization shadow mode     | [x]    |
 | 22    | Resume evidence matching shadow mode         | [x]    |
 | 23    | Requirement coverage model                   | [x]    |
-| 24    | NLP / semantic performance audit             | [ ]    |
+| 24    | NLP / semantic performance audit             | [x]    |
 | 25    | Security / privacy / packaging audit         | [ ]    |
 | 26    | Intelligence UX prototype                    | [ ]    |
 | 27    | Promotion design for production scoring      | [ ]    |
@@ -667,9 +667,23 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 24 — NLP / Semantic Performance Audit
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Measure extraction/segmentation/classification/embedding/resume-comparison time, memory, DB growth, startup impact, reprocessing throughput, installer impact on ordinary Windows hardware; cache with stable fingerprints; never optimize away correctness.
-- **Current task / exact next action:** defined on completion of Stage 23.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/performanceAudit.ts` (new): offline benchmark for segmentation, classification, extraction, resume comparison, reprocessing, temporary SQLite growth, heap deltas, stable corpus fingerprints, cache invalidation inputs, and explicit no-embedding/no-network state.
+  - `scripts/benchmark-nlp.ts` (new) and `npm run nlp:benchmark`: build-first compiled benchmark with cold module-import timing.
+  - `tests/job-nlp-performance-audit.test.ts` (new, 2 tests): stable fingerprint and report safety/shape checks.
+  - `docs/NLP_PERFORMANCE_AUDIT.md` (new): recorded Windows x64 baseline and measurement limitations.
+- **Files/components involved:** `src/intelligence/nlp/performanceAudit.ts`, `scripts/benchmark-nlp.ts`, `tests/job-nlp-performance-audit.test.ts`, `docs/NLP_PERFORMANCE_AUDIT.md`, `package.json`.
+- **Architectural decisions:**
+  - D-NLP-051: performance measurements run offline against synthetic/local data and never introduce an embedding runtime, model artifact, network acquisition path, or production scoring path.
+  - D-NLP-052: benchmark/cache identity is a SHA-256 fingerprint over versioned implementation inputs, the reviewed catalog, and labeled corpus content; stale measurements cannot be reused silently.
+  - D-NLP-053: one local Windows run establishes a baseline only; no unmeasured latency, memory, or package budget is treated as a promotion threshold.
+- **Tests:** 2 performance-audit tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-performance-audit.test.ts` = 2 pass; `npm run nlp:benchmark` = 54-case report; `npm run verify` = 131 files / 1336 tests green; no embedding runtime or network request observed.
+- **Known limitations:** the SQLite result uses a minimal valid enrichment payload; cold import is not inference; installer impact is zero for optional NLP artifacts because none exist, while full installer smoke belongs to Stage 28.
+- **Current task:** complete.
+- **Exact next action:** Stage 25 - security/privacy/packaging audit with no telemetry, secret, PII, dev-path, or unlicensed-model leakage.
 
 ---
 
@@ -719,3 +733,5 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | ---------- | ------------------------ | ------------------------------------------------------------------------- |
 | 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                     |
 | 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean |
+| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`       |
+| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark |
