@@ -34,21 +34,20 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       4 (strength/modality) - Stage 5 is next
-CURRENT_TASK:        Begin Stage 5 (education intelligence)
-LAST_COMPLETED:      Stage 4 - strength/modality classifier + 19 tests; npm run verify (112 files / 1174 tests)
-NEXT_ACTION:         Stage 5 - extract/normalize degree level, field, equivalency, substitution
-FILES_IN_PROGRESS:   src/intelligence/nlp/strength.ts, tests/job-nlp-strength.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-strength.test.ts (19 pass); full npm run verify
+CURRENT_STAGE:       5 (education) - Stage 6 is next
+CURRENT_TASK:        Begin Stage 6 (experience intelligence)
+LAST_COMPLETED:      Stage 5 - education intelligence + 14 tests; npm run verify (113 files / 1188 tests)
+NEXT_ACTION:         Stage 6 - extract min/preferred years, ranges, domain, alternatives
+FILES_IN_PROGRESS:   src/intelligence/nlp/education.ts, tests/job-nlp-education.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-education.test.ts (14 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 4 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 5 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
-                     validated; never touch production scoring; cert labels need '+'
-                     regex-escape; "be able to obtain" must classify ability-to-obtain
-                     BEFORE required; modalities only apply to true requirement
-                     categories (skill/experience/education/certification/clearance/
-                     citizenship) - bare descriptions are informational
-SAFE_RESUME_POINT:   Stage 5 start
+                     validated; never touch production scoring; field capture must not
+                     swallow separators ("Computer Science required." -> "computer
+                     science"); field X "degree" must not auto-imply a level; permissions
+                     on imports (no unused vars), optional-chaining style
+SAFE_RESUME_POINT:   Stage 6 start
 ```
 
 ---
@@ -201,7 +200,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stage 2 delivered segmentation; Stage 3 delivered category classification; Stage 4 delivered strength/modality classification; proceed to Stage 5.
+- **Exact next action:** Stage 2 segmentation, Stage 3 categories, Stage 4 strength, Stage 5 education delivered; proceed to Stage 6.
 
 ---
 
@@ -270,9 +269,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 5 — Education Intelligence
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Extract/normalize degree level, field, required/preferred, equivalency, experience substitution, combined education/experience requirements.
-- **Current task / exact next action:** defined on completion of Stage 4.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/education.ts` (new): `extractEducation(segment)` -> `EducationExtraction` with `EDUCATION_INTELLIGENCE_VERSION = 'education-intelligence-v1'`; degree level precedence doctorate > master > bachelor > associate > high-school; generic "degree" -> `unknown` level (never guessed); field capture from "in/of/majoring in" phrases with lookahead separators + conservative known-field normalization; equivalency detection (experience vs education vs credential vs combination vs none); experience-substitution years extraction (`or 4 years of related experience`); combined-requirement flag; `degreeSpan` tracing; batch helper `extractEducationBatch`.
+  - 14 tests: bachelor+major, master+preferred, doctorate+field, associate, high-school/GED, generic-degree-unknown, experience substitution years, or-equivalent-experience, equivalent education, in-lieu-of, combined degree marking, no-content low confidence, span/version metadata, known vs arbitrary field normalization.
+- **Files/components involved:** `src/intelligence/nlp/education.ts`, `tests/job-nlp-education.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-014: education facts emit degrees + equivalency + substitution years as extracted entities; field values normalized to known vocabulary when present, otherwise conservative lowercased original (never fabricated).
+  - D-NLP-015: `extractEducationBatch(segments, categoriesByIndex)` only processes `education`-categorized segments so category classification gates entity extraction.
+- **Tests:** 14 education tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-education.test.ts` = 14 pass; `npm run verify` = 113 files / 1188 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** no GPA/minor/institution extraction; field capture is phrase-anchored (`in/of`); no degree-equivalency for specific laddered degrees beyond level precedence.
+- **Current task:** complete.
+- **Exact next action:** Stage 6 - experience intelligence (min/preferred years, ranges, domain, role context, nested experience, alternatives; never fabricate years; preserve ranges).
 
 ---
 

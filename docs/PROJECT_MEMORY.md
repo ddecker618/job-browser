@@ -289,6 +289,12 @@ records durable architectural truth only.
   clearance/citizenship); other categories default to `informational` when
   unmarked. "be able to obtain" must resolve to ability-to-obtain BEFORE
   required (D-NLP-012/013).
+- **Education intelligence (Stage 5):** `src/intelligence/nlp/education.ts`
+  extracts degree level (doctorate > master > bachelor > associate >
+  high-school; generic "degree" -> unknown), field, equivalency (experience/
+  education/credential/combination/none), substitution years, combined flag,
+  and degree spans. Field values are normalized to known vocabulary or kept
+  as conservative lowercased originals - never fabricated (D-NLP-014/015).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
