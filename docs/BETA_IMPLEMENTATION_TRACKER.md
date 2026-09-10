@@ -19,6 +19,8 @@
 
 **BETA READINESS IMPLEMENTATION COMPLETE — READY FOR EXTERNAL BETA** (2026-09-09).
 
+- Phase-18 final report persisted at `docs/BETA_READINESS_REPORT.md` (verdict +
+  full 31-point evidence; linked from README).
 - Version bumped once at phase 17: `1.0.28` → `1.1.0` (package.json +
   package-lock.json); `app.getVersion()` reports 1.1.0 in the built exe.
 - Full gate green: `npm run verify` 108 files / 1101 tests; `npm run
@@ -65,7 +67,7 @@ privacy:check` 3 files / 11 tests.
 | 15    | Beta config + release                                                                                                | [x]    | Beta config resolved: parallelization waived for 1.1.0 external beta (D-010); release build + packaged/installed smoke + installer hash execute at phase 17 against the final 1.1.0 artifact (satisfies the phase-10 boundary re-run).                                                                                                                                                                                                                                                                                                         |
 | 16    | Adoption/flags telemetry                                                                                             | [x]    | Local-only adoption markers complete: module `src/database/adoptionMarkers.ts`; `adoption.installedAt` stamped at backend startup (`backend.ts`), `adoption.firstSourceAt` stamped after first source creation (`app.ts` POST /api/sources, ordering fixed per DEF-003); GET `/api/adoption` route; client `api.adoption()`; read-only Settings display (First launched / First source added); tests `tests/adoption-markers.test.ts` (unit + API) and Settings UI test in `dashboard-ui`. Stored in `app_settings` SQLite, never transmitted. |
 | 17    | Version bump (ONLY here) + version-checks + CSP + final gates                                                        | [x]    | Bumped 1.0.28 → 1.1.0 (package.json + package-lock.json); `npm run verify` 108/1101 green; privacy:check 11/11 vs 1.1.0 asar; built `release\Job-Browser-Setup-1.1.0.exe` (253,533,832 B, SHA-256 E68D…FAD9); packaged/installed/upgrade smokes pass; CSP strict in index.html (default-src 'self', script-src 'self'). Final gates verified post-bump.                                                                                                                                                                                        |
-| 18    | Final report + READY/NOT READY FOR EXTERNAL BETA                                                                     | [x]    | Final report delivered: **READY FOR EXTERNAL BETA** (phase 18). Verdict record + full evidence in the report/OVERALL STATUS. Artifact, smokes, gates, docs all reconciled.                                                                                                                                                                                                                                                                                                                                                                     |
+| 18    | Final report + READY/NOT READY FOR EXTERNAL BETA                                                                     | [x]    | Final report delivered: `docs/BETA_READINESS_REPORT.md` — **READY FOR EXTERNAL BETA** (phase 18). Verdict record + full 31-point evidence in the report (linked from README) and OVERALL STATUS below. Artifact, smokes, gates, docs all reconciled.                                                                                                                                                                                                                                                                                           |
 
 ## Current Working State
 
@@ -183,6 +185,8 @@ Phase 2 (performance) WORKING STATE:
 - `tests/adoption-markers.test.ts` (new) — unit (idempotent install stamp, first-source stamp semantics, persistence) + GET `/api/adoption` API tests
 - `tests/dashboard-ui.test.tsx` — Settings adoption-markers display test + adoption mock in settings test
 - `tests/privacy-distribution.test.ts` — raised compiled-output scan timeout to 30s (defused parallel-load flake at phase 6 + recovery)
+- `docs/BETA_TESTING.md` (new) — beta-user guide
+- `docs/BETA_READINESS_REPORT.md` (new) — phase-18 final report: verdict + full 31-point evidence (linked from README)
 
 ## Commits Created (sprint, local only — NONE pushed)
 

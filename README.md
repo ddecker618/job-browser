@@ -28,6 +28,11 @@ Screenshots use clearly fictional fixture data.
 Behavior that looks odd is often deliberate. See [Known Quirks](docs/KNOWN_QUIRKS.md)
 for the index of intentional behaviors and their workarounds.
 
+Release status: **1.1.0 — READY FOR EXTERNAL BETA**. See the
+[beta-readiness report](docs/BETA_READINESS_REPORT.md) (verdict + full
+evidence), the [beta plan](docs/BETA_PLAN.md), and the
+[beta-testing guide](docs/BETA_TESTING.md).
+
 ## Requirements
 
 - Windows, macOS, or Linux
