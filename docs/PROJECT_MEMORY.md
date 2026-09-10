@@ -415,6 +415,11 @@ records durable architectural truth only.
   `Unknown` until a separate read-only evidence endpoint exists; production
   score/recommendation UI remains unchanged (D-NLP-057/058/059). Details live in
   `docs/NLP_INTELLIGENCE_UX_PROTOTYPE.md`.
+- **Promotion design (Stage 27):**
+  `docs/NLP_PROMOTION_DESIGN.md` defines Levels 0-4 and a field-by-field hard
+  promotion gate. The current maximum is Level 2 additive shadow output; no
+  production scoring, eligibility, ranking, filtering, lifecycle, or removal
+  promotion is authorized (D-NLP-060/061/062).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

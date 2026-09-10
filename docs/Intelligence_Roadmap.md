@@ -34,12 +34,12 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       26 (intelligence UX prototype) - Stage 27 is next
-CURRENT_TASK:        Begin Stage 27 (promotion design for production scoring)
-LAST_COMPLETED:      Stage 26 - Job Intelligence preview + 2 tests; npm run verify (133 files / 1341 tests)
-NEXT_ACTION:         Stage 27 - document measured promotion levels without implementing production promotion
-FILES_IN_PROGRESS:   src/client/components/JobIntelligencePreview.tsx, tests/job-intelligence-ui.test.tsx, docs/NLP_INTELLIGENCE_UX_PROTOTYPE.md
-TESTS_TO_RUN:        npx vitest run tests/job-intelligence-ui.test.tsx (2 pass); npm run verify (133 files / 1341 tests)
+CURRENT_STAGE:       27 (promotion design) - Stage 28 is next
+CURRENT_TASK:        Begin Stage 28 (full regression and upgrade validation)
+LAST_COMPLETED:      Stage 27 - promotion design + 1 test; npm run verify (134 files / 1342 tests)
+NEXT_ACTION:         Stage 28 - verify full regression, production-score preservation, and packaged upgrade behavior
+FILES_IN_PROGRESS:   docs/NLP_PROMOTION_DESIGN.md, tests/job-nlp-promotion-design.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-promotion-design.test.ts (1 pass); npm run verify (134 files / 1342 tests)
 KNOWN_FAILURES:      none
 LATEST_CHECKPOINT:   NLP Stage 24 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
@@ -179,7 +179,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 24    | NLP / semantic performance audit             | [x]    |
 | 25    | Security / privacy / packaging audit         | [x]    |
 | 26    | Intelligence UX prototype                    | [x]    |
-| 27    | Promotion design for production scoring      | [ ]    |
+| 27    | Promotion design for production scoring      | [x]    |
 | 28    | Full regression and upgrade validation       | [ ]    |
 | 29    | Documentation and final intelligence handoff | [ ]    |
 
@@ -733,9 +733,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 27 — Promotion Design for Production Scoring
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Explicit architecture proposal (Levels 0-4) based on measured results; per-field accuracy/FP/FN/error consequence/fallback/confidence/corroboration/evidence; hard-gate promotion requires stronger evidence; no implementation unless roadmap/authorization includes it.
-- **Current task / exact next action:** defined on completion of Stage 26.
+- **Implementation tasks:**
+  - `docs/NLP_PROMOTION_DESIGN.md` (new): Levels 0-4, measured corpus/performance evidence, per-field promotion matrix, error consequences, fallbacks, evidence/corroboration requirements, and hard promotion gate.
+  - `tests/job-nlp-promotion-design.test.ts` (new, 1 test): verifies the proposal names every level and retains shadow-only/no-production-effect constraints.
+- **Architectural decisions:**
+  - D-NLP-060: current maximum is Level 2 additive shadow persistence plus visibly labeled diagnostics; Levels 3-4 require new authorization.
+  - D-NLP-061: promotion is field-by-field and requires representative labels, explicit FP/FN consequences, abstention, traceable evidence, corroboration, production-vs-shadow diff, and rollback.
+  - D-NLP-062: quality metrics are reliability evidence, not probability or possession claims; no NLP result may override deterministic gates without a separately authorized promotion.
+- **Tests:** 1 promotion-design test (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-promotion-design.test.ts` = 1 pass; `npm run verify` = 134 files / 1342 tests green; Stage 18 acceptance and Stage 24 performance baselines are referenced; no production-scoring implementation was added.
+- **Known limitations:** live-provider labels, field-specific production-vs-shadow diffs, and Levels 3-4 authorization do not exist; therefore every field remains shadow-only or not eligible.
+- **Current task:** complete.
+- **Exact next action:** Stage 28 - full project regression, score-preservation test, and packaged upgrade validation.
 
 ---
 
@@ -764,4 +775,6 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`        |
 | 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark   |
 | 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                     |
+| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                |
+| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                   |
 | 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                |
