@@ -33,15 +33,14 @@ describe('representative NLP evaluation (Stage 17)', () => {
     expect(report.disagreementRate).toBeLessThanOrEqual(1);
   });
 
-  it('reports critical adversarial false positives instead of hiding them', () => {
+  it('keeps technical remote terminology out of work arrangement categories', () => {
     const item = getSyntheticNlpCase('adversarial-technical-remote');
     if (item === undefined) throw new Error('critical fixture is missing');
 
     const result = evaluateSyntheticNlpCase(item);
 
-    expect(result.criticalFailures).toContain(
-      'forbidden-category:work-arrangement',
-    );
+    expect(result.actualCategories).not.toContain('work-arrangement');
+    expect(result.criticalFailures).toEqual([]);
     expect(result.actualArrangement).toBe('unknown');
   });
 
@@ -57,13 +56,17 @@ describe('representative NLP evaluation (Stage 17)', () => {
     );
   });
 
-  it('reports employer clearance entities as critical false positives', () => {
+  it('keeps employer clearance context out of applicant entities', () => {
     const item = getSyntheticNlpCase('adversarial-secret-company-context');
     if (item === undefined) throw new Error('critical fixture is missing');
 
     const result = evaluateSyntheticNlpCase(item);
 
-    expect(result.criticalFailures).toContain(
+    expect(result.actualEntities).not.toContainEqual({
+      type: 'clearance-level',
+      value: 'secret',
+    });
+    expect(result.criticalFailures).not.toContain(
       'forbidden-entity:clearance-level:secret',
     );
   });

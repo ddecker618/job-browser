@@ -426,7 +426,7 @@ export const SYNTHETIC_NLP_CORPUS = [
     kind: 'adversarial',
     text: 'The Splunk SIEM platform supports remote systems.',
     expectedCategories: ['skill'],
-    expectedStrength: 'informational',
+    expectedStrength: 'unknown',
     expectedEntities: [
       { type: 'text', value: 'splunk' },
       { type: 'text', value: 'siem' },

@@ -347,18 +347,25 @@ records durable architectural truth only.
   common personal and secret patterns before projection; no persistence or
   production-field path exists (D-NLP-033/034).
 - **Synthetic evaluation corpus (Stage 16):**
-  `src/intelligence/nlp/evaluationCorpus.ts` contains 43 deterministic local
+  `src/intelligence/nlp/evaluationCorpus.ts` contains 42 deterministic local
   cases covering all 17 categories and all 8 strengths, with explicit entity,
-  forbidden-category, and arrangement labels. Adversarial cases remain labeled
-  for critical false positives such as team clearance, grade A+, and technical
-  remote terminology (D-NLP-035/036).
+  forbidden-category/entity, and arrangement labels. Adversarial cases remain
+  labeled for critical false positives such as team clearance, grade A+, and
+  technical remote terminology (D-NLP-035/036).
 - **Representative evaluation (Stage 17):**
   `src/intelligence/nlp/evaluation.ts` runs the 42-case corpus plus 12
   additional synthetic descriptions and reports category/strength/entity/
   arrangement precision, recall, exact accuracy, critical FP/FN, and label
   disagreement without changing labels or production behavior. Current report:
-  54 cases, category exact 83.3%, strength 94.4%, entity exact 92.6%, and 3/7
-  critical adversarial cases failing (D-NLP-037/038).
+  54 cases, category exact 88.9%, strength 96.3%, entity exact 94.4%, and zero
+  critical adversarial failures after blocking grade A+, technical-remote, and
+  employer Secret-program false positives (D-NLP-037/038).
+- **Shadow acceptance (Stage 18):**
+  `src/intelligence/nlp/acceptance.ts` fails closed below documented category,
+  strength, entity, disagreement, and critical-failure thresholds, and requires
+  explicit evidence for production-field preservation, persistence/versioning,
+  stale reprocessing, evidence retention, conflict visibility, and inspector
+  behavior (D-NLP-039/040).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

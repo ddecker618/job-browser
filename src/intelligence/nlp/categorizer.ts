@@ -156,6 +156,11 @@ const WORK_ARRANGEMENT_PATTERNS = [
   /\b(?:onsite|hybrid|remote)[ :,\n]*(?:requirement|position|work|role|schedule)\b/,
 ];
 
+const TECHNICAL_REMOTE_PATTERNS = [
+  /\bremote\s+(?:support|access|systems|monitoring|administration|troubleshooting|desktop|server|network|maintenance|diagnostics|infrastructure)\b/,
+  /\bon[- ]?premises\s+and\s+remote\s+infrastructure\b/,
+];
+
 const TRAVEL_PATTERNS = [
   /\btravel\b/,
   /\bovernight (?:travel|stays)\b/,
@@ -300,7 +305,7 @@ const RESPONSIBILITY_PATTERNS = [
 const COMPANY_DESCRIPTION_PATTERNS = [
   /\bwe are\b/,
   /\bour\s+[\w-]*\s*(?:team|organization|company|clients)\b/,
-  /\bwe (?:are|provide|offer|specialize|work|partner|believe|pride|focus)\b/,
+  /\bwe (?:are|provide|offer|specialize|work|partner|believe|pride|focus|support)\b/,
   /\babout us\b/,
   /\bwho we are\b/,
   /\b(?:leading|top|global) (?:company|provider|firm)\b/,
@@ -317,14 +322,21 @@ const CATEGORY_RULES: CategoryRule[] = [
   { category: 'location', detect: matchesAny(LOCATION_PATTERNS) },
   {
     category: 'work-arrangement',
-    detect: matchesAny(WORK_ARRANGEMENT_PATTERNS),
+    detect: (normalized) =>
+      matchesAny(WORK_ARRANGEMENT_PATTERNS)(normalized) &&
+      !matchesAny(TECHNICAL_REMOTE_PATTERNS)(normalized),
   },
   { category: 'travel', detect: matchesAny(TRAVEL_PATTERNS) },
   { category: 'schedule', detect: matchesAny(SCHEDULE_PATTERNS) },
   { category: 'employment-type', detect: matchesAny(EMPLOYMENT_TYPE_PATTERNS) },
   { category: 'citizenship', detect: matchesAny(CITIZENSHIP_PATTERNS) },
   { category: 'education', detect: matchesAny(EDUCATION_PATTERNS) },
-  { category: 'certification', detect: matchesAny(CERTIFICATION_PATTERNS) },
+  {
+    category: 'certification',
+    detect: (normalized) =>
+      matchesAny(CERTIFICATION_PATTERNS)(normalized) &&
+      !(/\ba\+/.test(normalized) && /\b(?:grade|gpa)\b/.test(normalized)),
+  },
   { category: 'experience', detect: matchesAny(EXPERIENCE_PATTERNS) },
   { category: 'skill', detect: matchesAny(SKILL_PATTERNS) },
   { category: 'responsibility', detect: matchesAny(RESPONSIBILITY_PATTERNS) },

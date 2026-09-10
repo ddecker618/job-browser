@@ -141,7 +141,7 @@ const CITIZENSHIP_DEFINITIONS: readonly CitizenshipDefinition[] = [
 ];
 
 const TEAM_CONTEXT_PATTERN =
-  /\b(?:our|we|us|their)\s+[a-z -]{0,20}clear(?:ed|ances?)\b|\bclear(?:ed)?\s+(?:team|staff|workforce|personnel|individuals|engineers?|developers?)\b/i;
+  /\b(?:our|we|us|their)\s+[a-z -]{0,20}clear(?:ed|ances?)\b|\bclear(?:ed)?\s+(?:team|staff|workforce|personnel|individuals|engineers?|developers?)\b|\b(?:we|our|their)\s+(?:support|serve|provide|operate|manage)\b[^.;]{0,40}\b(?:secret|top[ -]?secret|clearance)\b/i;
 
 const APPLICANT_LANGUAGE_PATTERN = /\b(?:you|your|candidate|applicant)\b/i;
 
