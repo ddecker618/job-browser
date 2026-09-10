@@ -34,20 +34,24 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       6 (experience) - Stage 7 is next
-CURRENT_TASK:        Begin Stage 7 (certification intelligence)
-LAST_COMPLETED:      Stage 6 - experience intelligence + 13 tests; npm run verify (114 files / 1201 tests)
-NEXT_ACTION:         Stage 7 - normalize known certs, required/preferred/equivalent/after-hire
-FILES_IN_PROGRESS:   src/intelligence/nlp/experience.ts, tests/job-nlp-experience.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-experience.test.ts (13 pass); full npm run verify
+CURRENT_STAGE:       7 (certification) - Stage 8 is next
+CURRENT_TASK:        Begin Stage 8 (clearance and citizenship intelligence)
+LAST_COMPLETED:      Stage 7 - certification intelligence + 15 tests; npm run verify (115 files / 1216 tests)
+NEXT_ACTION:         Stage 8 - clearance level/current/ability-to-obtain/maintain/preferred/public-trust; citizenship; no applicant implication from "cleared team"
+FILES_IN_PROGRESS:   src/intelligence/nlp/certifications.ts, tests/job-nlp-certifications.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-certifications.test.ts (15 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 6 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 7 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
-                     validated; never touch production scoring; parse primary years from
-                     the FULL segment (not the pre-'or' chunk); matchAll needs global
-                     regexes (use a clone helper); domain stopwords must be filtered
-                     ('experience in X' -> X); String#includes for '+' checks
-SAFE_RESUME_POINT:   Stage 7 start
+                     validated; never touch production scoring; catalog matching must
+                     not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
+                     per-cert modality uses NEAREST-KEYWORD distance with
+                     precedence tie-break (whole-window precedence misfires when a
+                     segment mixes "preferred, ... required"); array order = span
+                     order (sort by span.start); segment helper must use the real
+                     NlpSegment shape (index/text/normalized/kind/sourceField/
+                     charStart/charEnd), not base/meta
+SAFE_RESUME_POINT:   Stage 8 start
 ```
 
 ---
@@ -200,7 +204,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stages 2-6 delivered (segmentation, categories, strength, education, experience); proceed to Stage 7.
+- **Exact next action:** Stages 2-7 delivered (segmentation, categories, strength, education, experience, certifications); proceed to Stage 8.
 
 ---
 
@@ -308,9 +312,18 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 7 — Certification Intelligence
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Normalize known certs (Security+, Network+, A+, CySA+, SecurityX/CASP+, CISSP, CISM, CCNA, Microsoft/Azure/AWS families); distinguish required/preferred/equivalent/after-hire/must-obtain; no false equivalencies.
-- **Current task / exact next action:** defined on completion of Stage 6.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/certifications.ts` (new): `CERTIFICATION_CATALOG` of known certifications (Comptia: Security+, Network+, A+, CySA+, SecurityX, CASP+; ISC2 CISSP; ISACA CISM; Cisco CCNA/CCNP/CCIE; families AWS/Azure/Microsoft) with canonical `key`/`name`/`vendor`; per-cert local modality via NEAREST-KEYWORD distance with previous-precedence tie-break (required-after-hire > ability-to-obtain > equivalent-accepted > required > preferred > nice-to-have > unknown); equivalency flag; `blockWhen` guards prevent "grade A+" from matching CompTIA A+; results sorted by span.start; batch gated on the `certification` category; `CERTIFICATION_INTELLIGENCE_VERSION = 'certification-intelligence-v1'`; `certificationCatalog()` export for testability.
+  - `tests/job-nlp-certifications.test.ts` (new, 15 tests): catalog coverage; Security+ required with exact span; mixed preferred/required per-cert modality; equivalency phrases; after-hire vs bare requirement; ability-to-obtain; multi-cert statement; SecurityX/CASP+; vendor families (Azure + Microsoft both matched; AWS); no invented certs from plain security language; grade-A+ guard; raw/span integrity; empty result; batch gate.
+- **Architectural decisions:**
+  - D-NLP-018: modality is assigned per certification from the nearest matching keyword (distance = 0 when the cert falls inside the keyword span); precedence order breaks distance ties. Whole-window precedence proved to misattribute mixed "preferred ... required" segments.
+- **Tests:** 15 certification tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-certifications.test.ts` = 15 pass; `npm run verify` = 115 files / 1216 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** family-level matches (AWS/Azure/Microsoft) are coarse and rely on the certification category gate to avoid false positives; the catalog is curated (unknowable certs are not guessed); `cross-certification` equivalencies are NOT claimed (a Microsoft cert is never equated to a Comptia cert).
+- **Current task:** complete.
+- **Exact next action:** Stage 8 - clearance and citizenship intelligence (clearance level/current/ability-to-obtain/maintain/preferred/public-trust; citizenship; adversarial "cleared team" sentences must not imply applicant clearance).
 
 ---
 

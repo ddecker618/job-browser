@@ -299,6 +299,10 @@ records durable architectural truth only.
   extracts min/preferred years, ranges, nested clauses, months (never
   converted to years), domains (stopword-filtered), and or-alternatives.
   Years are never fabricated (D-NLP-016/017).
+- **Certification intelligence (Stage 7):** `src/intelligence/nlp/certifications.ts`
+  normalizes a curated catalog of known certifications and families, assigns
+  per-cert modality by nearest-keyword distance (precedence tie-break), and
+  guards against false equivalencies (e.g., "grade A+" is not CompTIA A+).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
