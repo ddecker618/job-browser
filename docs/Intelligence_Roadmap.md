@@ -34,14 +34,16 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       13 (shadow-mode persistence) - Stage 14 is next
-CURRENT_TASK:        Begin Stage 14 (invalidation and reprocessing)
-LAST_COMPLETED:      Stage 13 - shadow-mode persistence + 5 tests; npm run verify (121 files / 1291 tests)
-NEXT_ACTION:         Stage 14 - detect stale NLP version/source hashes and add bounded, resumable, idempotent reprocessing without auto-archive
-FILES_IN_PROGRESS:   src/database/jobNlpEnrichmentRepository.ts, src/db/migrations/031_nlp_enrichments.sql, tests/job-nlp-persistence.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-persistence.test.ts tests/migrations.test.ts; full npm run verify
+CURRENT_STAGE:       14 (invalidation/reprocessing) - Stage 15 is next
+CURRENT_TASK:        Begin Stage 15 (NLP debug and intelligence inspector)
+LAST_COMPLETED:      Stage 14 - invalidation/reprocessing + 7 tests; npm run verify (122 files / 1298 tests)
+NEXT_ACTION:         Stage 15 - expose evidence, categories, strengths, entities, confidence, source, method, version, and reconciliation state without secret/personal leakage
+FILES_IN_PROGRESS:   src/intelligence/nlp/reprocessing.ts, tests/job-nlp-reprocessing.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-reprocessing.test.ts (7 pass); full npm run verify
+FILES_IN_PROGRESS:   src/intelligence/nlp/reprocessing.ts, tests/job-nlp-reprocessing.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-reprocessing.test.ts; full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 13 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 14 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -66,10 +68,14 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                        missing dimensions are not silent agreement; persistence must
                        use a separate additive table, validate the full envelope,
                        preserve created_at, use source hash/version staleness checks,
-                       and never update jobs; segment helper must use the real
+                        and never update jobs; reprocessing must sort/dedupe
+                        candidates, bound each batch, skip fresh rows, preserve
+                        completed saves after failures, validate builder version/hash,
+                        and never expose archive/score/eligibility operations;
+                        segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 14 start
+SAFE_RESUME_POINT:   Stage 15 start
 ```
 
 ---
@@ -153,7 +159,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 11    | Boilerplate and non-requirement filtering    | [x]    |
 | 12    | Deterministic + NLP reconciliation           | [x]    |
 | 13    | Shadow-mode persistence                      | [x]    |
-| 14    | Invalidation and reprocessing                | [ ]    |
+| 14    | Invalidation and reprocessing                | [x]    |
 | 15    | NLP debug / intelligence inspector           | [ ]    |
 | 16    | Synthetic NLP evaluation corpus              | [ ]    |
 | 17    | Representative job evaluation                | [ ]    |
@@ -222,7 +228,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stages 2-13 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology, boilerplate filtering, reconciliation, shadow persistence); proceed to Stage 14.
+- **Exact next action:** Stages 2-14 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology, boilerplate filtering, reconciliation, shadow persistence, reprocessing); proceed to Stage 15.
 
 ---
 
@@ -463,9 +469,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 14 — Invalidation and Reprocessing
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Stored-NLP-version != current -> bounded reprocessing (batches, resumable, idempotent, crash-safe); learn from role-details-v1/v2 stale-data issue; never auto-archive.
-- **Current task / exact next action:** defined on completion of Stage 13.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/reprocessing.ts` (new): `planReprocessing` and `runReprocessingBatch` with `REPROCESSING_INTELLIGENCE_VERSION = 'reprocessing-v1'`; deterministic job-id sorting/deduplication; positive batch-size validation; cursor resume; stale version/source-hash checks through a persistence target; fresh-row skips; per-job save isolation; builder version/hash validation; processed/failure results; no archive, score, eligibility, or lifecycle API.
+  - `tests/job-nlp-reprocessing.test.ts` (new, 7 tests): bounded sorting/deduplication/cursor; fresh vs changed hash; invalid batch size; idempotent retry; partial failure preservation; builder mismatch rejection; no production/archive operations.
+- **Files/components involved:** `src/intelligence/nlp/reprocessing.ts`, `tests/job-nlp-reprocessing.test.ts`, `src/database/jobNlpEnrichmentRepository.ts` target contract.
+- **Architectural decisions:**
+  - D-NLP-031: reprocessing is cursor-based and per-job; completed writes survive later failures, and reruns skip rows whose version and source hash are current.
+  - D-NLP-032: a builder must return the requested extraction version and candidate source hash; mismatches fail that candidate only; no invalidation path archives or changes production job fields.
+- **Tests:** 7 reprocessing tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-reprocessing.test.ts` = 7 pass; `npm run verify` = 122 files / 1298 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** candidates/source hashes are supplied by the caller until a job-level assembler supplies current source hashes; failures are returned for retry but no queue/worker scheduler exists yet; persistence history is still current-row only.
+- **Current task:** complete.
+- **Exact next action:** Stage 15 - NLP debug / intelligence inspector (developer-facing evidence/category/strength/entity/confidence/source/method/version/reconciliation view with secret and personal-data redaction).
 
 ---
 

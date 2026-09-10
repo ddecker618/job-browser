@@ -335,6 +335,11 @@ records durable architectural truth only.
   `JobNlpEnrichmentRepository`; full envelopes are schema-validated, source
   hashes/versions are stored, created timestamps survive upserts, and production
   `jobs` fields are never updated (D-NLP-029/030).
+- **Invalidation/reprocessing (Stage 14):**
+  `src/intelligence/nlp/reprocessing.ts` provides bounded cursor planning and
+  per-job execution. Current version/source-hash rows are skipped, completed
+  saves survive later failures, and builder mismatches fail safely without
+  touching archive, score, eligibility, or lifecycle state (D-NLP-031/032).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
