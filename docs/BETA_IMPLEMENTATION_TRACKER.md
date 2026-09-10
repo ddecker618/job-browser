@@ -202,7 +202,7 @@ Phase 2 (performance) WORKING STATE:
 - BETA_PLAN — docs/beta-plan unit (see phase 14 row): `docs/BETA_PLAN.md` created.
 - `117018e` — recovery: adoption markers completed to full scope (route, client, Settings UI, tests), POST /api/sources ordering fixed (DEF-003), readSetting JSON round-trip, privacy-distribution flake timeout raised, tracker corrected (phase 17 reverted [ ]). Verify green 108/1101. NOT pushed.
 - `bec8644` — docs: tracker phase 13 privacy audit + phase 15 beta config (D-010 parallelization waiver for 1.1.0). NOT pushed.
-- (final, phase 17/18) — version bump 1.0.28 → 1.1.0, release validation, docs (CHANGELOG/BETA_TESTING/SESSION_HANDOFF/BETA_PLAN), tracker final reconciliation + verdict READY. NOT pushed.
+- `449aada` — release: version bump 1.0.28 → 1.1.0, full artifact validation (build, inspect, privacy, packaged/installed/upgrade smokes, SHA), docs (CHANGELOG/BETA_TESTING/BETA_PLAN/this tracker) + verdict READY FOR EXTERNAL BETA. Verify 108/1101 green at 1.1.0. NOT pushed.
 
 ## Phase 1 bake-in status
 
