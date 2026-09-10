@@ -1,0 +1,505 @@
+import type { RemoteType } from '../../domain/job.js';
+import {
+  nlpRequirementCategorySchema,
+  nlpRequirementStrengthSchema,
+  type NlpEntityType,
+  type NlpRequirementCategory,
+  type NlpRequirementStrength,
+} from '../../schemas/job-nlp.js';
+
+// ---------------------------------------------------------------------------
+// Stage 16 - deterministic synthetic evaluation corpus.
+//
+// These are labels for evaluation, not production training data. The corpus
+// deliberately includes paraphrases, multi-label statements, and adversarial
+// examples where a lexical hit must not become an applicant requirement.
+// ---------------------------------------------------------------------------
+
+export type SyntheticNlpCaseKind = 'coverage' | 'paraphrase' | 'adversarial';
+
+export interface SyntheticEntityExpectation {
+  type: NlpEntityType;
+  value: string;
+}
+
+export interface SyntheticNlpCase {
+  id: string;
+  kind: SyntheticNlpCaseKind;
+  text: string;
+  expectedCategories: readonly NlpRequirementCategory[];
+  expectedStrength: NlpRequirementStrength;
+  expectedEntities: readonly SyntheticEntityExpectation[];
+  forbiddenCategories: readonly NlpRequirementCategory[];
+  expectedArrangement?: RemoteType;
+  rationale: string;
+}
+
+export const SYNTHETIC_NLP_CORPUS = [
+  {
+    id: 'skill-required-python',
+    kind: 'coverage',
+    text: 'Applicants must demonstrate proficiency in Python.',
+    expectedCategories: ['skill'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'text', value: 'python' }],
+    forbiddenCategories: [],
+    rationale: 'Required technical skill with a direct canonical alias.',
+  },
+  {
+    id: 'skill-preferred-kubernetes',
+    kind: 'paraphrase',
+    text: 'Familiarity with Kubernetes is desired.',
+    expectedCategories: ['skill'],
+    expectedStrength: 'preferred',
+    expectedEntities: [{ type: 'text', value: 'kubernetes' }],
+    forbiddenCategories: [],
+    rationale: 'Preferred skill expressed without a direct requirement verb.',
+  },
+  {
+    id: 'experience-required-years',
+    kind: 'coverage',
+    text: 'At least 5 years of cybersecurity experience is required.',
+    expectedCategories: ['experience'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'years', value: '5' }],
+    forbiddenCategories: [],
+    rationale: 'Minimum experience with an explicit numeric lower bound.',
+  },
+  {
+    id: 'experience-preferred-domain',
+    kind: 'paraphrase',
+    text: 'A minimum of 3 years working with incident response is desired.',
+    expectedCategories: ['experience'],
+    expectedStrength: 'preferred',
+    expectedEntities: [{ type: 'years', value: '3' }],
+    forbiddenCategories: [],
+    rationale: 'Experience paraphrase with a domain and preferred modality.',
+  },
+  {
+    id: 'education-required-bachelor',
+    kind: 'coverage',
+    text: "A bachelor's degree in computer science is required.",
+    expectedCategories: ['education'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'degree-level', value: 'bachelor' }],
+    forbiddenCategories: [],
+    rationale: 'Explicit degree level and field of study.',
+  },
+  {
+    id: 'education-equivalent-four-year',
+    kind: 'paraphrase',
+    text: 'A four-year degree or comparable experience will be considered.',
+    expectedCategories: ['education'],
+    expectedStrength: 'equivalent-accepted',
+    expectedEntities: [{ type: 'degree-level', value: 'bachelor' }],
+    forbiddenCategories: [],
+    rationale: 'Education substitution must retain equivalency semantics.',
+  },
+  {
+    id: 'certification-required-cissp',
+    kind: 'coverage',
+    text: 'Candidates must hold a CISSP certification.',
+    expectedCategories: ['certification'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'certification', value: 'cissp' }],
+    forbiddenCategories: [],
+    rationale: 'Known certification with applicant-directed requirement.',
+  },
+  {
+    id: 'certification-nice-security-plus',
+    kind: 'paraphrase',
+    text: 'Security+ is nice to have.',
+    expectedCategories: ['certification'],
+    expectedStrength: 'nice-to-have',
+    expectedEntities: [{ type: 'certification', value: 'security-plus' }],
+    forbiddenCategories: [],
+    rationale: 'Certification and modality remain separate dimensions.',
+  },
+  {
+    id: 'certification-required-after-hire',
+    kind: 'paraphrase',
+    text: 'The certification must be obtained within 90 days of hire.',
+    expectedCategories: ['certification'],
+    expectedStrength: 'required-after-hire',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale:
+      'Post-hire timing must remain distinct from an immediate requirement.',
+  },
+  {
+    id: 'clearance-required-secret',
+    kind: 'coverage',
+    text: 'Applicants must maintain an active Secret clearance.',
+    expectedCategories: ['clearance'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'clearance-level', value: 'secret' }],
+    forbiddenCategories: [],
+    rationale: 'Applicant-directed active clearance requirement.',
+  },
+  {
+    id: 'clearance-ability-top-secret',
+    kind: 'paraphrase',
+    text: 'Candidates must be eligible to obtain a Top Secret clearance.',
+    expectedCategories: ['clearance'],
+    expectedStrength: 'ability-to-obtain',
+    expectedEntities: [{ type: 'clearance-level', value: 'top-secret' }],
+    forbiddenCategories: [],
+    rationale:
+      'Eligibility must not be collapsed into currently held clearance.',
+  },
+  {
+    id: 'citizenship-required-us',
+    kind: 'coverage',
+    text: 'U.S. citizens are required for this position.',
+    expectedCategories: ['citizenship'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'text', value: 'us-citizen' }],
+    forbiddenCategories: [],
+    rationale: 'Explicit United States citizenship requirement.',
+  },
+  {
+    id: 'citizenship-work-authorization',
+    kind: 'paraphrase',
+    text: 'Applicants must be authorized to work in the United States.',
+    expectedCategories: ['citizenship'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'text', value: 'work-authorization' }],
+    forbiddenCategories: [],
+    rationale: 'Work authorization is citizenship/eligibility intelligence.',
+  },
+  {
+    id: 'location-commute-st-louis',
+    kind: 'coverage',
+    text: 'Employees must reside within 50 miles of St. Louis.',
+    expectedCategories: ['location'],
+    expectedStrength: 'required',
+    expectedEntities: [
+      { type: 'city', value: 'st. louis' },
+      { type: 'text', value: '50 miles' },
+    ],
+    forbiddenCategories: [],
+    expectedArrangement: 'onsite',
+    rationale:
+      'Commute and residency constraint, not unrestricted remote work.',
+  },
+  {
+    id: 'location-based-chicago',
+    kind: 'paraphrase',
+    text: 'The successful candidate will be based in Chicago, Illinois.',
+    expectedCategories: ['location'],
+    expectedStrength: 'informational',
+    expectedEntities: [
+      { type: 'city', value: 'chicago' },
+      { type: 'state', value: 'IL' },
+    ],
+    forbiddenCategories: [],
+    expectedArrangement: 'onsite',
+    rationale: 'Location evidence is distinct from work arrangement evidence.',
+  },
+  {
+    id: 'work-arrangement-remote',
+    kind: 'coverage',
+    text: 'This is a fully remote position.',
+    expectedCategories: ['work-arrangement'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    expectedArrangement: 'remote',
+    rationale: 'Direct unrestricted remote arrangement statement.',
+  },
+  {
+    id: 'work-arrangement-hybrid',
+    kind: 'paraphrase',
+    text: 'The team works two days each week in the office.',
+    expectedCategories: ['work-arrangement'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    expectedArrangement: 'hybrid',
+    rationale: 'Frequency paraphrase for a hybrid arrangement.',
+  },
+  {
+    id: 'travel-required-percent',
+    kind: 'coverage',
+    text: 'The role requires up to 25% travel.',
+    expectedCategories: ['travel'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'percentage', value: '25' }],
+    forbiddenCategories: [],
+    rationale: 'Required travel with a bounded percentage.',
+  },
+  {
+    id: 'travel-preferred-domestic',
+    kind: 'paraphrase',
+    text: 'Willingness to travel domestically is a plus.',
+    expectedCategories: ['travel'],
+    expectedStrength: 'nice-to-have',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Optional travel expressed as a preference.',
+  },
+  {
+    id: 'schedule-weekdays',
+    kind: 'coverage',
+    text: 'This position follows a Monday through Friday schedule.',
+    expectedCategories: ['schedule'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Workday schedule without applicant modality.',
+  },
+  {
+    id: 'schedule-required-shifts',
+    kind: 'paraphrase',
+    text: 'Candidates must work rotating night shifts.',
+    expectedCategories: ['schedule'],
+    expectedStrength: 'required',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Required shift schedule.',
+  },
+  {
+    id: 'employment-full-time',
+    kind: 'coverage',
+    text: 'This is a full-time, permanent role.',
+    expectedCategories: ['employment-type'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Employment type without a qualification modality.',
+  },
+  {
+    id: 'employment-part-time-contract',
+    kind: 'paraphrase',
+    text: 'A part-time contract engagement is available.',
+    expectedCategories: ['employment-type'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Contract and part-time paraphrase.',
+  },
+  {
+    id: 'responsibility-manage-siem',
+    kind: 'coverage',
+    text: 'You will manage the SIEM platform.',
+    expectedCategories: ['responsibility', 'skill'],
+    expectedStrength: 'unknown',
+    expectedEntities: [{ type: 'text', value: 'siem' }],
+    forbiddenCategories: [],
+    rationale:
+      'Duty and skill must coexist without becoming a requirement solely from duty language.',
+  },
+  {
+    id: 'responsibility-maintain-systems',
+    kind: 'paraphrase',
+    text: 'The primary responsibilities include maintaining network systems.',
+    expectedCategories: ['responsibility'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Responsibility language without a catalog skill alias.',
+  },
+  {
+    id: 'compensation-salary-range',
+    kind: 'coverage',
+    text: 'The salary range is $90,000 to $110,000.',
+    expectedCategories: ['compensation'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Compensation disclosure is not an applicant requirement.',
+  },
+  {
+    id: 'compensation-annual-bonus',
+    kind: 'paraphrase',
+    text: 'Compensation includes an annual bonus.',
+    expectedCategories: ['compensation'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Compensation benefit remains informational.',
+  },
+  {
+    id: 'benefit-medical-dental',
+    kind: 'coverage',
+    text: 'Employees receive medical, dental, and vision insurance.',
+    expectedCategories: ['benefit'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Health benefits are informational.',
+  },
+  {
+    id: 'benefit-retirement-time-off',
+    kind: 'paraphrase',
+    text: 'The package includes 401(k) and paid time off.',
+    expectedCategories: ['benefit'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Retirement and leave benefits are informational.',
+  },
+  {
+    id: 'company-mission-provider',
+    kind: 'coverage',
+    text: 'We are a mission-driven cybersecurity provider.',
+    expectedCategories: ['company-description'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Company description must not become a candidate requirement.',
+  },
+  {
+    id: 'company-federal-partner',
+    kind: 'paraphrase',
+    text: 'Our organization partners with federal clients.',
+    expectedCategories: ['company-description'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Employer context is not an applicant clearance or skill claim.',
+  },
+  {
+    id: 'legal-equal-opportunity',
+    kind: 'coverage',
+    text: 'We are an equal opportunity employer.',
+    expectedCategories: ['legal-eeo-boilerplate'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Canonical EEO boilerplate.',
+  },
+  {
+    id: 'legal-accommodation',
+    kind: 'paraphrase',
+    text: 'The company supports affirmative action and reasonable accommodation.',
+    expectedCategories: ['legal-eeo-boilerplate'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale:
+      'Adversarial legal language must not be swallowed by company description.',
+  },
+  {
+    id: 'unknown-posting-details',
+    kind: 'coverage',
+    text: 'Please review the posting details.',
+    expectedCategories: ['unknown'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'No requirement or informational dimension is present.',
+  },
+  {
+    id: 'unknown-interest',
+    kind: 'paraphrase',
+    text: 'Thank you for your interest in this opportunity.',
+    expectedCategories: ['unknown'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    rationale: 'Generic recruiting language must remain unknown.',
+  },
+  {
+    id: 'adversarial-cleared-team',
+    kind: 'adversarial',
+    text: 'Our cleared team supports Secret environments.',
+    expectedCategories: ['company-description'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: ['clearance'],
+    rationale: 'Employer team clearance is not applicant clearance.',
+  },
+  {
+    id: 'adversarial-grade-a-plus',
+    kind: 'adversarial',
+    text: 'Grade A+ in mathematics is required.',
+    expectedCategories: ['unknown'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: ['certification'],
+    rationale: 'A grade must not be normalized as CompTIA A+.',
+  },
+  {
+    id: 'adversarial-technical-remote',
+    kind: 'adversarial',
+    text: 'The Splunk SIEM platform supports remote systems.',
+    expectedCategories: ['skill'],
+    expectedStrength: 'informational',
+    expectedEntities: [
+      { type: 'text', value: 'splunk' },
+      { type: 'text', value: 'siem' },
+    ],
+    forbiddenCategories: ['work-arrangement'],
+    expectedArrangement: 'unknown',
+    rationale: 'Technical remote terminology is not a work arrangement.',
+  },
+  {
+    id: 'adversarial-remote-denied',
+    kind: 'adversarial',
+    text: 'Remote work is not authorized; employees must report to the office.',
+    expectedCategories: ['work-arrangement'],
+    expectedStrength: 'required',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    expectedArrangement: 'onsite',
+    rationale:
+      'Remote denial must produce onsite evidence, not remote eligibility.',
+  },
+  {
+    id: 'adversarial-occasional-onsite',
+    kind: 'adversarial',
+    text: 'This remote role requires occasional onsite attendance.',
+    expectedCategories: ['work-arrangement'],
+    expectedStrength: 'required',
+    expectedEntities: [],
+    forbiddenCategories: [],
+    expectedArrangement: 'remote',
+    rationale:
+      'Occasional onsite evidence is preserved as a conflict qualifier.',
+  },
+  {
+    id: 'adversarial-secret-company-context',
+    kind: 'adversarial',
+    text: 'We support Secret programs for government customers.',
+    expectedCategories: ['company-description'],
+    expectedStrength: 'informational',
+    expectedEntities: [],
+    forbiddenCategories: ['clearance'],
+    rationale:
+      'Customer/program clearance context is not an applicant requirement.',
+  },
+  {
+    id: 'adversarial-a-plus-certification',
+    kind: 'adversarial',
+    text: 'CompTIA A+ certification is required.',
+    expectedCategories: ['certification'],
+    expectedStrength: 'required',
+    expectedEntities: [{ type: 'certification', value: 'a-plus' }],
+    forbiddenCategories: [],
+    rationale:
+      'The explicit certification context must permit A+ normalization.',
+  },
+] as const satisfies readonly SyntheticNlpCase[];
+
+export function getSyntheticNlpCorpus(): readonly SyntheticNlpCase[] {
+  return SYNTHETIC_NLP_CORPUS;
+}
+
+export function getSyntheticNlpCase(id: string): SyntheticNlpCase | undefined {
+  return SYNTHETIC_NLP_CORPUS.find((item) => item.id === id);
+}
+
+export function syntheticNlpCorpusCategories(): readonly NlpRequirementCategory[] {
+  return nlpRequirementCategorySchema.options.filter((category) =>
+    SYNTHETIC_NLP_CORPUS.some((item) =>
+      item.expectedCategories.some((itemCategory) => itemCategory === category),
+    ),
+  );
+}
+
+export function syntheticNlpCorpusStrengths(): readonly NlpRequirementStrength[] {
+  return nlpRequirementStrengthSchema.options.filter((strength) =>
+    SYNTHETIC_NLP_CORPUS.some((item) => item.expectedStrength === strength),
+  );
+}

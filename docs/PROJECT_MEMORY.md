@@ -346,6 +346,12 @@ records durable architectural truth only.
   method, version, and reconciliation state. User-derived text is redacted for
   common personal and secret patterns before projection; no persistence or
   production-field path exists (D-NLP-033/034).
+- **Synthetic evaluation corpus (Stage 16):**
+  `src/intelligence/nlp/evaluationCorpus.ts` contains 43 deterministic local
+  cases covering all 17 categories and all 8 strengths, with explicit entity,
+  forbidden-category, and arrangement labels. Adversarial cases remain labeled
+  for critical false positives such as team clearance, grade A+, and technical
+  remote terminology (D-NLP-035/036).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

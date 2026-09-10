@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       15 (NLP debug/intelligence inspector) - Stage 16 is next
-CURRENT_TASK:        Begin Stage 16 (synthetic NLP evaluation corpus)
-LAST_COMPLETED:      Stage 15 - read-only inspector + 4 tests; npm run verify (123 files / 1302 tests)
-NEXT_ACTION:         Stage 16 - create a deterministic paraphrase and adversarial corpus covering every NLP category
-FILES_IN_PROGRESS:   src/intelligence/nlp/inspector.ts, tests/job-nlp-inspector.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-inspector.test.ts (4 pass); full npm run verify
+CURRENT_STAGE:       16 (synthetic NLP evaluation corpus) - Stage 17 is next
+CURRENT_TASK:        Begin Stage 17 (representative job evaluation)
+LAST_COMPLETED:      Stage 16 - 43 labeled corpus cases + 3 tests; npm run verify (124 files / 1305 tests)
+NEXT_ACTION:         Stage 17 - evaluate representative descriptions for category/strength/entity accuracy and critical FP/FN cases
+FILES_IN_PROGRESS:   src/intelligence/nlp/evaluationCorpus.ts, tests/job-nlp-evaluation-corpus.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-evaluation-corpus.test.ts (3 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 15 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 16 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -70,13 +70,16 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                         candidates, bound each batch, skip fresh rows, preserve
                         completed saves after failures, validate builder version/hash,
                          and never expose archive/score/eligibility operations;
-                         inspector must be read-only, deterministically ordered,
-                         and redact emails, phones, SSNs, secrets, profiles, and
-                         street addresses before exposing evidence;
-                         segment helper must use the real
+                          inspector must be read-only, deterministically ordered,
+                          and redact emails, phones, SSNs, secrets, profiles, and
+                          street addresses before exposing evidence;
+                          evaluation corpus must remain synthetic/local,
+                          deterministically labeled, cover every contract category
+                          and strength, and preserve adversarial negative labels;
+                          segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 15 start
+SAFE_RESUME_POINT:   Stage 17 start
 ```
 
 ---
@@ -162,7 +165,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 13    | Shadow-mode persistence                      | [x]    |
 | 14    | Invalidation and reprocessing                | [x]    |
 | 15    | NLP debug / intelligence inspector           | [x]    |
-| 16    | Synthetic NLP evaluation corpus              | [ ]    |
+| 16    | Synthetic NLP evaluation corpus              | [x]    |
 | 17    | Representative job evaluation                | [ ]    |
 | 18    | Shadow-mode acceptance gate                  | [ ]    |
 | 19    | Semantic normalization / embedding design    | [ ]    |
@@ -502,15 +505,26 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
 - **Current task:** complete.
-- **Exact next action:** Stage 16 - synthetic NLP evaluation corpus (paraphrases, adversarial examples, and critical false-positive/false-negative cases).
+- **Exact next action:** Stage 16 delivered (43 labeled synthetic cases); begin Stage 17 - representative job evaluation.
 
 ---
 
 ## Stage 16 — Synthetic NLP Evaluation Corpus
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Deterministic paraphrase corpus covering all categories + adversarial examples (e.g. "our cleared team supports Secret environments" must not imply applicant clearance).
-- **Current task / exact next action:** defined on completion of Stage 15.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/evaluationCorpus.ts` (new): 43 synthetic/local labeled cases covering all 17 requirement categories and all 8 strength labels, with expected entities, forbidden categories, arrangement expectations, and rationale; includes paraphrases, multi-label duties, and critical clearance/A+/technical-remote/remote-denial adversarial cases.
+  - `tests/job-nlp-evaluation-corpus.test.ts` (new, 3 tests): contract category/strength coverage, unique/non-empty labels with at least two cases per category, and critical negative/arrangement case retention.
+- **Files/components involved:** `src/intelligence/nlp/evaluationCorpus.ts`, `tests/job-nlp-evaluation-corpus.test.ts`, `src/schemas/job-nlp.ts`.
+- **Architectural decisions:**
+  - D-NLP-035: the corpus is deterministic synthetic evaluation data, not production training data and not live-user data.
+  - D-NLP-036: expected categories/strengths/entities and forbidden categories are explicit labels; adversarial cases retain expected negatives instead of being edited to make current classifiers pass.
+- **Tests:** 3 corpus integrity tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-evaluation-corpus.test.ts` = 3 pass; `npm run verify` = 124 files / 1305 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** Stage 16 labels are not yet accuracy scores; Stage 17 must run the current extractors against the corpus and report false positives/negatives without changing labels to fit the implementation.
+- **Current task:** complete.
+- **Exact next action:** Stage 17 - representative job evaluation using this corpus plus additional local representative descriptions.
 
 ---
 
