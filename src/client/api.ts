@@ -1,4 +1,5 @@
 import type {
+  AdoptionMarkers,
   AnalyticsView,
   AppSettings,
   DashboardSummary,
@@ -288,6 +289,7 @@ export const api = {
       employerDiscoveryEnabled: boolean;
     }>('/api/discovery/settings', json('PUT', settings)),
   settings: () => request<AppSettings>('/api/settings'),
+  adoption: () => request<AdoptionMarkers>('/api/adoption'),
   saveSettings: (settings: AppSettings) =>
     request<AppSettings>('/api/settings', json('PUT', settings)),
   searchProfile: () => request<SearchProfile>('/api/search-profile'),

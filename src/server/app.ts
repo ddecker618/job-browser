@@ -516,8 +516,9 @@ export function createApp(
         credentialStatus?.configured === false
           ? 'credentials-required'
           : 'valid';
+      const created = sourceRepository.create(input, status);
       markFirstSourceAt(database);
-      response.status(201).json(sourceRepository.create(input, status));
+      response.status(201).json(created);
     }),
   );
 
@@ -828,6 +829,9 @@ export function createApp(
   app.get('/api/sources', (_request, response) =>
     response.json(repository.listSources()),
   );
+  app.get('/api/adoption', (_request, response) => {
+    response.json(readAdoptionMarkers(database));
+  });
   app.get('/api/settings', (_request, response) => {
     const settings = repository.getSettings(
       defaultSettings(

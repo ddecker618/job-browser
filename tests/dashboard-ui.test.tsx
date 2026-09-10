@@ -451,8 +451,14 @@ describe('dashboard UI', () => {
       ],
     };
     const calls: string[] = [];
-    mockFetch((_url, init) => {
+    mockFetch((url, init) => {
       calls.push(init?.method ?? 'GET');
+      if (url.endsWith('/api/adoption')) {
+        return {
+          installedAt: '2026-07-01T12:00:00.000Z',
+          firstSourceAt: null,
+        };
+      }
       return settings;
     });
     renderPage(<SettingsPage />);
@@ -461,6 +467,36 @@ describe('dashboard UI', () => {
     await user.click(screen.getByRole('button', { name: 'Save settings' }));
 
     await waitFor(() => expect(calls).toContain('PUT'));
+  });
+
+  it('shows local adoption markers read-only', async () => {
+    mockFetch((url) => {
+      if (url.endsWith('/api/adoption')) {
+        return {
+          installedAt: '2026-07-01T12:00:00.000Z',
+          firstSourceAt: null,
+        };
+      }
+      return {
+        databaseLocation: 'data/job-browser.sqlite',
+        defaultSearch: '',
+        theme: 'dark',
+        defaultSort: 'score',
+        loggingLevel: 'info',
+        resumeDirectory: 'data/resumes',
+        artifactDirectory: 'artifacts',
+        targetRoles: [],
+      };
+    });
+    renderPage(<SettingsPage />);
+
+    expect(
+      await screen.findByText('Local adoption markers'),
+    ).toBeInTheDocument();
+    const installed = screen.getByLabelText('First launched');
+    expect(installed).toHaveAttribute('readonly');
+    expect(installed).not.toHaveValue('Not yet');
+    expect(screen.getByLabelText('First source added')).toHaveValue('Not yet');
   });
 
   it('distinguishes filtered and unfiltered empty job results', async () => {

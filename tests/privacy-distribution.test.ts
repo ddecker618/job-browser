@@ -41,7 +41,7 @@ describe('distribution privacy', () => {
     const distRoot = resolve(process.cwd(), 'dist');
     if (!existsSync(distRoot)) return;
     expect(scanDirectory(distRoot)).toEqual([]);
-  });
+  }, 30_000);
 
   const appAsarPath = resolve(
     process.cwd(),

@@ -150,6 +150,11 @@ export interface MetricItem {
   value: number;
 }
 
+export interface AdoptionMarkers {
+  installedAt: string | null;
+  firstSourceAt: string | null;
+}
+
 export interface AppSettings {
   databaseLocation: string;
   defaultSearch: string;

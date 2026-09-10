@@ -66,6 +66,10 @@ function RolesEditor({
 
 export function SettingsPage() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: api.settings });
+  const adoption = useQuery({
+    queryKey: ['adoption'],
+    queryFn: api.adoption,
+  });
   const discovery = useQuery({
     queryKey: ['source-control-center'],
     queryFn: api.sourceControlCenter,
@@ -231,6 +235,34 @@ export function SettingsPage() {
             </label>
           </div>
         </section>
+        <section className="form-panel">
+          <div className="section-heading">
+            <span>05</span>
+            <div>
+              <h3>Local adoption markers</h3>
+              <p>
+                Read-only timestamps stored entirely on this device for beta
+                planning. Never transmitted.
+              </p>
+            </div>
+          </div>
+          <div className="form-grid">
+            <label className="span-2">
+              First launched
+              <input
+                readOnly
+                value={displayTimestamp(adoption.data?.installedAt)}
+              />
+            </label>
+            <label className="span-2">
+              First source added
+              <input
+                readOnly
+                value={displayTimestamp(adoption.data?.firstSourceAt)}
+              />
+            </label>
+          </div>
+        </section>
         <div className="sticky-form-actions">
           <span>
             {save.isSuccess
@@ -246,4 +278,10 @@ export function SettingsPage() {
       </form>
     </>
   );
+}
+
+function displayTimestamp(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return 'Not yet';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }

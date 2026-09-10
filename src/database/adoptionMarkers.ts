@@ -5,14 +5,20 @@ export const ADOPTION_INSTALLED_AT_KEY = 'adoption.installedAt';
 export const ADOPTION_FIRST_SOURCE_AT_KEY = 'adoption.firstSourceAt';
 
 function readSetting(database: JobDatabase, key: string): string | null {
-  return (
+  const raw =
     database
       .prepare<
         [string],
         { setting_value_json: string } | undefined
       >('SELECT setting_value_json FROM app_settings WHERE setting_key = ?')
-      .get(key)?.setting_value_json ?? null
-  );
+      .get(key)?.setting_value_json ?? null;
+  if (raw === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === 'string' ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function writeSetting(
@@ -44,9 +50,10 @@ export function markFirstSourceAt(
   timestamp = nowUtc(),
 ): void {
   if (readSetting(database, ADOPTION_FIRST_SOURCE_AT_KEY) !== null) return;
-  const count = database
-    .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM sources')
-    .get()?.count ?? 0;
+  const count =
+    database
+      .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM sources')
+      .get()?.count ?? 0;
   if (count === 1) {
     writeSetting(database, ADOPTION_FIRST_SOURCE_AT_KEY, timestamp);
   }
