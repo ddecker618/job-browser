@@ -329,9 +329,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 8 — Clearance and Citizenship Intelligence
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Separate clearance level/current/ability-to-obtain/maintain/preferred/public-trust from citizenship; adversarial "cleared team" sentences must not imply applicant clearance.
-- **Current task / exact next action:** defined on completion of Stage 7.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/clearance.ts` (new): `extractClearance(segment)` -> `ClearanceExtraction` with `CLEARANCE_INTELLIGENCE_VERSION = 'clearance-intelligence-v1'`; clearance catalog for Top Secret/SCI, Top Secret, Secret, Confidential, Public Trust, SCI, SSBI, and polygraph; generic clearance fallback with `unknown` level; per-clearance status (`current`, `maintenance`, `ability-to-obtain`, `required`, `preferred`, `unknown`) from nearest clause-scoped language; citizenship entities kept separate for U.S. citizen, permanent resident/green card, and work authorization; `teamContext` guard for employer-directed "our cleared team" language; `extractClearanceBatch` gated on `clearance` or `citizenship` categories.
+  - `tests/job-nlp-clearance.test.ts` (new, 17 tests): level catalog; TS/SCI overlap dedupe; required/current/ability-to-obtain/maintenance statuses; SSBI + polygraph; slash notation; unknown generic clearance; confidential-NDA negative case; raw/span integrity; employer/team adversarial guard; applicant-directed clearance; U.S. citizenship; permanent resident and work authorization separation; citizenship + clearance clause independence; batch category gate; version metadata.
+- **Files/components involved:** `src/intelligence/nlp/clearance.ts`, `tests/job-nlp-clearance.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-019: clearance entities and citizenship entities are separate outputs; citizenship or work authorization never implies a clearance, and clearance never implies citizenship.
+  - D-NLP-020: applicant-status/modality matching is scoped to semicolon-delimited clauses; employer-directed team context is explicitly blocked unless applicant-directed language is present. Clearance-level matches are overlap-deduplicated so `TS/SCI` does not also emit bare `Top Secret`.
+- **Tests:** 17 clearance/citizenship tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-clearance.test.ts` = 17 pass; `npm run verify` = 116 files / 1233 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** clause scoping currently uses semicolons only to avoid splitting abbreviations such as `U.S.`; clearance and citizenship catalogs are deterministic and curated; no adjudication/date/agency normalization yet.
+- **Current task:** complete.
+- **Exact next action:** Stage 9 - location / remote / hybrid intelligence (remote, hybrid, onsite, commute distance, excluded states, occasional onsite, relocation, travel; compare with the existing geographic engine and never weaken hard gates).
 
 ---
 

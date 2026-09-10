@@ -303,6 +303,12 @@ records durable architectural truth only.
   normalizes a curated catalog of known certifications and families, assigns
   per-cert modality by nearest-keyword distance (precedence tie-break), and
   guards against false equivalencies (e.g., "grade A+" is not CompTIA A+).
+- **Clearance/citizenship intelligence (Stage 8):**
+  `src/intelligence/nlp/clearance.ts` keeps clearance levels/statuses separate
+  from U.S. citizenship, permanent residency, and work authorization. Status
+  matching is clause-scoped; `TS/SCI` overlap is deduped; employer-directed
+  phrases such as "our cleared team" never imply applicant clearance
+  (D-NLP-019/020).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
