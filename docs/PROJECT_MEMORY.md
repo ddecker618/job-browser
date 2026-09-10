@@ -330,6 +330,11 @@ records durable architectural truth only.
   values, modality, entity, and scope independently, preserves both sides, and
   records agreement/one-sided/conflict/unknown states. Deterministic authority
   remains diagnostic and shadow-only (D-NLP-027/028).
+- **Shadow persistence (Stage 13):**
+  `job_nlp_enrichments` is an additive one-row-per-job table written through
+  `JobNlpEnrichmentRepository`; full envelopes are schema-validated, source
+  hashes/versions are stored, created timestamps survive upserts, and production
+  `jobs` fields are never updated (D-NLP-029/030).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

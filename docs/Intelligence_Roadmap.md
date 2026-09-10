@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       12 (deterministic/NLP reconciliation) - Stage 13 is next
-CURRENT_TASK:        Begin Stage 13 (shadow-mode persistence)
-LAST_COMPLETED:      Stage 12 - deterministic/NLP reconciliation + 10 tests; npm run verify (120 files / 1286 tests)
-NEXT_ACTION:         Stage 13 - persist versioned NLP enrichment without changing production score, eligibility, description, or removal state
-FILES_IN_PROGRESS:   src/intelligence/nlp/reconciliation.ts, tests/job-nlp-reconciliation.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-reconciliation.test.ts (10 pass); full npm run verify
+CURRENT_STAGE:       13 (shadow-mode persistence) - Stage 14 is next
+CURRENT_TASK:        Begin Stage 14 (invalidation and reprocessing)
+LAST_COMPLETED:      Stage 13 - shadow-mode persistence + 5 tests; npm run verify (121 files / 1291 tests)
+NEXT_ACTION:         Stage 14 - detect stale NLP version/source hashes and add bounded, resumable, idempotent reprocessing without auto-archive
+FILES_IN_PROGRESS:   src/database/jobNlpEnrichmentRepository.ts, src/db/migrations/031_nlp_enrichments.sql, tests/job-nlp-persistence.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-persistence.test.ts tests/migrations.test.ts; full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 12 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 13 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -63,10 +63,13 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                       requirements; broad company-description patterns must not
                       swallow EEO sentences; reconciliation must preserve both
                       sides and treat deterministic values as authoritative;
-                      missing dimensions are not silent agreement; segment helper must use the real
+                       missing dimensions are not silent agreement; persistence must
+                       use a separate additive table, validate the full envelope,
+                       preserve created_at, use source hash/version staleness checks,
+                       and never update jobs; segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 13 start
+SAFE_RESUME_POINT:   Stage 14 start
 ```
 
 ---
@@ -149,7 +152,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 10    | Skill and technology extraction              | [x]    |
 | 11    | Boilerplate and non-requirement filtering    | [x]    |
 | 12    | Deterministic + NLP reconciliation           | [x]    |
-| 13    | Shadow-mode persistence                      | [ ]    |
+| 13    | Shadow-mode persistence                      | [x]    |
 | 14    | Invalidation and reprocessing                | [ ]    |
 | 15    | NLP debug / intelligence inspector           | [ ]    |
 | 16    | Synthetic NLP evaluation corpus              | [ ]    |
@@ -219,7 +222,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stages 2-12 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology, boilerplate filtering, reconciliation); proceed to Stage 13.
+- **Exact next action:** Stages 2-13 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology, boilerplate filtering, reconciliation, shadow persistence); proceed to Stage 14.
 
 ---
 
@@ -439,9 +442,22 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 13 — Shadow-Mode Persistence
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Persist NLP enrichment safely (versioned, reprocessable, no production-score/eligibility change, no job-description overwrite, conflict/debug/migration support).
-- **Current task / exact next action:** defined on completion of Stage 12.
+- **Implementation tasks:**
+  - `src/db/migrations/031_nlp_enrichments.sql` (new): additive `job_nlp_enrichments` table keyed by `job_id`, foreign-key cascade, extraction version, source text hash, generated JSON envelope, generated/created/updated timestamps, JSON validity check, and stale lookup index; no NLP columns are added to `jobs`.
+  - `src/database/jobNlpEnrichmentRepository.ts` (new): validates with `jobNlpEnrichmentSchema`, saves with explicit `ON CONFLICT(job_id) DO UPDATE`, preserves `created_at`, reads validated JSON, exposes `isStale(jobId, version, sourceHash)` and `listStaleByVersion(version)`, and never updates `jobs`.
+  - `tests/job-nlp-persistence.test.ts` (new, 5 tests): save/read, production-field preservation, current-row upsert/created-at preservation, invalid envelope rejection, stale version/hash detection, and foreign-key cascade.
+  - Existing migration expectations updated for migration 031 and the new table.
+- **Files/components involved:** `src/db/migrations/031_nlp_enrichments.sql`, `src/database/jobNlpEnrichmentRepository.ts`, `tests/job-nlp-persistence.test.ts`, migration-preservation tests.
+- **Architectural decisions:**
+  - D-NLP-029: current NLP enrichment lives in a separate one-row-per-job table; descriptions, production scores, eligibility, lifecycle, and role-details fields remain untouched.
+  - D-NLP-030: repository writes validate the complete versioned envelope and retain source hash/version metadata; stale detection is explicit and Stage 14 owns reprocessing.
+- **Tests:** 5 persistence tests plus migration-preservation coverage (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-persistence.test.ts tests/migrations.test.ts tests/application-event-migration.test.ts` = 15 pass; `npm run verify` = 121 files / 1291 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** only the current enrichment is stored (no append-only history); no job-level NLP assembler is wired yet; reprocessing, invalidation, and UI/debug projections remain Stage 14+ work.
+- **Current task:** complete.
+- **Exact next action:** Stage 14 - invalidation and reprocessing (stale version/hash discovery, bounded resumable work, idempotence, crash safety, no auto-archive).
 
 ---
 
