@@ -309,6 +309,12 @@ records durable architectural truth only.
   matching is clause-scoped; `TS/SCI` overlap is deduped; employer-directed
   phrases such as "our cleared team" never imply applicant clearance
   (D-NLP-019/020).
+- **Location/remote/hybrid intelligence (Stage 9):**
+  `src/intelligence/nlp/location.ts` extracts arrangement, city/state evidence,
+  remote scope, excluded states, commute language, occasional onsite,
+  relocation, and travel without changing geographic eligibility. It reports
+  conflicts with the existing arrangement classifier rather than resolving them
+  in production (D-NLP-021/022).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

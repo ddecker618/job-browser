@@ -34,24 +34,30 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       7 (certification) - Stage 8 is next
-CURRENT_TASK:        Begin Stage 8 (clearance and citizenship intelligence)
-LAST_COMPLETED:      Stage 7 - certification intelligence + 15 tests; npm run verify (115 files / 1216 tests)
-NEXT_ACTION:         Stage 8 - clearance level/current/ability-to-obtain/maintain/preferred/public-trust; citizenship; no applicant implication from "cleared team"
-FILES_IN_PROGRESS:   src/intelligence/nlp/certifications.ts, tests/job-nlp-certifications.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-certifications.test.ts (15 pass); full npm run verify
+CURRENT_STAGE:       9 (location/remote/hybrid) - Stage 10 is next
+CURRENT_TASK:        Begin Stage 10 (skill and technology extraction)
+LAST_COMPLETED:      Stage 9 - location/remote/hybrid intelligence + 17 tests; npm run verify (117 files / 1250 tests)
+NEXT_ACTION:         Stage 10 - extract skills and technologies while preserving required/preferred/mentioned/environment/responsibility distinctions
+FILES_IN_PROGRESS:   src/intelligence/nlp/location.ts, tests/job-nlp-location.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-location.test.ts; full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 7 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 9 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
                      per-cert modality uses NEAREST-KEYWORD distance with
                      precedence tie-break (whole-window precedence misfires when a
                      segment mixes "preferred, ... required"); array order = span
-                     order (sort by span.start); segment helper must use the real
-                     NlpSegment shape (index/text/normalized/kind/sourceField/
+                     order (sort by span.start); location state codes must be
+                     context-filtered because normalizeStateCode accepts any two
+                     letters; strip "based in" prefixes from city captures; do not
+                     infer unrestricted remote from technical remote terminology;
+                     preserve remote-vs-deterministic conflicts (especially
+                     occasional onsite) instead of changing a gate; excluded states
+                     and commute miles are evidence only; segment helper must use the
+                     real NlpSegment shape (index/text/normalized/kind/sourceField/
                      charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 8 start
+SAFE_RESUME_POINT:   Stage 10 start
 ```
 
 ---
@@ -123,14 +129,14 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | ----- | -------------------------------------------- | ------ |
 | 0     | Current intelligence architecture audit      | [x]    |
 | 1     | NLP data contract and versioning             | [x]    |
-| 2     | Sentence / segment intelligence              | [ ]    |
-| 3     | Requirement category classification          | [ ]    |
-| 4     | Requirement strength / modality              | [ ]    |
-| 5     | Education intelligence                       | [ ]    |
-| 6     | Experience intelligence                      | [ ]    |
-| 7     | Certification intelligence                   | [ ]    |
-| 8     | Clearance and citizenship intelligence       | [ ]    |
-| 9     | Location / remote / hybrid intelligence      | [ ]    |
+| 2     | Sentence / segment intelligence              | [x]    |
+| 3     | Requirement category classification          | [x]    |
+| 4     | Requirement strength / modality              | [x]    |
+| 5     | Education intelligence                       | [x]    |
+| 6     | Experience intelligence                      | [x]    |
+| 7     | Certification intelligence                   | [x]    |
+| 8     | Clearance and citizenship intelligence       | [x]    |
+| 9     | Location / remote / hybrid intelligence      | [x]    |
 | 10    | Skill and technology extraction              | [ ]    |
 | 11    | Boilerplate and non-requirement filtering    | [ ]    |
 | 12    | Deterministic + NLP reconciliation           | [ ]    |
@@ -204,7 +210,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stages 2-7 delivered (segmentation, categories, strength, education, experience, certifications); proceed to Stage 8.
+- **Exact next action:** Stages 2-9 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid); proceed to Stage 10.
 
 ---
 
@@ -348,9 +354,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 9 — Location / Remote / Hybrid Intelligence
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Interpret remote/hybrid/onsite/commuting-distance/excluded-states/occasional-onsite/relocation/travel; do NOT let the word "remote" imply unrestricted remote; compare NLP output vs existing geographic engine and record conflicts; never weaken hard gates.
-- **Current task / exact next action:** defined on completion of Stage 8.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/location.ts` (new): `extractLocation(segment)` -> `LocationExtraction` with `LOCATION_INTELLIGENCE_VERSION = 'location-intelligence-v1'`; conservative remote/hybrid/onsite classification with explicit remote-denial and technical-remote guards; existing deterministic arrangement classification exposed beside the NLP result with an `arrangementConflict` flag; city/state mentions with exact spans; nationwide/state-limited/unspecified remote scope; excluded states; commute requirement with optional numeric miles (never calculated); occasional vs regular onsite; relocation required/preferred/available/not-available; travel mention/requirement/percentage/overnight; `extractLocationBatch` gated on `location`, `work-arrangement`, or `travel` categories.
+  - `tests/job-nlp-location.test.ts` (new, 17 tests): remote/hybrid/denial/technical terminology; occasional onsite conflict; city/state evidence spans; full state names and multiple remote states; nationwide remote; excluded state evidence; commute miles and nonnumeric commuting distance; relocation statuses; travel percent/overnight; no invented travel; category gate; metadata; conservative empty output.
+- **Files/components involved:** `src/intelligence/nlp/location.ts`, `tests/job-nlp-location.test.ts`; existing comparison reference `src/domain/work-arrangement.ts`.
+- **Architectural decisions:**
+  - D-NLP-021: location intelligence reports arrangement conflicts with existing deterministic work-arrangement classification but never resolves the conflict by changing production eligibility, score, ranking, or filtering.
+  - D-NLP-022: no NLP location fact fabricates a city, state, distance, or unrestricted remote scope; excluded states, commute constraints, relocation, and travel remain shadow evidence until a later reconciliation stage.
+- **Tests:** 17 location/remote/hybrid tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-location.test.ts` = 17 pass; `npm run verify` = 117 files / 1250 tests green; eslint clean; `tsc --noEmit` clean; prettier clean. A transient API `fetch failed: bad port` occurred once during a parallel full run; the three affected API files passed on rerun and the subsequent full gate passed.
+- **Known limitations:** city extraction is intentionally limited to city/state forms; state-limited scope is text evidence, not geographic eligibility; clause context is heuristic; occasional onsite can conflict with existing deterministic precedence; no provider-field or geographic-engine persistence/reconciliation exists yet.
+- **Current task:** complete.
+- **Exact next action:** Stage 10 - skill and technology extraction (required/preferred/mentioned/environment/responsibility; conservative alias normalization while preserving raw entities).
 
 ---
 
