@@ -34,17 +34,19 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       1 (contract) - Stage 2 is next
-CURRENT_TASK:        Begin Stage 2 (sentence/segment intelligence)
-LAST_COMPLETED:      Stage 1 - job-nlp-v1 contract + 17 schema tests green
-NEXT_ACTION:         Stage 2 - implement segmentation module + tests
-FILES_IN_PROGRESS:   src/schemas/job-nlp.ts, tests/job-nlp-schema.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-schema.test.ts (17 pass); full npm run verify
+CURRENT_STAGE:       2 (segmenter) - Stage 3 is next
+CURRENT_TASK:        Begin Stage 3 (requirement category classification)
+LAST_COMPLETED:      Stage 2 - segmenter + 17 tests green; npm run verify (110 files / 1135 tests)
+NEXT_ACTION:         Stage 3 - classify meaningful segments (multi-label categories)
+FILES_IN_PROGRESS:   src/intelligence/nlp/segmenter.ts, tests/job-nlp-segmenter.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-segmenter.test.ts tests/job-nlp-schema.test.ts (34 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   (new commit after this roadmap update)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 2 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
-                     validated (charEnd >= charStart); never touch production scoring
-SAFE_RESUME_POINT:   Stage 2 start
+                     validated (charEnd >= charStart); never touch production scoring;
+                     heading detector must reject prose (sentences starting with
+                     "Remote", "Schedule", etc. are NOT headings)
+SAFE_RESUME_POINT:   Stage 3 start
 ```
 
 ---
@@ -197,15 +199,27 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stage 2 - implement segmentation (`src/intelligence/nlp/segmenter.ts`) producing `NlpSegment[]` with source-field + span tracing.
+- **Exact next action:** Stage 2 delivered segmentation (`src/intelligence/nlp/segmenter.ts`) with source-field + span tracing; proceed to Stage 3.
 
 ---
 
 ## Stage 2 — Sentence / Segment Intelligence
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Robust segmentation of job-description prose (sentences, bullet lists, HTML-derived text, headings, fragments, colon/semicolon lists), preserving source-location tracing.
-- **Current task / exact next action:** defined on completion of Stage 1.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/segmenter.ts` (new): `buildSegment()`/`segmentRoleDescription()`/`cleanedRoleDescription()`; position-preserving HTML entity/tag cleaning (`cleanForSegmentation`, `<p>` and `</p>` both to equal-length whitespace/`\n`); ordered/distinct heading/bullet/list-item detection; sentence splitting with sentence-continuation check + abbreviation guard set (U.S., Ph.D., M.S., B.S., St., etc.); colon/semicolon fragment boundaries; sentence-kind merging for multi-line paragraphs; trimmed span alignment over the cleaned view.
+  - Heading detector hardened: rejects prose punctuation `.?!;,` and caps length at 60 — "Remote position. ..." must NOT classify as a heading.
+  - `tests/job-nlp-segmenter.test.ts` (new, 17 tests): simple sentence + contract-valid segment; multi-sentence paragraph including "St. Louis." abbreviation case; U.S. abbreviation no-split; colon-delimited label fragment; semicolon fragments; comma clauses stay single; bullet lists; numbered items; HTML-derived content; section-heading detection; verbatim evidence text + valid spans per segment; contiguous global indices; stable source-field ordering; malformed provider formatting; position-preserving HTML cleaning; EEO boilerplate; title as heading.
+- **Files/components involved:** `src/intelligence/nlp/segmenter.ts`, `tests/job-nlp-segmenter.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-008: segmentation operates on a position-preserving cleaned view and emits verbatim original slices with `[charStart, charEnd)` spans — evidence text of the original move text maps 1:1 to source strings.
+  - D-NLP-009: segments carry contiguous global `index` values across all fields in field order (title, location, description, requirements, preferredQualifications); classification stages (3+) consume these segments.
+- **Tests:** 17 segmenter tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-segmenter.test.ts tests/job-nlp-schema.test.ts` = 34 pass; `npm run verify` = 110 files / 1135 tests green, eslint clean, `tsc --noEmit` clean, prettier clean.
+- **Known limitations:** segmentation is layout+punctuation heuristics only — it does not yet classify content (Stage 3) or distinguish required vs preferred (Stage 4).
+- **Current task:** complete.
+- **Exact next action:** Stage 3 - classify meaningful segments (skill/experience/education/certification/clearance/citizenship/location/work arrangement/travel/schedule/responsibility/compensation/benefit/company description/EEO/unknown) with multi-label support.
 
 ---
 

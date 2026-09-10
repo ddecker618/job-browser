@@ -259,6 +259,18 @@ records durable architectural truth only.
   (parallel `scoreJob()` + `extractRoleDetails()`) -> `role_details_json`,
   `score_version`, `score_input_hash` -> startup `reconcileStaleData()`
   (backfill role details -> invalidate stale scores -> bounded reprocess).
+- **Segmentation (Stage 2):** `src/intelligence/nlp/segmenter.ts` splits
+  description prose into `NlpSegment[]` (sentences, numbered/bullet items,
+  headings, colon/semicolon fragments) with full source-field + span tracing.
+  It cleans HTML position-preservingly (`cleanForSegmentation`: tags -> equal
+  whitespace, block tags -> `\n`; entity unescape padded to original length),
+  so every `[charStart, charEnd)` is a 1:1 index into the original source
+  string and evidence text is always the verbatim original slice. Segments get
+  contiguous global `index` values across fields in field order (title,
+  location, description, requirements, preferredQualifications) per D-NLP-008/
+  D-NLP-009. Heading detection rejects prose (punctuation `.?!;,`, length > 60)
+  so sentences beginning "Remote ..." are never headings. Classification
+  (Stage 3+) consumes these segments.
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
