@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       21 (semantic skill normalization shadow mode) - Stage 22 is next
-CURRENT_TASK:        Begin Stage 22 (resume evidence matching shadow mode)
-LAST_COMPLETED:      Stage 21 - skill relationship adapter + 6 tests; npm run verify (128 files / 1324 tests)
-NEXT_ACTION:         Stage 22 - map requirements to parsed resume evidence without claiming possession or changing scoring
-FILES_IN_PROGRESS:   src/intelligence/nlp/skillNormalization.ts, tests/job-nlp-skill-normalization.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-skill-normalization.test.ts (6 pass); full npm run verify
+CURRENT_STAGE:       22 (resume evidence matching shadow mode) - Stage 23 is next
+CURRENT_TASK:        Begin Stage 23 (requirement coverage model)
+LAST_COMPLETED:      Stage 22 - resume evidence matcher + 5 tests; npm run verify (129 files / 1329 tests)
+NEXT_ACTION:         Stage 23 - define direct/related/missing/unknown requirement coverage without production scoring
+FILES_IN_PROGRESS:   src/intelligence/nlp/resumeEvidence.ts, tests/job-nlp-resume-evidence.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-resume-evidence.test.ts (5 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 21 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 22 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -174,7 +174,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 19    | Semantic normalization / embedding design    | [x]    |
 | 20    | Semantic role matching shadow mode           | [x]    |
 | 21    | Semantic skill normalization shadow mode     | [x]    |
-| 22    | Resume evidence matching shadow mode         | [ ]    |
+| 22    | Resume evidence matching shadow mode         | [x]    |
 | 23    | Requirement coverage model                   | [ ]    |
 | 24    | NLP / semantic performance audit             | [ ]    |
 | 25    | Security / privacy / packaging audit         | [ ]    |
@@ -508,7 +508,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
 - **Current task:** complete.
-- **Exact next action:** Stage 21 delivered (conservative explicit skill relationships); begin Stage 22 - resume evidence matching shadow mode.
+- **Exact next action:** Stage 22 delivered (evidence-only matching with no possession claim); begin Stage 23 - requirement coverage model.
 
 ---
 
@@ -629,9 +629,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 22 — Resume Evidence Matching Shadow Mode
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Map requirements to parsed resume evidence -> DIRECT_MATCH/STRONG_RELATED_EVIDENCE/WEAK_RELATED_EVIDENCE/NO_EVIDENCE/UNKNOWN; never claim possession; preserve evidence; no resume modification; no scoring change.
-- **Current task / exact next action:** defined on completion of Stage 21.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/resumeEvidence.ts` (new): matches caller-supplied parsed skill/certification snapshot evidence through Stage 21 relationships; returns direct/strong/weak/no-evidence/unknown status, raw label, provenance, parser/source-normalization versions, relationship score, normalization version, explicit `assertsPossession: false`, and `productionEffect: 'none'`; no parse/write/score path.
+  - `tests/job-nlp-resume-evidence.test.ts` (new, 5 tests): direct evidence preservation, alias/strong/weak relationship states, no-vs-unknown evidence, evidence-kind separation, unresolved requirement safety, and input immutability.
+- **Files/components involved:** `src/intelligence/nlp/resumeEvidence.ts`, `tests/job-nlp-resume-evidence.test.ts`, `src/intelligence/nlp/skillNormalization.ts`, `src/models/resume-snapshot.ts`.
+- **Architectural decisions:**
+  - D-NLP-047: resume matching consumes parsed snapshot evidence only; it never parses or modifies resumes and never asserts candidate possession from a match.
+  - D-NLP-048: direct/related evidence is distinct from no evidence and unknown normalization; source labels, provenance, parser version, and source normalization version remain visible.
+- **Tests:** 5 resume-evidence tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-resume-evidence.test.ts` = 5 pass; `npm run verify` = 129 files / 1329 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** the first matcher covers skill/certification-like concepts supplied through the catalog; experience/education/clearance evidence adapters remain future work; no resume-evidence persistence or UI route is added.
+- **Current task:** complete.
+- **Exact next action:** Stage 23 - requirement coverage model with direct/related/missing/unknown evidence and modality weighting separate from production scoring.
 
 ---
 

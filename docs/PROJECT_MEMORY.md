@@ -383,6 +383,12 @@ records durable architectural truth only.
   catalog aliases, applies only reviewed strong/weak relationships, and reports
   unrelated/unknown outcomes without guessing canonical skills or claiming
   equivalence (D-NLP-045/046).
+- **Resume evidence matching (Stage 22):**
+  `src/intelligence/nlp/resumeEvidence.ts` consumes parsed snapshot evidence and
+  returns direct/strong/weak/no-evidence/unknown states while preserving raw
+  labels, provenance, parser/source-normalization versions, and normalization
+  scores. It explicitly makes no possession claim and has no production write or
+  scoring path (D-NLP-047/048).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
