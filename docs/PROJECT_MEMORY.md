@@ -378,6 +378,11 @@ records durable architectural truth only.
   matches, reconciles against deterministic title families, and persists only
   through an explicit caller target. It has no embedding/runtime or production
   score path (D-NLP-043/044).
+- **Skill normalization shadow mode (Stage 21):**
+  `src/intelligence/nlp/skillNormalization.ts` retains exact phrases and
+  catalog aliases, applies only reviewed strong/weak relationships, and reports
+  unrelated/unknown outcomes without guessing canonical skills or claiming
+  equivalence (D-NLP-045/046).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,

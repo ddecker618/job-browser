@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       20 (semantic role matching shadow mode) - Stage 21 is next
-CURRENT_TASK:        Begin Stage 21 (semantic skill normalization shadow mode)
-LAST_COMPLETED:      Stage 20 - role fallback/persistence adapter + 6 tests; npm run verify (127 files / 1318 tests)
-NEXT_ACTION:         Stage 21 - compare extracted skills with canonical concepts and relationship labels
-FILES_IN_PROGRESS:   src/intelligence/nlp/roleMatching.ts, tests/job-nlp-role-matching.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-role-matching.test.ts (6 pass); full npm run verify
+CURRENT_STAGE:       21 (semantic skill normalization shadow mode) - Stage 22 is next
+CURRENT_TASK:        Begin Stage 22 (resume evidence matching shadow mode)
+LAST_COMPLETED:      Stage 21 - skill relationship adapter + 6 tests; npm run verify (128 files / 1324 tests)
+NEXT_ACTION:         Stage 22 - map requirements to parsed resume evidence without claiming possession or changing scoring
+FILES_IN_PROGRESS:   src/intelligence/nlp/skillNormalization.ts, tests/job-nlp-skill-normalization.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-skill-normalization.test.ts (6 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 20 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   NLP Stage 21 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -173,7 +173,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 18    | Shadow-mode acceptance gate                  | [x]    |
 | 19    | Semantic normalization / embedding design    | [x]    |
 | 20    | Semantic role matching shadow mode           | [x]    |
-| 21    | Semantic skill normalization shadow mode     | [ ]    |
+| 21    | Semantic skill normalization shadow mode     | [x]    |
 | 22    | Resume evidence matching shadow mode         | [ ]    |
 | 23    | Requirement coverage model                   | [ ]    |
 | 24    | NLP / semantic performance audit             | [ ]    |
@@ -508,7 +508,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
 - **Current task:** complete.
-- **Exact next action:** Stage 20 delivered (deterministic fallback and explicit shadow persistence target); begin Stage 21 - semantic skill normalization shadow mode.
+- **Exact next action:** Stage 21 delivered (conservative explicit skill relationships); begin Stage 22 - resume evidence matching shadow mode.
 
 ---
 
@@ -610,9 +610,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 21 — Semantic Skill Normalization Shadow Mode
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Compare extracted skills vs concepts with EXACT/CANONICAL_ALIAS/STRONG_RELATED/WEAK_RELATED/UNRELATED/UNKNOWN; retain phrase, concept, score, model/version, relationship; adversarial tests.
-- **Current task / exact next action:** defined on completion of Stage 20.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/skillNormalization.ts` (new): catalog-derived concepts, exact/canonical-alias matching, reviewed strong/weak relationship pairs, explicit unrelated/unknown outcomes, score/explanation/method/model/version fields, and `compareSkillMention` source-phrase preservation; no embedding runtime or automatic synonym guessing.
+  - `tests/job-nlp-skill-normalization.test.ts` (new, 6 tests): exact, alias, extracted alias, strong/weak relatedness, unrelated/unknown/adversarial abstention, and catalog immutability.
+- **Files/components involved:** `src/intelligence/nlp/skillNormalization.ts`, `tests/job-nlp-skill-normalization.test.ts`, `src/intelligence/nlp/skills.ts`.
+- **Architectural decisions:**
+  - D-NLP-045: only existing catalog aliases are canonical aliases; relationship labels are explicit reviewed data, and relatedness never claims equivalence.
+  - D-NLP-046: unknown phrases remain unknown, including clearance/grade/remote text; no semantic model or production skill mutation is introduced.
+- **Tests:** 6 skill-normalization tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-skill-normalization.test.ts` = 6 pass; `npm run verify` = 128 files / 1324 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** reviewed relationships are intentionally small and deterministic; no unseen-skill embedding search exists; persistence and resume evidence matching remain later stages.
+- **Current task:** complete.
+- **Exact next action:** Stage 22 - resume evidence matching shadow mode with direct/related/weak/no-evidence/unknown outcomes and no resume modification.
 
 ---
 
