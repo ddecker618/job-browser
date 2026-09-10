@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       11 (boilerplate/filtering) - Stage 12 is next
-CURRENT_TASK:        Begin Stage 12 (deterministic and NLP reconciliation)
-LAST_COMPLETED:      Stage 11 - boilerplate/non-requirement filtering + 14 tests; npm run verify (119 files / 1276 tests)
-NEXT_ACTION:         Stage 12 - compare deterministic facts and NLP facts, record agreement/conflict, and preserve deterministic authority
-FILES_IN_PROGRESS:   src/intelligence/nlp/boilerplate.ts, tests/job-nlp-boilerplate.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-boilerplate.test.ts; full npm run verify
+CURRENT_STAGE:       12 (deterministic/NLP reconciliation) - Stage 13 is next
+CURRENT_TASK:        Begin Stage 13 (shadow-mode persistence)
+LAST_COMPLETED:      Stage 12 - deterministic/NLP reconciliation + 10 tests; npm run verify (120 files / 1286 tests)
+NEXT_ACTION:         Stage 13 - persist versioned NLP enrichment without changing production score, eligibility, description, or removal state
+FILES_IN_PROGRESS:   src/intelligence/nlp/reconciliation.ts, tests/job-nlp-reconciliation.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-reconciliation.test.ts (10 pass); full npm run verify
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 11 checkpoint)
+LATEST_CHECKPOINT:   created after this roadmap update (NLP Stage 12 checkpoint)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -61,10 +61,12 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                       signals must never discard applicant-directed requirements;
                       generic soft skills such as excellent communication remain
                       requirements; broad company-description patterns must not
-                      swallow EEO sentences; segment helper must use the real
+                      swallow EEO sentences; reconciliation must preserve both
+                      sides and treat deterministic values as authoritative;
+                      missing dimensions are not silent agreement; segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 12 start
+SAFE_RESUME_POINT:   Stage 13 start
 ```
 
 ---
@@ -146,7 +148,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 9     | Location / remote / hybrid intelligence      | [x]    |
 | 10    | Skill and technology extraction              | [x]    |
 | 11    | Boilerplate and non-requirement filtering    | [x]    |
-| 12    | Deterministic + NLP reconciliation           | [ ]    |
+| 12    | Deterministic + NLP reconciliation           | [x]    |
 | 13    | Shadow-mode persistence                      | [ ]    |
 | 14    | Invalidation and reprocessing                | [ ]    |
 | 15    | NLP debug / intelligence inspector           | [ ]    |
@@ -217,7 +219,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
 - **Current task:** complete.
-- **Exact next action:** Stages 2-11 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology, boilerplate filtering); proceed to Stage 12.
+- **Exact next action:** Stages 2-12 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology, boilerplate filtering, reconciliation); proceed to Stage 13.
 
 ---
 
@@ -418,9 +420,20 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 12 — Deterministic + NLP Reconciliation
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Reconciliation layer distinguishing AGREEMENT / DETERMINISTIC_ONLY / NLP_ONLY / CONFLICT / UNKNOWN with conflict classification (value/modality/entity/scope/missing-D/missing-NLP); preserve both interpretations in shadow mode.
-- **Current task / exact next action:** defined on completion of Stage 11.
+- **Implementation tasks:**
+  - `src/intelligence/nlp/reconciliation.ts` (new): `reconcileFact(input)` and `reconcileFacts(inputs)` with `RECONCILIATION_INTELLIGENCE_VERSION = 'reconciliation-v1'`; compares value, modality, entity, and scope independently; emits `agreement`, `deterministic-only`, `nlp-only`, `conflict`, or `unknown`; emits `value`/`modality`/`entity`/`scope`/`missing-deterministic`/`missing-nlp` nature; preserves both sides; exposes deterministic authority and an authoritative diagnostic value without mutating production facts.
+  - `tests/job-nlp-reconciliation.test.ts` (new, 10 tests): agreement normalization; deterministic-only; NLP-only; value conflict; modality conflict; entity conflict; scope conflict; unknown; missing dimension conflict; batch order; metadata/confidence.
+- **Files/components involved:** `src/intelligence/nlp/reconciliation.ts`, `tests/job-nlp-reconciliation.test.ts`; contract references `src/schemas/job-nlp.ts`.
+- **Architectural decisions:**
+  - D-NLP-027: deterministic and NLP interpretations are retained side-by-side; deterministic values remain authoritative for any downstream diagnostic projection, and no production scoring/eligibility mutation is allowed.
+  - D-NLP-028: agreement is dimension-aware; a value match with a missing modality/entity/scope is not silent agreement and receives a conflict/missing nature.
+- **Tests:** 10 reconciliation tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-nlp-reconciliation.test.ts` = 10 pass; `npm run verify` = 120 files / 1286 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** this stage provides a pure utility only; no job-level fact assembler, database persistence, or UI projection exists yet; deterministic side authority is diagnostic and does not authorize promotion to production behavior.
+- **Current task:** complete.
+- **Exact next action:** Stage 13 - shadow-mode persistence (versioned enrichment storage, source hash, safe upsert, no production document overwrite, conflict/debug retention).
 
 ---
 

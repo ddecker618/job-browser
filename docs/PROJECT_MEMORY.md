@@ -325,6 +325,11 @@ records durable architectural truth only.
   legal, accommodation, compensation, culture, and company-description signals
   without destructively filtering segments. Applicant-directed requirements and
   generic soft skills are preserved for reconciliation (D-NLP-025/026).
+- **Reconciliation (Stage 12):**
+  `src/intelligence/nlp/reconciliation.ts` compares deterministic and NLP
+  values, modality, entity, and scope independently, preserves both sides, and
+  records agreement/one-sided/conflict/unknown states. Deterministic authority
+  remains diagnostic and shadow-only (D-NLP-027/028).
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
