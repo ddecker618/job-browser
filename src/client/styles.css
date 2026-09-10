@@ -714,6 +714,101 @@ kbd {
   font-size: 0.8rem;
   line-height: 1.7;
 }
+.job-intelligence-preview {
+  margin: 1.25rem 0 0;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--purple) 42%, var(--border));
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgb(197 140 255 / 9%), transparent 58%),
+    var(--panel);
+}
+.job-intelligence-preview-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+.job-intelligence-preview-heading h3 {
+  margin: 0.25rem 0 0;
+  color: var(--text);
+}
+.job-intelligence-preview-heading p,
+.job-intelligence-preview-boundary,
+.job-intelligence-preview-empty {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+.job-intelligence-preview-status,
+.job-intelligence-preview-unknown {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--purple) 55%, var(--border));
+  border-radius: 99px;
+  padding: 0.3rem 0.55rem;
+  color: var(--purple);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.job-intelligence-preview-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.job-intelligence-preview-summary article {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.job-intelligence-preview-summary span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.25;
+}
+.job-intelligence-preview-summary strong {
+  color: var(--text);
+  font-size: 1.05rem;
+}
+.job-intelligence-preview-summary .is-unknown strong {
+  color: var(--amber);
+}
+.job-intelligence-preview-list {
+  display: grid;
+  gap: 0.45rem;
+}
+.job-intelligence-preview-list article {
+  padding: 0.7rem;
+  border-left: 2px solid var(--purple);
+  background: rgb(0 0 0 / 12%);
+}
+.job-intelligence-preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.7rem;
+}
+.job-intelligence-preview-row strong {
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.job-intelligence-preview-list p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+.job-intelligence-preview-boundary {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
 .detail-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;

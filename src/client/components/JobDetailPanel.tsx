@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 import { api } from '../api.js';
 import { AppliedCreationDialog } from './AppliedCreationDialog.js';
 import { getFocusableElements } from './Dialog.js';
+import { JobIntelligencePreview } from './JobIntelligencePreview.js';
 import { ErrorState, LoadingState } from './States.js';
 import { invalidateScoreQueries } from '../scoreCache.js';
 import type { RoleDetails } from '../../schemas/role-details.js';
@@ -273,6 +274,7 @@ export function JobDetailPanel({
                 {statusError}
               </p>
             )}
+            <JobIntelligencePreview job={job.data} />
             <section className="detail-section">
               <h3>Match breakdown</h3>
               {job.data.categoryScores === null ? (

@@ -34,12 +34,12 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       25 (security/privacy/packaging audit) - Stage 26 is next
-CURRENT_TASK:        Begin Stage 26 (intelligence UX prototype)
-LAST_COMPLETED:      Stage 25 - security/privacy/packaging audit + 3 tests; privacy:check (11 tests)
-NEXT_ACTION:         Stage 26 - add a read-only Job Intelligence preview to the existing job detail drawer
-FILES_IN_PROGRESS:   docs/NLP_SECURITY_PRIVACY_PACKAGING_AUDIT.md, tests/job-nlp-security-packaging.test.ts
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-security-packaging.test.ts (3 pass); npm run privacy:check (11 pass); npm run verify (132 files / 1339 tests)
+CURRENT_STAGE:       26 (intelligence UX prototype) - Stage 27 is next
+CURRENT_TASK:        Begin Stage 27 (promotion design for production scoring)
+LAST_COMPLETED:      Stage 26 - Job Intelligence preview + 2 tests; npm run verify (133 files / 1341 tests)
+NEXT_ACTION:         Stage 27 - document measured promotion levels without implementing production promotion
+FILES_IN_PROGRESS:   src/client/components/JobIntelligencePreview.tsx, tests/job-intelligence-ui.test.tsx, docs/NLP_INTELLIGENCE_UX_PROTOTYPE.md
+TESTS_TO_RUN:        npx vitest run tests/job-intelligence-ui.test.tsx (2 pass); npm run verify (133 files / 1341 tests)
 KNOWN_FAILURES:      none
 LATEST_CHECKPOINT:   NLP Stage 24 checkpoint commit is created after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
@@ -178,7 +178,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 23    | Requirement coverage model                   | [x]    |
 | 24    | NLP / semantic performance audit             | [x]    |
 | 25    | Security / privacy / packaging audit         | [x]    |
-| 26    | Intelligence UX prototype                    | [ ]    |
+| 26    | Intelligence UX prototype                    | [x]    |
 | 27    | Promotion design for production scoring      | [ ]    |
 | 28    | Full regression and upgrade validation       | [ ]    |
 | 29    | Documentation and final intelligence handoff | [ ]    |
@@ -710,9 +710,24 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## Stage 26 — Intelligence UX Prototype
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** Job-detail JOB INTELLIGENCE prototype (requirement coverage, requirements summary, traceable evidence, "interpreted as" wording); no wholesale UI redesign; no probabilistic claims as facts.
-- **Current task / exact next action:** defined on completion of Stage 25.
+- **Implementation tasks:**
+  - `src/client/components/JobIntelligencePreview.tsx` (new): read-only Job Intelligence card with required/preferred/mentioned summary, traceable source labels, `Interpreted as:` wording, and unknown coverage until resume evidence is connected.
+  - `src/client/components/JobDetailPanel.tsx`: places the preview before the existing production Match breakdown without changing its data or actions.
+  - `src/client/styles.css`: responsive drawer-local styles; no global redesign.
+  - `tests/job-intelligence-ui.test.tsx` (new, 2 tests): populated and neutral-empty preview behavior.
+  - `docs/NLP_INTELLIGENCE_UX_PROTOTYPE.md` (new): user-facing and non-goal contract.
+- **Files/components involved:** `src/client/components/JobIntelligencePreview.tsx`, `src/client/components/JobDetailPanel.tsx`, `src/client/styles.css`, `tests/job-intelligence-ui.test.tsx`.
+- **Architectural decisions:**
+  - D-NLP-057: the first UI uses the existing read-only `JobDetail` query and does not imply that production fields are NLP-derived evidence.
+  - D-NLP-058: disconnected resume evidence is represented as `Unknown`, never as direct, related, missing, or candidate possession.
+  - D-NLP-059: the preview is visibly shadow-only and is placed beside, not merged into, production score/recommendation presentation.
+- **Tests:** 2 intelligence UI tests (see tasks).
+- **Validation evidence:** `npx vitest run tests/job-intelligence-ui.test.tsx` = 2 pass; `npm run verify` = 133 files / 1341 tests green; lint and typecheck clean.
+- **Known limitations:** no client API endpoint exposes stored NLP enrichments or resume evidence yet; all coverage rows are intentionally unknown; the prototype is not a promotion decision.
+- **Current task:** complete.
+- **Exact next action:** Stage 27 - promotion design with per-field quality, false-positive/false-negative consequence, fallback, evidence, and hard-gate criteria.
 
 ---
 
@@ -749,3 +764,4 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`        |
 | 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark   |
 | 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                     |
+| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                |

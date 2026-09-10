@@ -408,6 +408,13 @@ records durable architectural truth only.
   sensitive values. `npm run privacy:check` remains the distribution gate
   (D-NLP-054/055/056). Findings live in
   `docs/NLP_SECURITY_PRIVACY_PACKAGING_AUDIT.md`.
+- **Intelligence UX prototype (Stage 26):**
+  `src/client/components/JobIntelligencePreview.tsx` adds a drawer-local,
+  read-only Job Intelligence preview with required/preferred/mentioned summary,
+  source labels, and `Interpreted as:` wording. Resume coverage is explicitly
+  `Unknown` until a separate read-only evidence endpoint exists; production
+  score/recommendation UI remains unchanged (D-NLP-057/058/059). Details live in
+  `docs/NLP_INTELLIGENCE_UX_PROTOTYPE.md`.
 - **Deterministic gates that NLP must never override:** closed posting,
   commission/physical/schedule gate, Illinois exclusion, remote-region
   restriction, professional-engineering-required, active-clearance-required,
