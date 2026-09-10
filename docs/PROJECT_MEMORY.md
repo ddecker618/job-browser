@@ -233,3 +233,36 @@ performs no writes. Imported sites are URL-fingerprinted (no network) and
 importer evidence is added after verification so it survives the evidence wipe.
 Retired sites are reused as-is; existing disabled/archived Sources are never
 auto-re-enabled.
+
+## NLP Job Intelligence Program (shadow mode)
+
+Program tracker: `docs/Intelligence_Roadmap.md` (authoritative). This section
+records durable architectural truth only.
+
+- **Execution model:** NLP is additive and shadow-only. The deterministic
+  pipeline (`roleDetailsExtractor.ts`, `verificationService.ts`, `scoringEngine.ts`)
+  remains authoritative and untouched by NLP. NLP may analyze, classify,
+  extract, normalize, persist, compare, and expose diagnostics; it must NOT
+  change production score, eligibility, ranking, filtering, or removal.
+- **NLP extraction identity:** `NLP_EXTRACTION_VERSION = 'job-nlp-v1'`
+  (`src/schemas/job-nlp.ts`), independent of `ROLE_DETAILS_VERSION =
+'role-details-v2'`. Relationship is `additive-shadow`. A stored NLP version
+  != current version marks a job eligible for bounded reprocessing (Stage 14
+  invalidation pattern mirrors role-details backfill batch size 200).
+- **Contract semantics:** requirement CATEGORY and STRENGTH are separate axes
+  (17 categories, 8 strengths). Every material fact carries evidence (segment
+  text + source field + segment index + char span), extraction method,
+  extraction version, confidence 0..1, and a `conflict` block
+  (AGREEMENT/DETERMINISTIC_ONLY/NLP_ONLY/CONFLICT/UNKNOWN + nature + values).
+- **Pipeline shape (existing, unchanged):** raw description -> `NormalizedJob`
+  (`jobNormalizer.ts`) -> `jobs` row -> `IntelligenceEngine.analyze()`
+  (parallel `scoreJob()` + `extractRoleDetails()`) -> `role_details_json`,
+  `score_version`, `score_input_hash` -> startup `reconcileStaleData()`
+  (backfill role details -> invalidate stale scores -> bounded reprocess).
+- **Deterministic gates that NLP must never override:** closed posting,
+  commission/physical/schedule gate, Illinois exclusion, remote-region
+  restriction, professional-engineering-required, active-clearance-required,
+  geographic (onsite/hybrid) commute block.
+- **No model/runtime dependency yet.** Stages 19+ (semantic/embedding) are
+  design-first; no external AI services, no silent model downloads, no
+  telemetry. Packaging impact of any future model must be measured first.

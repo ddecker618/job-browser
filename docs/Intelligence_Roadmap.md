@@ -1,9 +1,59 @@
 # Job Browser Intelligence Roadmap
 
-> **Historical concept roadmap:** This document is retained for long-term product
-> context and does not define current phase numbering or implementation sequence.
-> Use `IMPLEMENTATION_ROADMAP.md` and `FEATURE_SPEC_AI_ASSISTANT.md` for current
-> boundaries.
+> **AUTHORITATIVE implementation tracker for the Job Browser Intelligence / NLP
+> program.** This document supersedes the earlier "historical concept roadmap"
+> framing: it is now the required resume point and stage registry for the
+> NLP-assisted job-description intelligence program.
+>
+> Companion durable-memory document: `docs/PROJECT_MEMORY.md` (== the program's
+> `Project_Memory.md` mandate). Repo evidence (`src/`, `tests/`) wins over any
+> stale claim in this file. If documentation conflicts with source/tests, fix
+> the documentation and continue.
+
+## Naming decision (program-file mapping)
+
+The program mandates files `Intelligence_Roadmap.md` and `Project_Memory.md`.
+This repository keeps documentation under `docs/` and already contained
+`docs/Intelligence_Roadmap.md` and `docs/PROJECT_MEMORY.md`; per the
+"repository conventions dictate" rule these existing files play the mandated
+roles:
+
+| Program name              | Repository document            |
+| ------------------------- | ------------------------------ |
+| `Intelligence_Roadmap.md` | `docs/Intelligence_Roadmap.md` |
+| `Project_Memory.md`       | `docs/PROJECT_MEMORY.md`       |
+
+---
+
+## Status Legend
+
+`[x]` complete · `[>]` in progress · `[ ]` not started · `[!]` blocked · `[-]` deferred
+
+---
+
+## RESUME POINT (read this first)
+
+```
+CURRENT_STAGE:       1 (contract) - Stage 2 is next
+CURRENT_TASK:        Begin Stage 2 (sentence/segment intelligence)
+LAST_COMPLETED:      Stage 1 - job-nlp-v1 contract + 17 schema tests green
+NEXT_ACTION:         Stage 2 - implement segmentation module + tests
+FILES_IN_PROGRESS:   src/schemas/job-nlp.ts, tests/job-nlp-schema.test.ts
+TESTS_TO_RUN:        npx vitest run tests/job-nlp-schema.test.ts (17 pass); full npm run verify
+KNOWN_FAILURES:      none
+LATEST_CHECKPOINT:   (new commit after this roadmap update)
+DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
+                     validated (charEnd >= charStart); never touch production scoring
+SAFE_RESUME_POINT:   Stage 2 start
+```
+
+---
+
+## Historical product-vision roadmap (retained for context)
+
+> Retained verbatim from the earlier concept roadmap. This section describes the
+> long-term product vision, NOT the current NLP implementation sequence. The
+> NLP program stages below define implementation order.
 
 ## Purpose
 
@@ -11,146 +61,373 @@ This document describes the long-term roadmap for adding intelligence and analyt
 
 The objective is not to become another job board. The objective is to learn from real application outcomes to improve future job recommendations.
 
----
+### Phase 1 - Persistent Application History
 
-# Phase 1 - Persistent Application History
+Goal: persist application history whenever a user marks a job as applied. Record: application ID, job ID, company, job title, source, original job URL, date discovered, date applied, current status. Statuses: Applied, Interview, Rejected, Ghosted, Offer, Withdrawn, Pending.
 
-## Goal
+### Phase 2 - Outcome Tracking
 
-Persist application history whenever a user marks a job as applied.
+Allow users to update applications over time with events (phone screen, technical interview, final interview, offer, rejection, ghosted) and timestamps.
 
-Record:
+### Phase 3 - Resume Snapshots
 
-- Application ID
-- Job ID
-- Company
-- Job Title
-- Source
-- Original Job URL
-- Date Discovered
-- Date Applied
-- Current Status
+Instead of storing only the current resume, preserve a snapshot of the applicant's qualifications at the time they applied (skills, certifications, education, years of experience, projects, military experience, clearance, portfolio, GitHub). Prevents historical applications from changing as resumes evolve.
 
-Status values:
+### Phase 4 - Job Normalization
 
-- Applied
-- Interview
-- Rejected
-- Ghosted
-- Offer
-- Withdrawn
-- Pending
+Normalize job requirements into structured fields (required/preferred skills, certifications, experience, education, salary, remote status, employment type).
 
----
+### Phase 5 - Anonymous Analytics
 
-# Phase 2 - Outcome Tracking
+Generate anonymous aggregate statistics (response/interview/offer rates, response time, common required skills). No individual applicant data exposed.
 
-Allow users to update applications over time.
+### Phase 6 - Correlation Engine
 
-Possible events:
+Identify meaningful relationships (certification/skill/experience -> interview/offer rate) with sample sizes always shown.
 
-- Phone Screen
-- Technical Interview
-- Final Interview
-- Offer
-- Rejection
-- Ghosted
+### Phase 7 - Recommendation Engine
 
-Record timestamps for every transition.
+Begin recommendations (high-probability opportunities, skills worth learning, resume improvements, better companies/roles). Always explain why.
+
+### Phase 8 - Predictive Intelligence
+
+Only after sufficient historical data exists: interview/offer probability, personalized application ranking, confidence scores + sample sizes.
 
 ---
 
-# Phase 3 - Resume Snapshots
+# NLP JOB INTELLIGENCE IMPLEMENTATION PROGRAM
 
-Instead of storing only the current resume, preserve a snapshot of the applicant's qualifications at the time they applied.
+## Program guardrails (never violate)
 
-Potential fields:
+1. Deterministic eligibility gates remain authoritative. NLP never overrides hard facts (impossible location, required onsite, citizenship, required active clearance, mandatory certification, federal constraints).
+2. NLP operates in SHADOW MODE until an explicit acceptance gate promotes it.
+3. Manual removal/archive stays user-controlled; NLP never auto-deletes.
+4. Every material NLP fact must carry source evidence, extraction method, extraction version, confidence.
+5. Never silently guess through extraction conflicts; represent conflicts explicitly.
+6. Generalize parsing with synthetic paraphrase tests; never hardcode individual employers/jobs.
+7. No paid/cloud AI dependencies without explicit authorization; local-first.
+8. No telemetry; NLP artifacts remain local.
+9. No destructive production-data modification; backup + safe reconciliation patterns.
+10. No scoring change from NLP during the initial extraction program.
 
-- Skills
-- Certifications
-- Education
-- Years of Experience
-- Projects
-- Military Experience
-- Security Clearance
-- Portfolio
-- GitHub
+## Stage registry
 
-This prevents historical applications from changing as resumes evolve.
-
----
-
-# Phase 4 - Job Normalization
-
-Normalize job requirements into structured fields.
-
-Examples:
-
-- Required Skills
-- Preferred Skills
-- Certifications
-- Experience
-- Education
-- Salary
-- Remote Status
-- Employment Type
-
----
-
-# Phase 5 - Anonymous Analytics
-
-Generate anonymous aggregate statistics.
-
-Examples:
-
-- Company response rate
-- Average interview rate
-- Average offer rate
-- Average response time
-- Common required skills
-
-No individual applicant data should ever be exposed.
-
----
-
-# Phase 6 - Correlation Engine
-
-Identify meaningful relationships.
-
-Examples:
-
-- Certification -> Interview Rate
-- Skill -> Interview Rate
-- Experience -> Offer Rate
-- Military Experience -> Response Rate
-
-Correlations should always include sample size.
+| Stage | Scope                                        | Status |
+| ----- | -------------------------------------------- | ------ |
+| 0     | Current intelligence architecture audit      | [x]    |
+| 1     | NLP data contract and versioning             | [x]    |
+| 2     | Sentence / segment intelligence              | [ ]    |
+| 3     | Requirement category classification          | [ ]    |
+| 4     | Requirement strength / modality              | [ ]    |
+| 5     | Education intelligence                       | [ ]    |
+| 6     | Experience intelligence                      | [ ]    |
+| 7     | Certification intelligence                   | [ ]    |
+| 8     | Clearance and citizenship intelligence       | [ ]    |
+| 9     | Location / remote / hybrid intelligence      | [ ]    |
+| 10    | Skill and technology extraction              | [ ]    |
+| 11    | Boilerplate and non-requirement filtering    | [ ]    |
+| 12    | Deterministic + NLP reconciliation           | [ ]    |
+| 13    | Shadow-mode persistence                      | [ ]    |
+| 14    | Invalidation and reprocessing                | [ ]    |
+| 15    | NLP debug / intelligence inspector           | [ ]    |
+| 16    | Synthetic NLP evaluation corpus              | [ ]    |
+| 17    | Representative job evaluation                | [ ]    |
+| 18    | Shadow-mode acceptance gate                  | [ ]    |
+| 19    | Semantic normalization / embedding design    | [ ]    |
+| 20    | Semantic role matching shadow mode           | [ ]    |
+| 21    | Semantic skill normalization shadow mode     | [ ]    |
+| 22    | Resume evidence matching shadow mode         | [ ]    |
+| 23    | Requirement coverage model                   | [ ]    |
+| 24    | NLP / semantic performance audit             | [ ]    |
+| 25    | Security / privacy / packaging audit         | [ ]    |
+| 26    | Intelligence UX prototype                    | [ ]    |
+| 27    | Promotion design for production scoring      | [ ]    |
+| 28    | Full regression and upgrade validation       | [ ]    |
+| 29    | Documentation and final intelligence handoff | [ ]    |
 
 ---
 
-# Phase 7 - Recommendation Engine
+## Stage 0 — Current Intelligence Architecture Audit
 
-Begin making recommendations such as:
-
-- High probability opportunities
-- Skills worth learning
-- Resume improvements
-- Better companies
-- Better role matches
-
-Recommendations must always explain why.
+- **Status:** [x]
+- **Objective:** Locate and document the full job-intelligence pipeline before any NLP work; determine whether NLP/semantic functionality already exists; record baseline tests.
+- **Pipeline trace (documented):**
+  raw job description
+  -> NormalizedJob (`src/normalizer/jobNormalizer.ts` `normalizeJob()`, schema `src/schemas/normalized-job.ts`; called by every provider adapter in `src/providers/*`)
+  -> `jobs` SQLite row via `JobRepository.upsertObservation()` (`src/repositories/job-repository.ts:133`; columns `description`, `requirements`, `preferred_qualifications`, `role_details_json`)
+  -> `IntelligenceEngine.analyze()` (`src/intelligence/intelligenceEngine.ts:34`) runs `verifyPosting()` (`verificationService.ts:204`), then IN PARALLEL `scoreJob()` (`scoringEngine.ts:33`) and `extractRoleDetails()` (`roleDetailsExtractor.ts:133`)
+  -> `IntelligenceRepository.saveIntelligence()` writes `role_details_json`, `score_version`, `score_input_hash`, recommendations/score_history (`intelligenceRepository.ts:60`)
+  -> `backend.ts:220` calls `reconcileStaleData()` on startup (backfill role details -> invalidate stale scores -> bounded reprocess).
+- **Versioning found:**
+  - `ROLE_DETAILS_VERSION = 'role-details-v2'` (`src/schemas/role-details.ts:21`) — independent of scoring rules.
+  - `SCORING_RULES_VERSION = '2026-08-15-geographic-eligibility-v1'` (`src/intelligence/scoringVersion.ts`).
+  - `createScoreVersion()`/`createScoreInputHash()` SHA-256 payload identities (`scoreIdentity.ts`).
+  - Migration head `030_employer_aliases.sql`; `role_details_json` added in `028_role_details.sql`; verification columns in `012`; score version/backfill in `013`.
+- **Deterministic methods:** regex + config catalog matching only (`extractTermsFromText`, `src/skills/skillExtractor.ts`). Zero NLP/embeddings/LLM/ML in the codebase — confirmed by grep.
+- **Eligibility gates (hard, authoritative):** closed posting, commission/physical/schedule gate, Illinois exclusion, remote-region restriction, professional-engineering-required-without-credential, active-clearance-required-without-eligibility, geographic (onsite/hybrid) commute block (`geographicEligibility.ts`, `locationEligibility.ts`, `federalEligibility.ts`, `scoringEngine.ts applyVerification()`).
+- **Consumers:** `GET /api/jobs/:id` (role_details_json, 409 on stale version), `dashboardRepository` role-details parse, client `RoleDetailsSection` in `JobDetailPanel.tsx`, JobsPage recommendation cell, AnalyticsPage distribution.
+- **Baseline verification:** `npm run verify` = 108 files / 1101 tests PASS at 1.1.0 (2026-09-10).
+- **Confirmed extension surface:** NLP shadow layer is green-field. Extension points: a new `src/intelligence/nlp/*` module tree, a new independently-versioned schema (`job-nlp-v1`), reconciliation in `intelligenceEngine.ts`, bounded startup reprocessing pattern from `backfill-role-details.ts` (batch size 200).
+- **Architectural decisions recorded:**
+  - D-NLP-001: NLP is green-field shadow-only; additively versioned `job-nlp-v1`; never hand-edits `role-details-v2` documents.
+  - D-NLP-002: Promotion requires the Stage 18 acceptance gate + Stage 27 proposal; no scoring changes in stages 0-18.
+  - D-NLP-003: evidence strings mirror the `evidence: string[]` convention already used by `RoleDetails`.
+  - D-NLP-004: category and requirement strength are SEPARATE dimensions.
+- **Tests:** baseline `npm run verify` green (see validation).
+- **Validation evidence:** pipeline + versioning + gate inventory captured above from source; no behavior modified (docs-only).
+- **Known limitations:** coordinate atlas is small (15 cities); `role_details_json` currently persists only in `IntelligenceEngine.analyze()` while backfill persists independently; explanations are unformatted text, not structured.
+- **Current task / exact next action:** done — persist this audit (this file), then start Stage 1 (NLP data contract + versioning).
 
 ---
 
-# Phase 8 - Predictive Intelligence
+## Stage 1 — NLP Data Contract and Versioning
 
-Only after sufficient historical data exists.
+- **Status:** [x]
+- **Objective:** Define the independently versioned NLP enrichment contract before any model behavior; keep category and strength separate; explicit evidence/provenance; no role-details-v2 semantic change.
+- **Implementation tasks:**
+  - `src/schemas/job-nlp.ts` (new): `NLP_EXTRACTION_VERSION = 'job-nlp-v1'`, `NLP_ROLE_DETAILS_RELATIONSHIP = 'additive-shadow'`, categories (17) + strengths (8) as SEPARATE enums, extraction methods (6), evidence/source/segment-kind/entity-type/conflict-state/conflict-nature enums, per-fact `conflict` block, `JobNlpEnrichment` envelope (version/generatedAt/sourceTextHash/segments/facts), `describeNlpConfidence()` band labels.
+  - Span-integrity `superRefine` (charEnd >= charStart) on evidence + segment; deprecated `ZodIssueCode` avoided ('custom' literal).
+  - `tests/job-nlp-schema.test.ts` (new, 17 tests).
+- **Files/components involved:** `src/schemas/job-nlp.ts`, `tests/job-nlp-schema.test.ts`.
+- **Architectural decisions:**
+  - D-NLP-005: NLP contract is independent of role-details-v2; `additive-shadow` relationship; `NLP_EXTRACTION_VERSION` gates reprocessing (Stage 14).
+  - D-NLP-006: evidence records segment text + source field + segment index + character span (compatible with Stage-2 tracing).
+  - D-NLP-007: confidence is 0..1 reliability per extraction method + evidence — not a probability, not a qualification claim.
+- **Tests:** 17 schema tests (version independence, category×strength cross-product validates, fused-strength rejection, unknown category/method rejection, confidence bounds, evidence provenance, span integrity, conflict-state/nature enums, envelope acceptance + stale-version rejection).
+- **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
+- **Current task:** complete.
+- **Exact next action:** Stage 2 - implement segmentation (`src/intelligence/nlp/segmenter.ts`) producing `NlpSegment[]` with source-field + span tracing.
 
-Possible future capabilities:
+---
 
-- Interview probability
-- Offer probability
-- Estimated recruiter response
-- Personalized application ranking
+## Stage 2 — Sentence / Segment Intelligence
 
-Predictions should always include confidence scores and sample size.
+- **Status:** [ ]
+- **Objective:** Robust segmentation of job-description prose (sentences, bullet lists, HTML-derived text, headings, fragments, colon/semicolon lists), preserving source-location tracing.
+- **Current task / exact next action:** defined on completion of Stage 1.
+
+---
+
+## Stage 3 — Requirement Category Classification
+
+- **Status:** [ ]
+- **Objective:** Classify meaningful segments (skill/experience/education/certification/clearance/citizenship/location/work arrangement/travel/schedule/responsibility/compensation/benefit/company description/EEO/unknown) with multi-label support.
+- **Current task / exact next action:** defined on completion of Stage 2.
+
+---
+
+## Stage 4 — Requirement Strength / Modality
+
+- **Status:** [ ]
+- **Objective:** Distinguish required/preferred/nice-to-have/alternative/equivalency/future/post-hire/ability-to-obtain/informational with extensive paraphrase + adversarial tests.
+- **Current task / exact next action:** defined on completion of Stage 3.
+
+---
+
+## Stage 5 — Education Intelligence
+
+- **Status:** [ ]
+- **Objective:** Extract/normalize degree level, field, required/preferred, equivalency, experience substitution, combined education/experience requirements.
+- **Current task / exact next action:** defined on completion of Stage 4.
+
+---
+
+## Stage 6 — Experience Intelligence
+
+- **Status:** [ ]
+- **Objective:** Extract min/preferred years, ranges, domain, role context, nested experience, alternatives; never fabricate years; preserve ranges.
+- **Current task / exact next action:** defined on completion of Stage 5.
+
+---
+
+## Stage 7 — Certification Intelligence
+
+- **Status:** [ ]
+- **Objective:** Normalize known certs (Security+, Network+, A+, CySA+, SecurityX/CASP+, CISSP, CISM, CCNA, Microsoft/Azure/AWS families); distinguish required/preferred/equivalent/after-hire/must-obtain; no false equivalencies.
+- **Current task / exact next action:** defined on completion of Stage 6.
+
+---
+
+## Stage 8 — Clearance and Citizenship Intelligence
+
+- **Status:** [ ]
+- **Objective:** Separate clearance level/current/ability-to-obtain/maintain/preferred/public-trust from citizenship; adversarial "cleared team" sentences must not imply applicant clearance.
+- **Current task / exact next action:** defined on completion of Stage 7.
+
+---
+
+## Stage 9 — Location / Remote / Hybrid Intelligence
+
+- **Status:** [ ]
+- **Objective:** Interpret remote/hybrid/onsite/commuting-distance/excluded-states/occasional-onsite/relocation/travel; do NOT let the word "remote" imply unrestricted remote; compare NLP output vs existing geographic engine and record conflicts; never weaken hard gates.
+- **Current task / exact next action:** defined on completion of Stage 8.
+
+---
+
+## Stage 10 — Skill and Technology Extraction
+
+- **Status:** [ ]
+- **Objective:** Extract skills/technologies; distinguish required/preferred/mentioned/environment/responsibility; normalize aliases conservatively preserving original entity.
+- **Current task / exact next action:** defined on completion of Stage 9.
+
+---
+
+## Stage 11 — Boilerplate and Non-Requirement Filtering
+
+- **Status:** [ ]
+- **Objective:** Identify EEO/benefits/marketing/legal/accommodation/compensation/cultural/description content; conservative with generic soft skills ("excellent communication" may be a real requirement).
+- **Current task / exact next action:** defined on completion of Stage 10.
+
+---
+
+## Stage 12 — Deterministic + NLP Reconciliation
+
+- **Status:** [ ]
+- **Objective:** Reconciliation layer distinguishing AGREEMENT / DETERMINISTIC_ONLY / NLP_ONLY / CONFLICT / UNKNOWN with conflict classification (value/modality/entity/scope/missing-D/missing-NLP); preserve both interpretations in shadow mode.
+- **Current task / exact next action:** defined on completion of Stage 11.
+
+---
+
+## Stage 13 — Shadow-Mode Persistence
+
+- **Status:** [ ]
+- **Objective:** Persist NLP enrichment safely (versioned, reprocessable, no production-score/eligibility change, no job-description overwrite, conflict/debug/migration support).
+- **Current task / exact next action:** defined on completion of Stage 12.
+
+---
+
+## Stage 14 — Invalidation and Reprocessing
+
+- **Status:** [ ]
+- **Objective:** Stored-NLP-version != current -> bounded reprocessing (batches, resumable, idempotent, crash-safe); learn from role-details-v1/v2 stale-data issue; never auto-archive.
+- **Current task / exact next action:** defined on completion of Stage 13.
+
+---
+
+## Stage 15 — NLP Debug / Intelligence Inspector
+
+- **Status:** [ ]
+- **Objective:** Developer-facing inspector: evidence | category | strength | entities | confidence | source | method | version | reconciliation state per job; no secret/personal leakage.
+- **Current task / exact next action:** defined on completion of Stage 14.
+
+---
+
+## Stage 16 — Synthetic NLP Evaluation Corpus
+
+- **Status:** [ ]
+- **Objective:** Deterministic paraphrase corpus covering all categories + adversarial examples (e.g. "our cleared team supports Secret environments" must not imply applicant clearance).
+- **Current task / exact next action:** defined on completion of Stage 15.
+
+---
+
+## Stage 17 — Representative Job Evaluation
+
+- **Status:** [ ]
+- **Objective:** Evaluate NLP against ~50-100 representative descriptions (synthetic/labeled local fixture if live data unsafe); measure category/strength/entity accuracy + critical FP/FN + disagreement rate; no inventing ground truth.
+- **Current task / exact next action:** defined on completion of Stage 16.
+
+---
+
+## Stage 18 — Shadow-Mode Acceptance Gate
+
+- **Status:** [ ]
+- **Objective:** Verify no production score/eligibility/ranking/removal changes; persistence/versioning works; stale data reprocesses; evidence retained; conflicts visible; debug works; evaluation completed; critical semantic classes hit documented quality targets.
+- **Current task / exact next action:** defined on completion of Stage 17.
+
+---
+
+## Stage 19 — Semantic Normalization / Embedding Design
+
+- **Status:** [ ]
+- **Objective:** Research + design only: local embedding runtime, model selection/licensing/redistribution, versioning, cache, canonical representations, thresholds, explainability, invalidation; measure size/startup/latency/memory/disk/CPU/packaging impact; NEVER silently add hundreds of MB or download models at runtime.
+- **Current task / exact next action:** defined on completion of Stage 18.
+
+---
+
+## Stage 20 — Semantic Role Matching Shadow Mode
+
+- **Status:** [ ]
+- **Objective:** Similarity job title <-> target role/canonical family; persist similarity/version/canonical role/evidence; compare vs deterministic role matching; positive + adversarial examples.
+- **Current task / exact next action:** defined on completion of Stage 19.
+
+---
+
+## Stage 21 — Semantic Skill Normalization Shadow Mode
+
+- **Status:** [ ]
+- **Objective:** Compare extracted skills vs concepts with EXACT/CANONICAL_ALIAS/STRONG_RELATED/WEAK_RELATED/UNRELATED/UNKNOWN; retain phrase, concept, score, model/version, relationship; adversarial tests.
+- **Current task / exact next action:** defined on completion of Stage 20.
+
+---
+
+## Stage 22 — Resume Evidence Matching Shadow Mode
+
+- **Status:** [ ]
+- **Objective:** Map requirements to parsed resume evidence -> DIRECT_MATCH/STRONG_RELATED_EVIDENCE/WEAK_RELATED_EVIDENCE/NO_EVIDENCE/UNKNOWN; never claim possession; preserve evidence; no resume modification; no scoring change.
+- **Current task / exact next action:** defined on completion of Stage 21.
+
+---
+
+## Stage 23 — Requirement Coverage Model
+
+- **Status:** [ ]
+- **Objective:** Data model for future "Requirement Coverage" UI; direct/related/missing/unknown evidence distinguished; weighted by required/preferred/nice-to-have; separate from production scoring until promoted.
+- **Current task / exact next action:** defined on completion of Stage 22.
+
+---
+
+## Stage 24 — NLP / Semantic Performance Audit
+
+- **Status:** [ ]
+- **Objective:** Measure extraction/segmentation/classification/embedding/resume-comparison time, memory, DB growth, startup impact, reprocessing throughput, installer impact on ordinary Windows hardware; cache with stable fingerprints; never optimize away correctness.
+- **Current task / exact next action:** defined on completion of Stage 23.
+
+---
+
+## Stage 25 — Security / Privacy / Packaging Audit
+
+- **Status:** [ ]
+- **Objective:** Audit model files, runtime, caches, NLP DB records, fixtures, diagnostics, build inputs, packaged files, installer; verify no telemetry/external transmission/secrets/personal data/dev paths; fresh installs have neutral NLP state; verify model licensing if packaged.
+- **Current task / exact next action:** defined on completion of Stage 24.
+
+---
+
+## Stage 26 — Intelligence UX Prototype
+
+- **Status:** [ ]
+- **Objective:** Job-detail JOB INTELLIGENCE prototype (requirement coverage, requirements summary, traceable evidence, "interpreted as" wording); no wholesale UI redesign; no probabilistic claims as facts.
+- **Current task / exact next action:** defined on completion of Stage 25.
+
+---
+
+## Stage 27 — Promotion Design for Production Scoring
+
+- **Status:** [ ]
+- **Objective:** Explicit architecture proposal (Levels 0-4) based on measured results; per-field accuracy/FP/FN/error consequence/fallback/confidence/corroboration/evidence; hard-gate promotion requires stronger evidence; no implementation unless roadmap/authorization includes it.
+- **Current task / exact next action:** defined on completion of Stage 26.
+
+---
+
+## Stage 28 — Full Regression and Upgrade Validation
+
+- **Status:** [ ]
+- **Objective:** Full project verification; demonstrate existing production recommendation scores unchanged during shadow-mode; no substituting focused tests for the complete gate.
+- **Current task / exact next action:** defined on completion of Stage 27.
+
+---
+
+## Stage 29 — Documentation and Final Intelligence Handoff
+
+- **Status:** [ ]
+- **Objective:** Reconcile roadmap + Project Memory + README/CHANGELOG/SESSION_HANDOFF/architecture; exact promotion status; final report (43-point) with explicit NLP SHADOW MODE VALIDATED / NOT YET VALIDATED status.
+- **Current task / exact next action:** defined on completion of Stage 28.
+
+---
+
+## Verification Ledger (NLP program)
+
+| Date       | Action                   | Result                                                                    |
+| ---------- | ------------------------ | ------------------------------------------------------------------------- |
+| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                     |
+| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean |
