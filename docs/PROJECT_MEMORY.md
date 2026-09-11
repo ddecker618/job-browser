@@ -1,3 +1,11 @@
+## Recovery checkpoint — P11 complete
+
+P11 is complete and verified (150 files / 1426 tests). Job Intelligence displays diagnostic requirement coverage from the submitted immutable snapshot, including modality, source evidence, provenance, and parser version. The connected test confirms the job score remains unchanged. Next: P12 design-only bounded scoring proposal. Installer remains the stale 2026-09-10 20:07:47 build; no production data or remote push was touched.
+
+## Active recovery checkpoint — P11 in progress
+
+P10 committed as 36fbffc. P11 is wiring supported requirement coverage into the Job Intelligence API and UI from the application’s immutable submitted-resume snapshot. The ratio is explicitly diagnostic and has no score, eligibility, rank, filter, or lifecycle authority. No installer or production-data changes.
+
 ## Recovery checkpoint — P10 complete
 
 P10 is complete and verified (147 files / 1422 tests). Snapshot evidence adapters now cover skills, certifications, experience, education, and clearance with parser provenance. Unparsed structural data produces UNKNOWN; normalized resume text remains internal and public snapshot responses do not expose it. Next: P11 diagnostic requirement coverage in Job Intelligence. No installer, production data, or remote push was touched.

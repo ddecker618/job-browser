@@ -45,6 +45,50 @@ export function JobIntelligencePreview({
                 } noted.`
               : ''}
           </p>
+          {projection.coverage === null ? (
+            <p>
+              No captured resume snapshot is available for diagnostic coverage.
+            </p>
+          ) : (
+            <section
+              className="job-intelligence-coverage"
+              aria-label="Diagnostic requirement coverage"
+            >
+              <h4>Diagnostic requirement coverage</h4>
+              <p>
+                {Math.round(
+                  projection.coverage.summary.weightedDiagnosticCoverage * 100,
+                )}
+                % evidence coverage across{' '}
+                {projection.coverage.summary.totalRequirements} supported
+                requirements. This ratio is diagnostic; it is not a job score
+                and does not affect eligibility or ranking.
+              </p>
+              {projection.coverage.rows.map((row) => (
+                <article
+                  key={row.requirementId}
+                  className="job-intelligence-coverage-row"
+                >
+                  <strong>
+                    {row.status.replaceAll('_', ' ')} · {row.strength}
+                  </strong>
+                  <p>{row.phrase}</p>
+                  {row.evidence
+                    .filter(
+                      (item) =>
+                        item.relationship !== null &&
+                        item.relationship !== 'UNRELATED',
+                    )
+                    .map((item) => (
+                      <small key={item.evidenceId}>
+                        Snapshot evidence: {item.rawLabel} · {item.provenance} ·
+                        parser {item.parserVersion}
+                      </small>
+                    ))}
+                </article>
+              ))}
+            </section>
+          )}
           {projection.requirementFacts.map((fact) => (
             <article key={fact.factId} className="job-intelligence-fact">
               <strong>

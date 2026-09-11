@@ -169,6 +169,14 @@ export const api = {
     request<
       import('../intelligence/nlp/projection.js').JobIntelligenceProjection & {
         roleFamily: import('../intelligence/nlp/roleFamilySuggestion.js').RoleFamilySuggestion;
+        coverage:
+          | import('../intelligence/nlp/requirementCoverage.js').RequirementCoverageProjection
+          | null;
+        coverageSource: {
+          snapshotId: string;
+          parserVersion: string;
+          normalizationVersion: string;
+        } | null;
       }
     >('/api/jobs/' + encodeURIComponent(id) + '/intelligence', {
       method: 'POST',

@@ -7,6 +7,8 @@ import {
 } from '../intelligence/nlp/document.js';
 import { projectJobIntelligence } from '../intelligence/nlp/projection.js';
 import { projectRoleFamilySuggestion } from '../intelligence/nlp/roleFamilySuggestion.js';
+import { adaptResumeSnapshotEvidence } from '../intelligence/nlp/snapshotEvidence.js';
+import { projectRequirementCoverage } from '../intelligence/nlp/requirementCoverageProjection.js';
 import type { NlpWorkerStatus } from '../intelligence/nlp/backgroundWorker.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -56,6 +58,7 @@ import {
   searchProfileSchema,
 } from '../config/search-profile.js';
 import { JobRepository } from '../repositories/job-repository.js';
+import { ApplicationRepository } from '../repositories/application-repository.js';
 import { verifyJobAvailability } from '../intelligence/jobAvailability.js';
 import { JobSearchRepository } from '../repositories/job-search-repository.js';
 import { ResumeSnapshotRepository } from '../repositories/resume-snapshot-repository.js';
@@ -340,6 +343,29 @@ export function createApp(
           title: job.title,
           profile: loadLegacySearchProfile(),
         });
+        const application = new ApplicationRepository(database).findByJobId(
+          jobId,
+        );
+        const snapshotId = application?.submittedResumeSnapshotId ?? null;
+        const snapshotSource =
+          snapshotId === null
+            ? null
+            : new ResumeSnapshotRepository(database).findEvidenceSource(
+                snapshotId,
+              );
+        const coverage =
+          snapshotSource === null
+            ? null
+            : projectRequirementCoverage(
+                result,
+                adaptResumeSnapshotEvidence(snapshotSource),
+                {
+                  certificationCatalog: loadScoringConfig(
+                    scoringPath,
+                    profilePreferencesPath,
+                  ).certifications,
+                },
+              );
         response.json({
           ...projectJobIntelligence(jobId, result, {
             clearanceRequirement:
@@ -352,6 +378,15 @@ export function createApp(
               deterministicJob?.estimatedExperienceYears ?? null,
           }),
           roleFamily,
+          coverage,
+          coverageSource:
+            snapshotSource === null
+              ? null
+              : {
+                  snapshotId: snapshotSource.snapshotId,
+                  parserVersion: snapshotSource.parserVersion,
+                  normalizationVersion: snapshotSource.normalizationVersion,
+                },
         });
       } catch (error) {
         if (controller.signal.aborted) return;

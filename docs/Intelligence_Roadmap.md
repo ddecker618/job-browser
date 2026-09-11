@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P10 resume evidence matching - complete
-CURRENT_TASK:        P11 requirement coverage in Job Intelligence
-LAST_COMPLETED:      P10; npm run verify 147 files / 1422 tests PASS
-NEXT_ACTION:         P11 project snapshot evidence into diagnostic coverage UI
-FILES_IN_PROGRESS:   none after P10 checkpoint commit
-TESTS_TO_RUN:        targeted P11 API/UI tests, then npm run verify
-KNOWN_FAILURES:      none in P10; installed artifact not rebuilt
-LATEST_CHECKPOINT:   e21e898 P9 (local only)
+CURRENT_STAGE:       P11 requirement coverage - complete
+CURRENT_TASK:        P12 bounded NLP scoring contribution design only
+LAST_COMPLETED:      P11; npm run verify 150 files / 1426 tests PASS
+NEXT_ACTION:         P12 document a bounded, corroborated, shadow-only recommendation contribution
+FILES_IN_PROGRESS:   none after P11 checkpoint commit
+TESTS_TO_RUN:        P12 design contract checks; no live scoring changes
+KNOWN_FAILURES:      none in P11; installer last built 2026-09-10 20:07:47 and is stale
+LATEST_CHECKPOINT:   36fbffc P10 (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P11; do not restart the historical shadow program or completed P0-P10
+SAFE_RESUME_POINT:   P12; do not restart the historical shadow program or completed P0-P11
 ```
 
 ---
@@ -1098,12 +1098,13 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P11 — Requirement Coverage Goes Live
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** the coverage projection (direct/related/weak/missing/unknown with
   modality weighting, evidence, and provenance) is shown in production Job
   Intelligence; it is explicitly a diagnostic ratio and is never called a score and
   never changes ranks/eligibility.
-- **Current task:** not started.
+- **Current task:** Complete. Job Intelligence now reads the application’s submitted immutable resume snapshot, projects supported requirements as direct/related/weak/missing/unknown rows with modality and provenance, and labels the weighted ratio as diagnostic evidence coverage. No coverage field has score, eligibility, rank, filter, or lifecycle authority. Jobs without a captured snapshot return coverage=null.
+- **Verification:** focused API/UI/projection tests PASS; full verify 150 files / 1426 tests PASS.
 - **Exact next action:** P12 - bounded NLP scoring contribution design.
 
 ---

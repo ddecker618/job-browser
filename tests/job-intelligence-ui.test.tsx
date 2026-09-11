@@ -39,6 +39,8 @@ describe('connected Job Intelligence preview', () => {
         location: null,
         estimatedExperienceYears: null,
       }),
+      coverage: null,
+      coverageSource: null,
       roleFamily: projectRoleFamilySuggestion('job-1', {
         title: 'Analyst',
         profile: DEFAULT_SEARCH_PROFILE,
