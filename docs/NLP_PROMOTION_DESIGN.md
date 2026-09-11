@@ -77,3 +77,33 @@ No named field may move above Level 2 unless all of the following are recorded:
 
 Until then, deterministic gates remain authoritative and all shadow results keep
 `productionEffect: 'none'`.
+
+## P12 Bounded Contribution Design (DESIGN ONLY)
+
+This section is a reviewable design contract. It does not authorize or implement a production scoring contribution. The current job score, recommendation, eligibility, ordering, filtering, and persisted fields remain unchanged.
+
+### Proposed output and cap
+
+A future authorized implementation may expose a separate, clearly named `experimentalRecommendationMetric`. It must never replace or be persisted as `jobs.score` or `jobs.recommendation`. The proposed contribution is bounded to **0–3.0 points** and is zero unless the deterministic result already passes every hard eligibility gate.
+
+The future formula is:
+
+`contribution = min(3.0, qualifyingSignalTotal, max(0, nextDeterministicRecommendationThreshold - baselineScore - 0.001))`
+
+`experimentalRecommendationMetric = min(100, baselineScore + contribution)`
+
+The next-threshold guard prevents the experimental contribution from changing the deterministic recommendation band. When there is no higher threshold, the absolute 3-point cap still applies and the deterministic label remains unchanged. Eligibility is a separate boolean decision and is never read from, inferred from, or changed by this metric.
+
+### Qualifying signals
+
+A signal contributes only when all conditions hold: the source hash and parser/index versions are current; its exact evidence span validates; confidence is at least 0.90; the deterministic and NLP interpretations agree; neither side is unknown; no conflict exists; and the capability is explicitly approved for Level 3 in a future roadmap authorization. Related skill evidence does not qualify as equivalence. Missing, stale, malformed, unsupported, weak, conflicting, or NLP-only evidence contributes zero.
+
+The proposed allocation is at most 1 point for an approved role-family agreement and at most 2 points for corroborated requirement evidence. Adding another qualifying corroborated signal cannot reduce the contribution. Adding a conflict does not create a negative contribution; it disqualifies only the affected signal and remains visible.
+
+### Shadow diff gate
+
+Before any future activation, a frozen local corpus must compare the deterministic baseline with the proposed calculation. The gate passes only if: feature-disabled outputs are byte-identical; eligibility, recommendation label, persisted score, rank outside an existing equal-score tie, filters, lifecycle, and removal decisions have zero changes; every nonzero diagnostic contribution has current evidence and dual-side agreement; and rollback removes the diagnostic field while restoring the exact baseline response. Any unexplained difference fails closed.
+
+### Authorization boundary
+
+The design supplies no runtime flag, database column, score-engine import, or production consumer. Level 3 remains blocked by `SPRINT_MAXIMUM_LEVEL = 'enrichment'`. Implementing or activating this proposal requires a later explicit field-specific authorization and completion of the hard promotion gate.

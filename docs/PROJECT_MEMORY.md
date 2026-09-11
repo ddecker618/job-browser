@@ -1,3 +1,7 @@
+## Recovery checkpoint — P12 complete (design only)
+
+P12 is documented in NLP_PROMOTION_DESIGN.md. It proposes a separate non-persisted metric with a 0–3 point cap, a next-threshold guard, eligibility-pass prerequisite, current evidence, >=0.90 confidence, dual-side agreement, and a fail-closed shadow diff gate. No runtime scoring path or flag was added. Next: P13 executable safety invariants. Latest code checkpoint: 031b3d8.
+
 ## Recovery checkpoint — P11 complete
 
 P11 is complete and verified (150 files / 1426 tests). Job Intelligence displays diagnostic requirement coverage from the submitted immutable snapshot, including modality, source evidence, provenance, and parser version. The connected test confirms the job score remains unchanged. Next: P12 design-only bounded scoring proposal. Installer remains the stale 2026-09-10 20:07:47 build; no production data or remote push was touched.

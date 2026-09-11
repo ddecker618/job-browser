@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P11 requirement coverage - complete
-CURRENT_TASK:        P12 bounded NLP scoring contribution design only
-LAST_COMPLETED:      P11; npm run verify 150 files / 1426 tests PASS
-NEXT_ACTION:         P12 document a bounded, corroborated, shadow-only recommendation contribution
-FILES_IN_PROGRESS:   none after P11 checkpoint commit
-TESTS_TO_RUN:        P12 design contract checks; no live scoring changes
+CURRENT_STAGE:       P12 bounded scoring contribution design - complete
+CURRENT_TASK:        P13 scoring safety invariants
+LAST_COMPLETED:      P12 design only; no runtime scoring changes
+NEXT_ACTION:         P13 encode fail-closed scoring and rollback invariants
+FILES_IN_PROGRESS:   none after P12 design checkpoint commit
+TESTS_TO_RUN:        targeted P13 invariants, then npm run verify
 KNOWN_FAILURES:      none in P11; installer last built 2026-09-10 20:07:47 and is stale
-LATEST_CHECKPOINT:   36fbffc P10 (local only)
+LATEST_CHECKPOINT:   031b3d8 P11 (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P12; do not restart the historical shadow program or completed P0-P11
+SAFE_RESUME_POINT:   P13; do not restart the historical shadow program or completed P0-P12
 ```
 
 ---
@@ -1111,12 +1111,12 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P12 — Bounded NLP Scoring Contribution
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** design (only) a bounded, capped contribution to a displayed
   recommendation metric from corroborated, high-confidence ENRICHMENT/SCORING-capable
   signals; require: score cap below any eligibility boundary, monotone evidence,
   dual-side consistency (deterministic vs NLP), and a shadow diff gate.
-- **Current task:** not started.
+- **Current task:** Complete as design only in `docs/NLP_PROMOTION_DESIGN.md`: separate non-persisted experimental metric; absolute 3-point cap; next-threshold guard; zero on failed eligibility, stale/unknown/conflicting/uncorroborated evidence; dual-side agreement and >=0.90 confidence; monotone qualifying evidence; byte-identical disabled/rollback diff gate. No runtime scoring consumer or flag was added.
 - **Exact next action:** P13 - scoring safety invariants.
 
 ---
