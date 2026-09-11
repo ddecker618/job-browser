@@ -133,6 +133,18 @@ const asyncRoute =
     }
   };
 
+const NLP_SEARCH_RELEVANCE_SETTING = 'nlp_search_relevance_enabled';
+
+function nlpSearchRelevanceFlag(repository: DashboardRepository): boolean {
+  const raw = repository.getSetting(NLP_SEARCH_RELEVANCE_SETTING);
+  if (raw === null) return false;
+  try {
+    return JSON.parse(raw) === true;
+  } catch {
+    return false;
+  }
+}
+
 export function createApp(
   database: JobDatabase,
   options: AppOptions = {},
@@ -152,6 +164,7 @@ export function createApp(
   const jobRepository = new JobRepository(database);
   const jobSearchRepository = new JobSearchRepository(database, {
     getScoreVersion: () => getCurrentScoreVersion(),
+    nlpSearchRelevance: () => nlpSearchRelevanceFlag(repository),
   });
   const applicationService = new ApplicationService(database);
   const outcomeAnalytics = new OutcomeAnalyticsRepository(database);

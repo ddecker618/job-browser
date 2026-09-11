@@ -74,6 +74,7 @@ describe('migration runner', () => {
       '029_discovery_alerts.sql',
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
+      '032_job_nlp_relevance.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -227,6 +228,7 @@ describe('migration runner', () => {
       '029_discovery_alerts.sql',
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
+      '032_job_nlp_relevance.sql',
     ]);
     expect(
       database
@@ -374,6 +376,7 @@ describe('migration runner', () => {
       '029_discovery_alerts.sql',
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
+      '032_job_nlp_relevance.sql',
     ]);
 
     const column = database
@@ -632,6 +635,7 @@ describe('migration runner', () => {
       '029_discovery_alerts.sql',
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
+      '032_job_nlp_relevance.sql',
     ]);
 
     const remaining = database

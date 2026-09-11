@@ -950,7 +950,7 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 - **Done:** `src/intelligence/nlp/projection.ts` (`projectJobIntelligence`,
   `JOB_INTELLIGENCE_PROJECTION_VERSION = 'job-intelligence-projection-v1'`) projects
   the stored envelope into a read-only `JobIntelligenceProjection` (`level:
-  explanation`, `summary` with requirement/other/boilerplate/conflict/unreconciled
+explanation`, `summary` with requirement/other/boilerplate/conflict/unreconciled
   counts, `authority` = deterministic-unaffected). Per-fact: plain-language
   interpretation ending in "per the posting" (never possession), strength label,
   `describeNlpConfidence` band, evidence segment, and deterministic reconciliation
@@ -980,12 +980,39 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 
 ## P6 — NLP-Enhanced Search Index
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** additive relevance index for search/rename/matching built from
   ENRICHMENT-level data (canonical skills, role hints, category signals). Production
   result set and ordering remain deterministic baseline; NLP relevance is a bounded rank
   tie-break only, behind a flag off by default.
-- **Current task:** not started.
+- **Implementation tasks:** additive `job_nlp_relevance` index written by the same
+  worker (composite persistence target); deterministic search tie-break behind a
+  settings flag off by default; repository + API + worker tests.
+- **Done:** `src/intelligence/nlp/searchRelevance.ts`
+  (`SEARCH_RELEVANCE_INDEX_VERSION = 'job-search-relevance-v1'`) derives a bounded
+  (0..1) `SearchRelevanceDocument` from the enriched envelope (canonical skills by
+  frequency-then-alpha, top skills capped at 8, signal arrays for clearances /
+  certifications / education levels, boilerplate facts excluded). Schema is zod-validated
+  (`searchRelevanceDocumentSchema`); `withSearchRelevanceIndex(enrichmentTarget,
+relevanceStore)` composes a worker persistence target that saves enrichment and
+  relevance together. Migration `032_job_nlp_relevance.sql` is additive
+  (`job_nlp_relevance.job_id REFERENCES jobs(id) ON DELETE CASCADE`); new
+  `NlpRelevanceRepository` validates on read and write. `JobSearchRepository.search`
+  adds `LEFT JOIN job_nlp_relevance` with `COALESCE(relevance_score, -1) DESC,
+jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — the
+  flag-off SQL is byte-identical to baseline, so existing ordering/perf tests still
+  pin the deterministic path. `app.ts` gates the flag on app setting
+  `nlp_search_relevance_enabled` (JSON boolean, default false); `backend.ts` wires the
+  composite target into the background worker.
+- **Tests:** `tests/job-nlp-search-relevance.test.ts` (11) covers derive bounds/version/
+  determinism, canonical ordering + caps, signal extraction, boilerplate exclusion,
+  repository round-trip and malformed rejection, worker persistence through the
+  composite target, repository tie-break on/off (flag-off ordering identical), and API
+  gating via the app-setting toggle. Migration-list tests updated for `032`.
+- **Validation evidence:** `npm run verify` = 143 files / 1399 tests green.
+- **Known limitations:** per-capability flags P20; rename/matching consumers P8/P9; no
+  UI surface for the tie-break label yet (P14).
+- **Current task:** complete.
 - **Exact next action:** P7 - canonical role family matching promoted to search
   suggestion.
 
@@ -1253,25 +1280,26 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 
 ## Verification Ledger (NLP program)
 
-| Date       | Action                   | Result                                                                       |
-| ---------- | ------------------------ | ---------------------------------------------------------------------------- |
-| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                        |
-| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean    |
-| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`           |
-| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark      |
-| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                        |
-| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                   |
-| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                      |
-| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS  |
-| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated   |
-| 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`     |
-| 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7` |
-| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                |
-| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)        |
-| 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly         |
-| 2026-09-10 | P3b async worker         | verify 140/1369 green; 7 worker tests; commit `2d9ad2c`                      |
-| 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green            |
-| 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21` |
+| Date       | Action                   | Result                                                                                 |
+| ---------- | ------------------------ | -------------------------------------------------------------------------------------- |
+| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                                  |
+| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean              |
+| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`                     |
+| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark                |
+| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                                  |
+| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                             |
+| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                                |
+| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS            |
+| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated             |
+| 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`               |
+| 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7`           |
+| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                          |
+| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)                  |
+| 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly                   |
+| 2026-09-10 | P3b async worker         | verify 140/1369 green; 7 worker tests; commit `2d9ad2c`                                |
+| 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green                      |
+| 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21`   |
+| 2026-09-11 | P6 relevance index       | derive + repo + composite worker target + search tie-break (flag off); verify 143/1399 |
 
 ## NLP integration repair — verified
 

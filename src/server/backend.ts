@@ -44,7 +44,9 @@ import { unavailableCredentialResolver } from '../discovery/credentialResolver.j
 import { NlpBackgroundWorker } from '../intelligence/nlp/backgroundWorker.js';
 import { DatabaseJobNlpCandidateSource } from '../intelligence/nlp/jobCandidateProvider.js';
 import { extractNlpDocument } from '../intelligence/nlp/document.js';
+import { withSearchRelevanceIndex } from '../intelligence/nlp/searchRelevance.js';
 import { JobNlpEnrichmentRepository } from '../database/jobNlpEnrichmentRepository.js';
+import { NlpRelevanceRepository } from '../database/nlpRelevanceRepository.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { IntelligenceEngine } from '../intelligence/intelligenceEngine.js';
 import { loadCandidateProfile } from '../config/candidate-profile.js';
@@ -294,9 +296,14 @@ export async function startBackend(
       activeDatabase,
     );
     const nlpEnrichmentStore = new JobNlpEnrichmentRepository(activeDatabase);
+    const nlpRelevanceStore = new NlpRelevanceRepository(activeDatabase);
+    const nlpPersistenceTarget = withSearchRelevanceIndex(
+      nlpEnrichmentStore,
+      nlpRelevanceStore,
+    );
     const nlpBackgroundWorker = new NlpBackgroundWorker(
       {
-        target: nlpEnrichmentStore,
+        target: nlpPersistenceTarget,
         extractionVersion: NLP_EXTRACTION_VERSION,
         builder: async (candidate, signal) => {
           const parts = nlpCandidateSource.load(candidate.jobId);

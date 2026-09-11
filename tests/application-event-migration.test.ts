@@ -162,6 +162,7 @@ describe('application event foundation migration', () => {
       '029_discovery_alerts.sql',
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
+      '032_job_nlp_relevance.sql',
     ]);
 
     expect(applicationIds(database)).toEqual([

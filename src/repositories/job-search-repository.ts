@@ -58,6 +58,7 @@ interface FacetRow {
 export interface JobSearchRepositoryOptions {
   forceFallback?: boolean;
   getScoreVersion?: (() => string) | undefined;
+  nlpSearchRelevance?: (() => boolean) | undefined;
 }
 
 const SORT_COLUMNS = {
@@ -78,6 +79,7 @@ export class JobSearchRepository {
     options: JobSearchRepositoryOptions = {},
   ) {
     this.getScoreVersion = options.getScoreVersion;
+    this.nlpSearchRelevance = options.nlpSearchRelevance;
     this.searchMode =
       options.forceFallback === true || !this.provisionFts()
         ? 'indexed'
@@ -85,6 +87,7 @@ export class JobSearchRepository {
   }
 
   private readonly getScoreVersion: (() => string) | undefined;
+  private readonly nlpSearchRelevance: (() => boolean) | undefined;
 
   public search(query: JobSearchQuery): JobSearchResponse {
     const { sql: filterSql, parameters } = this.filters(query);
@@ -98,6 +101,13 @@ export class JobSearchRepository {
         .get(...parameters)?.value ?? 0;
     const sortColumn = SORT_COLUMNS[query.sort];
     const direction = query.direction === 'asc' ? 'ASC' : 'DESC';
+    const relevanceEnabled = this.nlpSearchRelevance?.() === true;
+    const joinSql = relevanceEnabled
+      ? ' LEFT JOIN job_nlp_relevance nlpr ON nlpr.job_id = jobs.id'
+      : '';
+    const orderSql = relevanceEnabled
+      ? `ORDER BY ${sortColumn} IS NULL ASC, ${sortColumn} ${direction}, COALESCE(nlpr.relevance_score, -1) DESC, jobs.id ASC`
+      : `ORDER BY ${sortColumn} IS NULL ASC, ${sortColumn} ${direction}, jobs.id ASC`;
     const rows = this.database
       .prepare<unknown[], JobRow>(
         `${filtered}
@@ -108,8 +118,8 @@ export class JobSearchRepository {
             jobs.lifecycle_reason, jobs.removed_at, jobs.user_removed,
            jobs.verification_status, jobs.eligibility_passed,
            jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version
-          FROM filtered_jobs JOIN jobs ON jobs.id = filtered_jobs.id
-         ORDER BY ${sortColumn} IS NULL ASC, ${sortColumn} ${direction}, jobs.id ASC
+          FROM filtered_jobs JOIN jobs ON jobs.id = filtered_jobs.id${joinSql}
+         ${orderSql}
          LIMIT ? OFFSET ?`,
       )
       .all(...parameters, query.pageSize, (query.page - 1) * query.pageSize);
