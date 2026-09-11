@@ -166,6 +166,7 @@ export function createApp(
   const jobSearchRepository = new JobSearchRepository(database, {
     getScoreVersion: () => getCurrentScoreVersion(),
     nlpSearchRelevance: () => nlpSearchRelevanceFlag(repository),
+    searchProfile: () => loadLegacySearchProfile(),
   });
   const applicationService = new ApplicationService(database);
   const outcomeAnalytics = new OutcomeAnalyticsRepository(database);
@@ -249,6 +250,18 @@ export function createApp(
   );
   app.get('/api/jobs/search', (request, response) => {
     const query = jobSearchQuerySchema.parse(request.query);
+    if (query.targetRole !== undefined) {
+      const profile = loadLegacySearchProfile();
+      const approved = profile.families.some(
+        (family) => family.key === query.targetRole,
+      );
+      if (!approved) {
+        response
+          .status(400)
+          .json({ error: `Unknown target role '${query.targetRole}'.` });
+        return;
+      }
+    }
     response.json(jobSearchRepository.search(query));
   });
   app.get('/api/jobs/:id', (request, response) => {

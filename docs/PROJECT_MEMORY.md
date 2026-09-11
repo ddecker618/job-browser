@@ -1,5 +1,17 @@
 # Job Browser Project Memory
 
+## Current recovery checkpoint — P8 complete (2026-09-11)
+
+P7 baseline is e99c80e. P8 is complete: explicit target-role selection and exact
+structured-family membership; current P6 indexed skill evidence supplements title
+evidence without widening the result set. Missing/stale/corrupt derived evidence
+falls back safely. Production scores, eligibility, lifecycle, and default ordering
+are preserved. Full verification: 145 files / 1416 tests; production build PASS.
+No installer rebuilt, no version bumped, no data migration, nothing pushed.
+The next implementation task is P9 in docs/Intelligence_Roadmap.md. Resolve the P8
+checkpoint hash with git log. Historical shadow/beta resume instructions below
+are retained as history and do not supersede this checkpoint.
+
 ## Purpose
 
 This file is the primary entry point for AI assistants working on Job Browser.

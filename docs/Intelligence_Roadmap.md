@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P5 (production Job Intelligence projection) - complete
-CURRENT_TASK:        P6: NLP-enhanced search index (additive relevance, flag off by default)
-LAST_COMPLETED:      P5 projection 7651d21; npm run verify 142/1388 green
-NEXT_ACTION:         P6: additive NLP-enhanced search index + ranked tie-break behind a flag off by default
-FILES_IN_PROGRESS:   none
-TESTS_TO_RUN:        npm run verify (142 files / 1388 tests)
-KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   P4 checkpoint commit (local only, not pushed)
+CURRENT_STAGE:       P8 target-role search integration - complete
+CURRENT_TASK:        P9 skill normalization in matching
+LAST_COMPLETED:      P8; npm run verify 145 files / 1416 tests PASS; build PASS
+NEXT_ACTION:         P9 canonical skill normalization for coverage and search relevance
+FILES_IN_PROGRESS:   none after P8 checkpoint commit
+TESTS_TO_RUN:        targeted P9 tests, then npm run verify
+KNOWN_FAILURES:      none in P8; installed artifact not rebuilt
+LATEST_CHECKPOINT:   P8 checkpoint (resolve with git log; local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 19 start (shadow shadow-rollback baseline); P2 below for the production sprint
+SAFE_RESUME_POINT:   P9; do not restart the historical shadow program or completed P0-P8
 ```
 
 ---
@@ -1058,12 +1058,17 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P8 — Target-Role Search Integration
 
-- **Status:** [ ]
-- **Objective:** search by target roles (family-approved + user-selected) using the P6
-  index; UI shows matched family label + why (evidence). Deterministic ordering is
-  preserved by default.
-- **Current task:** not started.
-- **Exact next action:** P9 - skill normalization promoted to matching/coverage.
+- **Status:** [x]
+- **Objective:** explicit target-role search with current P6 supporting evidence, preserving deterministic membership and primary sort.
+- **Implemented:** targetRole query validation, family display names, URL/saved-filter integration, applied-role status, and per-result evidence.
+- **Safety:** exact comma-separated family membership, literal wildcard handling, unchanged score/eligibility/lifecycle fields. Existing disabled families are labeled disabled; the selector offers enabled families plus an already-selected disabled family.
+- **P6 integration:** page-bounded index evidence read. Only current, schema-valid envelopes with a matching document hash and matching derived index provide skill evidence. Evidence spans must match retained text. Missing, stale, corrupt, or partially updated data falls back to title evidence.
+- **Decision:** P6 contains skill/signals, not role membership. Its evidence supplements the deterministic role match; it does not invent an NLP-only family or widen the result set. The existing P6 optional tie-break is unchanged.
+- **Recovery fixes:** repaired the unfinished UI's undefined-role crash, guarded older responses, and corrected substring role filtering.
+- **Validation:** npm run verify PASS (145 files / 1416 tests); npm run build PASS. Includes API acceptance/rejection, role membership/order, disabled roles, stale/corrupt index fallback, SQL wildcard negatives, no job mutation, selector/URL/page-reset/clear and evidence rendering.
+- **Current task:** complete.
+- **Exact next action:** P9 skill normalization in matching/coverage.
+- **Release boundary:** no version bump, installer replacement, production-data writes, or push.
 
 ---
 
@@ -1327,6 +1332,8 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 | 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21`   |
 | 2026-09-11 | P6 relevance index       | derive + repo + composite worker target + search tie-break (flag off); verify 143/1399 |
 | 2026-09-11 | P7 role family suggest   | reconciled suggestion projection + intelligence endpoint; verify 144/1407              |
+
+| 2026-09-11 | P8 target-role search | verify 145/1416 PASS; build PASS; exact membership and current P6 evidence |
 
 ## NLP integration repair — verified
 

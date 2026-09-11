@@ -1750,6 +1750,17 @@ kbd {
   margin-left: 0.35rem;
   vertical-align: middle;
 }
+.role-evidence {
+  display: block;
+  margin: 0.2rem 0 0;
+  font-size: 0.7rem;
+  color: var(--muted-text, #64748b);
+}
+.target-role-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--muted-text, #64748b);
+}
 .family-badge {
   display: inline-block;
   padding: 0.05rem 0.35rem;

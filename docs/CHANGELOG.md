@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Target-role search (P8)
+
+- Added target-role selection, exact family membership, and supporting current NLP index evidence. Stale derived data falls back to title evidence.
+- Preserved scores, eligibility, lifecycle, and primary sorting. Fixed undefined-role rendering in the unfinished P8 implementation.
+- Validation: full verification 145 files / 1416 tests and production build pass. Installer not rebuilt; nothing pushed.
+
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]

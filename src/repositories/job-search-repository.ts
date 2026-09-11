@@ -1,12 +1,16 @@
+import { targetRoleIndexEvidence } from '../intelligence/nlp/targetRoleIndexEvidence.js';
 import type { JobDatabase } from '../db/database.js';
 import type { JobStatus } from '../domain/job-status.js';
+import type { SearchProfile } from '../config/search-profile.js';
 import type {
+  JobSearchAppliedRole,
   JobSearchFacet,
   JobSearchFacets,
   JobSearchItem,
   JobSearchMode,
   JobSearchQuery,
   JobSearchResponse,
+  JobSearchRoleEvidence,
   JobSearchSource,
 } from '../models/job-search.js';
 
@@ -59,6 +63,7 @@ export interface JobSearchRepositoryOptions {
   forceFallback?: boolean;
   getScoreVersion?: (() => string) | undefined;
   nlpSearchRelevance?: (() => boolean) | undefined;
+  searchProfile?: (() => SearchProfile) | undefined;
 }
 
 const SORT_COLUMNS = {
@@ -80,6 +85,7 @@ export class JobSearchRepository {
   ) {
     this.getScoreVersion = options.getScoreVersion;
     this.nlpSearchRelevance = options.nlpSearchRelevance;
+    this.searchProfile = options.searchProfile;
     this.searchMode =
       options.forceFallback === true || !this.provisionFts()
         ? 'indexed'
@@ -88,6 +94,7 @@ export class JobSearchRepository {
 
   private readonly getScoreVersion: (() => string) | undefined;
   private readonly nlpSearchRelevance: (() => boolean) | undefined;
+  private readonly searchProfile: (() => SearchProfile) | undefined;
 
   public search(query: JobSearchQuery): JobSearchResponse {
     const { sql: filterSql, parameters } = this.filters(query);
@@ -124,16 +131,79 @@ export class JobSearchRepository {
       )
       .all(...parameters, query.pageSize, (query.page - 1) * query.pageSize);
     const sources = this.sourcesFor(rows.map((row) => row.id));
+    const profile = this.searchProfile?.();
+    const appliedRole = this.appliedRole(query, profile);
+    const roleEvidence =
+      appliedRole === null
+        ? ({} as Record<string, JobSearchRoleEvidence[]>)
+        : this.roleEvidenceFor(rows, appliedRole.familyKey, profile ?? null);
 
     return {
-      items: rows.map((row) => mapJob(row, sources.get(row.id) ?? [])),
+      items: rows.map((row) =>
+        mapJob(row, sources.get(row.id) ?? [], roleEvidence[row.id] ?? []),
+      ),
       page: query.page,
       pageSize: query.pageSize,
       total,
       pages: total === 0 ? 0 : Math.ceil(total / query.pageSize),
       facets: this.facets(filtered, parameters),
       searchMode: this.searchMode,
+      role: appliedRole,
     };
+  }
+
+  private appliedRole(
+    query: JobSearchQuery,
+    profile: SearchProfile | undefined,
+  ): JobSearchAppliedRole | null {
+    if (query.targetRole === undefined || query.targetRole.length === 0) {
+      return null;
+    }
+    const found = profile?.families.find(
+      (family) => family.key === query.targetRole,
+    );
+    if (found === undefined) return null;
+    return {
+      familyKey: found.key,
+      displayName: found.displayName,
+      approved: found.enabled,
+    };
+  }
+
+  private roleEvidenceFor(
+    rows: JobRow[],
+    familyKey: string,
+    profile: SearchProfile | null,
+  ): Record<string, JobSearchRoleEvidence[]> {
+    const displayName =
+      profile?.families.find((family) => family.key === familyKey)
+        ?.displayName ?? familyKey;
+    const result: Record<string, JobSearchRoleEvidence[]> = {};
+    const indexed = targetRoleIndexEvidence(
+      this.database,
+      rows.map((row) => row.id),
+    );
+    for (const row of rows) {
+      const matches = row.matched_families
+        ?.split(',')
+        .map((family) => family.trim())
+        .includes(familyKey);
+      if (matches === true) {
+        result[row.id] = [
+          {
+            key: familyKey,
+            displayName,
+            how: 'title-match',
+            ...(indexed.has(row.id)
+              ? { indexedSkills: indexed.get(row.id) }
+              : {}),
+            basis:
+              'The job title matched the target role family in the structured record.',
+          },
+        ];
+      }
+    }
+    return result;
   }
 
   private filters(query: JobSearchQuery): {
@@ -296,6 +366,12 @@ export class JobSearchRepository {
           parameters.push(`%${family}%`);
         }
       }
+    }
+    if (query.targetRole !== undefined && query.targetRole.length > 0) {
+      clauses.push(
+        "EXISTS (SELECT 1 FROM json_each('[' || replace(json_quote(COALESCE(jobs.matched_families, '')), ',', '\",\"') || ']') WHERE trim(value) = ?)",
+      );
+      parameters.push(query.targetRole);
     }
     return {
       sql: clauses.length === 0 ? '' : ` WHERE ${clauses.join(' AND ')}`,
@@ -504,7 +580,11 @@ function addComparison(
   parameters.push(value);
 }
 
-function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
+function mapJob(
+  row: JobRow,
+  sources: JobSearchSource[],
+  roleEvidence: JobSearchRoleEvidence[],
+): JobSearchItem {
   return {
     id: row.id,
     title: row.title,
@@ -516,6 +596,7 @@ function mapJob(row: JobRow, sources: JobSearchSource[]): JobSearchItem {
     score: row.score,
     recommendation: row.recommendation,
     matchedFamilies: row.matched_families,
+    roleEvidence,
     status: row.status,
     firstSeenAt: row.first_seen_at,
     lastVerifiedAt: row.last_verified_at,

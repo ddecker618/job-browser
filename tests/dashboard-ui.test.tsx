@@ -131,6 +131,86 @@ describe('dashboard UI', () => {
     ).toHaveAttribute('href', '/employers');
   });
 
+  it('selects a target role, resets pagination, and shows indexed evidence', async () => {
+    const user = userEvent.setup();
+    const calls: string[] = [];
+    mockFetch((url) => {
+      if (url.endsWith('/api/saved-filters')) return [];
+      if (url.endsWith('/api/search-profile'))
+        return {
+          families: [
+            {
+              key: 'security',
+              displayName: 'Security',
+              enabled: true,
+              priority: 1,
+            },
+            {
+              key: 'disabled',
+              displayName: 'Disabled',
+              enabled: false,
+              priority: 2,
+            },
+          ],
+        };
+      calls.push(url);
+      const selected = url.includes('targetRole=security');
+      return {
+        ...searchResponse([
+          {
+            ...searchJob('1', 'SOC Analyst', 'Fixture'),
+            matchedFamilies: 'security',
+            roleEvidence: selected
+              ? [
+                  {
+                    key: 'security',
+                    displayName: 'Security',
+                    how: 'title-match',
+                    basis: 'Structured title record.',
+                    indexedSkills: [
+                      { skill: 'Splunk', evidence: 'Splunk required.' },
+                    ],
+                  },
+                ]
+              : [],
+          },
+        ]),
+        role: selected
+          ? { familyKey: 'security', displayName: 'Security', approved: true }
+          : null,
+      };
+    });
+    renderPage(
+      <>
+        <JobsPage />
+        <LocationProbe />
+      </>,
+      ['/jobs?page=2'],
+    );
+    await screen.findByText('SOC Analyst');
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    expect(
+      screen.queryByRole('option', { name: 'Disabled' }),
+    ).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Target role'), 'security');
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'targetRole=security',
+      ),
+    );
+    expect(screen.getByTestId('location')).not.toHaveTextContent('page=2');
+    expect(await screen.findByTitle('Splunk required.')).toHaveTextContent(
+      'Splunk',
+    );
+    expect(calls.some((url) => url.includes('targetRole=security'))).toBe(true);
+    await user.selectOptions(screen.getByLabelText('Target role'), '');
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).not.toHaveTextContent(
+        'targetRole',
+      ),
+    );
+  });
+
   it('sends URL-backed filters to server search and replaces typing history', async () => {
     const user = userEvent.setup();
     const calls: string[] = [];
@@ -593,6 +673,9 @@ function job(id: string, title: string, company: string) {
 function searchJob(id: string, title: string, company: string) {
   return {
     ...job(id, title, company),
+    matchedFamilies: null as string | null,
+    roleEvidence:
+      [] as import('../src/models/job-search.js').JobSearchRoleEvidence[],
     lastVerifiedAt: '2026-07-18T12:00:00.000Z',
     materiallyUpdatedAt: null,
     closingDate: null,

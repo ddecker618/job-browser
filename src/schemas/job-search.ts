@@ -58,6 +58,7 @@ export const jobSearchQuerySchema = z
     active: z.enum(['active', 'removed', 'all']).optional(),
     multipleSource: queryBoolean.optional(),
     matchedFamilies: trimmed.optional(),
+    targetRole: trimmed.optional(),
     verificationStatus: z.enum(['verified', 'closed', 'unverified']).optional(),
     includeIneligible: queryBoolean.optional(),
     page: queryInteger(1, 1_000_000, 1),

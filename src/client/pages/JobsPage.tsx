@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { Link, useSearchParams } from 'react-router';
 
 import type { JobSearchQuery } from '../../models/job-search.js';
+import type { SearchProfile } from '../../config/search-profile.js';
 import { api } from '../api.js';
 import { JobDetailPanel } from '../components/JobDetailPanel.js';
 import { PageHeader } from '../components/PageHeader.js';
@@ -23,6 +24,7 @@ interface Filters {
   recommendation: string;
   status: string;
   matchedFamilies: string;
+  targetRole: string;
   verificationStatus: string;
   firstDiscoveredFrom: string;
   firstDiscoveredTo: string;
@@ -48,6 +50,7 @@ const initialFilters: Filters = {
   recommendation: '',
   status: '',
   matchedFamilies: '',
+  targetRole: '',
   verificationStatus: '',
   firstDiscoveredFrom: '',
   firstDiscoveredTo: '',
@@ -123,6 +126,9 @@ export function JobsPage() {
     ...(filters.matchedFamilies === ''
       ? {}
       : { matchedFamilies: filters.matchedFamilies }),
+    ...(filters.targetRole === ''
+      ? {}
+      : { targetRole: filters.targetRole as JobSearchQuery['targetRole'] }),
     ...(filters.verificationStatus === ''
       ? {}
       : { verificationStatus: filters.verificationStatus }),
@@ -143,6 +149,17 @@ export function JobsPage() {
     queryFn: ({ signal }) => api.searchJobs(query, signal),
     placeholderData: (previous) => previous,
   });
+  const searchProfile = useQuery({
+    queryKey: ['search-profile'],
+    queryFn: api.searchProfile,
+  });
+  const roleOptions = (
+    Array.isArray(searchProfile.data?.families)
+      ? searchProfile.data.families
+      : []
+  )
+    .filter((family) => family.enabled || family.key === filters.targetRole)
+    .sort((left, right) => left.priority - right.priority);
   const savedFilters = useQuery({
     queryKey: ['saved-filters'],
     queryFn: api.savedFilters,
@@ -337,6 +354,34 @@ export function JobsPage() {
             options={facets.statuses}
             onChange={(value) => updateFilter('status', value)}
           />
+          {searchProfile.isError ? (
+            <p role="alert">
+              Target roles could not be loaded.{' '}
+              <button
+                type="button"
+                onClick={() => void searchProfile.refetch()}
+              >
+                Retry target roles
+              </button>
+            </p>
+          ) : null}
+          <label>
+            Target role
+            <select
+              value={filters.targetRole}
+              onChange={(event) =>
+                updateFilter('targetRole', event.target.value)
+              }
+            >
+              <option value="">Any role</option>
+              {roleOptions.map((family) => (
+                <option key={family.key} value={family.key}>
+                  {family.displayName}
+                  {family.enabled ? '' : ' (disabled)'}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Role family
             <input
@@ -427,6 +472,16 @@ export function JobsPage() {
       {jobs.isFetching ? (
         <p className="jobs-updating">Updating results…</p>
       ) : null}
+      {jobs.data.role != null ? (
+        <p className="target-role-note" role="status">
+          Searching target role <strong>{jobs.data.role.displayName}</strong>
+          {jobs.data.role.approved
+            ? ' (approved family)'
+            : ' (family disabled)'}
+          . Results below matched this role by title. Primary sort and scores
+          are unchanged.
+        </p>
+      ) : null}
       {rows.length === 0 ? (
         hasUrlFilters ? (
           <EmptyState title="No jobs match these filters">
@@ -488,11 +543,28 @@ export function JobsPage() {
                           <span
                             key={family}
                             className={`family-badge family-${family}`}
+                            title="Matched by structured job title"
                           >
-                            {family}
+                            {familyLabel(family, searchProfile.data?.families)}
                           </span>
                         ))}
                       </span>
+                      {Array.isArray(job.roleEvidence) &&
+                      job.roleEvidence.length > 0 ? (
+                        <small className="role-evidence">
+                          {job.roleEvidence.map((evidence) => (
+                            <span key={evidence.key} title={evidence.basis}>
+                              ✓ {evidence.displayName}
+                              {evidence.indexedSkills?.map((item) => (
+                                <span key={item.skill} title={item.evidence}>
+                                  {' '}
+                                  · {item.skill} (description evidence)
+                                </span>
+                              ))}
+                            </span>
+                          ))}
+                        </small>
+                      ) : null}
                       <small>{job.remoteType}</small>
                     </td>
                     <td>{job.company}</td>
@@ -871,4 +943,11 @@ function formatDate(value: string): string {
     month: 'short',
     day: 'numeric',
   }).format(new Date(value));
+}
+
+function familyLabel(
+  key: string,
+  families: SearchProfile['families'] | undefined,
+): string {
+  return families?.find((family) => family.key === key)?.displayName ?? key;
 }

@@ -36,6 +36,7 @@ export interface JobSearchQuery {
   active?: 'active' | 'removed' | 'all' | undefined;
   multipleSource?: boolean | undefined;
   matchedFamilies?: string | undefined;
+  targetRole?: string | undefined;
   verificationStatus?: string | undefined;
   includeIneligible?: boolean | undefined;
   page: number;
@@ -61,6 +62,7 @@ export interface JobSearchItem {
   score: number | null;
   recommendation: string | null;
   matchedFamilies: string | null;
+  roleEvidence: JobSearchRoleEvidence[];
   status: JobStatus;
   firstSeenAt: string;
   lastVerifiedAt: string | null;
@@ -101,6 +103,20 @@ export interface JobSearchFacets {
   activeStates: JobSearchFacet[];
 }
 
+export interface JobSearchRoleEvidence {
+  key: string;
+  displayName: string;
+  how: 'title-match';
+  indexedSkills?: { skill: string; evidence: string }[] | undefined;
+  basis: string;
+}
+
+export interface JobSearchAppliedRole {
+  familyKey: string;
+  displayName: string;
+  approved: boolean;
+}
+
 export interface JobSearchResponse {
   items: JobSearchItem[];
   page: number;
@@ -109,4 +125,5 @@ export interface JobSearchResponse {
   pages: number;
   facets: JobSearchFacets;
   searchMode: JobSearchMode;
+  role: JobSearchAppliedRole | null;
 }
