@@ -879,7 +879,7 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 - **Tests:** 6 trust-level tests (see tasks); builds on promotion design (Stage 27).
 - **Validation evidence:** `npx vitest run tests/job-nlp-trust-levels.test.ts` =
   6 pass; `npx vitest run tests/job-nlp-promotion-design.test.ts
-  tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier clean.
+tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** no consumer exists above SHADOW yet; SCORING/HARD_GATE
   require new authorization and remain unreachable by design.
 - **Current task:** complete.
@@ -1228,8 +1228,8 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 | 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated   |
 | 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`     |
 | 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7` |
-| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)               |
-| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)      |
+| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                |
+| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)        |
 
 ## NLP integration repair — verified
 
