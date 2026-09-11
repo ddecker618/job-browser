@@ -34,12 +34,12 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P4 (background worker wiring + diagnostics) - complete
-CURRENT_TASK:        P5: production Job Intelligence projection (evidence, interpretation labels, deterministic authoritative)
-LAST_COMPLETED:      P4 worker wiring; npm run verify 141/1378 green (commit after 2d9ad2c)
-NEXT_ACTION:         P5: projection of JobNlpEnrichment into the production Job Intelligence UI + contract
+CURRENT_STAGE:       P5 (production Job Intelligence projection) - complete
+CURRENT_TASK:        P6: NLP-enhanced search index (additive relevance, flag off by default)
+LAST_COMPLETED:      P5 projection 7651d21; npm run verify 142/1388 green
+NEXT_ACTION:         P6: additive NLP-enhanced search index + ranked tie-break behind a flag off by default
 FILES_IN_PROGRESS:   none
-TESTS_TO_RUN:        npm run verify (141 files / 1378 tests)
+TESTS_TO_RUN:        npm run verify (142 files / 1388 tests)
 KNOWN_FAILURES:      none
 LATEST_CHECKPOINT:   P4 checkpoint commit (local only, not pushed)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
@@ -937,7 +937,7 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 
 ## P5 — Production Job Intelligence Projection
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** replace the shadow preview with a production Job Intelligence view
   that (a) is visibly app-produced, (b) shows only EXPLANATION/ENRICHMENT-level output,
   (c) renders monotone evidence for every claim, (d) carries an explicit interpretation
@@ -947,7 +947,33 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 - **Implementation tasks:** projection from the enriched envelope via inspector (kept
   read-only, deterministic, redacting); UI in JobIntelligencePreview; per-fact
   interpretation + evidence + conflict badges; acceptance test for the projection.
-- **Current task:** not started.
+- **Done:** `src/intelligence/nlp/projection.ts` (`projectJobIntelligence`,
+  `JOB_INTELLIGENCE_PROJECTION_VERSION = 'job-intelligence-projection-v1'`) projects
+  the stored envelope into a read-only `JobIntelligenceProjection` (`level:
+  explanation`, `summary` with requirement/other/boilerplate/conflict/unreconciled
+  counts, `authority` = deterministic-unaffected). Per-fact: plain-language
+  interpretation ending in "per the posting" (never possession), strength label,
+  `describeNlpConfidence` band, evidence segment, and deterministic reconciliation
+  (state agreement/conflict/nlp-only/unknown) for clearance (token-set match that
+  ignores phrasing noise), experience years (from entity `years.minimum` or parsed
+  nested constraints), and work-arrangement (alias-normalized), with the structured
+  value authoritative on conflict. PII redaction reuses exported `redactSensitiveText`
+  (also fixed the inspector phone regex so "(555) 123-4567" is masked).
+  `app.ts` POST `/api/jobs/:id/intelligence` now returns the projection built from the
+  job's deterministic fields (`clearanceRequirement`, `remoteType`, `location`, and
+  `estimatedExperienceYears` via `jobRepository.findJob`); `client/api.ts` typed to
+  `JobIntelligenceProjection`; `JobIntelligencePreview.tsx` rewritten (badge, per-fact
+  evidence, conflict/agreement notes, honest no-scoring copy). Boilerplate and
+  non-requirement facts are reported separately, never as requirements.
+- **Tests:** `tests/job-nlp-projection.test.ts` (10) covers shape/authority, clearance
+  agreement/conflict/unreconciled, experience agreement/conflict, work-arrangement,
+  never-possession copy, category separation, redaction; `job-intelligence-ui.test.tsx`
+  updated; connected status/intelligence tests updated.
+- **Validation evidence:** `npm run verify` = 142 files / 1388 tests green.
+- **Known limitations:** Settings-page status surface is P22; per-capability flags P20;
+  experience-classifier phrasing gaps (e.g. "Minimum six years of IT experience")
+  remain extractor-level backlog, not projection scope.
+- **Current task:** complete.
 - **Exact next action:** P6 - NLP-enhanced search index.
 
 ---
@@ -1245,6 +1271,7 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 | 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly         |
 | 2026-09-10 | P3b async worker         | verify 140/1369 green; 7 worker tests; commit `2d9ad2c`                      |
 | 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green            |
+| 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21` |
 
 ## NLP integration repair — verified
 
