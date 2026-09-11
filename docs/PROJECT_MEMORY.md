@@ -518,4 +518,4 @@ production scoring (deterministic scoring is unchanged, `productionEffect:
 - **D-NLP-071:** Settings exposes read-only versions, progress, failures, flags, and the exact trust statement “Not used for scoring or eligibility.”
 - **D-NLP-072:** P23 used a consistent backup of the real local database. 500/3,662 jobs completed with 0 failures, 2,079 event-loop ticks, and identical full jobs-table fingerprints before/after. The copy was deleted. Details: docs/NLP_REAL_DATA_VALIDATION.md.
 
-Focused validation passed 17 files / 96 tests; full npm run verify passed 157 files / 1,445 tests. Then resume at P24. The installer remains the stale 2026-09-10 20:07:47 build; do not rebuild it before the explicit P28 release decision.
+Focused validation passed 17 files / 96 tests; full npm run verify passed 157 files / 1,445 tests. Checkpoint b89cea1 contains the implementation. Resume at P24. The installer remains the stale 2026-09-10 20:07:47 build; do not rebuild it before the explicit P28 release decision.

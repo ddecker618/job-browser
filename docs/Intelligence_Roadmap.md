@@ -35,13 +35,13 @@ roles:
 
 ```
 CURRENT_STAGE:       P18-P23 complete
-CURRENT_TASK:        create the verified P18-P23 checkpoint commit
+CURRENT_TASK:        P24 full verification, privacy, security, and smoke gate
 LAST_COMPLETED:      P18-P23 complete; npm run verify 157 files / 1445 tests PASS; real-copy validation PASS
-NEXT_ACTION:         commit this verified group, then P24 privacy/security/source-smoke gates
+NEXT_ACTION:         run P24 gates without rebuilding the installer
 FILES_IN_PROGRESS:   none after the verified P18-P23 group
 TESTS_TO_RUN:        P24 privacy check, NLP security audit, acceptance, and source smoke
 KNOWN_FAILURES:      none; installer last built 2026-09-10 20:07:47 and is stale
-LATEST_CHECKPOINT:   ba674cb P14-P17 verified implementation group (local only)
+LATEST_CHECKPOINT:   b89cea1 P18-P23 verified implementation group (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
