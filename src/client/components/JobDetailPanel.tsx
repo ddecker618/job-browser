@@ -274,7 +274,7 @@ export function JobDetailPanel({
                 {statusError}
               </p>
             )}
-            <JobIntelligencePreview job={job.data} />
+            <JobIntelligencePreview key={jobId} job={job.data} />
             <section className="detail-section">
               <h3>Match breakdown</h3>
               {job.data.categoryScores === null ? (

@@ -136,7 +136,7 @@ const CITIZENSHIP_DEFINITIONS: readonly CitizenshipDefinition[] = [
   {
     status: 'work-authorization',
     pattern:
-      /\b(?:legally authorized(?: to work)?|authorized to work|eligible to work|work authorization|work permitt?)\b/i,
+      /\b(?:legally authorized(?: to work)?|authorized to work|eligible to work|authorization to work|work authorization|work permitt?)\b/i,
   },
 ];
 

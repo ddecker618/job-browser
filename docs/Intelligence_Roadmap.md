@@ -801,3 +801,13 @@ Only after sufficient historical data exists: interview/offer probability, perso
 | 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                     |
 | 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS |
 | 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated  |
+
+## NLP integration repair — verified
+
+Connects full-description extraction (`document-v1`) to an explicit local
+analysis action (`POST /api/jobs/:id/intelligence`) with separate shadow
+persistence (`job_nlp_enrichments`, content-hash + extraction-version
+invalidation) and rewrites the Job Intelligence preview UI to render real
+facts with evidence. Production scoring, eligibility, ranking, filtering, and
+lifecycle remain authoritative (`productionEffect: 'none'`). Verified:
+`npm run verify` 136 files / 1346 tests, `npm run privacy:check` 11/11.

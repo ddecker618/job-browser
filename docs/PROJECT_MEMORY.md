@@ -437,3 +437,14 @@ records durable architectural truth only.
 - **No model/runtime dependency yet.** Stages 19+ (semantic/embedding) are
   design-first; no external AI services, no silent model downloads, no
   telemetry. Packaging impact of any future model must be measured first.
+
+## NLP integration repair — verified
+
+The connected shadow envelope: full-description extraction (`document-v1`) is
+exposed through an explicit local analysis action (`POST
+/api/jobs/:id/intelligence`) and persisted additively in
+`job_nlp_enrichments`, keyed by content hash + `job-nlp-v1` extraction
+version with bounded invalidation. The Job Intelligence preview renders real
+facts with evidence and always labels interpretations; it never feeds
+production scoring (deterministic scoring is unchanged, `productionEffect:
+'none'`).

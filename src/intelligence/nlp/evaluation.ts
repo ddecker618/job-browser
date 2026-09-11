@@ -170,6 +170,9 @@ export function evaluateSyntheticNlpCase(
     }
   }
   if (item.kind === 'adversarial') {
+    if (strength.strength !== item.expectedStrength)
+      criticalFailures.push('strength-mismatch');
+    if (!entityExactMatch) criticalFailures.push('entity-mismatch');
     for (const category of expectedCategories) {
       if (!actualCategorySet.has(category)) {
         criticalFailures.push(`missing-category:${category}`);

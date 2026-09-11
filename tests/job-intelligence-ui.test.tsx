@@ -1,55 +1,55 @@
 // @vitest-environment jsdom
-
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
-
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JobIntelligencePreview } from '../src/client/components/JobIntelligencePreview.js';
-
-afterEach(() => cleanup());
-
-describe('Job Intelligence preview (Stage 26)', () => {
-  it('summarizes job requirements and keeps disconnected coverage unknown', () => {
-    render(
-      <JobIntelligencePreview
-        job={{
-          requirements: '- Python required\n- Security+ certification',
-          preferredQualifications: 'Kubernetes preferred.',
-          skills: ['Python'],
-          certifications: ['Security+'],
-        }}
-      />,
+import { api } from '../src/client/api.js';
+import { inspectJobNlp } from '../src/intelligence/nlp/inspector.js';
+import { extractNlpDocument } from '../src/intelligence/nlp/document.js';
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+function show() {
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+      }
+    >
+      <JobIntelligencePreview job={{ id: 'job-1' }} />
+    </QueryClientProvider>,
+  );
+}
+describe('connected Job Intelligence preview', () => {
+  it('waits for an explicit action and displays extracted description evidence', async () => {
+    const result = await extractNlpDocument({
+      title: 'Analyst',
+      location: null,
+      description: 'Linux required.',
+      requirements: null,
+      preferredQualifications: null,
+    });
+    const call = vi
+      .spyOn(api, 'analyzeJobIntelligence')
+      .mockResolvedValue(inspectJobNlp('job-1', result));
+    show();
+    expect(call).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Analyze requirements' }),
     );
-
-    expect(
-      screen.getByRole('heading', { name: 'Job Intelligence' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Python required')).toBeInTheDocument();
-    expect(screen.getByText('Kubernetes preferred')).toBeInTheDocument();
-    expect(screen.getAllByText('Unknown')).toHaveLength(5);
-    expect(screen.getAllByText(/Interpreted as:/)).toHaveLength(5);
-    expect(
-      screen.getByText(/Resume evidence is not connected/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/does not change score, eligibility, ranking/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Linux required.')).toBeInTheDocument();
+    expect(call).toHaveBeenCalledWith('job-1');
+    expect(screen.getByText(/Resume coverage unknown/)).toBeInTheDocument();
   });
-
-  it('renders a neutral empty state without inventing evidence', () => {
-    render(
-      <JobIntelligencePreview
-        job={{
-          requirements: null,
-          preferredQualifications: null,
-          skills: [],
-          certifications: [],
-        }}
-      />,
+  it('shows actionable failures without inventing results', async () => {
+    vi.spyOn(api, 'analyzeJobIntelligence').mockRejectedValue(
+      new Error('Job changed during analysis. Retry.'),
     );
-
-    expect(
-      screen.getByText(/No requirement text or capability mentions/),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Coverage unknown')).toBeInTheDocument();
+    show();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Analyze requirements' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Retry');
   });
 });

@@ -77,7 +77,7 @@ const LEVEL_RULES: LevelRule[] = [
     level: 'bachelor',
     confidence: 0.9,
     pattern:
-      /\bbachelor'?s\b|\bb\.?s\b|\bb\.?a\b|\bbaccalaureate\b|\bundergraduate degree\b|\b4[-\s]?year degree\b/i,
+      /\bbachelor'?s\b|\bb\.?s\b|\bb\.?a\b|\bbaccalaureate\b|\bundergraduate degree\b|\b(?:4|four)[-\s]?year degree\b/i,
   },
   {
     level: 'associate',

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Desktop Startup
+
+- Moved desktop database shadow-copy integrity verification to a worker thread
+  so large existing databases do not block the Electron main process during
+  startup. Recovery, migration, and quarantine behavior remain unchanged.
+
 ### NLP Intelligence Shadow Program
 
 - Added deterministic, versioned NLP extraction, reconciliation, additive
@@ -12,7 +18,7 @@ All notable changes to this project will be documented in this file.
 - Added a drawer-local Job Intelligence preview that shows traceable job text
   and explicit `Unknown` resume coverage without changing production scoring or
   eligibility.
-- Validated shadow mode with `npm run verify` (136 files / 1344 tests),
+- Validated shadow mode with `npm run verify` (136 files / 1346 tests),
   `npm run privacy:check` (11 tests), and Windows packaged/installed/upgrade
   smoke. Production promotion remains not yet validated or authorized.
 - Final evidence: `docs/NLP_FINAL_HANDOFF.md`.

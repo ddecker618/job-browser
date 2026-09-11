@@ -80,7 +80,8 @@ const CLEARANCE_PATTERNS = [
 ];
 
 const CITIZENSHIP_PATTERNS = [
-  /\bcitizen\b/,
+  /\bcitizens?\b/,
+  /\bauthorization to work\b/,
   /\bcitizenship\b/,
   /\bus (?:citizen|citizenship)\b/,
   /\bus persons?\b/,

@@ -150,6 +150,21 @@ export function classifyStrength(
   categories: readonly NlpRequirementCategory[],
 ): SegmentStrength {
   const normalized = normalizeText(segment.text);
+  if (
+    categories.length === 1 &&
+    categories[0] === 'unknown' &&
+    /\bgrade\b.*\ba\+/i.test(normalized)
+  ) {
+    return {
+      segmentIndex: segment.index,
+      categories: [...categories],
+      strength: 'informational',
+      confidence: INFORMATIONAL_CONFIDENCE,
+      method: 'modality-classifier',
+      version: NLP_EXTRACTION_VERSION,
+      strengthVersion: STRENGTH_CLASSIFIER_VERSION,
+    };
+  }
 
   for (const rule of STRENGTH_RULES) {
     if (rule.detect(normalized)) {

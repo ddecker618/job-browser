@@ -288,7 +288,10 @@ function isHeading(trimmed: string): boolean {
   if (trimmed.length === 0 || trimmed.length > 60) return false;
   if (trimmed.endsWith(':')) return true;
   if (PROSE_PUNCTUATION_PATTERN.test(trimmed)) return false;
-  return HEADING_PATTERNS.some((pattern) => pattern.test(trimmed));
+  return HEADING_PATTERNS.some((pattern) => {
+    const match = pattern.exec(trimmed);
+    return match !== null && match[0].length === trimmed.length;
+  });
 }
 
 function fragmentBoundaries(

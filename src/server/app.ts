@@ -1,4 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { JobNlpEnrichmentRepository } from '../database/jobNlpEnrichmentRepository.js';
+import {
+  documentHash,
+  extractNlpDocument,
+} from '../intelligence/nlp/document.js';
+import { inspectJobNlp } from '../intelligence/nlp/inspector.js';
+import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 
@@ -236,6 +243,75 @@ export function createApp(
     }
     response.json(job);
   });
+  let nlpAnalysisRunning = false;
+  app.post(
+    '/api/jobs/:id/intelligence',
+    asyncRoute(async (request, response) => {
+      const jobId = routeParameter(request, 'id');
+      const job = repository.getJob(jobId);
+      if (job === null) {
+        response.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      const parts = {
+        title: job.title,
+        location: job.location,
+        description: job.description,
+        requirements: job.requirements,
+        preferredQualifications: job.preferredQualifications,
+      };
+      const store = new JobNlpEnrichmentRepository(database);
+      const hash = documentHash(parts);
+      if (nlpAnalysisRunning) {
+        response
+          .status(409)
+          .json({ error: 'Another analysis is running. Retry shortly.' });
+        return;
+      }
+      nlpAnalysisRunning = true;
+      const controller = new AbortController();
+      const abort = () => {
+        if (!response.writableEnded) controller.abort();
+      };
+      response.on('close', abort);
+      try {
+        const cached = store.isStale(jobId, NLP_EXTRACTION_VERSION, hash)
+          ? null
+          : store.get(jobId);
+        const result =
+          cached ?? (await extractNlpDocument(parts, controller.signal));
+        controller.signal.throwIfAborted();
+        const current = repository.getJob(jobId);
+        if (
+          current === null ||
+          documentHash({
+            title: current.title,
+            location: current.location,
+            description: current.description,
+            requirements: current.requirements,
+            preferredQualifications: current.preferredQualifications,
+          }) !== hash
+        ) {
+          response
+            .status(409)
+            .json({ error: 'Job changed during analysis. Retry.' });
+          return;
+        }
+        if (cached === null) store.save(jobId, result);
+        response.json(inspectJobNlp(jobId, result));
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if (error instanceof RangeError) {
+          response.status(422).json({ error: error.message });
+          return;
+        }
+        throw error;
+      } finally {
+        nlpAnalysisRunning = false;
+        response.off('close', abort);
+      }
+    }),
+  );
   app.patch('/api/jobs/:id/status', (request, response) => {
     const body = z.object({ status: z.enum(JOB_STATUSES) }).parse(request.body);
     jobRepository.changeStatus(request.params.id, {
