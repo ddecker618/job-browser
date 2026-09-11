@@ -10,6 +10,12 @@
 - P24-P29 validation: verify 157/1,445; privacy 11/11; NLP security 3/3; direct, rebuilt unpacked-package, packaged, installed, packaged-upgrade, and real-copy desktop smoke passed.
 - Rebuilt the approved 1.1.0 installer from current source. Installer: `release\Job-Browser-Setup-1.1.0.exe`, 253,595,714 bytes, SHA-256 `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`. Packaged and installed app.asar match SHA-256 `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`. Nothing pushed.
 
+## Unreleased — NLP compensation extraction (P30)
+
+- Added local deterministic compensation extraction to the NLP document pipeline. It captures USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, and bonus/commission/equity/sign-on/OTE signals with exact evidence spans.
+- Compensation facts are informational, shadow-only, and carry additive metadata. They do not affect scores, eligibility, filters, lifecycle, hard gates, or primary sorting.
+- Focused validation passed: compensation, document, and evaluation NLP tests (3 files / 18 tests). The installer must be rebuilt after this source change.
+
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]

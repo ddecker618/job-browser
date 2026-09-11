@@ -19,6 +19,7 @@ import { extractEducation } from './education.js';
 import { extractExperience } from './experience.js';
 import { extractCertifications } from './certifications.js';
 import { extractClearance } from './clearance.js';
+import { extractCompensation } from './compensation.js';
 import { extractLocation } from './location.js';
 import { extractBoilerplate } from './boilerplate.js';
 
@@ -91,6 +92,7 @@ export async function extractNlpDocument(
     const certifications = extractCertifications(segment);
     const clearance = extractClearance(segment);
     const location = extractLocation(segment);
+    const compensation = extractCompensation(segment);
     const boilerplate = extractBoilerplate(segment);
     const source =
       parts[segment.sourceField as keyof RoleDescriptionParts] ?? '';
@@ -247,6 +249,19 @@ export async function extractNlpDocument(
       );
     if (location.travel.mentioned)
       add('travel', [JSON.stringify(location.travel)]);
+    for (const amount of compensation.amounts)
+      add('compensation', [amount.normalized], 'informational', {
+        compensation: {
+          kind: amount.kind,
+          period: amount.period,
+          minimum: amount.minimum,
+          maximum: amount.maximum,
+          currency: amount.currency,
+          raw: amount.raw,
+        },
+      });
+    if (!compensation.amounts.length && compensation.signals.length)
+      add('compensation', compensation.signals, 'informational');
     for (const category of categories)
       if (
         !facts.some(

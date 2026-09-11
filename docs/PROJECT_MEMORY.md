@@ -541,3 +541,14 @@ The user explicitly approved the P28 installer rebuild and installed-artifact va
 - **D-NLP-080:** Packaged and installed `app.asar` are identical: 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. Installed executable version resource reports ProductVersion 1.1.0.0 and FileVersion 1.1.0.
 - **D-NLP-081:** Final validation commands passed: `npm run desktop:smoke:packaged`, `npm run desktop:smoke:installed`, `npm run desktop:smoke:packaged -- --upgrade`, `npm run privacy:check` (3 files / 11 tests), and `npm run nlp:security-audit` (1 file / 3 tests). No Job Browser/Electron/Playwright process or port 6783 listener remained afterward.
 - **D-NLP-082:** Final promotion state remains bounded: Job Intelligence, role-family suggestions, search-profile feedback, and target-role supporting evidence are EXPLANATION; exact-tie search relevance is ENRICHMENT; persisted comparison stays SHADOW; SCORING and HARD_GATE are not implemented or authorized.
+
+## Recovery checkpoint — P30 compensation NLP module (2026-09-11)
+
+P30 adds a bounded deterministic compensation extractor to the existing NLP document pipeline. It extracts USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, and bonus/commission/equity/sign-on/OTE signals with exact spans and additive metadata. It remains informational, shadow-only, and has no scoring, eligibility, filter, lifecycle, or hard-gate authority.
+
+- **D-NLP-083:** Compensation extraction is implemented in `src/intelligence/nlp/compensation.ts` with `COMPENSATION_INTELLIGENCE_VERSION = 'compensation-intelligence-v1'`.
+- **D-NLP-084:** `extractNlpDocument()` emits normalized compensation entities plus `meta.compensation`; schema compatibility is preserved with optional metadata.
+- **D-NLP-085:** The synthetic evaluator counts compensation entities so salary range and bonus cases are measured instead of ignored.
+- **D-NLP-086:** Focused validation passed: `npx vitest run tests/job-nlp-compensation.test.ts tests/job-nlp-document.test.ts tests/job-nlp-evaluation.test.ts` = 3 files / 18 tests.
+
+Resume at the P30 installer rebuild. Because source changed after P28, the previous P28 installer is stale for P30 until rebuilt and smoke-tested again. Do not repeat full P24-P29 validation unless source changes expand beyond P30.

@@ -227,6 +227,20 @@ export const nlpFactMetaSchema = z
           .optional(),
       })
       .optional(),
+    compensation: z
+      .object({
+        kind: z
+          .enum(['base-pay', 'bonus', 'commission', 'equity', 'sign-on', 'ote'])
+          .optional(),
+        period: z
+          .enum(['annual', 'hourly', 'monthly', 'one-time', 'unknown'])
+          .optional(),
+        minimum: z.number().nullable().optional(),
+        maximum: z.number().nullable().optional(),
+        currency: z.enum(['USD', 'unknown']).optional(),
+        raw: z.string().optional(),
+      })
+      .optional(),
   })
   .strict();
 

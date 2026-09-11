@@ -2,6 +2,7 @@ import type { RemoteType } from '../../domain/job.js';
 import { asSegmentInputs, classifySegment } from './categorizer.js';
 import { extractCertifications } from './certifications.js';
 import { extractClearance } from './clearance.js';
+import { extractCompensation } from './compensation.js';
 import { extractEducation } from './education.js';
 import { extractExperience } from './experience.js';
 import { extractLocation } from './location.js';
@@ -258,6 +259,14 @@ function extractEntities(
   }
   if (location.travel.percent !== null) {
     add('percentage', String(location.travel.percent));
+  }
+
+  const compensation = extractCompensation(segment);
+  for (const amount of compensation.amounts) {
+    add('text', amount.normalized);
+  }
+  for (const signal of compensation.signals) {
+    add('text', signal);
   }
 
   return entities.sort((left, right) =>

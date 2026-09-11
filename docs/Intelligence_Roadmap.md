@@ -34,15 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P28-P29 complete; release artifact validated
-CURRENT_TASK:        loop back to additional NLP module planning/implementation
-LAST_COMPLETED:      P28-P29; rebuilt installer, packaged/installed/upgrade smoke,
-                     privacy 11/11, NLP security 3/3
-NEXT_ACTION:         identify the next bounded NLP module and implement it in staged
-                     shadow-first checkpoints
-FILES_IN_PROGRESS:   none; P28-P29 docs are ready to commit
-TESTS_TO_RUN:        choose focused tests for the next module; repeat artifact
-                     validation only after source changes and release approval
+CURRENT_STAGE:       P30 compensation extraction complete; installer rebuild pending
+CURRENT_TASK:        rebuild installer so the app artifact includes P30
+LAST_COMPLETED:      P30 focused validation; compensation extractor integrated into
+                     the NLP document pipeline
+NEXT_ACTION:         rebuild installer and run focused release validation
+FILES_IN_PROGRESS:   P30 source/docs changes pending commit
+TESTS_TO_RUN:        package, packaged smoke, installed smoke, upgrade smoke,
+                     privacy, NLP security
 KNOWN_FAILURES:      none
 LATEST_CHECKPOINT:   P28-P29 release checkpoint; see git log HEAD
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
@@ -85,7 +84,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   additional NLP module planning; do not restart completed P0-P29
+SAFE_RESUME_POINT:   P30 installer rebuild; do not restart completed P0-P29
 ```
 
 ---
@@ -1346,6 +1345,17 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ---
 
+## P30 — Compensation Extraction Module
+
+- **Status:** [x]
+- **Objective:** add a bounded local NLP module for compensation/pay evidence using
+  deterministic extraction, versioned metadata, focused tests, and no score/gate
+  authority.
+- **Current task:** Complete. `src/intelligence/nlp/compensation.ts` extracts USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, sign-on/bonus/commission/equity/OTE signals, exact spans, and version metadata. `extractNlpDocument()` emits compensation facts with normalized entities and additive `meta.compensation`; these facts remain `informational` and shadow-only. The synthetic evaluator now counts compensation entities. Focused validation passed: `npx vitest run tests/job-nlp-compensation.test.ts tests/job-nlp-document.test.ts tests/job-nlp-evaluation.test.ts` = 3 files / 18 tests.
+- **Exact next action:** rebuild and validate the installer so the installed app includes P30.
+
+---
+
 ## Verification Ledger (NLP program)
 
 | Date       | Action                   | Result                                                                                 |
@@ -1374,6 +1384,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 | 2026-09-11 | P25 desktop real copy    | direct smoke PASS; 205 shadow rows; 13,619,200 B growth; no orphan processes           |
 | 2026-09-11 | P26-P27 audit/docs       | current app.asar privacy/inventory PASS; all promotion documents reconciled            |
 | 2026-09-11 | P28-P29 release/report   | installer rebuilt; packaged/installed/upgrade smoke PASS; privacy 11/11; security 3/3  |
+| 2026-09-11 | P30 compensation module  | focused tests 3 files / 18 tests PASS; installer rebuild pending                       |
 
 | 2026-09-11 | P8 target-role search | verify 145/1416 PASS; build PASS; exact membership and current P6 evidence |
 

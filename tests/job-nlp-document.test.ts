@@ -123,6 +123,29 @@ describe('complete document enrichment', () => {
     );
     expect(eeo?.meta?.isBoilerplate).toBe(true);
   });
+  it('emits compensation facts with amount metadata without scoring authority', async () => {
+    const result = await extractNlpDocument({
+      ...parts,
+      description:
+        'The salary range is $90,000 to $110,000 per year plus annual bonus.',
+    });
+
+    const compensation = result.facts.find(
+      (f) => f.category === 'compensation',
+    );
+    expect(compensation?.strength).toBe('informational');
+    expect(compensation?.entities[0]?.normalized).toBe(
+      'base-pay:USD:annual:90000-110000',
+    );
+    expect(compensation?.meta?.compensation).toMatchObject({
+      kind: 'base-pay',
+      period: 'annual',
+      minimum: 90000,
+      maximum: 110000,
+      currency: 'USD',
+    });
+    expect(compensation?.conflict.note).toContain('Shadow only');
+  });
   it('stays backward compatible with pre-meta envelopes', () => {
     const legacy = {
       version: NLP_EXTRACTION_VERSION,
