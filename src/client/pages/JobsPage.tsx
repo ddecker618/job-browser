@@ -565,6 +565,23 @@ export function JobsPage() {
                           ))}
                         </small>
                       ) : null}
+                      {job.nlpTieBreak ? (
+                        <small
+                          className="nlp-tie-break"
+                          title={job.nlpTieBreak.reason}
+                        >
+                          Tie-break explanation: {job.nlpTieBreak.reason}
+                          {job.nlpTieBreak.evidence.map((item) => (
+                            <span
+                              key={`${item.sourceField}:${String(item.charStart)}:${item.label}`}
+                              title={`${item.sourceField} characters ${String(item.charStart)}–${String(item.charEnd)}`}
+                            >
+                              {' '}
+                              · {item.label}: “{item.evidence}”
+                            </span>
+                          ))}
+                        </small>
+                      ) : null}
                       <small>{job.remoteType}</small>
                     </td>
                     <td>{job.company}</td>

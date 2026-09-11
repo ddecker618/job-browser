@@ -1,4 +1,10 @@
+import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { targetRoleIndexEvidence } from '../intelligence/nlp/targetRoleIndexEvidence.js';
+import {
+  validatedSearchIndexEvidence,
+  type ValidatedSearchIndexEvidence,
+} from '../intelligence/nlp/searchIndexEvidence.js';
+import { SEARCH_RELEVANCE_INDEX_VERSION } from '../intelligence/nlp/searchRelevance.js';
 import type { JobDatabase } from '../db/database.js';
 import type { JobStatus } from '../domain/job-status.js';
 import type { SearchProfile } from '../config/search-profile.js';
@@ -8,7 +14,9 @@ import type {
   JobSearchFacets,
   JobSearchItem,
   JobSearchMode,
+  JobSearchNlpTieBreak,
   JobSearchQuery,
+  JobSearchSortField,
   JobSearchResponse,
   JobSearchRoleEvidence,
   JobSearchSource,
@@ -40,6 +48,7 @@ interface JobRow {
   eligibility_rejection: string | null;
   work_arrangement: string | null;
   score_version: string | null;
+  primary_tie_count: number;
 }
 
 interface SourceRow {
@@ -110,7 +119,17 @@ export class JobSearchRepository {
     const direction = query.direction === 'asc' ? 'ASC' : 'DESC';
     const relevanceEnabled = this.nlpSearchRelevance?.() === true;
     const joinSql = relevanceEnabled
-      ? ' LEFT JOIN job_nlp_relevance nlpr ON nlpr.job_id = jobs.id'
+      ? ` LEFT JOIN job_nlp_enrichments nlpe
+            ON nlpe.job_id = jobs.id
+           AND nlpe.extraction_version = '${NLP_EXTRACTION_VERSION}'
+          LEFT JOIN job_nlp_relevance nlpr
+            ON nlpr.job_id = jobs.id
+           AND nlpr.relevance_index_version = '${SEARCH_RELEVANCE_INDEX_VERSION}'
+           AND nlpe.source_text_hash = CASE
+             WHEN json_valid(nlpr.relevance_json)
+             THEN json_extract(nlpr.relevance_json, '$.sourceTextHash')
+             ELSE NULL
+           END`
       : '';
     const orderSql = relevanceEnabled
       ? `ORDER BY ${sortColumn} IS NULL ASC, ${sortColumn} ${direction}, COALESCE(nlpr.relevance_score, -1) DESC, jobs.id ASC`
@@ -124,13 +143,20 @@ export class JobSearchRepository {
             jobs.materially_updated_at, jobs.closing_date, jobs.favorite, jobs.active,
             jobs.lifecycle_reason, jobs.removed_at, jobs.user_removed,
            jobs.verification_status, jobs.eligibility_passed,
-           jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version
+           jobs.eligibility_rejection, jobs.work_arrangement, jobs.score_version,
+           COUNT(*) OVER (PARTITION BY ${sortColumn}) AS primary_tie_count
           FROM filtered_jobs JOIN jobs ON jobs.id = filtered_jobs.id${joinSql}
          ${orderSql}
          LIMIT ? OFFSET ?`,
       )
       .all(...parameters, query.pageSize, (query.page - 1) * query.pageSize);
     const sources = this.sourcesFor(rows.map((row) => row.id));
+    const validatedIndexes = relevanceEnabled
+      ? validatedSearchIndexEvidence(
+          this.database,
+          rows.map((row) => row.id),
+        )
+      : new Map<string, ValidatedSearchIndexEvidence>();
     const profile = this.searchProfile?.();
     const appliedRole = this.appliedRole(query, profile);
     const roleEvidence =
@@ -140,7 +166,12 @@ export class JobSearchRepository {
 
     return {
       items: rows.map((row) =>
-        mapJob(row, sources.get(row.id) ?? [], roleEvidence[row.id] ?? []),
+        mapJob(
+          row,
+          sources.get(row.id) ?? [],
+          roleEvidence[row.id] ?? [],
+          tieBreakFor(row, query, validatedIndexes.get(row.id)),
+        ),
       ),
       page: query.page,
       pageSize: query.pageSize,
@@ -580,10 +611,53 @@ function addComparison(
   parameters.push(value);
 }
 
+function tieBreakFor(
+  row: JobRow,
+  query: JobSearchQuery,
+  index: ValidatedSearchIndexEvidence | undefined,
+): JobSearchNlpTieBreak | null {
+  if (row.primary_tie_count < 2 || index === undefined) return null;
+  const value = baselineValue(row, query.sort);
+  return {
+    reason: `The primary ${query.sort} value tied at ${String(value ?? 'not listed')}. Current description evidence supplied the secondary relevance value ${index.score.toFixed(3)}.`,
+    baseline: { sortField: query.sort, direction: query.direction, value },
+    relevance: { score: index.score, indexVersion: index.indexVersion },
+    evidence: index.evidence.map((item) => ({ ...item })),
+    authority: {
+      productionScore: 'unchanged',
+      eligibility: 'unchanged',
+      primarySort: 'unchanged',
+    },
+  };
+}
+
+function baselineValue(
+  row: JobRow,
+  sort: JobSearchSortField,
+): string | number | null {
+  switch (sort) {
+    case 'score':
+      return row.score;
+    case 'firstSeenAt':
+      return row.first_seen_at;
+    case 'lastVerifiedAt':
+      return row.last_verified_at;
+    case 'closingDate':
+      return row.closing_date;
+    case 'company':
+      return row.company;
+    case 'title':
+      return row.title;
+    case 'materiallyUpdatedAt':
+      return row.materially_updated_at;
+  }
+}
+
 function mapJob(
   row: JobRow,
   sources: JobSearchSource[],
   roleEvidence: JobSearchRoleEvidence[],
+  nlpTieBreak: JobSearchNlpTieBreak | null,
 ): JobSearchItem {
   return {
     id: row.id,
@@ -597,6 +671,7 @@ function mapJob(
     recommendation: row.recommendation,
     matchedFamilies: row.matched_families,
     roleEvidence,
+    ...(nlpTieBreak === null ? {} : { nlpTieBreak }),
     status: row.status,
     firstSeenAt: row.first_seen_at,
     lastVerifiedAt: row.last_verified_at,

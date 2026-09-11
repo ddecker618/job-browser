@@ -168,7 +168,7 @@ describe('existing-data preservation and safe migration', () => {
           >('SELECT COUNT(*) AS count FROM schema_migrations')
           .get() as { count: number }
       ).count,
-    ).toBe(32);
+    ).toBe(33);
 
     expect(
       (

@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P13 scoring safety invariants - complete
-CURRENT_TASK:        P14 search-result NLP tie-break explainability
-LAST_COMPLETED:      P13; npm run verify 151 files / 1430 tests PASS
-NEXT_ACTION:         P14 expose current relevance tie-break reasons with validated evidence
-FILES_IN_PROGRESS:   none after P13 checkpoint commit
-TESTS_TO_RUN:        targeted P14 repository/API/UI explainability tests, then npm run verify
-KNOWN_FAILURES:      none in P11; installer last built 2026-09-10 20:07:47 and is stale
-LATEST_CHECKPOINT:   32d6550 P12 design (local only)
+CURRENT_STAGE:       P14-P17 complete
+CURRENT_TASK:        create the P14-P17 checkpoint commit
+LAST_COMPLETED:      P14-P17; npm run verify 154 files / 1436 tests PASS
+NEXT_ACTION:         commit this verified group, then P18 regression corpus expansion
+FILES_IN_PROGRESS:   none after the verified P14-P17 group
+TESTS_TO_RUN:        P18 focused corpus/acceptance tests, then the next grouped gate
+KNOWN_FAILURES:      none; installer last built 2026-09-10 20:07:47 and is stale
+LATEST_CHECKPOINT:   6c0b766 P13 safety invariants (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P14; do not restart the historical shadow program or completed P0-P13
+SAFE_RESUME_POINT:   P18; do not restart the completed P0-P17 stages
 ```
 
 ---
@@ -1136,45 +1136,65 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P14 — Search Result Explainability
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** when NLP contributes to a ranking tie-break, each affected result shows
   the reason with evidence spans and the deterministic baseline value; no black-box
   "NLP boosted" labels.
-- **Current task:** not started.
+- **Implemented:** page-bounded validation recomputes the current versioned index and
+  verifies retained evidence spans before returning an explanation. The UI states the
+  tied deterministic baseline value, secondary relevance value, and exact evidence.
+  Score, eligibility, and primary-sort authority are explicitly unchanged.
+- **Validation:** repository and UI explainability tests pass; full verify: 154 files / 1436 tests.
 - **Exact next action:** P15 - search profile NLP.
 
 ---
 
 ## P15 — Search Profile NLP
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** surface canonical role families, skill clusters, and coverage feedback
   in the search profile editor so users can adjust targets; all edits remain
   deterministic preference changes; no hidden NLP mutations of the profile.
-- **Current task:** not started.
+- **Implemented:** a read-only, versioned projection and API show canonical role-family
+  counts, reviewed configured-skill coverage, unknown labels, and reviewed related
+  pairs. The editor states that saved changes remain deterministic preferences; the
+  projection has no write path or production effect.
+- **Validation:** projection immutability and editor rendering tests pass; full verify: 154 files / 1436 tests.
 - **Exact next action:** P16 - performance measurement at production loads.
 
 ---
 
 ## P16 — Performance at Production Loads
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** measure segmentation/extraction/cache/worker under a large real corpus
   copy (local only) on ordinary Windows hardware; budgets: extraction leaves main
   thread free (P0 style), worker batch latency, memory growth; no throughput trick may
   reduce correctness.
-- **Current task:** not started.
+- **Implemented:** a read-only audit copies bounded source text into memory and emits
+  only aggregate timings and a fingerprint. On 500 real local jobs (2,939,812 chars),
+  10 batches completed in 5,889.964 ms with 0 failures; p50/p95 batch latency was
+  607.918/666.770 ms, heap delta 72,112,512 B, 2,609 event-loop heartbeats, and a
+  second pass skipped all 500 current cache entries. Network and source DB writes: 0.
+- **Validation:** harness tests and the real local-copy run pass; full verify: 154 files / 1436 tests.
 - **Exact next action:** P17 - indexing/cache strategy.
 
 ---
 
 ## P17 — Indexing and Cache Strategy
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** content-hash + extraction-version cache for enrichment and the P6
   index; deterministic invalidation on description change; bounded row growth; stale
   rows never consulted by production consumers.
-- **Current task:** not started.
+- **Implemented:** relevance v3 embeds the source hash; composite staleness checks both
+  extraction and relevance versions/hashes. Migration 033 clears only recreatable old
+  cache rows and installs null-safe change-only invalidation for all source text fields.
+  Search joins require current enrichment/index versions and matching stored hashes;
+  consumers validate schemas, recomputation, and evidence spans before explanation.
+  One primary-keyed enrichment and relevance row per job bounds growth.
+- **Validation:** invalidation, unchanged-observation, bounded-row, stale-version, and
+  current-evidence tests pass; full verify: 154 files / 1436 tests.
 - **Exact next action:** P18 - regression corpus expansion.
 
 ---

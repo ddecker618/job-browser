@@ -211,6 +211,49 @@ describe('dashboard UI', () => {
     );
   });
 
+  it('shows a deterministic baseline and evidence when NLP breaks a search tie', async () => {
+    mockFetch((url) => {
+      if (url.endsWith('/api/saved-filters')) return [];
+      return searchResponse([
+        {
+          ...searchJob('1', 'SOC Analyst', 'Fixture'),
+          nlpTieBreak: {
+            reason:
+              'The primary score value tied at 80. Current description evidence supplied the secondary relevance value 0.900.',
+            baseline: { sortField: 'score', direction: 'desc', value: 80 },
+            relevance: {
+              score: 0.9,
+              indexVersion: 'job-search-relevance-v3',
+            },
+            evidence: [
+              {
+                category: 'skill',
+                label: 'Splunk',
+                evidence: 'Splunk required.',
+                sourceField: 'description',
+                charStart: 0,
+                charEnd: 16,
+              },
+            ],
+            authority: {
+              productionScore: 'unchanged',
+              eligibility: 'unchanged',
+              primarySort: 'unchanged',
+            },
+          },
+        },
+      ]);
+    });
+    renderPage(<JobsPage />, ['/jobs']);
+
+    expect(await screen.findByText(/Tie-break explanation:/)).toHaveTextContent(
+      'primary score value tied at 80',
+    );
+    expect(screen.getByTitle('description characters 0–16')).toHaveTextContent(
+      'Splunk',
+    );
+  });
+
   it('sends URL-backed filters to server search and replaces typing history', async () => {
     const user = userEvent.setup();
     const calls: string[] = [];
@@ -676,6 +719,9 @@ function searchJob(id: string, title: string, company: string) {
     matchedFamilies: null as string | null,
     roleEvidence:
       [] as import('../src/models/job-search.js').JobSearchRoleEvidence[],
+    nlpTieBreak: undefined as
+      | import('../src/models/job-search.js').JobSearchNlpTieBreak
+      | undefined,
     lastVerifiedAt: '2026-07-18T12:00:00.000Z',
     materiallyUpdatedAt: null,
     closingDate: null,

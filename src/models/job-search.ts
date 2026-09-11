@@ -63,6 +63,7 @@ export interface JobSearchItem {
   recommendation: string | null;
   matchedFamilies: string | null;
   roleEvidence: JobSearchRoleEvidence[];
+  nlpTieBreak?: JobSearchNlpTieBreak | undefined;
   status: JobStatus;
   firstSeenAt: string;
   lastVerifiedAt: string | null;
@@ -109,6 +110,29 @@ export interface JobSearchRoleEvidence {
   how: 'title-match';
   indexedSkills?: { skill: string; evidence: string }[] | undefined;
   basis: string;
+}
+
+export interface JobSearchNlpTieBreak {
+  reason: string;
+  baseline: {
+    sortField: JobSearchSortField;
+    direction: 'asc' | 'desc';
+    value: string | number | null;
+  };
+  relevance: { score: number; indexVersion: string };
+  evidence: {
+    category: string;
+    label: string;
+    evidence: string;
+    sourceField: string;
+    charStart: number;
+    charEnd: number;
+  }[];
+  authority: {
+    productionScore: 'unchanged';
+    eligibility: 'unchanged';
+    primarySort: 'unchanged';
+  };
 }
 
 export interface JobSearchAppliedRole {

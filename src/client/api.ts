@@ -309,6 +309,10 @@ export const api = {
   saveSettings: (settings: AppSettings) =>
     request<AppSettings>('/api/settings', json('PUT', settings)),
   searchProfile: () => request<SearchProfile>('/api/search-profile'),
+  searchProfileIntelligence: () =>
+    request<
+      import('../intelligence/nlp/searchProfileIntelligence.js').SearchProfileIntelligence
+    >('/api/search-profile/intelligence'),
   saveSearchProfile: (profile: SearchProfile) =>
     request<{ profile: SearchProfile; analysis: AnalysisSummary }>(
       '/api/search-profile',

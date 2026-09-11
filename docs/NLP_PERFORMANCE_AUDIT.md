@@ -67,3 +67,26 @@ validation remain part of the final release validation stage.
   corpus/source fingerprints; stale results must not be reused silently.
 - Performance work must not remove evidence, weaken abstention, bypass
   deterministic gates, or move shadow output into production scoring.
+
+## P16 Real-Corpus Load Run
+
+- Date: 2026-09-11
+- Platform: ordinary Windows win32 x64
+- Source handling: 500 jobs copied to a temporary local database, then copied into
+  memory; the temporary database was deleted after the run
+- Source characters: 2,939,812
+- Report fingerprint: 8f749332ae444f9def0437f4631c8156db29d9a5e3eadb02ca4616b95a82e03d
+- Batch size/count: 50 / 10
+- Batch p50/p95: 607.918 ms / 666.770 ms
+- Total extraction time: 5,889.964 ms
+- Extracted/failed: 500 / 0
+- Event-loop heartbeat ticks: 2,609 (main-thread yielding observed)
+- Heap delta: 72,112,512 B
+- Immediate current-cache retry: 500 skipped, 0 rebuilt
+- Network requests: 0
+- Source database writes: 0
+
+The reusable command is npm run nlp:production-audit -- <database-copy> [limit].
+It opens the supplied copy read-only and never includes description text in its JSON
+report. The measurement is a reproducible local baseline, not a fixed performance
+budget; correctness and evidence checks remain unchanged.

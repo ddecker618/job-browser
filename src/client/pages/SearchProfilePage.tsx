@@ -11,6 +11,10 @@ export function SearchProfilePage() {
     queryKey: ['search-profile'],
     queryFn: api.searchProfile,
   });
+  const intelligenceQuery = useQuery({
+    queryKey: ['search-profile-intelligence'],
+    queryFn: api.searchProfileIntelligence,
+  });
   const client = useQueryClient();
   const [draft, setDraft] = useState<SearchProfile | null>(null);
   const save = useMutation({
@@ -18,6 +22,7 @@ export function SearchProfilePage() {
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: ['search-profile'] }),
+        client.invalidateQueries({ queryKey: ['search-profile-intelligence'] }),
         invalidateScoreQueries(client),
       ]);
       setDraft(null);
@@ -191,6 +196,45 @@ export function SearchProfilePage() {
               />
             </label>
           </div>
+        </section>
+        <section className="form-panel search-profile-intelligence">
+          <div className="section-heading">
+            <span>02</span>
+            <div>
+              <h3>NLP matching context</h3>
+              <p>
+                Read-only feedback from the reviewed vocabulary. Saving edits
+                below changes only your deterministic search preferences.
+              </p>
+            </div>
+          </div>
+          {intelligenceQuery.data ? (
+            <div className="profile-summary">
+              <span>
+                <strong>Canonical role families:</strong>{' '}
+                {intelligenceQuery.data.roleFamilies.length}
+              </span>
+              <span>
+                <strong>Reviewed skills:</strong>{' '}
+                {intelligenceQuery.data.skillCoverage.recognizedCount}/
+                {intelligenceQuery.data.skillCoverage.configuredCount}
+              </span>
+              <span>
+                <strong>Reviewed related pairs:</strong>{' '}
+                {intelligenceQuery.data.skillClusters.length}
+              </span>
+              {intelligenceQuery.data.skillCoverage.unknownLabels.length > 0 ? (
+                <span>
+                  <strong>Needs vocabulary review:</strong>{' '}
+                  {intelligenceQuery.data.skillCoverage.unknownLabels.join(
+                    ', ',
+                  )}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <p>NLP matching context is currently unavailable.</p>
+          )}
         </section>
         <div className="family-list">
           {profile?.families.map((family) => (

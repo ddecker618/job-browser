@@ -36,6 +36,18 @@ P8 committed as e0eadf5. P9 connects reviewed canonical skills to relevance and 
 
 # Job Browser Project Memory
 
+## Recovery checkpoint — P14-P17 complete (2026-09-11)
+
+P13 baseline is 6c0b766. P14-P17 implementation is complete; npm run verify
+passed 154 files / 1436 tests. P14 explains only validated current
+NLP tie-breaks and preserves deterministic score/eligibility/primary-sort authority.
+P15 adds a read-only profile vocabulary projection. P16 measured 500 real local job
+descriptions from a temporary database copy with 0 failures, 0 network requests, and
+0 source-database writes. P17 adds relevance source hashes, strict version/hash joins,
+and migration 033 change-only cache invalidation. Resume at P18 regression-corpus expansion after resolving the P14-P17 checkpoint
+hash with git log. The installer remains
+the stale 2026-09-10 20:07:47 build; no production data or remote push was touched.
+
 ## Current recovery checkpoint — P8 complete (2026-09-11)
 
 P7 baseline is e99c80e. P8 is complete: explicit target-role selection and exact

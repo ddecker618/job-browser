@@ -215,6 +215,51 @@ describe('JobSearchRepository NLP tie-break (P6)', () => {
     ]);
   });
 
+  it('explains an actual tie-break with current bounded evidence and baseline authority', async () => {
+    const first = insertJob({ id: uuid(1), title: 'Analyst', score: 75 });
+    const second = insertJob({ id: uuid(2), title: 'Analyst', score: 75 });
+    await addCurrentIndex(first, 'Linux required.');
+    await addCurrentIndex(
+      second,
+      'Splunk, Linux, Kubernetes, VMware, and Active Directory required.',
+    );
+    flag = true;
+    const jobsBefore = database.prepare('SELECT * FROM jobs ORDER BY id').all();
+
+    const response = searchRepository().search(parse());
+
+    expect(response.items[0]?.id).toBe(second);
+    const explanation = response.items[0]?.nlpTieBreak;
+    expect(explanation?.baseline).toEqual({
+      sortField: 'score',
+      direction: 'desc',
+      value: 75,
+    });
+    expect(explanation?.reason).toContain('primary score value tied at 75');
+    expect(explanation?.authority).toEqual({
+      productionScore: 'unchanged',
+      eligibility: 'unchanged',
+      primarySort: 'unchanged',
+    });
+    expect(explanation?.evidence[0]?.sourceField).toBe('description');
+    expect(typeof explanation?.evidence[0]?.charStart).toBe('number');
+    expect(typeof explanation?.evidence[0]?.charEnd).toBe('number');
+    expect(database.prepare('SELECT * FROM jobs ORDER BY id').all()).toEqual(
+      jobsBefore,
+    );
+
+    database
+      .prepare('UPDATE jobs SET description=? WHERE id=?')
+      .run('Description changed.', second);
+    expect(new JobNlpEnrichmentRepository(database).get(second)).toBeNull();
+    expect(new NlpRelevanceRepository(database).get(second)).toBeNull();
+    expect(
+      searchRepository()
+        .search(parse())
+        .items.find((item) => item.id === second)?.nlpTieBreak,
+    ).toBeUndefined();
+  });
+
   it('never changes score values, totals, pages, or facets', () => {
     insertJob({ id: uuid(2), score: 60 });
     insertJob({ id: uuid(1), score: 60 });
@@ -258,8 +303,31 @@ describe('JobSearchRepository NLP tie-break (P6)', () => {
     return job.id;
   }
 
+  async function addCurrentIndex(
+    jobId: string,
+    description: string,
+  ): Promise<void> {
+    database
+      .prepare(
+        'UPDATE jobs SET title=?, location=NULL, description=?, requirements=NULL, preferred_qualifications=NULL WHERE id=?',
+      )
+      .run('Analyst', description, jobId);
+    const enrichment = await extractNlpDocument({
+      title: 'Analyst',
+      location: null,
+      description,
+      requirements: null,
+      preferredQualifications: null,
+    });
+    new JobNlpEnrichmentRepository(database).save(jobId, enrichment);
+    new NlpRelevanceRepository(database).save(
+      jobId,
+      deriveSearchRelevance(enrichment),
+    );
+  }
+
   function addRelevance(jobId: string, score: number): void {
-    new NlpRelevanceRepository(database).save(jobId, relevanceDocument(score));
+    saveIndexedScore(database, jobId, score);
   }
 });
 
@@ -305,9 +373,8 @@ describe('API gating for NLP search relevance (P6)', () => {
     stamp.run(scoreVersion, apiUuid(1));
     stamp.run(scoreVersion, apiUuid(2));
     stamp.run(scoreVersion, apiUuid(3));
-    const relevance = new NlpRelevanceRepository(database);
-    relevance.save(apiUuid(2), relevanceDocument(0.99));
-    relevance.save(apiUuid(1), relevanceDocument(0.05));
+    saveIndexedScore(database, apiUuid(2), 0.99);
+    saveIndexedScore(database, apiUuid(1), 0.05);
 
     const app = createApp(database, {});
     const server = app.listen(0, '127.0.0.1');
@@ -378,12 +445,54 @@ function insertRawJob(
     );
 }
 
+function saveIndexedScore(
+  database: JobDatabase,
+  jobId: string,
+  score: number,
+): void {
+  const row = database
+    .prepare<
+      [string],
+      {
+        title: string;
+        location: string | null;
+        description: string | null;
+        requirements: string | null;
+        preferred_qualifications: string | null;
+      }
+    >(
+      'SELECT title, location, description, requirements, preferred_qualifications FROM jobs WHERE id=?',
+    )
+    .get(jobId);
+  if (!row) throw new Error('Missing job fixture.');
+  const sourceTextHash = documentHash({
+    title: row.title,
+    location: row.location,
+    description: row.description,
+    requirements: row.requirements,
+    preferredQualifications: row.preferred_qualifications,
+  });
+  new JobNlpEnrichmentRepository(database).save(jobId, {
+    version: 'job-nlp-v1',
+    generatedAt: '2026-09-11T00:00:00.000Z',
+    sourceTextHash,
+    segmentation: { segments: [], method: 'segmentation-v1' },
+    facts: [],
+  });
+  new NlpRelevanceRepository(database).save(
+    jobId,
+    relevanceDocument(score, [], sourceTextHash),
+  );
+}
+
 function relevanceDocument(
   score: number,
   skills: string[] = [],
+  sourceTextHash = '0'.repeat(64),
 ): SearchRelevanceDocument {
   return {
     indexVersion: SEARCH_RELEVANCE_INDEX_VERSION,
+    sourceTextHash,
     skillCount: skills.length,
     canonicalSkills: skills.slice(),
     topSkills: skills.slice(0, 8),

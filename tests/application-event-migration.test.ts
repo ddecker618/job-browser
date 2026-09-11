@@ -163,6 +163,7 @@ describe('application event foundation migration', () => {
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
       '032_job_nlp_relevance.sql',
+      '033_nlp_cache_invalidation.sql',
     ]);
 
     expect(applicationIds(database)).toEqual([

@@ -21,6 +21,8 @@ describe('Search Profile UI', () => {
     const calls: { url: string; method: string; body?: unknown }[] = [];
     mockFetch((url, init) => {
       calls.push({ url, method: init?.method ?? 'GET', body: init?.body });
+      if (url.endsWith('/api/search-profile/intelligence'))
+        return profileIntelligence();
       return DEFAULT_SEARCH_PROFILE;
     });
     renderPage(<SearchProfilePage />);
@@ -29,6 +31,9 @@ describe('Search Profile UI', () => {
     expect(
       screen.getByText(/42 job titles across 6 enabled role families/),
     ).toBeInTheDocument();
+    expect(await screen.findByText('NLP matching context')).toBeInTheDocument();
+    expect(screen.getByText('2/3')).toBeInTheDocument();
+    expect(screen.getByText(/Needs vocabulary review:/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('checkbox', { name: /Splunk/ }));
     await user.click(screen.getByRole('button', { name: 'Save profile' }));
@@ -63,6 +68,8 @@ describe('Search Profile UI', () => {
           body: { error: 'Weights must total 100' },
         };
       }
+      if (url.endsWith('/api/search-profile/intelligence'))
+        return profileIntelligence();
       return DEFAULT_SEARCH_PROFILE;
     });
     renderPage(<SearchProfilePage />);
@@ -122,4 +129,26 @@ function isErrorResult(
     'status' in value &&
     'body' in value
   );
+}
+
+function profileIntelligence() {
+  return {
+    version: 'search-profile-intelligence-v1',
+    roleFamilies: DEFAULT_SEARCH_PROFILE.families.map((family) => ({
+      key: family.key,
+      displayName: family.displayName,
+      enabled: family.enabled,
+      titleCount: family.titles.length,
+    })),
+    skillCoverage: {
+      configuredCount: 3,
+      recognizedCount: 2,
+      unknownLabels: ['Unreviewed Tool'],
+    },
+    skillClusters: [
+      { left: 'Splunk', right: 'SIEM', relationship: 'STRONG_RELATED' },
+    ],
+    preferenceAuthority: 'deterministic-only',
+    productionEffect: 'none',
+  };
 }

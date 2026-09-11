@@ -48,16 +48,13 @@ export interface SkillNormalizationResult {
   explanation: string;
 }
 
-interface RelationshipPair {
+export interface ReviewedSkillRelationship {
   left: string;
   right: string;
-  relationship: Exclude<
-    SkillRelationship,
-    'EXACT' | 'CANONICAL_ALIAS' | 'UNKNOWN'
-  >;
+  relationship: 'STRONG_RELATED' | 'WEAK_RELATED';
 }
 
-const REVIEWED_RELATIONSHIPS: readonly RelationshipPair[] = [
+const REVIEWED_RELATIONSHIPS: readonly ReviewedSkillRelationship[] = [
   { left: 'splunk', right: 'siem', relationship: 'STRONG_RELATED' },
   {
     left: 'active directory',
@@ -70,6 +67,10 @@ const REVIEWED_RELATIONSHIPS: readonly RelationshipPair[] = [
   { left: 'aws', right: 'azure', relationship: 'WEAK_RELATED' },
   { left: 'powershell', right: 'windows server', relationship: 'WEAK_RELATED' },
 ];
+
+export function reviewedSkillRelationships(): ReviewedSkillRelationship[] {
+  return REVIEWED_RELATIONSHIPS.map((relationship) => ({ ...relationship }));
+}
 
 export function skillConcepts(
   catalog: readonly SkillCatalogEntry[] = DEFAULT_SKILL_CATALOG,

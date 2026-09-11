@@ -75,6 +75,7 @@ describe('migration runner', () => {
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
       '032_job_nlp_relevance.sql',
+      '033_nlp_cache_invalidation.sql',
     ]);
     expect(runMigrations(database).applied).toEqual([]);
 
@@ -229,6 +230,7 @@ describe('migration runner', () => {
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
       '032_job_nlp_relevance.sql',
+      '033_nlp_cache_invalidation.sql',
     ]);
     expect(
       database
@@ -377,6 +379,7 @@ describe('migration runner', () => {
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
       '032_job_nlp_relevance.sql',
+      '033_nlp_cache_invalidation.sql',
     ]);
 
     const column = database
@@ -636,6 +639,7 @@ describe('migration runner', () => {
       '030_employer_aliases.sql',
       '031_nlp_enrichments.sql',
       '032_job_nlp_relevance.sql',
+      '033_nlp_cache_invalidation.sql',
     ]);
 
     const remaining = database

@@ -14,7 +14,7 @@ import { normalizeSkillPhrase } from './skillNormalization.js';
 // semantics, or any score/eligibility/lifecycle column.
 // ---------------------------------------------------------------------------
 
-export const SEARCH_RELEVANCE_INDEX_VERSION = 'job-search-relevance-v2';
+export const SEARCH_RELEVANCE_INDEX_VERSION = 'job-search-relevance-v3';
 
 const MAX_CANONICAL_SKILLS = 8;
 const MAX_SIGNALS = 5;
@@ -27,6 +27,7 @@ export interface SearchRelevanceSignals {
 
 export interface SearchRelevanceDocument {
   indexVersion: typeof SEARCH_RELEVANCE_INDEX_VERSION;
+  sourceTextHash: string;
   skillCount: number;
   canonicalSkills: string[];
   topSkills: string[];
@@ -37,6 +38,7 @@ export interface SearchRelevanceDocument {
 export const searchRelevanceDocumentSchema: z.ZodType<SearchRelevanceDocument> =
   z.object({
     indexVersion: z.literal(SEARCH_RELEVANCE_INDEX_VERSION),
+    sourceTextHash: z.string().regex(/^[a-f0-9]{64}$/),
     skillCount: z.number().int().nonnegative(),
     canonicalSkills: z.array(z.string()),
     topSkills: z.array(z.string()),
@@ -105,6 +107,7 @@ export function deriveSearchRelevance(
 
   return {
     indexVersion: SEARCH_RELEVANCE_INDEX_VERSION,
+    sourceTextHash: enrichment.sourceTextHash,
     skillCount: canonicalSkills.length,
     canonicalSkills,
     topSkills,
@@ -137,9 +140,10 @@ export function withSearchRelevanceIndex(
       if (enrichmentTarget.isStale(jobId, extractionVersion, sourceTextHash))
         return true;
       try {
+        const relevance = relevanceStore.get(jobId);
         return (
-          relevanceStore.get(jobId)?.indexVersion !==
-          SEARCH_RELEVANCE_INDEX_VERSION
+          relevance?.indexVersion !== SEARCH_RELEVANCE_INDEX_VERSION ||
+          relevance.sourceTextHash !== sourceTextHash
         );
       } catch {
         return true;

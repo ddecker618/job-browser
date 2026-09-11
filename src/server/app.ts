@@ -9,6 +9,7 @@ import { projectJobIntelligence } from '../intelligence/nlp/projection.js';
 import { projectRoleFamilySuggestion } from '../intelligence/nlp/roleFamilySuggestion.js';
 import { adaptResumeSnapshotEvidence } from '../intelligence/nlp/snapshotEvidence.js';
 import { projectRequirementCoverage } from '../intelligence/nlp/requirementCoverageProjection.js';
+import { projectSearchProfileIntelligence } from '../intelligence/nlp/searchProfileIntelligence.js';
 import type { NlpWorkerStatus } from '../intelligence/nlp/backgroundWorker.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -1018,6 +1019,14 @@ export function createApp(
       sourceRepository.cascadeTargetRoles(settings.targetRoles);
     }
     response.json(settings);
+  });
+  app.get('/api/search-profile/intelligence', (_request, response) => {
+    response.json(
+      projectSearchProfileIntelligence(
+        loadLegacySearchProfile(),
+        loadScoringConfig(scoringPath, profilePreferencesPath).skills,
+      ),
+    );
   });
   app.get('/api/search-profile', (_request, response) => {
     const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
