@@ -35,13 +35,13 @@ roles:
 
 ```
 CURRENT_STAGE:       P24-P27 complete; P28 release decision pending
-CURRENT_TASK:        create the verified P24-P27 checkpoint, then request the P28 decision
+CURRENT_TASK:        P28 explicit release and installer decision
 LAST_COMPLETED:      P24-P27; verify 157/1445, privacy 11/11, all current-source smoke PASS
-NEXT_ACTION:         commit P24-P27, then ask whether to rebuild the 1.1.0 installer
-FILES_IN_PROGRESS:   P24-P27 docs and smoke-harness improvements, ready to commit
+NEXT_ACTION:         ask whether to rebuild the 1.1.0 installer and run artifact validation
+FILES_IN_PROGRESS:   none; P24-P27 are committed
 TESTS_TO_RUN:        none before P28 decision; installer sequence only if approved
 KNOWN_FAILURES:      none; installer last built 2026-09-10 20:07:47 and is stale
-LATEST_CHECKPOINT:   b89cea1 P18-P23 verified implementation group (local only)
+LATEST_CHECKPOINT:   45a51b0 P24-P27 verified promotion gates (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);

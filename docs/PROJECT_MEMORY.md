@@ -522,6 +522,8 @@ Focused validation passed 17 files / 96 tests; full npm run verify passed 157 fi
 
 ## Recovery checkpoint — promotion P24-P27 complete (2026-09-11)
 
+Checkpoint 45a51b0 contains the verified P24-P27 promotion gates. Resume at P28 for the explicit installer release decision; do not repeat P24-P27.
+
 - **D-NLP-073:** P24 current-source gate passed: verify 157 files / 1,445 tests, privacy 11/11, NLP security 3/3, 66-case fail-closed acceptance, direct desktop, rebuilt unpacked package, and seeded packaged-upgrade smoke.
 - **D-NLP-074:** The desktop smoke harness accepts an explicit database copy and marks it as existing data. This preserves user source choices and skips only fresh-install starter-source inventory assertions; all app/API/navigation/migration/shutdown checks remain.
 - **D-NLP-075:** P25 real-copy desktop validation passed. The 253,034,496-byte copy reached migration 034, processed 205 rows per shadow table, grew by 13,619,200 bytes including migrations and smoke fixtures, and left zero Job Browser/Electron processes.
