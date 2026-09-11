@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       29 (documentation and final intelligence handoff) - complete
-CURRENT_TASK:        No further NLP stage; future promotion requires new authorization
-LAST_COMPLETED:      Stage 29 - 43-point handoff; npm run verify (136 files / 1344 tests)
-NEXT_ACTION:         Any Level 3/4 promotion must begin with a new field-specific authorization
-FILES_IN_PROGRESS:   none
-TESTS_TO_RUN:        npx vitest run tests/job-nlp-final-handoff.test.ts (1 pass); npm run verify (136 files / 1344 tests); npm run privacy:check (11 pass)
+CURRENT_STAGE:       P1 (production promotion audit + capability matrix) - in progress
+CURRENT_TASK:        Matrix written for every capability; begin P2 trust levels
+LAST_COMPLETED:      P0 desktop startup + NLP repair baseline: commits f0c41c7, 036d75c (local only); npm run verify 136 files / 1346 tests; real 253 MB DB main-thread responsiveness proven
+NEXT_ACTION:         P2 - define the five NLP production trust levels with per-level tests
+FILES_IN_PROGRESS:   docs/Intelligence_Roadmap.md (Part B appended)
+TESTS_TO_RUN:        npm run verify (136 files / 1346 tests); npm run privacy:check (11 pass); npx vitest run tests/job-nlp-acceptance.test.ts
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   NLP Stage 29 checkpoint commit is created after this roadmap update
+LATEST_CHECKPOINT:   P0 baseline checkpoint commits f0c41c7 and 036d75c created locally, NOT pushed (repo rule)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Stage 19 start
+SAFE_RESUME_POINT:   Stage 19 start (shadow shadow-rollback baseline); P2 below for the production sprint
 ```
 
 ---
@@ -788,19 +788,444 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ---
 
+## PART B — PRODUCTION NLP PROMOTION SPRINT
+
+> Authorized local sprint (2026-09-10). Commit rule: **local checkpoint commits only,
+> NO push** (`docs/AI_WORKFLOW.md:81`, `docs/BETA_IMPLEMENTATION_TRACKER.md`,
+> `SESSION_HANDOFF.md`). All Stage 0-29 shadow guarantees remain standing safety
+> standards for this sprint (no host API, no external model, no telemetry, local-only,
+> additive schema, deterministic gates authoritative, evidence-only conflict data).
+> Promotion is **field-by-field** and must clear the acceptance gate and the P-stage
+> gates below before touching production. **Deterministic hard gates (geography,
+> onsite presence, citizenship, clearance, credentials, federal constraints) are never
+> weakened or overridden by NLP**; NLP may only surface explanatory or corroborating
+> evidence. Slow/async paths use a background bounded queue (no Redis).
+
+## P0 — Desktop Startup Stabilization & Real-Data Responsiveness
+
+- **Status:** [x]
+- **Objective:** move desktop database shadow-copy verification to a worker thread and
+  prove main-thread responsiveness at real database sizes before any promotion work.
+- **Evidence:** `f0c41c7` (worker verification fix) + `036d75c` (NLP repair baseline);
+  `npm run verify` 136 files / 1346 tests; privacy 11/11; source/packaged/upgrade smoke
+  passed; isolated launch against a copy of the real 253 MB database: main process
+  `Responding=True` throughout the ~30 s database phase, `window-created` at ~1.1 s.
+- **Known limitation:** the desktop smoke harness demands its own seeded source state;
+  re-running it against a real-data profile fails its
+  "Disabled browser source was not seeded: wellfound" assertion — harness expectation
+  for fresh seeded DBs, not a product defect.
+- **Current task:** complete.
+- **Exact next action:** P1 - production promotion audit and capability matrix.
+
+---
+
+## P1 — Production Promotion Audit and Capability Matrix
+
+- **Status:** [>]
+- **Objective:** audit every shadow capability against the acceptance metrics and
+  record, per capability, the proposed production use, failure class, fallback,
+  evidence/confidence, and promotion gate. Audit evidence (two full module passes,
+  2026-09-10) confirms: **no NLP output feeds any production path today**
+  (`productionEffect:'none'` typed literally; zero `nlp/*` imports in
+  `scoringEngine.ts`, `intelligenceEngine.ts`, `verifiedMatches.ts`).
+- **Data-loss gaps to fix in P3/P5 before any production display:** reconciliation
+  is implemented (10 tests) but document.ts hard-codes `conflict.state:'unknown'`;
+  boilerplate is implemented (14 tests) but never wired into the envelope; the
+  envelope drops `nestedYears`, `teamContext`, `remoteScope`/`commute`/`arrangement
+conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
+- **Deliverable:** the Production Promotion Matrix below; P2 onwards implement only
+  matrix-approved promotion paths.
+- **Tests:** audit is read/evidence-based; existing per-module suites remain the
+  per-field gate inputs.
+- **Validation evidence:** subagent audits (P1); `npm run verify` 136 files / 1346 tests.
+- **Current task:** matrix written; P2 next.
+- **Exact next action:** P2 - NLP production trust levels.
+
+### Production Promotion Matrix (P1)
+
+| Capability                          | Evidence gate (current)                                            | Failure class                                 | Proposed production use                                           | Fallback                                      | Promotion gate                |
+| ----------------------------------- | ------------------------------------------------------------------ | --------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------- | ----------------------------- |
+| Segmentation (segments/headings)    | 17 tests, position-preserving                                      | Span drift breaks evidence                    | Evidence spans for all NLP UI/explanation (Level 2)               | No fallback needed; nothing gates on it       | P5 (wire all evidence tracks) |
+| Category classification (17 labels) | 20 tests; acceptance precision/recall ≥ 0.9; critical failures = 0 | Mislabel → wrong strength/context             | On-demand "Requirements" panels (Level 2 display)                 | Abstain → label unknown                       | P2 (render only), P5          |
+| Requirement strength                | 19 tests; strength accuracy ≥ 0.95 (acceptance)                    | Preferred shown as required (FN risk)         | Display only; requirement-coverage weighting (Level 2)            | Heading-inherited fallback                    | P5                            |
+| Skills extraction + normalization   | 18 tests; boundary-aware, longest-wins; unknown abstains           | False alias / over-broad match                | Search relevance, coverage rows                                   | UNKNOWN never coerced to a skill              | P9                            |
+| Experience (years/months)           | 13 tests; never fabricates                                         | False years                                   | Coverage display; never gates                                     | Null + low confidence                         | P5                            |
+| Education                           | 14 tests; equivalency/substitution                                 | Degree-level guess (guarded)                  | Coverage display                                                  | Null on unknown level                         | P5                            |
+| Certifications                      | 15 tests; per-cert NEAREST-KEYWORD modality                        | FP cert; wrong modality                       | Coverage display; **needs key/vendor/span wired**                 | Absent = not listed                           | P5, P3 wire                   |
+| Clearance / citizenship             | 17 tests; team-context guard; clause-scoped                        | Claim user clearance from team text (guarded) | **Labelled "required by employer", never user-held;** never gates | Abstain on team/NDA context                   | P5                            |
+| Location / remote / arrangement     | 17 tests; conflict preserved; technical-remote excluded            | Remote claim vs deterministic gate            | Conflict annotation + evidence; **never eligibility**             | Deterministic arrangement stays authoritative | P5                            |
+| Role family matching                | 6 tests; deterministic fallback; abstains on margin < 0.10         | Wrong family suggestion                       | Search suggestion (Level 3), reconciled vs deterministic families | Deterministic catalog winner                  | P7                            |
+| Resume evidence matching            | 5 tests; `assertsPossession:false` typed                           | Over-claim of possession (guarded)            | Coverage labeled "evidence of match", never possession            | UNKNOWN                                       | P10                           |
+| Requirement coverage                | 5 tests; modality weights diagnostic                               | Ratio misread as score                        | Coverage UI (Level 2)                                             | Informational rows excluded                   | P11                           |
+| Reconciliation                      | 10 tests (not wired into envelope)                                 | Masked conflict                               | Compare vs deterministic; **wire into envelope in P3**            | Deterministic side authoritative              | P3, P5                        |
+| Boilerplate                         | 14 tests (not wired into envelope)                                 | Discarded applicant requirement (guarded)     | Flag/deprioritize boilerplate segments; **wire in P3**            | preserveRequirement = true path wins          | P3, P5                        |
+| Acceptance gate                     | fail-closed; FP/FN/critical thresholds; 6 safety evidences         | Threshold breach → block promotion            | Re-run per promotion                                              | Block until passed                            | every phase                   |
+
+---
+
+## P2 — NLP Production Trust Levels
+
+- **Status:** [ ]
+- **Objective:** define five explicit trust levels used for every future promotion
+  decision: `SHADOW` (current; stored, never shown opaquely), `EXPLANATION` (typed
+  add-on to production display, always labelled), `ENRICHMENT` (additive, affects
+  indexing/relevance only, never scores or gates), `SCORING` (bounded, explicit,
+  percentage-capped contribution to a displayed recommendation metric only),
+  `HARD_GATE` (overrides deterministic eligibility; requires the strongest evidence
+  a new authorization and is out of scope for this sprint).
+- **Implementation tasks:** `docs/NLP_TRUST_LEVELS.md` (responsibilities, permitted
+  consumers, labelling, rollback, per-level evidence requirements); schema type
+  `NlpProductionLevel`; per-level tests that assert harder levels require more
+  evidence and that no consumer below the level may use the output.
+- **Tests:** new `tests/job-nlp-trust-levels.test.ts` (structure, monotonic evidence
+  requirement, no-SCORING/HARD_GATE consumers in the tree).
+- **Current task:** not started.
+- **Exact next action:** P3 - async NLP materialization and envelope wiring.
+
+---
+
+## P3 — Async NLP Materialization + Envelope Wiring
+
+- **Status:** [ ]
+- **Objective:** materialize NLP enrichment for jobs as a background, bounded,
+  additive task (no job-table writes) and fix the P1 data-loss gaps so the envelope is
+  production-representational: wire reconciliation into `conflict`, wire boilerplate
+  into `isBoilerplate`/`preserveRequirement`, and add the dropped fields
+  (`nestedYears`, `teamContext`, `remoteScope`, `commute`, `arrangement conflict`,
+  per-cert `key`/`vendor`/`span`, travel detail). Keep `document-v1` versioned;
+  bump extraction version when the envelope changes.
+- **Implementation tasks:** staged extraction contract (title→description→segments→facts
+  for UI, then evidence/matching tiers for search/scoring); `NlpDocumentBuilder`
+  returns both facts and diagnostics; repository schema extended additively
+  (jobs table untouched).
+- **Tests:** extend `job-nlp-document.test.ts`; new end-to-end materialization test with
+  skip-fresh + invalidation semantics (reuse reprocessing tests).
+- **Current task:** not started.
+- **Exact next action:** P4 - bounded background worker with diagnostics.
+
+---
+
+## P4 — Bounded Background Worker + Diagnostics
+
+- **Status:** [ ]
+- **Objective:** bounded, local, queue-based enrichment worker (per-app single-flight,
+  batch cap, per-job deadline, backpressure, no Redis); progress + failures surfaced in
+  a read-only diagnostics view; worker never touches scoring/eligibility tables.
+- **Implementation tasks:** `src/intelligence/nlp/worker.ts` (queue, budget, abort);
+  desktop integration so enrichment starts after backend ready and yields to UI;
+  diagnostics (analysed/pending/failed/stale counts, last failure reason) exposed via a
+  read-only status endpoint + Settings page; tests for budget/abort/idempotency.
+- **Current task:** not started.
+- **Exact next action:** P5 - production Job Intelligence projection.
+
+---
+
+## P5 — Production Job Intelligence Projection
+
+- **Status:** [ ]
+- **Objective:** replace the shadow preview with a production Job Intelligence view
+  that (a) is visibly app-produced, (b) shows only EXPLANATION/ENRICHMENT-level output,
+  (c) renders monotone evidence for every claim, (d) carries an explicit interpretation
+  label per fact, and (e) shows conflicts with the deterministic interpretation with the
+  deterministic value marked authoritative. It must never state possession, never mirror
+  a hard gate silently, and never alter score/eligibility/ranking/lifecycle.
+- **Implementation tasks:** projection from the enriched envelope via inspector (kept
+  read-only, deterministic, redacting); UI in JobIntelligencePreview; per-fact
+  interpretation + evidence + conflict badges; acceptance test for the projection.
+- **Current task:** not started.
+- **Exact next action:** P6 - NLP-enhanced search index.
+
+---
+
+## P6 — NLP-Enhanced Search Index
+
+- **Status:** [ ]
+- **Objective:** additive relevance index for search/rename/matching built from
+  ENRICHMENT-level data (canonical skills, role hints, category signals). Production
+  result set and ordering remain deterministic baseline; NLP relevance is a bounded rank
+  tie-break only, behind a flag off by default.
+- **Current task:** not started.
+- **Exact next action:** P7 - canonical role family matching promoted to search
+  suggestion.
+
+---
+
+## P7 — Canonical Role Families
+
+- **Status:** [ ]
+- **Objective:** promote role family matching to a production-facing suggestion only
+  where reconciled against the deterministic catalog (agreement states), with
+  abstain/conflict behaviour unchanged and full test coverage of the reconciliation
+  boundary. Never a hard gate.
+- **Current task:** not started.
+- **Exact next action:** P8 - case/role-based search integration.
+
+---
+
+## P8 — Target-Role Search Integration
+
+- **Status:** [ ]
+- **Objective:** search by target roles (family-approved + user-selected) using the P6
+  index; UI shows matched family label + why (evidence). Deterministic ordering is
+  preserved by default.
+- **Current task:** not started.
+- **Exact next action:** P9 - skill normalization promoted to matching/coverage.
+
+---
+
+## P9 — Skill Normalization in Matching
+
+- **Status:** [ ]
+- **Objective:** use normalized canonical skills (EXACT/alias/related/unknown) inside
+  requirement coverage and search relevance; unknown phrases always abstain; never
+  mutate the raw skill text or expand catalog automatically.
+- **Current task:** not started.
+- **Exact next action:** P10 - full resume evidence matching.
+
+---
+
+## P10 — Resume Evidence Matching (all kinds)
+
+- **Status:** [ ]
+- **Objective:** extend resume evidence adapters to experience/education/clearance
+  snapshots; every match row remains expressly evidence-of-match, never possession;
+  parser versions recorded; unmatched/null concepts = UNKNOWN not missing.
+- **Current task:** not started.
+- **Exact next action:** P11 - requirement coverage goes live.
+
+---
+
+## P11 — Requirement Coverage Goes Live
+
+- **Status:** [ ]
+- **Objective:** the coverage projection (direct/related/weak/missing/unknown with
+  modality weighting, evidence, and provenance) is shown in production Job
+  Intelligence; it is explicitly a diagnostic ratio and is never called a score and
+  never changes ranks/eligibility.
+- **Current task:** not started.
+- **Exact next action:** P12 - bounded NLP scoring contribution design.
+
+---
+
+## P12 — Bounded NLP Scoring Contribution
+
+- **Status:** [ ]
+- **Objective:** design (only) a bounded, capped contribution to a displayed
+  recommendation metric from corroborated, high-confidence ENRICHMENT/SCORING-capable
+  signals; require: score cap below any eligibility boundary, monotone evidence,
+  dual-side consistency (deterministic vs NLP), and a shadow diff gate.
+- **Current task:** not started.
+- **Exact next action:** P13 - scoring safety invariants.
+
+---
+
+## P13 — Scoring Safety Invariants
+
+- **Status:** [ ]
+- **Objective:** encode invariants in tests: NLP never changes any eligibility gate,
+  never changes ranking basis below the cap, contribution is capped, contribution is
+  zero when evidence/confidence absent, and removal of the feature restores previous
+  scores byte-for-byte.
+- **Current task:** not started.
+- **Exact next action:** P14 - search-result explainability.
+
+---
+
+## P14 — Search Result Explainability
+
+- **Status:** [ ]
+- **Objective:** when NLP contributes to a ranking tie-break, each affected result shows
+  the reason with evidence spans and the deterministic baseline value; no black-box
+  "NLP boosted" labels.
+- **Current task:** not started.
+- **Exact next action:** P15 - search profile NLP.
+
+---
+
+## P15 — Search Profile NLP
+
+- **Status:** [ ]
+- **Objective:** surface canonical role families, skill clusters, and coverage feedback
+  in the search profile editor so users can adjust targets; all edits remain
+  deterministic preference changes; no hidden NLP mutations of the profile.
+- **Current task:** not started.
+- **Exact next action:** P16 - performance measurement at production loads.
+
+---
+
+## P16 — Performance at Production Loads
+
+- **Status:** [ ]
+- **Objective:** measure segmentation/extraction/cache/worker under a large real corpus
+  copy (local only) on ordinary Windows hardware; budgets: extraction leaves main
+  thread free (P0 style), worker batch latency, memory growth; no throughput trick may
+  reduce correctness.
+- **Current task:** not started.
+- **Exact next action:** P17 - indexing/cache strategy.
+
+---
+
+## P17 — Indexing and Cache Strategy
+
+- **Status:** [ ]
+- **Objective:** content-hash + extraction-version cache for enrichment and the P6
+  index; deterministic invalidation on description change; bounded row growth; stale
+  rows never consulted by production consumers.
+- **Current task:** not started.
+- **Exact next action:** P18 - regression corpus expansion.
+
+---
+
+## P18 — Regression Corpus Expansion
+
+- **Status:** [ ]
+- **Objective:** expand the synthetic/local labelled corpus (coverage, paraphrase,
+  adversarial) so every promoted capability has both true-positive and false-positive
+  boundaries; acceptance gate must fail closed on any critical failure before a
+  promotion is recorded.
+- **Current task:** not started.
+- **Exact next action:** P19 - production-vs-shadow comparison.
+
+---
+
+## P19 — Production-vs-Shadow Comparison
+
+- **Status:** [ ]
+- **Objective:** persisted added-comparison of deterministic interpretation vs NLP
+  interpretation per job in the shadow store; report agreement/conflict rates per
+  capability on the local corpus; conflicts are surfaced in UI, never silently
+  resolved.
+- **Current task:** not started.
+- **Exact next action:** P20 - feature flags.
+
+---
+
+## P20 — Feature Flags (Rollback)
+
+- **Status:** [ ]
+- **Objective:** per-capability local flags (off by default) with per-feature rollback;
+  disabling a flag restores prior behaviour exactly (regression test per feature);
+  flags are read at decision time, cached safely, and surfaced read-only in Settings.
+- **Current task:** not started.
+- **Exact next action:** P21 - failure fallback behaviour.
+
+---
+
+## P21 — Failure Fallback Behaviour
+
+- **Status:** [ ]
+- **Objective:** when extraction/worker/index fails or is disabled, production
+  surfaces degrade to the deterministic baseline silently but visibly (a status
+  indicator), and no stale enrichment is ever rendered as fresh.
+- **Current task:** not started.
+- **Exact next action:** P22 - user-visible NLP status.
+
+---
+
+## P22 — User-Visible NLP Status
+
+- **Status:** [ ]
+- **Objective:** read-only NLP status in Settings: extraction version, analysed
+  counts, last success/failure, flags, and "Not used for scoring/eligibility" wording
+  that matches the trust level of what is actually on.
+- **Current task:** not started.
+- **Exact next action:** P23 - real-data validation session.
+
+---
+
+## P23 — Real-Data Validation
+
+- **Status:** [ ]
+- **Objective:** validation run against the user's real local database copy: run the
+  worker, compare deterministic vs NLP interpretation, verify no score/eligibility
+  drift (P19 harness), measure responsiveness (P0 harness), and record outcomes.
+- **Current task:** not started.
+- **Exact next action:** P24 - full verification gate.
+
+---
+
+## P24 — Full Verification Gate
+
+- **Status:** [ ]
+- **Objective:** `npm run verify` + `npm run privacy:check` + NLP security audit all
+  green; source/packaged/upgrade smoke green; acceptance gate fail-closed on the
+  expanded corpus; checkpoint commit.
+- **Current task:** not started.
+- **Exact next action:** P25 - desktop performance validation.
+
+---
+
+## P25 — Desktop Performance Validation
+
+- **Status:** [ ]
+- **Objective:** installed/direct launch with real DB: main thread responsive during
+  any watchdog activity, backend free on exit, no orphan processes, worker yields to
+  UI, results in acceptable additional disk budget.
+- **Current task:** not started.
+- **Exact next action:** P26 - privacy/packaging audit.
+
+---
+
+## P26 — Privacy and Packaging Audit
+
+- **Status:** [ ]
+- **Objective:** re-run Stage 25 audit for the promoted surfaces: no telemetry, no
+  external transmission, no secrets/PII/dev paths, no model artifacts, installer
+  contents inspected, fresh-install neutral state.
+- **Current task:** not started.
+- **Exact next action:** P27 - documentation.
+
+---
+
+## P27 — Documentation
+
+- **Status:** [ ]
+- **Objective:** reconcile this roadmap, PROJECT_MEMORY, CHANGELOG, SESSION_HANDOFF,
+  NLP_FINAL_HANDOFF (add a production promotion section), trust levels, promotion
+  design, and README with exact per-field promotion status and gates.
+- **Current task:** not started.
+- **Exact next action:** P28 - release/release decision.
+
+---
+
+## P28 — Release Decision
+
+- **Status:** [ ]
+- **Objective:** version/artifact decision with the user; rebuild installer and run the
+  full artifact validation sequence only with explicit user approval; local
+  checkpoint commits; nothing pushed without explicit instruction.
+- **Current task:** not started.
+- **Exact next action:** P29 - final report.
+
+---
+
+## P29 — Final Production-Promotion Report
+
+- **Status:** [ ]
+- **Objective:** report which capabilities moved from SHADOW to EXPLANATION/ENRICHMENT
+  (and whether any reached SCORING), the evidence for each, the explicitly unchanged
+  hard gates, and the record of what remains SHADOW-only with exact reasons.
+- **Current task:** not started.
+- **Exact next action:** none; stop for user review of the P28/P29 decision points.
+
+---
+
 ## Verification Ledger (NLP program)
 
-| Date       | Action                   | Result                                                                      |
-| ---------- | ------------------------ | --------------------------------------------------------------------------- |
-| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                       |
-| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean   |
-| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`          |
-| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark     |
-| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                       |
-| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                  |
-| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                     |
-| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS |
-| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated  |
+| Date       | Action                   | Result                                                                       |
+| ---------- | ------------------------ | ---------------------------------------------------------------------------- |
+| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                        |
+| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean    |
+| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`           |
+| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark      |
+| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                        |
+| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                   |
+| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                      |
+| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS  |
+| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated   |
+| 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`     |
+| 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7` |
+| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                |
 
 ## NLP integration repair — verified
 
