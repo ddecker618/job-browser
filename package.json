@@ -50,7 +50,8 @@
     "nlp:security-audit": "vitest run tests/job-nlp-security-packaging.test.ts",
     "role-details:backfill": "tsx src/db/cli/backfill-role-details.ts",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test",
-    "nlp:production-audit": "tsx scripts/audit-local-nlp-production.ts"
+    "nlp:production-audit": "tsx scripts/audit-local-nlp-production.ts",
+    "nlp:real-data-validation": "tsx scripts/validate-local-nlp.ts"
   },
   "keywords": [],
   "author": "",

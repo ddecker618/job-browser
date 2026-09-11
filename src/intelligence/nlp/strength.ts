@@ -19,7 +19,7 @@ import { normalizeText } from '../../utilities/normalization.js';
 // unknown) when no modality marker is present.
 // ---------------------------------------------------------------------------
 
-export const STRENGTH_CLASSIFIER_VERSION = 'modality-classifier-v1';
+export const STRENGTH_CLASSIFIER_VERSION = 'modality-classifier-v2';
 
 export interface SegmentStrength {
   segmentIndex: number;
@@ -100,6 +100,12 @@ const EQUIVALENT_ACCEPTED_PATTERNS = [
   /\brelated (?:experience|education) (?:will be|is|may be|can be) considered\b/,
 ];
 
+const NEGATED_REQUIREMENT_PATTERNS = [
+  /\bno\b[^.;]{0,80}\b(?:required|needed|necessary)\b/,
+  /\b(?:do|does|will) not (?:need|require|have to possess|have to hold)\b/,
+  /\bnot (?:a |an )?(?:requirement|required|necessary)\b/,
+];
+
 const MODALITY_CAPABLE_CATEGORIES = new Set<NlpRequirementCategory>([
   'skill',
   'experience',
@@ -150,6 +156,17 @@ export function classifyStrength(
   categories: readonly NlpRequirementCategory[],
 ): SegmentStrength {
   const normalized = normalizeText(segment.text);
+  if (matchesAny(NEGATED_REQUIREMENT_PATTERNS)(normalized)) {
+    return {
+      segmentIndex: segment.index,
+      categories: [...categories],
+      strength: 'informational',
+      confidence: 0.9,
+      method: 'modality-classifier',
+      version: NLP_EXTRACTION_VERSION,
+      strengthVersion: STRENGTH_CLASSIFIER_VERSION,
+    };
+  }
   if (
     categories.length === 1 &&
     categories[0] === 'unknown' &&

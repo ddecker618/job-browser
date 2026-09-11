@@ -1,15 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { JobNlpEnrichmentRepository } from '../database/jobNlpEnrichmentRepository.js';
+import { NlpComparisonRepository } from '../database/nlpComparisonRepository.js';
+import { buildNlpComparisonReport } from '../intelligence/nlp/comparison.js';
 import {
   documentHash,
   extractNlpDocument,
-  NLP_DOCUMENT_VERSION,
 } from '../intelligence/nlp/document.js';
 import { projectJobIntelligence } from '../intelligence/nlp/projection.js';
 import { projectRoleFamilySuggestion } from '../intelligence/nlp/roleFamilySuggestion.js';
 import { adaptResumeSnapshotEvidence } from '../intelligence/nlp/snapshotEvidence.js';
 import { projectRequirementCoverage } from '../intelligence/nlp/requirementCoverageProjection.js';
 import { projectSearchProfileIntelligence } from '../intelligence/nlp/searchProfileIntelligence.js';
+import { capabilityEnabled } from '../intelligence/nlp/capabilityFlags.js';
+import { projectNlpStatus } from '../intelligence/nlp/nlpStatus.js';
 import type { NlpWorkerStatus } from '../intelligence/nlp/backgroundWorker.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -138,18 +141,6 @@ const asyncRoute =
     }
   };
 
-const NLP_SEARCH_RELEVANCE_SETTING = 'nlp_search_relevance_enabled';
-
-function nlpSearchRelevanceFlag(repository: DashboardRepository): boolean {
-  const raw = repository.getSetting(NLP_SEARCH_RELEVANCE_SETTING);
-  if (raw === null) return false;
-  try {
-    return JSON.parse(raw) === true;
-  } catch {
-    return false;
-  }
-}
-
 export function createApp(
   database: JobDatabase,
   options: AppOptions = {},
@@ -169,7 +160,7 @@ export function createApp(
   const jobRepository = new JobRepository(database);
   const jobSearchRepository = new JobSearchRepository(database, {
     getScoreVersion: () => getCurrentScoreVersion(),
-    nlpSearchRelevance: () => nlpSearchRelevanceFlag(repository),
+    nlpSearchRelevance: () => capabilityEnabled(database, 'searchTieBreak'),
     searchProfile: () => loadLegacySearchProfile(),
   });
   const applicationService = new ApplicationService(database);
@@ -240,11 +231,9 @@ export function createApp(
     response.json({ status: 'ok' }),
   );
   app.get('/api/intelligence/status', (_request, response) =>
-    response.json({
-      worker: options.nlpBackgroundWorker?.status() ?? null,
-      extractionVersion: NLP_EXTRACTION_VERSION,
-      documentVersion: NLP_DOCUMENT_VERSION,
-    }),
+    response.json(
+      projectNlpStatus(database, options.nlpBackgroundWorker?.status() ?? null),
+    ),
   );
   app.get('/api/dashboard', (_request, response) =>
     response.json(repository.getSummary()),
@@ -294,6 +283,14 @@ export function createApp(
         response.status(404).json({ error: 'Job not found' });
         return;
       }
+      if (!capabilityEnabled(database, 'jobIntelligenceExplanation')) {
+        response.status(409).json({
+          error: 'Job Intelligence explanations are disabled.',
+          code: 'nlp_capability_disabled',
+          details: { capability: 'jobIntelligenceExplanation' },
+        });
+        return;
+      }
       const parts = {
         title: job.title,
         location: job.location,
@@ -340,10 +337,12 @@ export function createApp(
         }
         if (cached === null) store.save(jobId, result);
         const deterministicJob = jobRepository.findJob(jobId);
-        const roleFamily = projectRoleFamilySuggestion(jobId, {
-          title: job.title,
-          profile: loadLegacySearchProfile(),
-        });
+        const roleFamily = capabilityEnabled(database, 'roleFamilySuggestion')
+          ? projectRoleFamilySuggestion(jobId, {
+              title: job.title,
+              profile: loadLegacySearchProfile(),
+            })
+          : null;
         const application = new ApplicationRepository(database).findByJobId(
           jobId,
         );
@@ -367,6 +366,22 @@ export function createApp(
                   ).certifications,
                 },
               );
+        const deterministicSide = {
+          clearanceRequirement:
+            deterministicJob?.clearanceRequirement ??
+            job.clearanceRequirement ??
+            null,
+          remoteType: job.remoteType,
+          location: job.location,
+          estimatedExperienceYears:
+            deterministicJob?.estimatedExperienceYears ?? null,
+        };
+        const comparison = buildNlpComparisonReport(
+          jobId,
+          result,
+          deterministicSide,
+        );
+        new NlpComparisonRepository(database).save(comparison);
         response.json({
           ...projectJobIntelligence(jobId, result, {
             clearanceRequirement:
@@ -378,6 +393,7 @@ export function createApp(
             estimatedExperienceYears:
               deterministicJob?.estimatedExperienceYears ?? null,
           }),
+          comparison,
           roleFamily,
           coverage,
           coverageSource:
@@ -1021,6 +1037,14 @@ export function createApp(
     response.json(settings);
   });
   app.get('/api/search-profile/intelligence', (_request, response) => {
+    if (!capabilityEnabled(database, 'searchProfileFeedback')) {
+      response.status(409).json({
+        error: 'NLP search-profile feedback is disabled.',
+        code: 'nlp_capability_disabled',
+        details: { capability: 'searchProfileFeedback' },
+      });
+      return;
+    }
     response.json(
       projectSearchProfileIntelligence(
         loadLegacySearchProfile(),

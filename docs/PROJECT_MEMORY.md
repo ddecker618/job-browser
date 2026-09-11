@@ -508,3 +508,14 @@ version with bounded invalidation. The Job Intelligence preview renders real
 facts with evidence and always labels interpretations; it never feeds
 production scoring (deterministic scoring is unchanged, `productionEffect:
 'none'`).
+
+## Recovery checkpoint — promotion P18-P23 complete (2026-09-11)
+
+- **D-NLP-067:** The regression corpus is 66 labeled local/synthetic cases. Explicitly negated requirements are informational under modality-classifier-v2; the acceptance gate remains fail-closed with zero permitted critical failures.
+- **D-NLP-068:** Deterministic-vs-NLP comparison is additive and versioned in job_nlp_comparisons. It retains both sides and evidence; structured values remain authoritative.
+- **D-NLP-069:** Consumer controls are four independent local flags, all off by default and read at decision time. Malformed settings fail closed.
+- **D-NLP-070:** Disabled or failed intelligence visibly falls back to deterministic behavior. Current source hash and version joins prevent stale output from being rendered as fresh.
+- **D-NLP-071:** Settings exposes read-only versions, progress, failures, flags, and the exact trust statement “Not used for scoring or eligibility.”
+- **D-NLP-072:** P23 used a consistent backup of the real local database. 500/3,662 jobs completed with 0 failures, 2,079 event-loop ticks, and identical full jobs-table fingerprints before/after. The copy was deleted. Details: docs/NLP_REAL_DATA_VALIDATION.md.
+
+Focused validation passed 17 files / 96 tests; full npm run verify passed 157 files / 1,445 tests. Then resume at P24. The installer remains the stale 2026-09-10 20:07:47 build; do not rebuild it before the explicit P28 release decision.

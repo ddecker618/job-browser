@@ -177,6 +177,11 @@ export class NlpBackgroundWorker {
       this.totals.extracted += result.extracted;
       this.totals.skipped += result.skipped;
       this.totals.failed += result.failed;
+      this.lastFailure =
+        result.failed > 0
+          ? String(result.failed) +
+            ' job intelligence item(s) failed in the last sweep. Deterministic behavior remains active.'
+          : null;
       const capped = result.hasMore && result.processed >= this.maxJobsPerSweep;
       this.cursor = capped ? result.lastJobId : null;
       const summary: NlpSweepSummary = {

@@ -70,10 +70,16 @@ export function SettingsPage() {
     queryKey: ['adoption'],
     queryFn: api.adoption,
   });
+  const nlpStatus = useQuery({
+    queryKey: ['nlp-status'],
+    queryFn: api.nlpStatus,
+  });
   const discovery = useQuery({
     queryKey: ['source-control-center'],
     queryFn: api.sourceControlCenter,
   });
+  const intelligenceStatus =
+    nlpStatus.data?.counts === undefined ? null : nlpStatus.data;
   const client = useQueryClient();
   const form = useForm<AppSettings>();
   useEffect(() => {
@@ -262,6 +268,65 @@ export function SettingsPage() {
               />
             </label>
           </div>
+        </section>
+        <section className="form-panel">
+          <div className="section-heading">
+            <span>06</span>
+            <div>
+              <h3>Job-description intelligence</h3>
+              <p>Read-only local capability and processing status.</p>
+            </div>
+          </div>
+          {intelligenceStatus ? (
+            <div className="profile-summary">
+              <span>
+                <strong>Status:</strong> {intelligenceStatus.state}
+              </span>
+              <span>
+                <strong>Extraction version:</strong>{' '}
+                {intelligenceStatus.extractionVersion}
+              </span>
+              <span>
+                <strong>Last success:</strong>{' '}
+                {displayTimestamp(intelligenceStatus.lastSuccessAt)}
+              </span>
+              <span>
+                <strong>Analyzed:</strong> {intelligenceStatus.counts.analyzed}/
+                {intelligenceStatus.counts.jobs}
+              </span>
+              <span>
+                <strong>Current indexes:</strong>{' '}
+                {intelligenceStatus.counts.currentRelevanceIndexes}
+              </span>
+              <span>
+                <strong>Current comparisons:</strong>{' '}
+                {intelligenceStatus.counts.currentComparisons}
+              </span>
+              <span>
+                <strong>Capabilities:</strong>{' '}
+                {Object.entries(intelligenceStatus.flags)
+                  .filter(([key]) => key !== 'version')
+                  .map(
+                    ([key, enabled]) => key + ': ' + (enabled ? 'on' : 'off'),
+                  )
+                  .join(' · ')}
+              </span>
+              <span>
+                <strong>Trust:</strong> {intelligenceStatus.notice}
+              </span>
+              {intelligenceStatus.lastFailure ? (
+                <span>
+                  <strong>Last failure:</strong>{' '}
+                  {intelligenceStatus.lastFailure}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <p>
+              Intelligence status is unavailable. Deterministic behavior remains
+              active.
+            </p>
+          )}
         </section>
         <div className="sticky-form-actions">
           <span>

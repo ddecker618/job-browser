@@ -27,7 +27,7 @@ describe('NLP shadow-mode acceptance gate (Stage 18)', () => {
     expect(result).toMatchObject({
       acceptanceVersion: NLP_ACCEPTANCE_VERSION,
       passed: true,
-      caseCount: 54,
+      caseCount: 66,
       failures: [],
       thresholds: NLP_ACCEPTANCE_THRESHOLDS,
       evidence: verifiedEvidence,

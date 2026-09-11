@@ -592,6 +592,64 @@ describe('dashboard UI', () => {
     await waitFor(() => expect(calls).toContain('PUT'));
   });
 
+  it('shows read-only NLP versions, progress, flags, and fallback status', async () => {
+    mockFetch((url) => {
+      if (url.endsWith('/api/intelligence/status')) {
+        return {
+          statusVersion: 'nlp-status-v1',
+          worker: null,
+          extractionVersion: 'job-nlp-v1',
+          documentVersion: 'document-v1',
+          relevanceVersion: 'search-relevance-v3',
+          comparisonVersion: 'nlp-comparison-v1',
+          flags: {
+            version: 'nlp-capability-flags-v1',
+            jobIntelligenceExplanation: false,
+            roleFamilySuggestion: false,
+            searchTieBreak: false,
+            searchProfileFeedback: false,
+          },
+          counts: {
+            jobs: 12,
+            analyzed: 10,
+            currentEnrichments: 10,
+            currentRelevanceIndexes: 9,
+            currentComparisons: 8,
+          },
+          lastSuccessAt: '2026-09-11T12:00:00.000Z',
+          lastFailure:
+            'One item failed. Deterministic behavior remains active.',
+          state: 'degraded',
+          notice: 'Not used for scoring or eligibility.',
+        };
+      }
+      if (url.endsWith('/api/adoption'))
+        return { installedAt: null, firstSourceAt: null };
+      return {
+        databaseLocation: 'data/job-browser.sqlite',
+        defaultSearch: '',
+        theme: 'dark',
+        defaultSort: 'score',
+        loggingLevel: 'info',
+        resumeDirectory: 'data/resumes',
+        artifactDirectory: 'artifacts',
+        targetRoles: [],
+      };
+    });
+    renderPage(<SettingsPage />);
+    expect(
+      await screen.findByText('Job-description intelligence'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('job-nlp-v1')).toBeInTheDocument();
+    expect(screen.getByText('10/12')).toBeInTheDocument();
+    expect(
+      screen.getByText('Not used for scoring or eligibility.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Deterministic behavior remains active/),
+    ).toBeInTheDocument();
+  });
+
   it('shows local adoption markers read-only', async () => {
     mockFetch((url) => {
       if (url.endsWith('/api/adoption')) {

@@ -34,12 +34,12 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P14-P17 complete
-CURRENT_TASK:        create the P14-P17 checkpoint commit
-LAST_COMPLETED:      P14-P17; npm run verify 154 files / 1436 tests PASS
-NEXT_ACTION:         commit this verified group, then P18 regression corpus expansion
-FILES_IN_PROGRESS:   none after the verified P14-P17 group
-TESTS_TO_RUN:        P18 focused corpus/acceptance tests, then the next grouped gate
+CURRENT_STAGE:       P18-P23 complete
+CURRENT_TASK:        create the verified P18-P23 checkpoint commit
+LAST_COMPLETED:      P18-P23 complete; npm run verify 157 files / 1445 tests PASS; real-copy validation PASS
+NEXT_ACTION:         commit this verified group, then P24 privacy/security/source-smoke gates
+FILES_IN_PROGRESS:   none after the verified P18-P23 group
+TESTS_TO_RUN:        P24 privacy check, NLP security audit, acceptance, and source smoke
 KNOWN_FAILURES:      none; installer last built 2026-09-10 20:07:47 and is stale
 LATEST_CHECKPOINT:   ba674cb P14-P17 verified implementation group (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P18; do not restart the completed P0-P17 stages
+SAFE_RESUME_POINT:   P24; do not restart the completed P0-P23 stages
 ```
 
 ---
@@ -1201,68 +1201,68 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P18 — Regression Corpus Expansion
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** expand the synthetic/local labelled corpus (coverage, paraphrase,
   adversarial) so every promoted capability has both true-positive and false-positive
   boundaries; acceptance gate must fail closed on any critical failure before a
   promotion is recorded.
-- **Current task:** not started.
+- **Current task:** Complete. The labeled set now has 66 cases (54 base plus 12 representative), including promoted-surface coverage, paraphrases, technical-remote false positives, employer-tool mentions, and negated clearance/degree requirements. Modality classifier v2 classifies explicit negation as informational. The fail-closed acceptance gate passes with zero critical failures.
 - **Exact next action:** P19 - production-vs-shadow comparison.
 
 ---
 
 ## P19 — Production-vs-Shadow Comparison
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** persisted added-comparison of deterministic interpretation vs NLP
   interpretation per job in the shadow store; report agreement/conflict rates per
   capability on the local corpus; conflicts are surfaced in UI, never silently
   resolved.
-- **Current task:** not started.
+- **Current task:** Complete. Migration 034 adds one versioned comparison row per job with change-only invalidation. The worker and explicit Job Intelligence action persist deterministic and NLP sides, evidence, and agreement/conflict/one-sided states. The UI shows persisted agreement/conflict counts while structured values remain authoritative.
 - **Exact next action:** P20 - feature flags.
 
 ---
 
 ## P20 — Feature Flags (Rollback)
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** per-capability local flags (off by default) with per-feature rollback;
   disabling a flag restores prior behaviour exactly (regression test per feature);
   flags are read at decision time, cached safely, and surfaced read-only in Settings.
-- **Current task:** not started.
+- **Current task:** Complete. Four independent local flags are read at each decision boundary and default off: Job Intelligence explanation, role-family suggestion, search tie-break, and search-profile feedback. Tests cover fail-closed parsing and rollback for every consumer.
 - **Exact next action:** P21 - failure fallback behaviour.
 
 ---
 
 ## P21 — Failure Fallback Behaviour
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** when extraction/worker/index fails or is disabled, production
   surfaces degrade to the deterministic baseline silently but visibly (a status
   indicator), and no stale enrichment is ever rendered as fresh.
-- **Current task:** not started.
+- **Current task:** Complete. Disabled capabilities and worker item failures visibly report that deterministic behavior remains active. Search ignores missing, stale, invalid, or disabled NLP data. Source changes invalidate derived rows, so stale enrichment is never rendered as current.
 - **Exact next action:** P22 - user-visible NLP status.
 
 ---
 
 ## P22 — User-Visible NLP Status
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** read-only NLP status in Settings: extraction version, analysed
   counts, last success/failure, flags, and "Not used for scoring/eligibility" wording
   that matches the trust level of what is actually on.
-- **Current task:** not started.
+- **Current task:** Complete. Settings shows the extraction version, last successful sweep, current enrichment/index/comparison counts, per-capability flags, last failure, and the exact trust notice “Not used for scoring or eligibility.” The projection is read-only.
 - **Exact next action:** P23 - real-data validation session.
 
 ---
 
 ## P23 — Real-Data Validation
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** validation run against the user's real local database copy: run the
   worker, compare deterministic vs NLP interpretation, verify no score/eligibility
   drift (P19 harness), measure responsiveness (P0 harness), and record outcomes.
-- **Current task:** not started.
+- **Current task:** Complete. A consistent backup of the real local database was processed and deleted after validation. 500/3,662 jobs produced 500 enrichment/index/comparison rows with 0 failures in 4,575.04 ms and 2,079 event-loop ticks. The complete jobs-table fingerprint was identical before/after. See docs/NLP_REAL_DATA_VALIDATION.md.
 - **Exact next action:** P24 - full verification gate.
 
 ---

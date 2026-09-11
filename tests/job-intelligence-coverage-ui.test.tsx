@@ -6,6 +6,7 @@ import { JobIntelligencePreview } from '../src/client/components/JobIntelligence
 import { api } from '../src/client/api.js';
 import { extractNlpDocument } from '../src/intelligence/nlp/document.js';
 import { projectJobIntelligence } from '../src/intelligence/nlp/projection.js';
+import { buildNlpComparisonReport } from '../src/intelligence/nlp/comparison.js';
 import { projectRequirementCoverage } from '../src/intelligence/nlp/requirementCoverageProjection.js';
 import { adaptResumeSnapshotEvidence } from '../src/intelligence/nlp/snapshotEvidence.js';
 import { projectRoleFamilySuggestion } from '../src/intelligence/nlp/roleFamilySuggestion.js';
@@ -43,17 +44,19 @@ describe('P11 Job Intelligence coverage UI', () => {
         certifications: [],
       }),
     );
+    const deterministic = {
+      clearanceRequirement: null,
+      remoteType: 'unknown',
+      location: null,
+      estimatedExperienceYears: null,
+    };
     vi.spyOn(api, 'analyzeJobIntelligence').mockResolvedValue({
-      ...projectJobIntelligence('job-1', enrichment, {
-        clearanceRequirement: null,
-        remoteType: 'unknown',
-        location: null,
-        estimatedExperienceYears: null,
-      }),
+      ...projectJobIntelligence('job-1', enrichment, deterministic),
       roleFamily: projectRoleFamilySuggestion('job-1', {
         title: 'Analyst',
         profile: DEFAULT_SEARCH_PROFILE,
       }),
+      comparison: buildNlpComparisonReport('job-1', enrichment, deterministic),
       coverage,
       coverageSource: {
         snapshotId: 's1',

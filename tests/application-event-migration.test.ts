@@ -164,6 +164,7 @@ describe('application event foundation migration', () => {
       '031_nlp_enrichments.sql',
       '032_job_nlp_relevance.sql',
       '033_nlp_cache_invalidation.sql',
+      '034_nlp_comparisons.sql',
     ]);
 
     expect(applicationIds(database)).toEqual([

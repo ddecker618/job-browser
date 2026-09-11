@@ -158,6 +158,10 @@ function json(method: string, body: unknown): RequestInit {
 }
 
 export const api = {
+  nlpStatus: () =>
+    request<import('../intelligence/nlp/nlpStatus.js').NlpStatusProjection>(
+      '/api/intelligence/status',
+    ),
   dashboard: () => request<DashboardSummary>('/api/dashboard'),
   jobs: () => request<JobListItem[]>('/api/jobs'),
   searchJobs: (query: Partial<JobSearchQuery> = {}, signal?: AbortSignal) =>
@@ -168,7 +172,10 @@ export const api = {
   analyzeJobIntelligence: (id: string) =>
     request<
       import('../intelligence/nlp/projection.js').JobIntelligenceProjection & {
-        roleFamily: import('../intelligence/nlp/roleFamilySuggestion.js').RoleFamilySuggestion;
+        comparison: import('../intelligence/nlp/comparison.js').NlpComparisonReport;
+        roleFamily:
+          | import('../intelligence/nlp/roleFamilySuggestion.js').RoleFamilySuggestion
+          | null;
         coverage:
           | import('../intelligence/nlp/requirementCoverage.js').RequirementCoverageProjection
           | null;

@@ -45,6 +45,21 @@ export function JobIntelligencePreview({
                 } noted.`
               : ''}
           </p>
+          <p>
+            Persisted shadow comparison:{' '}
+            {
+              projection.comparison.capabilities.filter(
+                (item) => item.state === 'agreement',
+              ).length
+            }{' '}
+            agreement,{' '}
+            {
+              projection.comparison.capabilities.filter(
+                (item) => item.state === 'conflict',
+              ).length
+            }{' '}
+            conflict. Structured values remain authoritative.
+          </p>
           {projection.coverage === null ? (
             <p>
               No captured resume snapshot is available for diagnostic coverage.

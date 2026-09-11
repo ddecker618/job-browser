@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JobIntelligencePreview } from '../src/client/components/JobIntelligencePreview.js';
 import { api } from '../src/client/api.js';
 import { projectJobIntelligence } from '../src/intelligence/nlp/projection.js';
+import { buildNlpComparisonReport } from '../src/intelligence/nlp/comparison.js';
 import { projectRoleFamilySuggestion } from '../src/intelligence/nlp/roleFamilySuggestion.js';
 import { DEFAULT_SEARCH_PROFILE } from '../src/config/search-profile.js';
 import { extractNlpDocument } from '../src/intelligence/nlp/document.js';
@@ -32,13 +33,15 @@ describe('connected Job Intelligence preview', () => {
       requirements: null,
       preferredQualifications: null,
     });
+    const deterministic = {
+      clearanceRequirement: null,
+      remoteType: 'unknown',
+      location: null,
+      estimatedExperienceYears: null,
+    };
     const call = vi.spyOn(api, 'analyzeJobIntelligence').mockResolvedValue({
-      ...projectJobIntelligence('job-1', result, {
-        clearanceRequirement: null,
-        remoteType: 'unknown',
-        location: null,
-        estimatedExperienceYears: null,
-      }),
+      ...projectJobIntelligence('job-1', result, deterministic),
+      comparison: buildNlpComparisonReport('job-1', result, deterministic),
       coverage: null,
       coverageSource: null,
       roleFamily: projectRoleFamilySuggestion('job-1', {

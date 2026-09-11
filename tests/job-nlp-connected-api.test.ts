@@ -23,6 +23,19 @@ async function setup() {
   databases.push(db);
   runMigrations(db);
   db.prepare(
+    'INSERT INTO app_settings (setting_key,setting_value_json,updated_at) VALUES (?,?,?)',
+  ).run(
+    'nlp_capability_flags',
+    JSON.stringify({
+      version: 'nlp-capability-flags-v1',
+      jobIntelligenceExplanation: true,
+      roleFamilySuggestion: true,
+      searchTieBreak: false,
+      searchProfileFeedback: false,
+    }),
+    '2026-09-11',
+  );
+  db.prepare(
     "INSERT INTO jobs (id,title,normalized_title,company,normalized_company,description,remote_type,employment_type,source_name,source_type,first_seen_at,last_seen_at,active,seniority_level,status,created_at,updated_at,score,score_explanation) VALUES ('nlp-test','Analyst','analyst','Fixture','fixture','Linux required.','unknown','unknown','Fixture','fixture','2026-01-01','2026-01-01',1,'unknown','new','2026-01-01','2026-01-01',42,'fixture score')",
   ).run();
   const dir = mkdtempSync(join(tmpdir(), 'nlp-connected-'));
@@ -50,6 +63,15 @@ describe('connected shadow NLP API', () => {
       sourceTextHash: string;
       generatedAt: string;
       summary: { factCount: number };
+      comparison: {
+        comparisonVersion: string;
+        capabilities: { state: string }[];
+        authority: {
+          score: 'unchanged';
+          eligibility: 'unchanged';
+          ranking: 'unchanged';
+        };
+      };
       roleFamily: {
         suggestionVersion: string;
         state: string;
@@ -58,6 +80,9 @@ describe('connected shadow NLP API', () => {
       };
     };
     expect(first.summary.factCount).toBeGreaterThan(0);
+    expect(first.comparison.comparisonVersion).toBe('nlp-comparison-v1');
+    expect(first.comparison.capabilities).toHaveLength(3);
+    expect(first.comparison.authority.score).toBe('unchanged');
     expect(first.roleFamily.suggestionVersion).toBe(
       'role-family-suggestion-v1',
     );
@@ -81,7 +106,68 @@ describe('connected shadow NLP API', () => {
     expect(
       db.prepare('SELECT COUNT(*) AS count FROM job_nlp_enrichments').get(),
     ).toEqual({ count: 1 });
+    expect(
+      db.prepare('SELECT COUNT(*) AS count FROM job_nlp_comparisons').get(),
+    ).toEqual({ count: 1 });
   });
+  it('falls back visibly when the explanation capability is disabled', async () => {
+    const { db, url } = await setup();
+    db.prepare(
+      'UPDATE app_settings SET setting_value_json=? WHERE setting_key=?',
+    ).run(
+      JSON.stringify({
+        version: 'nlp-capability-flags-v1',
+        jobIntelligenceExplanation: false,
+        roleFamilySuggestion: false,
+        searchTieBreak: false,
+        searchProfileFeedback: false,
+      }),
+      'nlp_capability_flags',
+    );
+    const before = db.prepare('SELECT * FROM jobs').all();
+    const response = await fetch(url + '/api/jobs/nlp-test/intelligence', {
+      method: 'POST',
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: 'nlp_capability_disabled',
+    });
+    expect(db.prepare('SELECT * FROM jobs').all()).toEqual(before);
+    expect(
+      db.prepare('SELECT COUNT(*) AS count FROM job_nlp_enrichments').get(),
+    ).toEqual({ count: 0 });
+  });
+
+  it('rolls back role suggestions and search-profile feedback independently', async () => {
+    const { db, url } = await setup();
+    db.prepare(
+      'UPDATE app_settings SET setting_value_json=? WHERE setting_key=?',
+    ).run(
+      JSON.stringify({
+        version: 'nlp-capability-flags-v1',
+        jobIntelligenceExplanation: true,
+        roleFamilySuggestion: false,
+        searchTieBreak: false,
+        searchProfileFeedback: false,
+      }),
+      'nlp_capability_flags',
+    );
+    const analysis = await fetch(url + '/api/jobs/nlp-test/intelligence', {
+      method: 'POST',
+    });
+    expect(analysis.status).toBe(200);
+    expect((await analysis.json()) as { roleFamily: unknown }).toMatchObject({
+      roleFamily: null,
+    });
+    const profileFeedback = await fetch(
+      url + '/api/search-profile/intelligence',
+    );
+    expect(profileFeedback.status).toBe(409);
+    expect(await profileFeedback.json()).toMatchObject({
+      code: 'nlp_capability_disabled',
+    });
+  });
+
   it('returns missing and oversized errors without persisting', async () => {
     const { db, url } = await setup();
     expect(

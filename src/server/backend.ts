@@ -47,6 +47,8 @@ import { extractNlpDocument } from '../intelligence/nlp/document.js';
 import { withSearchRelevanceIndex } from '../intelligence/nlp/searchRelevance.js';
 import { JobNlpEnrichmentRepository } from '../database/jobNlpEnrichmentRepository.js';
 import { NlpRelevanceRepository } from '../database/nlpRelevanceRepository.js';
+import { NlpComparisonRepository } from '../database/nlpComparisonRepository.js';
+import { withNlpComparisonPersistence } from '../intelligence/nlp/comparison.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { IntelligenceEngine } from '../intelligence/intelligenceEngine.js';
 import { loadCandidateProfile } from '../config/candidate-profile.js';
@@ -297,9 +299,10 @@ export async function startBackend(
     );
     const nlpEnrichmentStore = new JobNlpEnrichmentRepository(activeDatabase);
     const nlpRelevanceStore = new NlpRelevanceRepository(activeDatabase);
-    const nlpPersistenceTarget = withSearchRelevanceIndex(
-      nlpEnrichmentStore,
-      nlpRelevanceStore,
+    const nlpPersistenceTarget = withNlpComparisonPersistence(
+      activeDatabase,
+      withSearchRelevanceIndex(nlpEnrichmentStore, nlpRelevanceStore),
+      new NlpComparisonRepository(activeDatabase),
     );
     const nlpBackgroundWorker = new NlpBackgroundWorker(
       {

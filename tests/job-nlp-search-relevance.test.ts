@@ -395,7 +395,9 @@ describe('API gating for NLP search relevance (P6)', () => {
     database
       .prepare(
         `INSERT INTO app_settings (setting_key, setting_value_json, updated_at)
-         VALUES ('nlp_search_relevance_enabled', 'true', '2026-09-11T00:00:00.000Z')`,
+         VALUES ('nlp_capability_flags',
+           '{"version":"nlp-capability-flags-v1","jobIntelligenceExplanation":false,"roleFamilySuggestion":false,"searchTieBreak":true,"searchProfileFeedback":false}',
+           '2026-09-11T00:00:00.000Z')`,
       )
       .run();
 

@@ -25,6 +25,19 @@ describe('P11 connected coverage API', () => {
     databases.push(db);
     runMigrations(db);
     db.prepare(
+      'INSERT INTO app_settings (setting_key,setting_value_json,updated_at) VALUES (?,?,?)',
+    ).run(
+      'nlp_capability_flags',
+      JSON.stringify({
+        version: 'nlp-capability-flags-v1',
+        jobIntelligenceExplanation: true,
+        roleFamilySuggestion: false,
+        searchTieBreak: false,
+        searchProfileFeedback: false,
+      }),
+      '2026-09-11',
+    );
+    db.prepare(
       "INSERT INTO jobs (id,title,normalized_title,company,normalized_company,description,remote_type,employment_type,source_name,source_type,first_seen_at,last_seen_at,active,seniority_level,status,created_at,updated_at,score,score_explanation) VALUES ('coverage-job','Analyst','analyst','Fixture','fixture','Linux required.','unknown','unknown','Fixture','fixture','2026-01-01','2026-01-01',1,'unknown','applied','2026-01-01','2026-01-01',42,'fixture score')",
     ).run();
     new ResumeSnapshotRepository(db).insertSnapshot({

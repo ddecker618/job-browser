@@ -41,7 +41,7 @@ describe('NLP shadow regression (Stage 28)', () => {
       return classification;
     });
     expect(classifications.length).toBeGreaterThan(0);
-    expect(evaluateSyntheticNlpCorpus().caseCount).toBe(54);
+    expect(evaluateSyntheticNlpCorpus().caseCount).toBe(66);
 
     const concepts = skillConcepts();
     const python =
