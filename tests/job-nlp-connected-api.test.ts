@@ -50,8 +50,25 @@ describe('connected shadow NLP API', () => {
       sourceTextHash: string;
       generatedAt: string;
       summary: { factCount: number };
+      roleFamily: {
+        suggestionVersion: string;
+        state: string;
+        suggestedFamilyKey: string | null;
+        authority: { gate: 'never' };
+      };
     };
     expect(first.summary.factCount).toBeGreaterThan(0);
+    expect(first.roleFamily.suggestionVersion).toBe(
+      'role-family-suggestion-v1',
+    );
+    expect(first.roleFamily.authority.gate).toBe('never');
+    expect([
+      'agreement',
+      'deterministic-only',
+      'nlp-only',
+      'conflict',
+      'unknown',
+    ]).toContain(first.roleFamily.state);
     expect(db.prepare('SELECT * FROM jobs').all()).toEqual(before);
     const second = (await (await analyze()).json()) as typeof first;
     expect(second).toEqual(first);

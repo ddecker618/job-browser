@@ -6,6 +6,7 @@ import {
   NLP_DOCUMENT_VERSION,
 } from '../intelligence/nlp/document.js';
 import { projectJobIntelligence } from '../intelligence/nlp/projection.js';
+import { projectRoleFamilySuggestion } from '../intelligence/nlp/roleFamilySuggestion.js';
 import type { NlpWorkerStatus } from '../intelligence/nlp/backgroundWorker.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -322,8 +323,12 @@ export function createApp(
         }
         if (cached === null) store.save(jobId, result);
         const deterministicJob = jobRepository.findJob(jobId);
-        response.json(
-          projectJobIntelligence(jobId, result, {
+        const roleFamily = projectRoleFamilySuggestion(jobId, {
+          title: job.title,
+          profile: loadLegacySearchProfile(),
+        });
+        response.json({
+          ...projectJobIntelligence(jobId, result, {
             clearanceRequirement:
               deterministicJob?.clearanceRequirement ??
               job.clearanceRequirement ??
@@ -333,7 +338,8 @@ export function createApp(
             estimatedExperienceYears:
               deterministicJob?.estimatedExperienceYears ?? null,
           }),
-        );
+          roleFamily,
+        });
       } catch (error) {
         if (controller.signal.aborted) return;
         if (error instanceof RangeError) {

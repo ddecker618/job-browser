@@ -1020,12 +1020,38 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P7 — Canonical Role Families
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** promote role family matching to a production-facing suggestion only
   where reconciled against the deterministic catalog (agreement states), with
   abstain/conflict behaviour unchanged and full test coverage of the reconciliation
   boundary. Never a hard gate.
-- **Current task:** not started.
+- **Implementation tasks:** reconcile the shadow role matcher with the deterministic
+  catalog; promote only agreement; keep abstain/conflict unchanged; expose read-time
+  projection + evidence; test the boundary exhaustively.
+- **Done:** `src/intelligence/nlp/roleFamilySuggestion.ts`
+  (`ROLE_FAMILY_SUGGESTION_VERSION = 'role-family-suggestion-v1'`) projects the shadow
+  match into a read-time `RoleFamilySuggestion`. Only `agreement` promotes an NLP
+  suggestion (`suggestedSource: 'nlp-reconciled'`, reason "agrees with the structured
+  job title record", with matched title/similarity/margin/tokens/decision evidence).
+  `conflict`/`nlp-only`/`unknown` never surface an NLP claim (reason explains why);
+  `deterministic-only` surfaces the structured family labeled `source:
+'deterministic'` (no NLP claim). `nlpAbstained` flags an abstained shadow. The
+  projection is deterministic (no clock), never persists, and carries an
+  `authority` block (`gate: 'never'`, score/ranking/eligibility/lifecycle
+  `'deterministic-unaffected'`). Wired into `POST /api/jobs/:id/intelligence` using
+  the app's stored `searchProfile` (`loadLegacySearchProfile`); `client/api.ts`
+  returns `JobIntelligenceProjection & { roleFamily }`.
+- **Tests:** `tests/job-nlp-role-family-suggestion.test.ts` (7) covers non-empty
+  jobId, agreement promotion + authority, determinism, conflict never-surfaces,
+  nlp-only never-surfaces, abstain-keeps-deterministic (marked deterministic),
+  deterministic-only, unknown empty; `job-nlp-connected-api.test.ts` asserts the
+  wired response (version, `authority.gate = 'never'`, valid state set);
+  `job-intelligence-ui.test.tsx` mock updated for the expanded response type.
+- **Validation evidence:** `npm run verify` = 144 files / 1407 tests green.
+- **Known limitations:** no search/UI consumption yet (P8 suggestion surface, P14
+  explainability); shadow matcher remains a token-overlap fallback (no shared
+  vocabulary beyond the configured family titles).
+- **Current task:** complete.
 - **Exact next action:** P8 - case/role-based search integration.
 
 ---
@@ -1300,6 +1326,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 | 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green                      |
 | 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21`   |
 | 2026-09-11 | P6 relevance index       | derive + repo + composite worker target + search tie-break (flag off); verify 143/1399 |
+| 2026-09-11 | P7 role family suggest   | reconciled suggestion projection + intelligence endpoint; verify 144/1407              |
 
 ## NLP integration repair — verified
 

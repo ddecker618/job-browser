@@ -167,7 +167,9 @@ export const api = {
     ),
   analyzeJobIntelligence: (id: string) =>
     request<
-      import('../intelligence/nlp/projection.js').JobIntelligenceProjection
+      import('../intelligence/nlp/projection.js').JobIntelligenceProjection & {
+        roleFamily: import('../intelligence/nlp/roleFamilySuggestion.js').RoleFamilySuggestion;
+      }
     >('/api/jobs/' + encodeURIComponent(id) + '/intelligence', {
       method: 'POST',
     }),
