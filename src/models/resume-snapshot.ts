@@ -12,6 +12,18 @@ export interface ResumeSnapshotCertification {
   certificationId: string | null;
 }
 
+export interface ResumeSnapshotEvidenceSource {
+  snapshotId: string;
+  interpretationId: string;
+  schemaVersion: number;
+  parserVersion: string;
+  normalizationVersion: string;
+  parsingStatus: ResumeSnapshotParsingStatus;
+  normalizedText: string | null;
+  skills: ResumeSnapshotSkill[];
+  certifications: ResumeSnapshotCertification[];
+}
+
 export interface ResumeSnapshotInterpretation {
   id: string;
   snapshotId: string;

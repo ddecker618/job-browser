@@ -5,18 +5,13 @@ import {
   normalizeSkillPhrase,
 } from './skillNormalization.js';
 
-// ---------------------------------------------------------------------------
-// Stage 22 - resume evidence matching shadow mode.
-//
-// This module compares a requirement with caller-supplied parsed snapshot
-// evidence. It does not parse, edit, save, or assert possession of resume data,
-// and it has no production score or eligibility operation.
-// ---------------------------------------------------------------------------
-
-export const RESUME_EVIDENCE_MATCHING_VERSION = 'resume-evidence-v1';
-
-export type ResumeEvidenceKind = 'skill' | 'certification';
-
+export const RESUME_EVIDENCE_MATCHING_VERSION = 'resume-evidence-v2';
+export type ResumeEvidenceKind =
+  | 'skill'
+  | 'certification'
+  | 'experience'
+  | 'education'
+  | 'clearance';
 export type ResumeEvidenceStatus =
   | 'DIRECT_MATCH'
   | 'STRONG_RELATED_EVIDENCE'
@@ -29,8 +24,9 @@ export interface ResumeEvidenceRequirement {
   phrase: string;
   kind: ResumeEvidenceKind;
   targetConcept: SkillConcept | null;
+  targetValue?: string | null;
+  minimumYears?: number | null;
 }
-
 export interface ResumeEvidenceItem {
   evidenceId: string;
   kind: ResumeEvidenceKind;
@@ -38,8 +34,9 @@ export interface ResumeEvidenceItem {
   provenance: string;
   parserVersion: string;
   normalizationVersion: string;
+  normalizedValue?: string | null;
+  years?: number | null;
 }
-
 export interface ResumeEvidenceMatch {
   evidenceId: string;
   kind: ResumeEvidenceKind;
@@ -52,7 +49,6 @@ export interface ResumeEvidenceMatch {
   normalizationVersion: string | null;
   explanation: string;
 }
-
 export interface ResumeEvidenceRequirementResult {
   requirementId: string;
   phrase: string;
@@ -66,7 +62,6 @@ export interface ResumeEvidenceRequirementResult {
   version: typeof RESUME_EVIDENCE_MATCHING_VERSION;
   explanation: string;
 }
-
 export interface ResumeEvidenceMatchingInput {
   requirements: readonly ResumeEvidenceRequirement[];
   evidence: readonly ResumeEvidenceItem[];
@@ -103,76 +98,147 @@ function matchEvidenceItem(
   item: ResumeEvidenceItem,
   catalog: readonly SkillCatalogEntry[],
 ): ResumeEvidenceMatch {
-  if (item.kind !== requirement.kind) {
-    return {
-      evidenceId: item.evidenceId,
-      kind: item.kind,
-      rawLabel: item.rawLabel,
-      provenance: item.provenance,
-      parserVersion: item.parserVersion,
-      sourceNormalizationVersion: item.normalizationVersion,
-      relationship: null,
-      score: null,
-      normalizationVersion: null,
-      explanation: 'Evidence kind does not match this requirement kind.',
-    };
-  }
-
-  const normalization = normalizeSkillPhrase(
-    item.rawLabel,
-    requirement.targetConcept,
-    catalog,
-  );
-  return {
+  const base = {
     evidenceId: item.evidenceId,
     kind: item.kind,
     rawLabel: item.rawLabel,
     provenance: item.provenance,
     parserVersion: item.parserVersion,
     sourceNormalizationVersion: item.normalizationVersion,
-    relationship: normalization.relationship,
-    score: normalization.score,
-    normalizationVersion: normalization.version,
-    explanation: normalization.explanation,
+  };
+  if (item.kind !== requirement.kind)
+    return {
+      ...base,
+      relationship: null,
+      score: null,
+      normalizationVersion: null,
+      explanation: 'Evidence kind does not match this requirement kind.',
+    };
+  if (requirement.kind === 'skill' || requirement.kind === 'certification') {
+    const n = normalizeSkillPhrase(
+      item.rawLabel,
+      requirement.targetConcept,
+      catalog,
+    );
+    return {
+      ...base,
+      relationship: n.relationship,
+      score: n.score,
+      normalizationVersion: n.version,
+      explanation: n.explanation,
+    };
+  }
+  if (requirement.kind === 'experience') {
+    if (requirement.minimumYears == null || item.years == null)
+      return unknown(base, 'Structured years were not parsed on both sides.');
+    const direct = item.years >= requirement.minimumYears;
+    return {
+      ...base,
+      relationship: direct ? 'EXACT' : 'UNRELATED',
+      score: direct ? 1 : 0.1,
+      normalizationVersion: item.normalizationVersion,
+      explanation: direct
+        ? 'Snapshot evidence meets the stated year threshold; this does not assert possession.'
+        : 'Snapshot evidence does not meet the stated year threshold; this does not assert possession.',
+    };
+  }
+  const target = normal(requirement.targetValue);
+  const value = normal(item.normalizedValue);
+  if (target === null || value === null)
+    return unknown(
+      base,
+      'A reviewed structured value was not parsed on both sides.',
+    );
+  const direct = target === value;
+  return {
+    ...base,
+    relationship: direct ? 'EXACT' : 'UNRELATED',
+    score: direct ? 1 : 0.1,
+    normalizationVersion: item.normalizationVersion,
+    explanation: direct
+      ? 'Snapshot evidence directly matches the reviewed requirement value; this does not assert possession.'
+      : 'Snapshot evidence is different from the reviewed requirement value; this does not assert possession.',
   };
 }
-
+function unknown(
+  base: Omit<
+    ResumeEvidenceMatch,
+    'relationship' | 'score' | 'normalizationVersion' | 'explanation'
+  >,
+  explanation: string,
+): ResumeEvidenceMatch {
+  return {
+    ...base,
+    relationship: 'UNKNOWN',
+    score: 0,
+    normalizationVersion: null,
+    explanation,
+  };
+}
 function statusFor(
   requirement: ResumeEvidenceRequirement,
   evidence: readonly ResumeEvidenceMatch[],
 ): ResumeEvidenceStatus {
-  if (requirement.targetConcept === null) return 'UNKNOWN';
-  const sameKind = evidence.filter((item) => item.kind === requirement.kind);
-  if (sameKind.some((item) => isDirect(item.relationship))) {
+  if (!hasTarget(requirement)) return 'UNKNOWN';
+  const same = evidence.filter((item) => item.kind === requirement.kind);
+  if (
+    same.some(
+      (item) =>
+        item.relationship === 'EXACT' ||
+        item.relationship === 'CANONICAL_ALIAS',
+    )
+  )
     return 'DIRECT_MATCH';
-  }
-  if (sameKind.some((item) => item.relationship === 'STRONG_RELATED')) {
+  if (same.some((item) => item.relationship === 'STRONG_RELATED'))
     return 'STRONG_RELATED_EVIDENCE';
-  }
-  if (sameKind.some((item) => item.relationship === 'WEAK_RELATED')) {
+  if (same.some((item) => item.relationship === 'WEAK_RELATED'))
     return 'WEAK_RELATED_EVIDENCE';
-  }
-  if (sameKind.some((item) => item.relationship === 'UNKNOWN')) {
-    return 'UNKNOWN';
-  }
+  if (same.length === 0)
+    return requirement.kind === 'skill' || requirement.kind === 'certification'
+      ? 'NO_EVIDENCE'
+      : 'UNKNOWN';
+  if (same.some((item) => item.relationship === 'UNKNOWN')) return 'UNKNOWN';
   return 'NO_EVIDENCE';
 }
-
-function isDirect(relationship: SkillRelationship | null): boolean {
-  return relationship === 'EXACT' || relationship === 'CANONICAL_ALIAS';
+function hasTarget(r: ResumeEvidenceRequirement): boolean {
+  if (r.kind === 'skill' || r.kind === 'certification')
+    return r.targetConcept !== null;
+  if (r.kind === 'experience') return r.minimumYears != null;
+  return normal(r.targetValue) !== null;
 }
-
+function normal(value: string | null | undefined): string | null {
+  const n = value
+    ?.trim()
+    .toLocaleLowerCase('en-US')
+    .replace(/[^a-z0-9/+ -]+/g, ' ')
+    .replace(/\s+/g, ' ');
+  if (n === undefined || n.length === 0) return null;
+  return n;
+}
 function explanationFor(status: ResumeEvidenceStatus): string {
+  const suffix =
+    ' This is evidence of a match only and never a claim that the applicant possesses it.';
   switch (status) {
     case 'DIRECT_MATCH':
-      return 'Parsed snapshot evidence directly matches the requirement concept; this is evidence only, not a possession claim.';
+      return (
+        'Parsed snapshot evidence directly matches the requirement.' + suffix
+      );
     case 'STRONG_RELATED_EVIDENCE':
-      return 'Parsed snapshot evidence is strongly related under the reviewed table; equivalence and possession are not claimed.';
+      return (
+        'Parsed snapshot evidence is strongly related under the reviewed table; equivalence is not claimed.' +
+        suffix
+      );
     case 'WEAK_RELATED_EVIDENCE':
-      return 'Parsed snapshot evidence is weakly related under the reviewed table; equivalence and possession are not claimed.';
+      return (
+        'Parsed snapshot evidence is weakly related under the reviewed table; equivalence is not claimed.' +
+        suffix
+      );
     case 'NO_EVIDENCE':
-      return 'No matching parsed snapshot evidence was supplied.';
+      return (
+        'Parsed snapshot evidence was supplied but did not match the requirement.' +
+        suffix
+      );
     case 'UNKNOWN':
-      return 'Evidence or requirement normalization is unknown; no possession claim is made.';
+      return 'The snapshot or requirement lacks a reviewed structured value, so the matcher abstained; no possession claim is made.';
   }
 }

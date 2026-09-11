@@ -1,3 +1,11 @@
+## Recovery checkpoint — P10 complete
+
+P10 is complete and verified (147 files / 1422 tests). Snapshot evidence adapters now cover skills, certifications, experience, education, and clearance with parser provenance. Unparsed structural data produces UNKNOWN; normalized resume text remains internal and public snapshot responses do not expose it. Next: P11 diagnostic requirement coverage in Job Intelligence. No installer, production data, or remote push was touched.
+
+## Active recovery checkpoint — P10 in progress
+
+P9 committed as e21e898. P10 adds internal snapshot evidence retrieval and typed skill, certification, experience, education, and clearance adapters. Null or unparsed structured values must produce UNKNOWN, and every result remains evidence-only with parser provenance. No installer or production-data changes.
+
 ## Recovery checkpoint — P9 complete
 
 P9 is complete and verified: reviewed canonical skills now drive relevance and skill coverage, source phrases remain unchanged, unknown terms abstain, and stale relevance indexes rebuild. Full verification passed 146 files / 1419 tests. Next: P10 resume evidence adapters for experience, education, and clearance. No installer, production data, or remote push was touched.

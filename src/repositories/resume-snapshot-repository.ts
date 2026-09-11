@@ -5,6 +5,7 @@ import type {
   ResumeSnapshotCertification,
   ResumeSnapshotDetail,
   ResumeSnapshotInsertInput,
+  ResumeSnapshotEvidenceSource,
   ResumeSnapshotInterpretation,
   ResumeSnapshotSkill,
 } from '../models/resume-snapshot.js';
@@ -113,6 +114,42 @@ export class ResumeSnapshotRepository {
       contentHash: row.content_hash,
       sizeBytes: row.size_bytes,
     }));
+  }
+
+  public findEvidenceSource(
+    snapshotId: string,
+  ): ResumeSnapshotEvidenceSource | null {
+    const row = this.database
+      .prepare<
+        [string],
+        ResumeSnapshotInterpretationRow
+      >(`SELECT * FROM resume_snapshot_interpretations WHERE snapshot_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`)
+      .get(snapshotId);
+    if (row === undefined) return null;
+    let normalizedText: string | null = null;
+    try {
+      const payload = JSON.parse(row.normalized_payload_json) as Record<
+        string,
+        unknown
+      >;
+      if (typeof payload['normalizedText'] === 'string')
+        normalizedText = payload['normalizedText'];
+    } catch {
+      normalizedText = null;
+    }
+    const interpretation = this.interpretation(snapshotId);
+    if (interpretation === null) return null;
+    return {
+      snapshotId,
+      interpretationId: row.id,
+      schemaVersion: row.schema_version,
+      parserVersion: row.parser_version,
+      normalizationVersion: row.normalization_version,
+      parsingStatus: parsingStatus(row.parsing_status),
+      normalizedText,
+      skills: interpretation.skills,
+      certifications: interpretation.certifications,
+    };
   }
 
   public insertSnapshot(input: ResumeSnapshotInsertInput): void {

@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P9 skill normalization in matching - complete
-CURRENT_TASK:        P10 resume evidence matching for all supported kinds
-LAST_COMPLETED:      P9; npm run verify 146 files / 1419 tests PASS
-NEXT_ACTION:         P10 typed experience, education, and clearance evidence adapters
-FILES_IN_PROGRESS:   none after P9 checkpoint commit
-TESTS_TO_RUN:        targeted P10 evidence tests, then npm run verify
-KNOWN_FAILURES:      none in P9; installed artifact not rebuilt
-LATEST_CHECKPOINT:   e0eadf5 P8 (local only)
+CURRENT_STAGE:       P10 resume evidence matching - complete
+CURRENT_TASK:        P11 requirement coverage in Job Intelligence
+LAST_COMPLETED:      P10; npm run verify 147 files / 1422 tests PASS
+NEXT_ACTION:         P11 project snapshot evidence into diagnostic coverage UI
+FILES_IN_PROGRESS:   none after P10 checkpoint commit
+TESTS_TO_RUN:        targeted P11 API/UI tests, then npm run verify
+KNOWN_FAILURES:      none in P10; installed artifact not rebuilt
+LATEST_CHECKPOINT:   e21e898 P9 (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P10; do not restart the historical shadow program or completed P0-P9
+SAFE_RESUME_POINT:   P11; do not restart the historical shadow program or completed P0-P10
 ```
 
 ---
@@ -1086,11 +1086,12 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P10 — Resume Evidence Matching (all kinds)
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** extend resume evidence adapters to experience/education/clearance
   snapshots; every match row remains expressly evidence-of-match, never possession;
   parser versions recorded; unmatched/null concepts = UNKNOWN not missing.
-- **Current task:** not started.
+- **Current task:** Complete. The internal snapshot adapter reads versioned capture-time data without exposing normalized resume text through the public snapshot API. It emits typed skill, certification, experience, education, and clearance evidence with parser provenance. Unparsed or null structural concepts yield UNKNOWN; results remain evidence-only and never assert possession.
+- **Verification:** focused 22 tests PASS; full verify 147 files / 1422 tests PASS.
 - **Exact next action:** P11 - requirement coverage goes live.
 
 ---
