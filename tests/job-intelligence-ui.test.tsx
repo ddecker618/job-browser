@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JobIntelligencePreview } from '../src/client/components/JobIntelligencePreview.js';
 import { api } from '../src/client/api.js';
-import { inspectJobNlp } from '../src/intelligence/nlp/inspector.js';
+import { projectJobIntelligence } from '../src/intelligence/nlp/projection.js';
 import { extractNlpDocument } from '../src/intelligence/nlp/document.js';
 afterEach(() => {
   cleanup();
@@ -30,9 +30,14 @@ describe('connected Job Intelligence preview', () => {
       requirements: null,
       preferredQualifications: null,
     });
-    const call = vi
-      .spyOn(api, 'analyzeJobIntelligence')
-      .mockResolvedValue(inspectJobNlp('job-1', result));
+    const call = vi.spyOn(api, 'analyzeJobIntelligence').mockResolvedValue(
+      projectJobIntelligence('job-1', result, {
+        clearanceRequirement: null,
+        remoteType: 'unknown',
+        location: null,
+        estimatedExperienceYears: null,
+      }),
+    );
     show();
     expect(call).not.toHaveBeenCalled();
     fireEvent.click(
@@ -40,7 +45,9 @@ describe('connected Job Intelligence preview', () => {
     );
     expect(await screen.findByText('Linux required.')).toBeInTheDocument();
     expect(call).toHaveBeenCalledWith('job-1');
-    expect(screen.getByText(/Resume coverage unknown/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Nothing here asserts anything about you/),
+    ).toBeInTheDocument();
   });
   it('shows actionable failures without inventing results', async () => {
     vi.spyOn(api, 'analyzeJobIntelligence').mockRejectedValue(

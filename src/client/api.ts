@@ -166,10 +166,11 @@ export const api = {
       signal === undefined ? undefined : { signal },
     ),
   analyzeJobIntelligence: (id: string) =>
-    request<import('../intelligence/nlp/inspector.js').NlpInspection>(
-      '/api/jobs/' + encodeURIComponent(id) + '/intelligence',
-      { method: 'POST' },
-    ),
+    request<
+      import('../intelligence/nlp/projection.js').JobIntelligenceProjection
+    >('/api/jobs/' + encodeURIComponent(id) + '/intelligence', {
+      method: 'POST',
+    }),
   job: (id: string) => request<JobDetail>(`/api/jobs/${id}`),
   updateJob: (
     id: string,

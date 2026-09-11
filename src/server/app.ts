@@ -5,7 +5,7 @@ import {
   extractNlpDocument,
   NLP_DOCUMENT_VERSION,
 } from '../intelligence/nlp/document.js';
-import { inspectJobNlp } from '../intelligence/nlp/inspector.js';
+import { projectJobIntelligence } from '../intelligence/nlp/projection.js';
 import type { NlpWorkerStatus } from '../intelligence/nlp/backgroundWorker.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -308,7 +308,19 @@ export function createApp(
           return;
         }
         if (cached === null) store.save(jobId, result);
-        response.json(inspectJobNlp(jobId, result));
+        const deterministicJob = jobRepository.findJob(jobId);
+        response.json(
+          projectJobIntelligence(jobId, result, {
+            clearanceRequirement:
+              deterministicJob?.clearanceRequirement ??
+              job.clearanceRequirement ??
+              null,
+            remoteType: job.remoteType,
+            location: job.location,
+            estimatedExperienceYears:
+              deterministicJob?.estimatedExperienceYears ?? null,
+          }),
+        );
       } catch (error) {
         if (controller.signal.aborted) return;
         if (error instanceof RangeError) {

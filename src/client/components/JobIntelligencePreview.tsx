@@ -10,12 +10,13 @@ export function JobIntelligencePreview({
   const analysis = useMutation({
     mutationFn: () => api.analyzeJobIntelligence(job.id),
   });
+  const projection = analysis.data;
   return (
     <section className="job-intelligence-preview" aria-label="Job Intelligence">
       <h3>Job Intelligence</h3>
       <p>
-        Analyze the full retained description locally. Experimental enrichment
-        is not used for scoring.
+        App-generated explanations of the saved posting. Each claim shows its
+        supporting text and is labeled as an interpretation (EXPLANATION level).
       </p>
       <button
         type="button"
@@ -27,32 +28,67 @@ export function JobIntelligencePreview({
           : 'Analyze requirements'}
       </button>
       {analysis.error && <p role="alert">{analysis.error.message}</p>}
-      {analysis.data && (
+      {projection && (
         <div aria-live="polite">
           <p>
-            {analysis.data.factCount} interpretations from{' '}
-            {analysis.data.segmentCount} segments. Resume coverage unknown.
+            {projection.summary.factCount} requirement interpretation
+            {projection.summary.factCount === 1 ? '' : 's'} from{' '}
+            {projection.summary.segmentCount} segments.
+            {projection.summary.conflictCount > 0
+              ? ` ${String(projection.summary.conflictCount)} differ${
+                  projection.summary.conflictCount === 1 ? 's' : ''
+                } from the structured record.`
+              : ''}
+            {projection.summary.otherFactCount > 0
+              ? ` ${String(projection.summary.otherFactCount)} non-requirement mention${
+                  projection.summary.otherFactCount === 1 ? '' : 's'
+                } noted.`
+              : ''}
           </p>
-          {analysis.data.facts.map((fact) => (
-            <article key={fact.factId}>
+          {projection.requirementFacts.map((fact) => (
+            <article key={fact.factId} className="job-intelligence-fact">
               <strong>
                 {fact.category} · {fact.strength}
               </strong>
+              <p>{fact.interpretation}</p>
+              {fact.confidenceBand && (
+                <small>Confidence: {fact.confidenceBand}</small>
+              )}
               {fact.entities.map((entity) => (
-                <p key={entity.id}>{entity.normalized}</p>
+                <p key={entity.normalized + entity.type}>{entity.normalized}</p>
               ))}
               <blockquote>{fact.evidence.segmentText}</blockquote>
+              <small>Source: {fact.evidence.sourceField}.</small>
+              {fact.deterministic.state === 'conflict' && (
+                <p className="job-intelligence-conflict" role="note">
+                  Conflicts with the structured job record. The structured
+                  record ({fact.deterministic.deterministicValue ?? 'set'}) is
+                  authoritative.
+                </p>
+              )}
+              {fact.deterministic.state === 'agreement' && (
+                <small>Matches the structured job record.</small>
+              )}
+              {!fact.deterministic.available && (
+                <small>Not reconciled with a structured field.</small>
+              )}
+            </article>
+          ))}
+          {projection.otherFacts.map((fact) => (
+            <article key={fact.factId} className="job-intelligence-other">
               <small>
-                Source: {fact.evidence.sourceField}. {fact.reconciliation.note}
+                {fact.category} · {fact.interpretation}
               </small>
             </article>
           ))}
+          <p>
+            These interpretations are produced by this app from the saved
+            posting text. Nothing here asserts anything about you, and it does
+            not change score, eligibility, ranking, filtering, lifecycle, or
+            source job data.
+          </p>
         </div>
       )}
-      <p>
-        Shadow preview only. It does not change score, eligibility, ranking,
-        filtering, lifecycle, or source job data.
-      </p>
     </section>
   );
 }

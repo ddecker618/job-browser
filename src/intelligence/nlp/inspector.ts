@@ -204,7 +204,7 @@ interface RedactionResult {
   replacements: number;
 }
 
-function redactSensitiveText(value: string): RedactionResult {
+export function redactSensitiveText(value: string): RedactionResult {
   let replacements = 0;
   let redacted = value;
   const replace = (pattern: RegExp, replacement: string): void => {
@@ -216,7 +216,7 @@ function redactSensitiveText(value: string): RedactionResult {
 
   replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email redacted]');
   replace(
-    /\b(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/g,
+    /(?<![A-Za-z0-9])(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/g,
     '[phone redacted]',
   );
   replace(/\b\d{3}-\d{2}-\d{4}\b/g, '[ssn redacted]');

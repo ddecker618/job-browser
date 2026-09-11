@@ -49,9 +49,9 @@ describe('connected shadow NLP API', () => {
     const first = (await response.json()) as {
       sourceTextHash: string;
       generatedAt: string;
-      factCount: number;
+      summary: { factCount: number };
     };
-    expect(first.factCount).toBeGreaterThan(0);
+    expect(first.summary.factCount).toBeGreaterThan(0);
     expect(db.prepare('SELECT * FROM jobs').all()).toEqual(before);
     const second = (await (await analyze()).json()) as typeof first;
     expect(second).toEqual(first);
