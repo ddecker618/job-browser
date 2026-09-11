@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P8 target-role search integration - complete
-CURRENT_TASK:        P9 skill normalization in matching
-LAST_COMPLETED:      P8; npm run verify 145 files / 1416 tests PASS; build PASS
-NEXT_ACTION:         P9 canonical skill normalization for coverage and search relevance
-FILES_IN_PROGRESS:   none after P8 checkpoint commit
-TESTS_TO_RUN:        targeted P9 tests, then npm run verify
-KNOWN_FAILURES:      none in P8; installed artifact not rebuilt
-LATEST_CHECKPOINT:   P8 checkpoint (resolve with git log; local only)
+CURRENT_STAGE:       P9 skill normalization in matching - complete
+CURRENT_TASK:        P10 resume evidence matching for all supported kinds
+LAST_COMPLETED:      P9; npm run verify 146 files / 1419 tests PASS
+NEXT_ACTION:         P10 typed experience, education, and clearance evidence adapters
+FILES_IN_PROGRESS:   none after P9 checkpoint commit
+TESTS_TO_RUN:        targeted P10 evidence tests, then npm run verify
+KNOWN_FAILURES:      none in P9; installed artifact not rebuilt
+LATEST_CHECKPOINT:   e0eadf5 P8 (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P9; do not restart the historical shadow program or completed P0-P8
+SAFE_RESUME_POINT:   P10; do not restart the historical shadow program or completed P0-P9
 ```
 
 ---
@@ -1074,11 +1074,12 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P9 — Skill Normalization in Matching
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** use normalized canonical skills (EXACT/alias/related/unknown) inside
   requirement coverage and search relevance; unknown phrases always abstain; never
   mutate the raw skill text or expand catalog automatically.
-- **Current task:** not started.
+- **Current task:** Complete. Search relevance v2 uses reviewed canonical labels only; exact posting mentions remain raw evidence; unknown or contradictory labels abstain. A read-only coverage adapter preserves exact phrases and classifies exact, alias, strong-related, weak-related, and unknown evidence.
+- **Verification:** targeted 22 tests PASS; full verify 146 files / 1419 tests PASS.
 - **Exact next action:** P10 - full resume evidence matching.
 
 ---

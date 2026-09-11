@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { JobNlpEnrichment } from '../../schemas/job-nlp.js';
 import type { NlpPersistenceTarget } from './reprocessing.js';
+import { normalizeSkillPhrase } from './skillNormalization.js';
 
 // ---------------------------------------------------------------------------
 // P6 - additive NLP search relevance index (ENRICHMENT level).
@@ -13,7 +14,7 @@ import type { NlpPersistenceTarget } from './reprocessing.js';
 // semantics, or any score/eligibility/lifecycle column.
 // ---------------------------------------------------------------------------
 
-export const SEARCH_RELEVANCE_INDEX_VERSION = 'job-search-relevance-v1';
+export const SEARCH_RELEVANCE_INDEX_VERSION = 'job-search-relevance-v2';
 
 const MAX_CANONICAL_SKILLS = 8;
 const MAX_SIGNALS = 5;
@@ -61,7 +62,16 @@ export function deriveSearchRelevance(
       const value = entity.normalized.trim();
       if (value.length === 0) continue;
       if (fact.category === 'skill') {
-        skillFrequency.set(value, (skillFrequency.get(value) ?? 0) + 1);
+        const normalized = normalizeSkillPhrase(entity.raw);
+        // A stored label cannot override unknown or contradictory source wording.
+        const stored = normalizeSkillPhrase(value);
+        if (
+          normalized.conceptLabel === null ||
+          normalized.sourceConceptKey !== stored.sourceConceptKey
+        )
+          continue;
+        const canonical = normalized.conceptLabel;
+        skillFrequency.set(canonical, (skillFrequency.get(canonical) ?? 0) + 1);
       } else if (fact.category === 'clearance') {
         clearances.add(value);
       } else if (fact.category === 'certification') {
@@ -123,7 +133,17 @@ export function withSearchRelevanceIndex(
       enrichmentTarget.save(jobId, enrichment);
       relevanceStore.save(jobId, deriveSearchRelevance(enrichment));
     },
-    isStale: (jobId, extractionVersion, sourceTextHash) =>
-      enrichmentTarget.isStale(jobId, extractionVersion, sourceTextHash),
+    isStale: (jobId, extractionVersion, sourceTextHash) => {
+      if (enrichmentTarget.isStale(jobId, extractionVersion, sourceTextHash))
+        return true;
+      try {
+        return (
+          relevanceStore.get(jobId)?.indexVersion !==
+          SEARCH_RELEVANCE_INDEX_VERSION
+        );
+      } catch {
+        return true;
+      }
+    },
   };
 }

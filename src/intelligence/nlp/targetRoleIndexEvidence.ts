@@ -1,3 +1,4 @@
+import { normalizeSkillPhrase } from './skillNormalization.js';
 import type { JobDatabase } from '../../db/database.js';
 import { jobNlpEnrichmentSchema } from '../../schemas/job-nlp.js';
 import { documentHash, MAX_NLP_DOCUMENT_CHARACTERS } from './document.js';
@@ -68,7 +69,9 @@ export function targetRoleIndexEvidence(
           (f) =>
             f.category === 'skill' &&
             f.meta?.isBoilerplate !== true &&
-            f.entities.some((e) => e.normalized === skill),
+            f.entities.some(
+              (e) => normalizeSkillPhrase(e.raw).conceptLabel === skill,
+            ),
         );
         if (!fact) return [];
         const source = parts[fact.evidence.sourceField as keyof typeof parts];

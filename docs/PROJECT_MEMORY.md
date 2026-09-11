@@ -1,3 +1,11 @@
+## Recovery checkpoint — P9 complete
+
+P9 is complete and verified: reviewed canonical skills now drive relevance and skill coverage, source phrases remain unchanged, unknown terms abstain, and stale relevance indexes rebuild. Full verification passed 146 files / 1419 tests. Next: P10 resume evidence adapters for experience, education, and clearance. No installer, production data, or remote push was touched.
+
+## Active recovery checkpoint — P9 in progress
+
+P8 committed as e0eadf5. P9 connects reviewed canonical skills to relevance and coverage; raw text remains unchanged, unknown terms abstain. Run targeted normalized-consumer/search tests, then full verify. Continue P10 onward after P9; no checkpoint is a request to stop. No installer or production data changes.
+
 # Job Browser Project Memory
 
 ## Current recovery checkpoint — P8 complete (2026-09-11)

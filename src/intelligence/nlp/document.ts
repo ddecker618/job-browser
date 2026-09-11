@@ -22,7 +22,7 @@ import { extractClearance } from './clearance.js';
 import { extractLocation } from './location.js';
 import { extractBoilerplate } from './boilerplate.js';
 
-export const NLP_DOCUMENT_VERSION = 'document-v2';
+export const NLP_DOCUMENT_VERSION = 'document-v3';
 export const MAX_NLP_DOCUMENT_CHARACTERS = 50000;
 export function documentHash(parts: RoleDescriptionParts): string {
   return createHash('sha256')
@@ -111,6 +111,7 @@ export async function extractNlpDocument(
       values: string[],
       modality = strength,
       meta?: NlpFactMeta,
+      rawMention?: string,
     ) {
       const factId =
         String(segment.index) + ':' + category + ':' + String(facts.length);
@@ -120,7 +121,7 @@ export async function extractNlpDocument(
         strength: modality,
         entities: values.map((value, index) => ({
           id: factId + ':' + String(index),
-          raw: segment.text,
+          raw: rawMention ?? segment.text,
           normalized: value,
           type: 'text',
           confidence: base.confidence,
@@ -147,6 +148,8 @@ export async function extractNlpDocument(
         mention.context === 'required' || mention.context === 'preferred'
           ? mention.context
           : strength,
+        undefined,
+        mention.raw,
       );
     if (education.degrees.length)
       add('education', [
