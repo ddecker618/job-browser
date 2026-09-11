@@ -145,6 +145,91 @@ export const nlpEntitySchema = z.strictObject({
   evidenceText: z.string().trim().min(1),
 });
 
+// Optional per-fact metadata captured from the extraction pipeline (Phase 3
+// envelope wiring). Additive: older persisted envelopes without `meta` remain
+// valid and parse correctly. Metadata is shadow evidence and is never used by
+// a production decide path.
+export const nlpFactMetaSchema = z
+  .object({
+    isBoilerplate: z.boolean().optional(),
+    preserveRequirement: z.boolean().optional(),
+    boilerplateDisposition: z
+      .enum(['boilerplate', 'requirement', 'mixed', 'unknown'])
+      .optional(),
+    experience: z
+      .object({
+        nestedYears: z
+          .array(
+            z.object({
+              minimum: z.number(),
+              maximum: z.number().nullable(),
+              modifier: z.string(),
+              domain: z.string().nullable(),
+            }),
+          )
+          .optional(),
+        context: z.string().nullable().optional(),
+      })
+      .optional(),
+    clearance: z
+      .object({
+        teamContext: z.boolean().optional(),
+      })
+      .optional(),
+    certification: z
+      .object({
+        key: z.string().optional(),
+        vendor: z.string().optional(),
+        raw: z.string().optional(),
+        span: z
+          .strictObject({
+            start: z.number().int().nonnegative(),
+            end: z.number().int().nonnegative(),
+          })
+          .optional(),
+      })
+      .optional(),
+    location: z
+      .object({
+        arrangementConflict: z.boolean().optional(),
+        remoteDenied: z.boolean().optional(),
+        remoteScope: z
+          .object({
+            kind: z
+              .enum(['nationwide', 'state-limited', 'unspecified'])
+              .optional(),
+            states: z.array(z.string()).optional(),
+            excludedStates: z.array(z.string()).optional(),
+          })
+          .optional(),
+        commute: z
+          .object({
+            required: z.boolean().optional(),
+            miles: z.number().nullable().optional(),
+            raw: z.string().nullable().optional(),
+          })
+          .optional(),
+        onsiteFrequency: z
+          .enum(['occasional', 'regular', 'unknown'])
+          .optional(),
+        relocation: z
+          .object({
+            status: z
+              .enum([
+                'required',
+                'preferred',
+                'available',
+                'not-available',
+                'unknown',
+              ])
+              .optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+  })
+  .strict();
+
 export const nlpFactSchema = z.strictObject({
   factId: z.string().trim().min(1),
   category: nlpRequirementCategorySchema,
@@ -161,6 +246,7 @@ export const nlpFactSchema = z.strictObject({
     nlpValue: z.string().nullable(),
     note: z.string().nullable(),
   }),
+  meta: nlpFactMetaSchema.optional(),
 });
 
 export const nlpSegmentSchema = z
@@ -209,6 +295,7 @@ export type NlpEntityType = z.infer<typeof nlpEntityTypeSchema>;
 export type NlpEvidence = z.infer<typeof nlpEvidenceSchema>;
 export type NlpEntity = z.infer<typeof nlpEntitySchema>;
 export type NlpFact = z.infer<typeof nlpFactSchema>;
+export type NlpFactMeta = z.infer<typeof nlpFactMetaSchema>;
 export type NlpSegment = z.infer<typeof nlpSegmentSchema>;
 export type JobNlpEnrichment = z.infer<typeof jobNlpEnrichmentSchema>;
 

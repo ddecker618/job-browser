@@ -5,6 +5,7 @@ import {
   NLP_EXTRACTION_VERSION,
   type JobNlpEnrichment,
   type NlpFact,
+  type NlpFactMeta,
   type NlpRequirementStrength,
 } from '../../schemas/job-nlp.js';
 import {
@@ -19,8 +20,9 @@ import { extractExperience } from './experience.js';
 import { extractCertifications } from './certifications.js';
 import { extractClearance } from './clearance.js';
 import { extractLocation } from './location.js';
+import { extractBoilerplate } from './boilerplate.js';
 
-export const NLP_DOCUMENT_VERSION = 'document-v1';
+export const NLP_DOCUMENT_VERSION = 'document-v2';
 export const MAX_NLP_DOCUMENT_CHARACTERS = 50000;
 export function documentHash(parts: RoleDescriptionParts): string {
   return createHash('sha256')
@@ -41,10 +43,13 @@ export async function extractNlpDocument(
   parts: RoleDescriptionParts,
   signal?: AbortSignal,
 ): Promise<JobNlpEnrichment> {
-  if (
-    Object.values(parts).reduce((n, s) => n + (s?.length ?? 0), 0) >
-    MAX_NLP_DOCUMENT_CHARACTERS
-  )
+  const totalInputCharacters =
+    parts.title.length +
+    (parts.location?.length ?? 0) +
+    (parts.description?.length ?? 0) +
+    (parts.requirements?.length ?? 0) +
+    (parts.preferredQualifications?.length ?? 0);
+  if (totalInputCharacters > MAX_NLP_DOCUMENT_CHARACTERS)
     throw new RangeError(
       'Description exceeds the 50,000 character analysis limit.',
     );
@@ -86,6 +91,7 @@ export async function extractNlpDocument(
     const certifications = extractCertifications(segment);
     const clearance = extractClearance(segment);
     const location = extractLocation(segment);
+    const boilerplate = extractBoilerplate(segment);
     const source =
       parts[segment.sourceField as keyof RoleDescriptionParts] ?? '';
     const evidence = {
@@ -95,10 +101,16 @@ export async function extractNlpDocument(
       charStart: segment.charStart,
       charEnd: segment.charEnd,
     };
+    const segmentMeta = {
+      isBoilerplate: boilerplate.isBoilerplate,
+      preserveRequirement: boilerplate.preserveRequirement,
+      boilerplateDisposition: boilerplate.disposition,
+    };
     function add(
       category: NlpFact['category'],
       values: string[],
       modality = strength,
+      meta?: NlpFactMeta,
     ) {
       const factId =
         String(segment.index) + ':' + category + ':' + String(facts.length);
@@ -125,6 +137,7 @@ export async function extractNlpDocument(
           nlpValue: null,
           note: 'Not reconciled against production interpretation. Shadow only.',
         },
+        meta: { ...segmentMeta, ...(meta ?? {}) },
       });
     }
     for (const mention of skills.mentions)
@@ -150,19 +163,39 @@ export async function extractNlpDocument(
       experience.months.length ||
       experience.alternatives.length
     )
-      add('experience', [
-        JSON.stringify({
-          years: experience.years,
-          months: experience.months,
-          alternatives: experience.alternatives,
-          domains: experience.domains,
-        }),
-      ]);
+      add(
+        'experience',
+        [
+          JSON.stringify({
+            years: experience.years,
+            months: experience.months,
+            alternatives: experience.alternatives,
+            domains: experience.domains,
+            nestedYears: experience.nestedYears,
+            context: experience.context,
+          }),
+        ],
+        strength,
+        {
+          experience: {
+            nestedYears: experience.nestedYears,
+            context: experience.context,
+          },
+        },
+      );
     for (const item of certifications.certifications)
       add(
         'certification',
         [item.name],
         item.modality === 'unknown' ? strength : item.modality,
+        {
+          certification: {
+            key: item.key,
+            vendor: item.vendor,
+            raw: item.raw,
+            span: item.span,
+          },
+        },
       );
     for (const item of clearance.clearances)
       add(
@@ -173,19 +206,41 @@ export async function extractNlpDocument(
           : item.status === 'preferred'
             ? 'preferred'
             : strength,
+        {
+          clearance: { teamContext: clearance.teamContext },
+        },
       );
     for (const item of clearance.citizenship)
       add(
         'citizenship',
         [item.status],
         item.modality === 'unknown' ? strength : item.modality,
+        {
+          clearance: { teamContext: clearance.teamContext },
+        },
       );
+    const locationMeta = {
+      arrangementConflict: location.arrangementConflict,
+      remoteDenied: location.remoteDenied,
+      remoteScope: location.remoteScope,
+      commute: {
+        required: location.commute.required,
+        miles: location.commute.miles,
+        raw: location.commute.raw,
+      },
+      onsiteFrequency: location.onsiteFrequency,
+      relocation: { status: location.relocation.status },
+    };
     if (location.arrangement !== 'unknown')
-      add('work-arrangement', [location.arrangement]);
+      add('work-arrangement', [location.arrangement], strength, {
+        location: locationMeta,
+      });
     if (location.locations.length)
       add(
         'location',
         location.locations.map((item) => item.normalized),
+        strength,
+        location.arrangement === 'unknown' ? { location: locationMeta } : {},
       );
     if (location.travel.mentioned)
       add('travel', [JSON.stringify(location.travel)]);

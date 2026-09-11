@@ -122,7 +122,7 @@ describe('NLP production trust levels (Phase 2)', () => {
 
     for (const key of NLP_TRUST_LEVELS) {
       const descriptor = NLP_TRUST_LEVEL_DESCRIPTORS[key];
-      expect(doc).toContain(`| ${descriptor.level}     | ${key}`);
+      expect(doc).toContain(`| ${String(descriptor.level)}     | ${key}`);
       expect(doc).toContain(descriptor.label);
     }
     expect(doc).toContain("SPRINT_MAXIMUM_LEVEL = 'enrichment'");

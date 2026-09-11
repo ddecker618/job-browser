@@ -3,6 +3,10 @@ import {
   documentHash,
   extractNlpDocument,
 } from '../src/intelligence/nlp/document.js';
+import {
+  jobNlpEnrichmentSchema,
+  NLP_EXTRACTION_VERSION,
+} from '../src/schemas/job-nlp.js';
 const parts = {
   title: 'Security Analyst',
   location: null,
@@ -82,5 +86,84 @@ describe('complete document enrichment', () => {
         (f) => f.category === 'clearance' && f.strength === 'ability-to-obtain',
       ),
     ).toBe(true);
+  });
+  it('wires additive meta from the extractors (document-v2)', async () => {
+    const result = await extractNlpDocument({
+      ...parts,
+      description: `
+<p>Security+ required.</p>
+<p>We are an Equal Opportunity Employer.</p>
+<p>3-5 years of Linux experience.</p>
+<p>This role is fully remote and we require 100% travel.</p>`,
+    });
+
+    const certification = result.facts.find(
+      (f) => f.category === 'certification',
+    );
+    const certificationMeta = certification?.meta?.certification;
+    expect(typeof certificationMeta?.key).toBe('string');
+    expect(typeof certificationMeta?.vendor).toBe('string');
+    expect(typeof certificationMeta?.raw).toBe('string');
+    expect(typeof certificationMeta?.span?.start).toBe('number');
+    expect(typeof certificationMeta?.span?.end).toBe('number');
+
+    const experience = result.facts.find((f) => f.category === 'experience');
+    expect(Array.isArray(experience?.meta?.experience?.nestedYears)).toBe(true);
+    expect(experience?.meta?.experience).toHaveProperty('context');
+
+    const arrangement = result.facts.find(
+      (f) => f.category === 'work-arrangement',
+    );
+    expect(typeof arrangement?.meta?.location?.arrangementConflict).toBe(
+      'boolean',
+    );
+
+    const eeo = result.facts.find(
+      (f) => f.category === 'legal-eeo-boilerplate',
+    );
+    expect(eeo?.meta?.isBoilerplate).toBe(true);
+  });
+  it('stays backward compatible with pre-meta envelopes', () => {
+    const legacy = {
+      version: NLP_EXTRACTION_VERSION,
+      generatedAt: '2026-09-10T00:00:00.000Z',
+      sourceTextHash: 'legacy-hash',
+      segmentation: { segments: [], method: 'segmentation-v1' },
+      facts: [
+        {
+          factId: '0:skill:0',
+          category: 'skill',
+          strength: 'required',
+          entities: [
+            {
+              id: '0:skill:0:0',
+              raw: 'Linux required.',
+              normalized: 'Linux',
+              type: 'text',
+              confidence: 0.9,
+              evidenceText: 'Linux required.',
+            },
+          ],
+          confidence: 0.9,
+          extractionMethod: 'entity-normalizer',
+          extractionVersion: NLP_EXTRACTION_VERSION,
+          evidence: {
+            segmentText: 'Linux required.',
+            sourceField: 'description',
+            segmentIndex: 0,
+            charStart: 0,
+            charEnd: 15,
+          },
+          conflict: {
+            state: 'unknown',
+            nature: [],
+            deterministicValue: null,
+            nlpValue: null,
+            note: 'Not reconciled.',
+          },
+        },
+      ],
+    };
+    expect(jobNlpEnrichmentSchema.safeParse(legacy).success).toBe(true);
   });
 });

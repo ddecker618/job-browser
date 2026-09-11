@@ -139,9 +139,8 @@ export interface NlpPromotionDecision {
 // Monotonic, evidence-gated, one-step-at-a-time, fail-closed promotion check.
 export function canPromoteNlpLevel(
   request: NlpPromotionRequest,
-  descriptorMap: Record<
-    NlpProductionLevel,
-    NlpTrustLevelDescriptor
+  descriptorMap: Partial<
+    Record<NlpProductionLevel, NlpTrustLevelDescriptor>
   > = NLP_TRUST_LEVEL_DESCRIPTORS,
   sprintMaximum: NlpProductionLevel = SPRINT_MAXIMUM_LEVEL,
 ): NlpPromotionDecision {
