@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P12 bounded scoring contribution design - complete
-CURRENT_TASK:        P13 scoring safety invariants
-LAST_COMPLETED:      P12 design only; no runtime scoring changes
-NEXT_ACTION:         P13 encode fail-closed scoring and rollback invariants
-FILES_IN_PROGRESS:   none after P12 design checkpoint commit
-TESTS_TO_RUN:        targeted P13 invariants, then npm run verify
+CURRENT_STAGE:       P13 scoring safety invariants - complete
+CURRENT_TASK:        P14 search-result NLP tie-break explainability
+LAST_COMPLETED:      P13; npm run verify 151 files / 1430 tests PASS
+NEXT_ACTION:         P14 expose current relevance tie-break reasons with validated evidence
+FILES_IN_PROGRESS:   none after P13 checkpoint commit
+TESTS_TO_RUN:        targeted P14 repository/API/UI explainability tests, then npm run verify
 KNOWN_FAILURES:      none in P11; installer last built 2026-09-10 20:07:47 and is stale
-LATEST_CHECKPOINT:   031b3d8 P11 (local only)
+LATEST_CHECKPOINT:   32d6550 P12 design (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P13; do not restart the historical shadow program or completed P0-P12
+SAFE_RESUME_POINT:   P14; do not restart the historical shadow program or completed P0-P13
 ```
 
 ---
@@ -1123,12 +1123,13 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P13 — Scoring Safety Invariants
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** encode invariants in tests: NLP never changes any eligibility gate,
   never changes ranking basis below the cap, contribution is capped, contribution is
   zero when evidence/confidence absent, and removal of the feature restores previous
   scores byte-for-byte.
-- **Current task:** not started.
+- **Current task:** Complete. An offline-only calculator encodes the 3-point cap, next-threshold guard, eligibility prerequisite, current evidence and span validation, >=0.90 confidence, deterministic/NLP agreement, and future approval requirement. Tests prove zero contribution on missing/untrusted inputs, monotonic qualifying evidence, unchanged baseline objects, and no imports from production scoring engines.
+- **Verification:** focused 21 tests PASS; full verify 151 files / 1430 tests PASS.
 - **Exact next action:** P14 - search-result explainability.
 
 ---

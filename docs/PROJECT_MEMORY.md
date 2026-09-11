@@ -1,3 +1,11 @@
+## Recovery checkpoint — P13 complete
+
+P13 is complete and verified (151 files / 1430 tests). The P12 formula exists only as an offline shadow calculator. Safety tests cover the cap, threshold guard, fail-closed inputs, monotonic qualifying evidence, unchanged baselines, and source isolation from both production scoring engines. Next: P14 tie-break explainability. No installer, production data, or remote push was touched.
+
+## Active recovery checkpoint — P13 in progress
+
+P12 design committed as 32d6550. P13 adds an offline-only shadow contribution calculator plus invariants for the 3-point cap, threshold guard, zero on absent/untrusted evidence, monotonic qualifying evidence, unchanged baseline objects, and source-level isolation from production scoring engines. No runtime consumer or production flag.
+
 ## Recovery checkpoint — P12 complete (design only)
 
 P12 is documented in NLP_PROMOTION_DESIGN.md. It proposes a separate non-persisted metric with a 0–3 point cap, a next-threshold guard, eligibility-pass prerequisite, current evidence, >=0.90 confidence, dual-side agreement, and a fail-closed shadow diff gate. No runtime scoring path or flag was added. Next: P13 executable safety invariants. Latest code checkpoint: 031b3d8.
