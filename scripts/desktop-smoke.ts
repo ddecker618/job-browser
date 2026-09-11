@@ -12,12 +12,22 @@ const userData = mkdtempSync(join(tmpdir(), 'job-browser-desktop-smoke-'));
 const installed = process.argv.includes('--installed');
 const packaged = installed || process.argv.includes('--packaged');
 const upgrade = process.argv.includes('--upgrade');
+const databaseCopyIndex = process.argv.indexOf('--database-copy');
+const databaseCopy =
+  databaseCopyIndex === -1 ? null : process.argv[databaseCopyIndex + 1] ?? null;
+if (databaseCopyIndex !== -1 && databaseCopy === null) {
+  throw new Error('--database-copy requires a path');
+}
+if (databaseCopy !== null && upgrade) {
+  throw new Error('--database-copy cannot be combined with --upgrade');
+}
 const environment: NodeJS.ProcessEnv = {
   ...process.env,
   JOB_BROWSER_SMOKE_USER_DATA: userData,
   JOB_BROWSER_SMOKE_TEST: '1',
-  JOB_BROWSER_DB_PATH: join(userData, 'data', 'jobs.sqlite'),
+  JOB_BROWSER_DB_PATH: databaseCopy ?? join(userData, 'data', 'jobs.sqlite'),
   ...(upgrade ? { JOB_BROWSER_SMOKE_UPGRADE: '1' } : {}),
+  ...(databaseCopy !== null ? { JOB_BROWSER_SMOKE_EXISTING_DATA: '1' } : {}),
 };
 delete environment['ELECTRON_RUN_AS_NODE'];
 
@@ -68,9 +78,10 @@ try {
       application.once('error', reject);
       application.once('exit', accept);
     }),
-    new Promise<'timeout'>((accept) =>
-      setTimeout(() => accept('timeout'), 120_000),
-    ),
+    new Promise<'timeout'>((accept) => {
+      const timeout = setTimeout(() => accept('timeout'), 120_000);
+      timeout.unref();
+    }),
   ]);
   if (exitCode === 'timeout') throw new Error('Electron smoke test timed out');
   if (exitCode !== 0)

@@ -60,6 +60,24 @@ production scoring/gate integration.
 42. [PASS] Current Windows package validation passes packaged, installed, and packaged-upgrade smoke; installer SHA-256 is `B0DCA751C245DCAF4BF71E511D7F724BB15C46BBAAEF3EE7CF4716C4C3A25DCE` and `app.asar` SHA-256 is `5C9A474B5924EF6A74D36A652E1E30FD8086DD8EB6AE75C8621F45C1A810CA53`.
 43. [PASS] Roadmap, Project Memory, README, changelog, architecture, session handoff, audit documents, and release boundary are reconciled.
 
+## Production Promotion Update — 2026-09-11
+
+This section supersedes the historical corpus counts and artifact hashes in the original 43-point shadow baseline above.
+
+| Capability                                      | Final P27 state | Default                | Authority                     |
+| ----------------------------------------------- | --------------- | ---------------------- | ----------------------------- |
+| Job Intelligence facts and resume coverage      | EXPLANATION (1) | Off                    | Display only                  |
+| Reconciled role-family suggestion               | EXPLANATION (1) | Off                    | Deterministic catalog wins    |
+| Search-profile vocabulary feedback              | EXPLANATION (1) | Off                    | Read-only                     |
+| Target-role supporting evidence                 | EXPLANATION (1) | Current valid evidence | Deterministic membership wins |
+| Search relevance tie-break                      | ENRICHMENT (2)  | Off                    | Exact deterministic ties only |
+| Persisted comparison                            | SHADOW (0)      | Background             | No production decision        |
+| Recommendation score and every eligibility gate | No promotion    | Unreachable            | Deterministic only            |
+
+The expanded 66-case gate passes with 95.8% category precision, 93.2% category recall, 98.5% strength accuracy, 92.7% entity precision, 97.4% entity recall, and zero critical failures across 11 adversarial cases. P23 processed 500 real local jobs in a disposable copy with zero failures and no jobs-table drift. P24 passed verify 157/1,445, privacy 11/11, security 3/3, direct smoke, current unpacked-package smoke, and packaged-upgrade smoke.
+
+The validated current app.asar is 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. The existing 1.1.0 installer predates these changes and remains stale pending the explicit P28 release decision. No capability reached SCORING or HARD_GATE, and productionEffect: 'none' remains the score/gate boundary.
+
 ## Handoff Rule
 
 Any future production promotion must begin with a new authorization that names

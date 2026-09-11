@@ -21,19 +21,18 @@ the current synthetic corpus does not authorize either level.
 
 ## Measured Evidence
 
-The 54-case local labeled corpus currently reports:
+The 66-case local labeled corpus currently reports:
 
-- Category exact accuracy 88.9%; precision 93.1%; recall 91.5%.
-- Strength accuracy 96.3%.
-- Entity exact accuracy 94.4%; precision 96.6%; recall 90.3%.
-- Arrangement agreement 7/8.
-- Label disagreement 13.0%.
-- Critical adversarial failures 0/7.
-- Stage 18 acceptance thresholds pass with the required safety evidence.
-- Stage 24 provides a Windows x64 offline performance baseline; it is not a
-  cross-machine production budget.
+- Category exact accuracy 90.9%; precision 95.8%; recall 93.2%.
+- Strength accuracy 98.5%.
+- Entity exact accuracy 95.5%; precision 92.7%; recall 97.4%.
+- Arrangement agreement 10/11.
+- Label disagreement 9.1%.
+- Critical adversarial failures 0/11.
+- The acceptance thresholds pass with every required safety item.
+- P23 processed 500 real local jobs in a copy with zero worker failures and an identical full jobs-table fingerprint before and after.
 
-These results are synthetic/local and do not establish live-provider accuracy.
+These results combine synthetic/local labels with aggregate real-data operational validation. They do not establish live-provider semantic accuracy.
 
 ## Field Promotion Matrix
 

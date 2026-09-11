@@ -519,3 +519,14 @@ production scoring (deterministic scoring is unchanged, `productionEffect:
 - **D-NLP-072:** P23 used a consistent backup of the real local database. 500/3,662 jobs completed with 0 failures, 2,079 event-loop ticks, and identical full jobs-table fingerprints before/after. The copy was deleted. Details: docs/NLP_REAL_DATA_VALIDATION.md.
 
 Focused validation passed 17 files / 96 tests; full npm run verify passed 157 files / 1,445 tests. Checkpoint b89cea1 contains the implementation. Resume at P24. The installer remains the stale 2026-09-10 20:07:47 build; do not rebuild it before the explicit P28 release decision.
+
+## Recovery checkpoint — promotion P24-P27 complete (2026-09-11)
+
+- **D-NLP-073:** P24 current-source gate passed: verify 157 files / 1,445 tests, privacy 11/11, NLP security 3/3, 66-case fail-closed acceptance, direct desktop, rebuilt unpacked package, and seeded packaged-upgrade smoke.
+- **D-NLP-074:** The desktop smoke harness accepts an explicit database copy and marks it as existing data. This preserves user source choices and skips only fresh-install starter-source inventory assertions; all app/API/navigation/migration/shutdown checks remain.
+- **D-NLP-075:** P25 real-copy desktop validation passed. The 253,034,496-byte copy reached migration 034, processed 205 rows per shadow table, grew by 13,619,200 bytes including migrations and smoke fixtures, and left zero Job Browser/Electron processes.
+- **D-NLP-076:** P26 source/current-unpacked audit passed. Current app.asar is 74,029,786 bytes with SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. No model runtime, external NLP transmission, telemetry, personal content, secret, or developer path was found.
+- **D-NLP-077:** Current promotion state is field-specific: Job Intelligence, role-family suggestions, and search-profile feedback are EXPLANATION (Level 1); the exact-tie search relevance consumer is ENRICHMENT (Level 2); their four consumer flags default off. Valid target-role evidence may be displayed, but deterministic membership stays authoritative. Comparison remains SHADOW (Level 0). SCORING and HARD_GATE remain unimplemented and unauthorized.
+- **D-NLP-078:** The smoke timeout is unrefed after Electron exits, removing two minutes of idle validation overhead without weakening the 120-second hang deadline while the child process is active.
+
+Resume at P28. The existing installer was built 2026-09-10 20:07:47, is 253,571,410 bytes, has SHA-256 02223EBE680CAD14708D2AECD25B5C7F2608C39F37D8002D228C29F60C33FA43, and is stale relative to current source. Rebuild and installed-artifact validation require the explicit P28 user decision. Nothing has been pushed.

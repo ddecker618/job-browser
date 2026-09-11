@@ -13,7 +13,11 @@ const productionNlpFiles = [
   ...walk(join(root, 'src', 'intelligence', 'nlp')),
   join(root, 'src', 'schemas', 'job-nlp.ts'),
   join(root, 'src', 'database', 'jobNlpEnrichmentRepository.ts'),
-  join(root, 'src', 'db', 'migrations', '031_nlp_enrichments.sql'),
+  join(root, 'src', 'database', 'nlpRelevanceRepository.ts'),
+  join(root, 'src', 'database', 'nlpComparisonRepository.ts'),
+  ...walk(join(root, 'src', 'db', 'migrations')).filter((file) =>
+    /0(?:31|32|33|34)_.*nlp.*\.sql$/.test(file),
+  ),
 ];
 
 describe('NLP security, privacy, and packaging audit (Stage 25)', () => {
@@ -63,14 +67,20 @@ describe('NLP security, privacy, and packaging audit (Stage 25)', () => {
     const database = openDatabase(':memory:');
     try {
       runMigrations(database);
-      expect(
-        database
-          .prepare<
-            [],
-            { count: number }
-          >('SELECT COUNT(*) AS count FROM job_nlp_enrichments')
-          .get()?.count,
-      ).toBe(0);
+      for (const table of [
+        'job_nlp_enrichments',
+        'job_nlp_relevance',
+        'job_nlp_comparisons',
+      ]) {
+        expect(
+          database
+            .prepare<
+              [],
+              { count: number }
+            >('SELECT COUNT(*) AS count FROM ' + table)
+            .get()?.count,
+        ).toBe(0);
+      }
       expect(
         database
           .prepare<[], { columns: number }>(

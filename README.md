@@ -33,10 +33,7 @@ Release status: **1.1.0 — READY FOR EXTERNAL BETA**. See the
 evidence), the [beta plan](docs/BETA_PLAN.md), and the
 [beta-testing guide](docs/BETA_TESTING.md).
 
-NLP intelligence status: **SHADOW MODE VALIDATED; PRODUCTION PROMOTION NOT YET
-VALIDATED**. See the [NLP final handoff](docs/NLP_FINAL_HANDOFF.md). Shadow NLP
-does not change production scoring, eligibility, ranking, filtering, lifecycle,
-or removal behavior.
+NLP intelligence status: **FIELD-SPECIFIC EXPLANATION/ENRICHMENT VALIDATED THROUGH P27; CONSUMER FLAGS DEFAULT OFF**. See the [NLP final handoff](docs/NLP_FINAL_HANDOFF.md) and [real-data validation](docs/NLP_REAL_DATA_VALIDATION.md). NLP does not change production scoring, eligibility, deterministic role membership, primary ranking, filtering, lifecycle, or removal behavior.
 
 ## Requirements
 
@@ -64,7 +61,7 @@ The default database is `data/job-browser.sqlite`. Set `JOB_BROWSER_DB_PATH` to 
 
 ## Windows Desktop Application
 
-Install with `release/Job-Browser-Setup-1.0.25.exe` (249,955,225 bytes; SHA-256 `9D8371E6E35B97F42A055E65BA948E5E2734D887A4FD1543167F81BBF8D82665`). The current-user NSIS installer creates Desktop and Start Menu shortcuts and does not delete application data during uninstall. The unpacked executable is `release/win-unpacked/Job Browser.exe`.
+The existing release installer is `release/Job-Browser-Setup-1.1.0.exe` (253,571,410 bytes; SHA-256 `02223EBE680CAD14708D2AECD25B5C7F2608C39F37D8002D228C29F60C33FA43`). It was built on 2026-09-10 at 20:07:47 and does not include the current unreleased NLP promotion work. The current unpacked application has passed source, package, upgrade, privacy, and real-copy smoke validation; installer replacement awaits the P28 release decision. The current-user NSIS installer creates Desktop and Start Menu shortcuts and preserves application data during uninstall.
 
 The desktop application:
 

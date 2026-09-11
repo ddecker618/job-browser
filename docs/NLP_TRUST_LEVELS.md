@@ -86,8 +86,17 @@ hard-gate`. No skipping.
 
 ## Current status
 
-All capabilities are at **Level 0 (SHADOW)**. Nothing consulted by production
-uses NLP output today; the P1 audit verified `productionEffect: 'none'` and
-zero `nlp/*` imports in the scoring/eligibility/search chains. P3 onwards
-materialize and wire the envelope; capability-level promotions will move rows
-of the matrix from SHADOW to EXPLANATION/ENRICHMENT with recorded evidence.
+P27 records field-specific promotion while preserving shadow-mode authority:
+
+| Capability                                 | Current level           | Consumer flag/default           | Effect                                                  |
+| ------------------------------------------ | ----------------------- | ------------------------------- | ------------------------------------------------------- |
+| Extraction, reconciliation, comparison     | SHADOW (0)              | Background local processing     | Additive rows and diagnostics only                      |
+| Job Intelligence facts and resume coverage | EXPLANATION (1)         | jobIntelligenceExplanation: off | Evidence-labelled display only                          |
+| Reconciled role-family suggestion          | EXPLANATION (1)         | roleFamilySuggestion: off       | Suggestion only; deterministic family wins              |
+| Search-profile vocabulary feedback         | EXPLANATION (1)         | searchProfileFeedback: off      | Read-only feedback                                      |
+| Valid target-role supporting evidence      | EXPLANATION (1)         | No separate promotion flag      | Explains deterministic membership only                  |
+| Search relevance tie-break                 | ENRICHMENT (2)          | searchTieBreak: off             | Secondary ordering only inside exact deterministic ties |
+| Experimental recommendation contribution   | SHADOW (0), design only | No runtime consumer             | Zero production effect                                  |
+| Scoring and hard gates                     | Not promoted            | Unreachable                     | Deterministic only                                      |
+
+All flags are read locally at decision time and malformed values fail closed. Settings exposes them read-only. The acceptance, comparison, rollback, real-data, performance, privacy, packaging, and smoke evidence through P27 is recorded in the roadmap. SPRINT_MAXIMUM_LEVEL = 'enrichment' still applies; nothing reached SCORING or HARD_GATE.

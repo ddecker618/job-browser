@@ -254,7 +254,11 @@ shows source/interpreted-as wording, and leaves disconnected resume coverage as
 The current maximum promotion level is Level 2: additive persisted shadow data
 and labeled diagnostics. Levels 3-4 require the field-specific hard gate in
 `docs/NLP_PROMOTION_DESIGN.md`, a new authorization, and a reversible rollout.
-See `docs/NLP_FINAL_HANDOFF.md` for the validated/not-yet-validated boundary.
+Four local decision-time flags default off for Job Intelligence explanations,
+role-family suggestions, search-profile feedback, and the exact-tie relevance
+consumer. Valid target-role evidence can explain deterministic family membership;
+it never widens membership. Settings reports versions, counts, flags, and failures
+read-only. See docs/NLP_FINAL_HANDOFF.md for the current field-by-field boundary.
 
 Operational diagnostics retained from the existing architecture:
 

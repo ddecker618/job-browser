@@ -444,23 +444,27 @@ async function runDesktopSmoke(): Promise<void> {
       throw new Error('Desktop starter sources endpoint failed');
     }
     const sourceControl: unknown = await sourcesResponse.json();
-    for (const providerId of ['builtin']) {
-      if (!hasSource(sourceControl, providerId, true)) {
-        throw new Error(`Enabled starter source was not seeded: ${providerId}`);
+    if (process.env['JOB_BROWSER_SMOKE_EXISTING_DATA'] !== '1') {
+      for (const providerId of ['builtin']) {
+        if (!hasSource(sourceControl, providerId, true)) {
+          throw new Error(
+            `Enabled starter source was not seeded: ${providerId}`,
+          );
+        }
       }
-    }
-    for (const providerId of [
-      'wellfound',
-      'ziprecruiter',
-      'dice',
-      'handshake',
-      'indeed',
-      'usajobs',
-    ]) {
-      if (!hasSource(sourceControl, providerId, false)) {
-        throw new Error(
-          `Disabled browser source was not seeded: ${providerId}`,
-        );
+      for (const providerId of [
+        'wellfound',
+        'ziprecruiter',
+        'dice',
+        'handshake',
+        'indeed',
+        'usajobs',
+      ]) {
+        if (!hasSource(sourceControl, providerId, false)) {
+          throw new Error(
+            `Disabled browser source was not seeded: ${providerId}`,
+          );
+        }
       }
     }
 

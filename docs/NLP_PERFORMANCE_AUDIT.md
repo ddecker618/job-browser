@@ -90,3 +90,9 @@ The reusable command is npm run nlp:production-audit -- <database-copy> [limit].
 It opens the supplied copy read-only and never includes description text in its JSON
 report. The measurement is a reproducible local baseline, not a fixed performance
 budget; correctness and evidence checks remain unchanged.
+
+## P25 Desktop Real-Copy Validation — 2026-09-11
+
+A 253,034,496-byte consistent backup of the user's local database was passed to the direct current-source desktop build in existing-data smoke mode. The app migrated through version 034, loaded the dashboard and all smoke routes, kept the backend healthy, produced 205 rows in each shadow table before exit, and left no Job Browser or Electron process. The database set grew by 13,619,200 bytes during migrations, smoke-fixture writes, and shadow processing. The copy was deleted.
+
+This end-to-end number is not a per-row storage estimate. The separate P23 worker run processed 500 jobs with zero failures and 2,079 event-loop heartbeats, while the P25 run validates startup, UI navigation, background coexistence, and shutdown against the real database shape.

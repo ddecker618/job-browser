@@ -34,12 +34,12 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P18-P23 complete
-CURRENT_TASK:        P24 full verification, privacy, security, and smoke gate
-LAST_COMPLETED:      P18-P23 complete; npm run verify 157 files / 1445 tests PASS; real-copy validation PASS
-NEXT_ACTION:         run P24 gates without rebuilding the installer
-FILES_IN_PROGRESS:   none after the verified P18-P23 group
-TESTS_TO_RUN:        P24 privacy check, NLP security audit, acceptance, and source smoke
+CURRENT_STAGE:       P24-P27 complete; P28 release decision pending
+CURRENT_TASK:        create the verified P24-P27 checkpoint, then request the P28 decision
+LAST_COMPLETED:      P24-P27; verify 157/1445, privacy 11/11, all current-source smoke PASS
+NEXT_ACTION:         commit P24-P27, then ask whether to rebuild the 1.1.0 installer
+FILES_IN_PROGRESS:   P24-P27 docs and smoke-harness improvements, ready to commit
+TESTS_TO_RUN:        none before P28 decision; installer sequence only if approved
 KNOWN_FAILURES:      none; installer last built 2026-09-10 20:07:47 and is stale
 LATEST_CHECKPOINT:   b89cea1 P18-P23 verified implementation group (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
@@ -82,7 +82,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P24; do not restart the completed P0-P23 stages
+SAFE_RESUME_POINT:   P28 release decision; do not restart completed P0-P27
 ```
 
 ---
@@ -810,10 +810,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
   `npm run verify` 136 files / 1346 tests; privacy 11/11; source/packaged/upgrade smoke
   passed; isolated launch against a copy of the real 253 MB database: main process
   `Responding=True` throughout the ~30 s database phase, `window-created` at ~1.1 s.
-- **Known limitation:** the desktop smoke harness demands its own seeded source state;
-  re-running it against a real-data profile fails its
-  "Disabled browser source was not seeded: wellfound" assertion — harness expectation
-  for fresh seeded DBs, not a product defect.
+- **Harness update:** existing-data smoke mode now preserves user source choices while retaining application, API, navigation, migration, worker, and shutdown assertions.
 - **Current task:** complete.
 - **Exact next action:** P1 - production promotion audit and capability matrix.
 
@@ -821,7 +818,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ## P1 — Production Promotion Audit and Capability Matrix
 
-- **Status:** [>]
+- **Status:** [x]
 - **Objective:** audit every shadow capability against the acceptance metrics and
   record, per capability, the proposed production use, failure class, fallback,
   evidence/confidence, and promotion gate. Audit evidence (two full module passes,
@@ -838,7 +835,7 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 - **Tests:** audit is read/evidence-based; existing per-module suites remain the
   per-field gate inputs.
 - **Validation evidence:** subagent audits (P1); `npm run verify` 136 files / 1346 tests.
-- **Current task:** matrix written; P2 next.
+- **Current task:** complete; final per-capability state reconciled in P27.
 - **Exact next action:** P2 - NLP production trust levels.
 
 ### Production Promotion Matrix (P1)
@@ -860,6 +857,19 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 | Reconciliation                      | 10 tests (not wired into envelope)                                 | Masked conflict                               | Compare vs deterministic; **wire into envelope in P3**            | Deterministic side authoritative              | P3, P5                        |
 | Boilerplate                         | 14 tests (not wired into envelope)                                 | Discarded applicant requirement (guarded)     | Flag/deprioritize boilerplate segments; **wire in P3**            | preserveRequirement = true path wins          | P3, P5                        |
 | Acceptance gate                     | fail-closed; FP/FN/critical thresholds; 6 safety evidences         | Threshold breach → block promotion            | Re-run per promotion                                              | Block until passed                            | every phase                   |
+
+### Final per-capability promotion state (P27)
+
+| Capability                                        | Trust level             | Default state                | Production authority                                         |
+| ------------------------------------------------- | ----------------------- | ---------------------------- | ------------------------------------------------------------ |
+| Extraction, reconciliation, persisted comparison  | SHADOW (0)              | Background shadow processing | None                                                         |
+| Job Intelligence requirements and resume coverage | EXPLANATION (1)         | Flag off                     | Display only; structured values authoritative                |
+| Reconciled role-family suggestion                 | EXPLANATION (1)         | Flag off                     | Suggestion only; never a gate                                |
+| Search-profile vocabulary feedback                | EXPLANATION (1)         | Flag off                     | Read-only feedback                                           |
+| Target-role supporting NLP evidence               | EXPLANATION (1)         | Current evidence when valid  | Deterministic family membership remains decisive             |
+| Search relevance tie-break                        | ENRICHMENT (2)          | Flag off                     | Only inside exact deterministic ties; primary sort unchanged |
+| Experimental recommendation contribution          | SHADOW (0), design only | No runtime consumer          | No score or recommendation change                            |
+| Eligibility and all hard gates                    | No NLP promotion        | Unreachable                  | Deterministic only                                           |
 
 ---
 
@@ -1269,44 +1279,44 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P24 — Full Verification Gate
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** `npm run verify` + `npm run privacy:check` + NLP security audit all
   green; source/packaged/upgrade smoke green; acceptance gate fail-closed on the
   expanded corpus; checkpoint commit.
-- **Current task:** not started.
+- **Current task:** Complete. npm run verify passed 157 files / 1,445 tests; privacy passed 3 files / 11 tests; the expanded NLP security audit passed 3/3; the 66-case acceptance gate passed with zero critical failures. Direct source, rebuilt unpacked-package, and seeded packaged-upgrade smoke all passed.
 - **Exact next action:** P25 - desktop performance validation.
 
 ---
 
 ## P25 — Desktop Performance Validation
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** installed/direct launch with real DB: main thread responsive during
   any watchdog activity, backend free on exit, no orphan processes, worker yields to
   UI, results in acceptable additional disk budget.
-- **Current task:** not started.
+- **Current task:** Complete through the direct/current-source path. A fresh backup of the 253,034,496-byte real database launched, migrated through 034, navigated all smoke routes, processed 205 shadow rows before exit, and closed cleanly with zero Job Browser/Electron processes. The database set grew 13,619,200 bytes during migrations, smoke fixtures, and background processing; P23 separately measured 500 worker items and 2,079 event-loop yields.
 - **Exact next action:** P26 - privacy/packaging audit.
 
 ---
 
 ## P26 — Privacy and Packaging Audit
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** re-run Stage 25 audit for the promoted surfaces: no telemetry, no
   external transmission, no secrets/PII/dev paths, no model artifacts, installer
   contents inspected, fresh-install neutral state.
-- **Current task:** not started.
+- **Current task:** Complete for source and the current unpacked artifact. The expanded audit scans all NLP modules, three repositories, and migrations 031-034; it found no hosted model/runtime, network call, telemetry, developer path, secret, or model artifact. Privacy checks passed on tracked files, dist, and current app.asar; fresh NLP tables are empty. Current app.asar is 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. The existing installer is correctly recorded as stale and its replacement audit belongs to P28 after approval.
 - **Exact next action:** P27 - documentation.
 
 ---
 
 ## P27 — Documentation
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** reconcile this roadmap, PROJECT_MEMORY, CHANGELOG, SESSION_HANDOFF,
   NLP_FINAL_HANDOFF (add a production promotion section), trust levels, promotion
   design, and README with exact per-field promotion status and gates.
-- **Current task:** not started.
+- **Current task:** Complete. Roadmap, Project Memory, changelog, session handoff, final handoff, trust levels, promotion design, architecture, regression/audit documents, and README now state the same per-capability levels, off-by-default flags, unchanged deterministic authority, current validation evidence, and stale-installer boundary.
 - **Exact next action:** P28 - release/release decision.
 
 ---
@@ -1356,6 +1366,10 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 | 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21`   |
 | 2026-09-11 | P6 relevance index       | derive + repo + composite worker target + search tie-break (flag off); verify 143/1399 |
 | 2026-09-11 | P7 role family suggest   | reconciled suggestion projection + intelligence endpoint; verify 144/1407              |
+| 2026-09-11 | P18-P23 promotion safety | verify 157/1445; 500-job real-copy run; checkpoint b89cea1                             |
+| 2026-09-11 | P24 full gate            | verify 157/1445; privacy 11/11; security 3/3; source/package/upgrade smoke PASS        |
+| 2026-09-11 | P25 desktop real copy    | direct smoke PASS; 205 shadow rows; 13,619,200 B growth; no orphan processes           |
+| 2026-09-11 | P26-P27 audit/docs       | current app.asar privacy/inventory PASS; all promotion documents reconciled            |
 
 | 2026-09-11 | P8 target-role search | verify 145/1416 PASS; build PASS; exact membership and current P6 evidence |
 

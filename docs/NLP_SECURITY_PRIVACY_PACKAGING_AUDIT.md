@@ -41,3 +41,9 @@ development command and is not an application runtime dependency. If a future
 model/runtime is proposed, Stage 25 must be repeated with artifact inventory,
 license terms, package diff, fresh-install scan, cache ownership, and an
 explicit no-network test before promotion.
+
+## P26 Promotion-Surface Re-Audit — 2026-09-11
+
+The audit scope now includes every file under src/intelligence/nlp, the NLP schema, the enrichment/relevance/comparison repositories, and migrations 031-034. Fresh migrations create all three shadow tables empty. The scan found no hosted AI/model dependency, network call, telemetry, developer absolute path, secret marker, or model artifact.
+
+npm run nlp:security-audit passed 3/3. npm run privacy:check passed 11/11 after rebuilding the current unpacked application. The current app.asar is 74,029,786 bytes with SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. Fresh packaged and seeded-upgrade smoke passed. The NSIS installer was intentionally not rebuilt; its final content/hash/install audit is the P28 approval-gated release step.

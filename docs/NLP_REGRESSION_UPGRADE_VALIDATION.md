@@ -32,3 +32,13 @@ smoke commands are required for this stage.
 - Fresh installs begin with no NLP rows.
 - Existing data is preserved through migration and packaged upgrade smoke.
 - No semantic runtime or model artifact is introduced by the handoff candidate.
+
+## P24 Current-Source Revalidation — 2026-09-11
+
+- npm run verify: 157 files / 1,445 tests passed.
+- npm run privacy:check: 3 files / 11 tests passed against the current app.asar.
+- npm run nlp:security-audit: 3 tests passed with migrations 031-034 and all three shadow repositories in scope.
+- Direct current-source desktop smoke: passed.
+- Rebuilt unpacked package smoke: passed.
+- Seeded packaged-upgrade smoke through migration 034: passed.
+- Installed smoke remains tied to the P28 installer rebuild decision; the existing installer is stale and was not used as evidence for current source.
