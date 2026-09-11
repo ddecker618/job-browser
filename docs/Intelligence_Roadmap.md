@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P3 (async NLP materialization + envelope wiring) - not started
-CURRENT_TASK:        Wire reconciliation and boilerplate into the envelope; add dropped fields; staged extraction contract
-LAST_COMPLETED:      P2 trust levels: src/intelligence/nlp/trustLevel.ts + docs/NLP_TRUST_LEVELS.md + 6 tests green (Level 0-4 monotonic, sprint max = enrichment)
-NEXT_ACTION:         P3 first implementable unit: envelope wiring (conflict, isBoilerplate, dropped fields)
+CURRENT_STAGE:       P3 (async NLP materialization) - envelope wiring done; background worker remaining
+CURRENT_TASK:        Implement bounded async worker and app.ts materialization hook
+LAST_COMPLETED:      P3a envelope wiring: NlpFact.meta wired (P30b/31/32/33/34/35/36 gap fixes), document-v2, old rows re-extract; npm run verify 139/1362
+NEXT_ACTION:         P3b: src/intelligence/nlp/async.ts worker (bounded batch, single-flight, per-job deadline, abort, re-extract stale-only)
 FILES_IN_PROGRESS:   none
-TESTS_TO_RUN:        npm run verify (136 files / 1346 tests + P2 6 tests); npm run privacy:check (11 pass)
+TESTS_TO_RUN:        npm run verify (139 files / 1362 tests); npx vitest run tests/job-nlp-document.test.ts
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   P2 checkpoint commit (NLP trust levels) is the next commit after this roadmap update
+LATEST_CHECKPOINT:   P3a checkpoint commit 30b74dd (local only, not pushed)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -889,22 +889,24 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 
 ## P3 — Async NLP Materialization + Envelope Wiring
 
-- **Status:** [ ]
+- **Status:** [>] (envelope wiring complete; background materialization remaining)
 - **Objective:** materialize NLP enrichment for jobs as a background, bounded,
-  additive task (no job-table writes) and fix the P1 data-loss gaps so the envelope is
-  production-representational: wire reconciliation into `conflict`, wire boilerplate
-  into `isBoilerplate`/`preserveRequirement`, and add the dropped fields
-  (`nestedYears`, `teamContext`, `remoteScope`, `commute`, `arrangement conflict`,
-  per-cert `key`/`vendor`/`span`, travel detail). Keep `document-v1` versioned;
-  bump extraction version when the envelope changes.
-- **Implementation tasks:** staged extraction contract (title→description→segments→facts
-  for UI, then evidence/matching tiers for search/scoring); `NlpDocumentBuilder`
-  returns both facts and diagnostics; repository schema extended additively
-  (jobs table untouched).
-- **Tests:** extend `job-nlp-document.test.ts`; new end-to-end materialization test with
-  skip-fresh + invalidation semantics (reuse reprocessing tests).
-- **Current task:** not started.
-- **Exact next action:** P4 - bounded background worker with diagnostics.
+  additive task (no job-table writes) and fix the P1 data-loss gaps so the envelope
+  is production-representational.
+- **Evidence so far:** P3a envelope wiring committed (`30b74dd`): additive
+  `NlpFact.meta` (boilerplate signal, experience nestedYears/context, clearance
+  teamContext, certification key/vendor/raw/span, location conflict/remoteScope/
+  commute/onsite/relocation) wired into `document.ts`; document-v2 forces
+  re-extraction of old cached rows; pre-meta rows parse successfully.
+- **Remaining implementation tasks:** `src/intelligence/nlp/async.ts` (bounded
+  batch queue, per-job deadline, re-extract-stale-only, single-flight concurrency,
+  worker is abortable via AbortSignal), app.ts startup hook so enrichment runs
+  after backend ready and yields to the Electron UI, and a read-only diagnostics
+  endpoint feeding future Settings status.
+- **Tests (remaining):** `tests/job-nlp-async.test.ts` (budget, abort,
+  idempotency, stale-only re-extraction, no production writes).
+- **Current task:** not started (remaining portion).
+- **Exact next action:** P3b - async worker + app.ts materialization hook.
 
 ---
 
@@ -1230,6 +1232,7 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 | 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7` |
 | 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                |
 | 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)        |
+| 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly         |
 
 ## NLP integration repair — verified
 
