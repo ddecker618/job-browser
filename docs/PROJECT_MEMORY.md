@@ -44,8 +44,8 @@ NLP tie-breaks and preserves deterministic score/eligibility/primary-sort author
 P15 adds a read-only profile vocabulary projection. P16 measured 500 real local job
 descriptions from a temporary database copy with 0 failures, 0 network requests, and
 0 source-database writes. P17 adds relevance source hashes, strict version/hash joins,
-and migration 033 change-only cache invalidation. Resume at P18 regression-corpus expansion after resolving the P14-P17 checkpoint
-hash with git log. The installer remains
+and migration 033 change-only cache invalidation. Checkpoint ba674cb contains the verified implementation. Resume at P18
+regression-corpus expansion. The installer remains
 the stale 2026-09-10 20:07:47 build; no production data or remote push was touched.
 
 ## Current recovery checkpoint — P8 complete (2026-09-11)

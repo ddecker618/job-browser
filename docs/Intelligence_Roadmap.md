@@ -41,7 +41,7 @@ NEXT_ACTION:         commit this verified group, then P18 regression corpus expa
 FILES_IN_PROGRESS:   none after the verified P14-P17 group
 TESTS_TO_RUN:        P18 focused corpus/acceptance tests, then the next grouped gate
 KNOWN_FAILURES:      none; installer last built 2026-09-10 20:07:47 and is stale
-LATEST_CHECKPOINT:   6c0b766 P13 safety invariants (local only)
+LATEST_CHECKPOINT:   ba674cb P14-P17 verified implementation group (local only)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
