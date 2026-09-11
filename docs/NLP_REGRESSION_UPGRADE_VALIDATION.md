@@ -56,3 +56,18 @@ smoke commands are required for this stage.
 - Packaged and installed app.asar: 74,029,786 bytes, SHA-256 `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`.
 - Installed executable version resource: ProductVersion `1.1.0.0`, FileVersion `1.1.0`.
 - Cleanup check: no Job Browser/Electron/Playwright process or port 6783 listener remained.
+
+## P30 Compensation Release Validation — 2026-09-11
+
+- Focused NLP validation: `npx vitest run tests/job-nlp-compensation.test.ts tests/job-nlp-document.test.ts tests/job-nlp-evaluation.test.ts` passed 3 files / 18 tests.
+- `npm run desktop:package`: passed and rebuilt `release\Job-Browser-Setup-1.1.0.exe` after P30.
+- `npm run desktop:smoke:packaged`: passed.
+- Silent install of the rebuilt P30 installer: exit code 0.
+- `npm run desktop:smoke:installed`: passed against the installed copy.
+- `npm run desktop:smoke:packaged -- --upgrade`: passed through migration 034.
+- `npm run privacy:check`: 3 files / 11 tests passed against the rebuilt distribution.
+- `npm run nlp:security-audit`: 1 file / 3 tests passed.
+- Installer: 253,596,385 bytes, SHA-256 `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251`.
+- Packaged and installed app.asar: 74,036,910 bytes, SHA-256 `04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563`.
+- Installed executable version resource: ProductVersion `1.1.0.0`, FileVersion `1.1.0`.
+- Cleanup check: no Job Browser/Electron/Playwright process or port 6783 listener remained.

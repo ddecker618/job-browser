@@ -8,13 +8,13 @@
 - Added four independent local consumer flags, all off by default, plus visible deterministic fallback on disabled/failed processing. Production scores, eligibility, lifecycle, family membership, and primary sort remain unchanged.
 - Expanded the labeled corpus to 66 cases and added negated-requirement tuning. P23 validated 500 real jobs in a disposable copy with zero failures and an identical jobs-table fingerprint.
 - P24-P29 validation: verify 157/1,445; privacy 11/11; NLP security 3/3; direct, rebuilt unpacked-package, packaged, installed, packaged-upgrade, and real-copy desktop smoke passed.
-- Rebuilt the approved 1.1.0 installer from current source. Installer: `release\Job-Browser-Setup-1.1.0.exe`, 253,595,714 bytes, SHA-256 `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`. Packaged and installed app.asar match SHA-256 `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`. Nothing pushed.
+- Rebuilt the approved 1.1.0 installer from current source. This was superseded by the P30 rebuilt installer listed below. Nothing pushed.
 
 ## Unreleased — NLP compensation extraction (P30)
 
 - Added local deterministic compensation extraction to the NLP document pipeline. It captures USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, and bonus/commission/equity/sign-on/OTE signals with exact evidence spans.
 - Compensation facts are informational, shadow-only, and carry additive metadata. They do not affect scores, eligibility, filters, lifecycle, hard gates, or primary sorting.
-- Focused validation passed: compensation, document, and evaluation NLP tests (3 files / 18 tests). The installer must be rebuilt after this source change.
+- Focused validation passed: compensation, document, and evaluation NLP tests (3 files / 18 tests). The final installer was rebuilt and validated. Installer: `release\Job-Browser-Setup-1.1.0.exe`, 253,596,385 bytes, SHA-256 `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251`. Packaged and installed app.asar match SHA-256 `04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563`.
 
 All notable changes to this project will be documented in this file.
 

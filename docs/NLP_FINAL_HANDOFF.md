@@ -58,7 +58,7 @@ production scoring, or hard-gate integration.
 39. [PASS] Deterministic production scoring is byte-for-byte unchanged before and after representative shadow operations.
 40. [PASS] `npm run verify` passes: 136 files and 1344 tests.
 41. [PASS] `npm run privacy:check` passes: 3 files and 11 tests.
-42. [PASS] Current Windows package validation passes packaged, installed, and packaged-upgrade smoke; installer SHA-256 is `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C` and `app.asar` SHA-256 is `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`.
+42. [PASS] Current Windows package validation passes packaged, installed, and packaged-upgrade smoke; installer SHA-256 is `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251` and `app.asar` SHA-256 is `04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563`.
 43. [PASS] Roadmap, Project Memory, README, changelog, architecture, session handoff, audit documents, and release boundary are reconciled.
 
 ## Production Promotion Update — 2026-09-11
@@ -82,6 +82,12 @@ P28 rebuilt the 1.1.0 installer after explicit user approval. The validated inst
 ## P29 Final Promotion Report
 
 The promoted capabilities are bounded to explanation and exact-tie enrichment. Job Intelligence facts and resume coverage, role-family suggestions, search-profile feedback, and target-role supporting evidence are visible interpretation aids only. Search relevance may participate only as an off-by-default exact deterministic tie-break. Persisted deterministic-vs-NLP comparison remains SHADOW for audit. Recommendation score, eligibility, lifecycle, status, active/manual removal, and every hard gate remain deterministic-only.
+
+## P30 Compensation Module Update
+
+P30 adds local deterministic compensation extraction to the NLP document pipeline. It captures USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, and bonus/commission/equity/sign-on/OTE signals with exact evidence spans and optional metadata. Compensation facts remain informational and shadow-only; they do not change score, eligibility, ranking, filters, lifecycle, or hard gates.
+
+The final P30 installer is `release\Job-Browser-Setup-1.1.0.exe`, 253,596,385 bytes, SHA-256 7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251. Packaged and installed app.asar are identical: 74,036,910 bytes, SHA-256 04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563. Focused NLP tests, packaged smoke, installed smoke, seeded upgrade smoke, privacy, and NLP security audit passed.
 
 ## Handoff Rule
 

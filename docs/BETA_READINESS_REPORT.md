@@ -216,9 +216,9 @@ isolation test green. PASS.
 | Field          | Value                                                                                                                               |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Path           | `release\Job-Browser-Setup-1.1.0.exe`                                                                                               |
-| Byte size      | 253,595,714 B                                                                                                                       |
-| SHA-256        | `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`                                                                  |
-| Packaged asar  | `release\win-unpacked\resources\app.asar`, 74,029,786 B, SHA-256 `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268` |
+| Byte size      | 253,596,385 B                                                                                                                       |
+| SHA-256        | `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251`                                                                  |
+| Packaged asar  | `release\win-unpacked\resources\app.asar`, 74,036,910 B, SHA-256 `04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563` |
 | Installed copy | asar-identical; ProductVersion `1.1.0.0`, FileVersion `1.1.0`                                                                       |
 
 ## 23. Known limitations (accepted for beta)

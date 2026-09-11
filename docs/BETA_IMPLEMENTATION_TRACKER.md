@@ -25,8 +25,8 @@
   package-lock.json); `app.getVersion()` reports 1.1.0 in the built exe.
 - Full gate green: `npm run verify` 108 files / 1101 tests; `npm run
 privacy:check` 3 files / 11 tests.
-- Artifact: `release\Job-Browser-Setup-1.1.0.exe` (253,595,714 B,
-  SHA-256 `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`);
+- Artifact: `release\Job-Browser-Setup-1.1.0.exe` (253,596,385 B,
+  SHA-256 `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251`);
   installed copy asar-identical. Packaged, installed, and upgrade-preservation
   smokes pass; no orphan processes.
 
@@ -74,9 +74,9 @@ privacy:check` 3 files / 11 tests.
 Phase 0 audit complete:
 
 - Worktree clean at `8998fde`, v1.0.28, branch `main`. Baseline `npm run verify` green (104 files / 1057 tests) as of `8998fde` (no source changes since).
-- Current installer: `release\Job-Browser-Setup-1.1.0.exe`, 253,595,714 B, SHA-256
-  `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`. Packaged `app.asar` =
-  74,029,786 B (SHA `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`).
+- Current installer: `release\Job-Browser-Setup-1.1.0.exe`, 253,596,385 B, SHA-256
+  `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251`. Packaged `app.asar` =
+  74,036,910 B (SHA `04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563`).
 - Installed app = 1.1.0 (silently upgraded over 1.0.28 during phase-17 validation; installed
   asar SHA == packaged asar; exe reports version 1.1.0 at `%LOCALAPPDATA%\Programs\Job Browser\`).
   All packaged/installed/upgrade smokes passed; no orphan processes remain.
@@ -160,6 +160,7 @@ Phase 2 (performance) WORKING STATE:
 | 2026-09-09           | Version bump 1.0.28 → 1.1.0; `npm run verify` at 1.1.0                                                                                                               | 108 files / 1101 tests, green                                                                                                                                                      |
 | 2026-09-09           | Build `release\Job-Browser-Setup-1.1.0.exe` (NSIS) + win-unpacked; contents inspected (no tests/scripts/docs/DB in asar; only 3rd-party node_modules sourcemaps)     | installer 253,533,832 B, SHA-256 `E68D623699A46DE8C3C8534DB38FF54CE4887428A865AC0838F8F8512D8FBAD9`; asar 73,681,830 B / `2F4FD44A…9C9F`                                           |
 | 2026-09-11           | P28 rebuild of `release\Job-Browser-Setup-1.1.0.exe` after NLP promotion work + packaged/installed/upgrade validation                                                | installer 253,595,714 B, SHA-256 `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`; asar 74,029,786 B / `1984327A…3268`; smokes, privacy, and NLP security passed |
+| 2026-09-11           | P30 rebuild of `release\Job-Browser-Setup-1.1.0.exe` after compensation NLP module + packaged/installed/upgrade validation                                           | installer 253,596,385 B, SHA-256 `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251`; asar 74,036,910 B / `04315DEB…9563`; smokes, privacy, and NLP security passed |
 | 2026-09-09           | `npm run privacy:check` vs the 1.1.0 artifact (tracked + dist + asar + fresh-install + preservation)                                                                 | 3 files / 11 tests, green                                                                                                                                                          |
 | 2026-09-09           | Phase-10 boundary re-run on the 1.1.0 artifact: packaged smoke, installed smoke (after silent upgrade install), upgrade-preservation smoke (seeded DB); orphan check | all passed; installed asar == packaged asar; exe reports 1.1.0; no orphan Job Browser/electron/ms-playwright process; port 6783 free                                               |
 | 2026-09-09           | Final full gate at release state                                                                                                                                     | `npm run verify` 108 files / 1101 tests, green                                                                                                                                     |

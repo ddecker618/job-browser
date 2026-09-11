@@ -551,4 +551,10 @@ P30 adds a bounded deterministic compensation extractor to the existing NLP docu
 - **D-NLP-085:** The synthetic evaluator counts compensation entities so salary range and bonus cases are measured instead of ignored.
 - **D-NLP-086:** Focused validation passed: `npx vitest run tests/job-nlp-compensation.test.ts tests/job-nlp-document.test.ts tests/job-nlp-evaluation.test.ts` = 3 files / 18 tests.
 
-Resume at the P30 installer rebuild. Because source changed after P28, the previous P28 installer is stale for P30 until rebuilt and smoke-tested again. Do not repeat full P24-P29 validation unless source changes expand beyond P30.
+P30 installer rebuild is complete. `npm run desktop:package` rebuilt the installer after the compensation source change; packaged smoke, silent install exit 0, installed smoke, seeded packaged-upgrade smoke, privacy, and NLP security audit all passed. The installed app now includes P30.
+
+- **D-NLP-087:** Final P30 installer: 253,596,385 bytes, SHA-256 7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251; `latest.yml` records size 253,596,385 and releaseDate `2026-09-11T23:42:10.701Z`.
+- **D-NLP-088:** Final packaged and installed `app.asar` are identical: 74,036,910 bytes, SHA-256 04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563. Installed executable version resource still reports ProductVersion 1.1.0.0 and FileVersion 1.1.0.
+- **D-NLP-089:** Final validation commands passed: `npm run desktop:smoke:packaged`, `npm run desktop:smoke:installed`, `npm run desktop:smoke:packaged -- --upgrade`, `npm run privacy:check` (3 files / 11 tests), and `npm run nlp:security-audit` (1 file / 3 tests). No Job Browser/Electron/Playwright process or port 6783 listener remained afterward.
+
+Resume at the next bounded NLP module. Do not repeat full release validation until another source change needs to ship.
