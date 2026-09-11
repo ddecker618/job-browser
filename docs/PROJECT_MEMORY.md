@@ -522,7 +522,7 @@ Focused validation passed 17 files / 96 tests; full npm run verify passed 157 fi
 
 ## Recovery checkpoint — promotion P24-P27 complete (2026-09-11)
 
-Checkpoint 45a51b0 contains the verified P24-P27 promotion gates. Resume at P28 for the explicit installer release decision; do not repeat P24-P27.
+Checkpoint 45a51b0 contains the verified P24-P27 promotion gates. This checkpoint is superseded by the P28-P29 checkpoint below; do not repeat P24-P27.
 
 - **D-NLP-073:** P24 current-source gate passed: verify 157 files / 1,445 tests, privacy 11/11, NLP security 3/3, 66-case fail-closed acceptance, direct desktop, rebuilt unpacked package, and seeded packaged-upgrade smoke.
 - **D-NLP-074:** The desktop smoke harness accepts an explicit database copy and marks it as existing data. This preserves user source choices and skips only fresh-install starter-source inventory assertions; all app/API/navigation/migration/shutdown checks remain.
@@ -531,4 +531,13 @@ Checkpoint 45a51b0 contains the verified P24-P27 promotion gates. Resume at P28 
 - **D-NLP-077:** Current promotion state is field-specific: Job Intelligence, role-family suggestions, and search-profile feedback are EXPLANATION (Level 1); the exact-tie search relevance consumer is ENRICHMENT (Level 2); their four consumer flags default off. Valid target-role evidence may be displayed, but deterministic membership stays authoritative. Comparison remains SHADOW (Level 0). SCORING and HARD_GATE remain unimplemented and unauthorized.
 - **D-NLP-078:** The smoke timeout is unrefed after Electron exits, removing two minutes of idle validation overhead without weakening the 120-second hang deadline while the child process is active.
 
-Resume at P28. The existing installer was built 2026-09-10 20:07:47, is 253,571,410 bytes, has SHA-256 02223EBE680CAD14708D2AECD25B5C7F2608C39F37D8002D228C29F60C33FA43, and is stale relative to current source. Rebuild and installed-artifact validation require the explicit P28 user decision. Nothing has been pushed.
+At this point the existing installer was built 2026-09-10 20:07:47, was 253,571,410 bytes, and had SHA-256 02223EBE680CAD14708D2AECD25B5C7F2608C39F37D8002D228C29F60C33FA43. It was stale relative to current source and required the explicit P28 user decision. P28 later rebuilt and validated it.
+
+## Recovery checkpoint — promotion P28-P29 complete (2026-09-11)
+
+The user explicitly approved the P28 installer rebuild and installed-artifact validation. `npm run desktop:package` rebuilt `release\Job-Browser-Setup-1.1.0.exe` from current source and replaced the stale installer. Packaged smoke, silent install exit 0, installed smoke, seeded packaged-upgrade smoke, privacy, and NLP security audit all passed. Resume after this checkpoint at additional NLP module planning/implementation; do not repeat P24-P29 unless source changes require a new release artifact.
+
+- **D-NLP-079:** Rebuilt installer: 253,595,714 bytes, SHA-256 09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C; `latest.yml` records size 253,595,714 and releaseDate `2026-09-11T23:01:00.391Z`.
+- **D-NLP-080:** Packaged and installed `app.asar` are identical: 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. Installed executable version resource reports ProductVersion 1.1.0.0 and FileVersion 1.1.0.
+- **D-NLP-081:** Final validation commands passed: `npm run desktop:smoke:packaged`, `npm run desktop:smoke:installed`, `npm run desktop:smoke:packaged -- --upgrade`, `npm run privacy:check` (3 files / 11 tests), and `npm run nlp:security-audit` (1 file / 3 tests). No Job Browser/Electron/Playwright process or port 6783 listener remained afterward.
+- **D-NLP-082:** Final promotion state remains bounded: Job Intelligence, role-family suggestions, search-profile feedback, and target-role supporting evidence are EXPLANATION; exact-tie search relevance is ENRICHMENT; persisted comparison stays SHADOW; SCORING and HARD_GATE are not implemented or authorized.

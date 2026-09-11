@@ -34,14 +34,17 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P24-P27 complete; P28 release decision pending
-CURRENT_TASK:        P28 explicit release and installer decision
-LAST_COMPLETED:      P24-P27; verify 157/1445, privacy 11/11, all current-source smoke PASS
-NEXT_ACTION:         ask whether to rebuild the 1.1.0 installer and run artifact validation
-FILES_IN_PROGRESS:   none; P24-P27 are committed
-TESTS_TO_RUN:        none before P28 decision; installer sequence only if approved
-KNOWN_FAILURES:      none; installer last built 2026-09-10 20:07:47 and is stale
-LATEST_CHECKPOINT:   45a51b0 P24-P27 verified promotion gates (local only)
+CURRENT_STAGE:       P28-P29 complete; release artifact validated
+CURRENT_TASK:        loop back to additional NLP module planning/implementation
+LAST_COMPLETED:      P28-P29; rebuilt installer, packaged/installed/upgrade smoke,
+                     privacy 11/11, NLP security 3/3
+NEXT_ACTION:         identify the next bounded NLP module and implement it in staged
+                     shadow-first checkpoints
+FILES_IN_PROGRESS:   none; P28-P29 docs are ready to commit
+TESTS_TO_RUN:        choose focused tests for the next module; repeat artifact
+                     validation only after source changes and release approval
+KNOWN_FAILURES:      none
+LATEST_CHECKPOINT:   P28-P29 release checkpoint; see git log HEAD
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -82,7 +85,7 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P28 release decision; do not restart completed P0-P27
+SAFE_RESUME_POINT:   additional NLP module planning; do not restart completed P0-P29
 ```
 
 ---
@@ -1323,23 +1326,23 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ## P28 — Release Decision
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** version/artifact decision with the user; rebuild installer and run the
   full artifact validation sequence only with explicit user approval; local
   checkpoint commits; nothing pushed without explicit instruction.
-- **Current task:** not started.
+- **Current task:** Complete. The user approved rebuilding the 1.1.0 installer on 2026-09-11. `npm run desktop:package` rebuilt `release\Job-Browser-Setup-1.1.0.exe` from current source; packaged smoke, installed smoke after silent install, seeded packaged-upgrade smoke, privacy, and NLP security audit all passed. Installer: 253,595,714 bytes, SHA-256 09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C. Packaged and installed app.asar both match SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. No Job Browser/Electron/Playwright process or port 6783 listener remained after validation. Nothing pushed.
 - **Exact next action:** P29 - final report.
 
 ---
 
 ## P29 — Final Production-Promotion Report
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** report which capabilities moved from SHADOW to EXPLANATION/ENRICHMENT
   (and whether any reached SCORING), the evidence for each, the explicitly unchanged
   hard gates, and the record of what remains SHADOW-only with exact reasons.
-- **Current task:** not started.
-- **Exact next action:** none; stop for user review of the P28/P29 decision points.
+- **Current task:** Complete. NLP_FINAL_HANDOFF, regression/upgrade validation, security/privacy packaging audit, changelog, beta release evidence, Project Memory, and this roadmap now record the final P28 artifact evidence and unchanged authority boundary: Job Intelligence, role-family suggestions, search-profile feedback, and target-role supporting evidence are EXPLANATION; exact-tie search relevance is ENRICHMENT; comparison remains SHADOW; SCORING and HARD_GATE remain unimplemented and unauthorized.
+- **Exact next action:** loop back to additional NLP modules only under the same staged, deterministic-first promotion discipline.
 
 ---
 
@@ -1370,6 +1373,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 | 2026-09-11 | P24 full gate            | verify 157/1445; privacy 11/11; security 3/3; source/package/upgrade smoke PASS        |
 | 2026-09-11 | P25 desktop real copy    | direct smoke PASS; 205 shadow rows; 13,619,200 B growth; no orphan processes           |
 | 2026-09-11 | P26-P27 audit/docs       | current app.asar privacy/inventory PASS; all promotion documents reconciled            |
+| 2026-09-11 | P28-P29 release/report   | installer rebuilt; packaged/installed/upgrade smoke PASS; privacy 11/11; security 3/3  |
 
 | 2026-09-11 | P8 target-role search | verify 145/1416 PASS; build PASS; exact membership and current P6 evidence |
 

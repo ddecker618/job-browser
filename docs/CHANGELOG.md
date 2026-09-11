@@ -1,14 +1,14 @@
 # Changelog
 
-## Unreleased — NLP explanation and enrichment promotion (P8-P27)
+## Unreleased — NLP explanation and enrichment promotion (P8-P29)
 
 - Added target-role selection, exact family membership, and supporting current NLP index evidence. Stale derived data falls back to title evidence.
 - Preserved scores, eligibility, lifecycle, and primary sorting. Fixed undefined-role rendering in the unfinished P8 implementation.
 - Added normalized skill matching, immutable-resume diagnostic coverage, reconciled role suggestions, exact-tie search explanations, profile vocabulary feedback, persisted deterministic-vs-NLP comparisons, and read-only Settings status.
 - Added four independent local consumer flags, all off by default, plus visible deterministic fallback on disabled/failed processing. Production scores, eligibility, lifecycle, family membership, and primary sort remain unchanged.
 - Expanded the labeled corpus to 66 cases and added negated-requirement tuning. P23 validated 500 real jobs in a disposable copy with zero failures and an identical jobs-table fingerprint.
-- P24-P26 validation: verify 157/1,445; privacy 11/11; NLP security 3/3; direct, rebuilt unpacked-package, packaged-upgrade, and real-copy desktop smoke passed.
-- The current unpacked app is validated. The existing 1.1.0 installer is stale and will be rebuilt only after the explicit P28 release decision. Nothing pushed.
+- P24-P29 validation: verify 157/1,445; privacy 11/11; NLP security 3/3; direct, rebuilt unpacked-package, packaged, installed, packaged-upgrade, and real-copy desktop smoke passed.
+- Rebuilt the approved 1.1.0 installer from current source. Installer: `release\Job-Browser-Setup-1.1.0.exe`, 253,595,714 bytes, SHA-256 `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`. Packaged and installed app.asar match SHA-256 `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`. Nothing pushed.
 
 All notable changes to this project will be documented in this file.
 

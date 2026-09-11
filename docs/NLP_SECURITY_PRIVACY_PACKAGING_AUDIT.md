@@ -1,6 +1,6 @@
 # NLP Security, Privacy, And Packaging Audit
 
-Status: complete for the current deterministic shadow implementation.
+Status: complete for the current deterministic explanation/enrichment implementation.
 
 ## Scope
 
@@ -47,3 +47,9 @@ explicit no-network test before promotion.
 The audit scope now includes every file under src/intelligence/nlp, the NLP schema, the enrichment/relevance/comparison repositories, and migrations 031-034. Fresh migrations create all three shadow tables empty. The scan found no hosted AI/model dependency, network call, telemetry, developer absolute path, secret marker, or model artifact.
 
 npm run nlp:security-audit passed 3/3. npm run privacy:check passed 11/11 after rebuilding the current unpacked application. The current app.asar is 74,029,786 bytes with SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. Fresh packaged and seeded-upgrade smoke passed. The NSIS installer was intentionally not rebuilt; its final content/hash/install audit is the P28 approval-gated release step.
+
+## P28 Installer Release Audit — 2026-09-11
+
+After explicit user approval, `npm run desktop:package` rebuilt the 1.1.0 NSIS installer from current source. The rebuilt installer is `release\Job-Browser-Setup-1.1.0.exe`, 253,595,714 bytes, SHA-256 `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`. The packaged `app.asar` and installed `app.asar` are identical at 74,029,786 bytes, SHA-256 `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`.
+
+The release artifact passed packaged smoke, silent install, installed smoke, seeded packaged-upgrade smoke, privacy (11/11), and NLP security audit (3/3). No hosted AI, model artifact, telemetry, external NLP call, personal content, secret, or developer path was introduced. No Job Browser/Electron/Playwright process or port 6783 listener remained after validation.

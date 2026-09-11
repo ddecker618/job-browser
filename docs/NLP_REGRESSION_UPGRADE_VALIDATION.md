@@ -1,6 +1,6 @@
 # NLP Regression And Upgrade Validation
 
-Status: complete for the current Stage 29 handoff candidate.
+Status: complete for the current P29 handoff candidate.
 
 ## Shadow Regression
 
@@ -42,3 +42,17 @@ smoke commands are required for this stage.
 - Rebuilt unpacked package smoke: passed.
 - Seeded packaged-upgrade smoke through migration 034: passed.
 - Installed smoke remains tied to the P28 installer rebuild decision; the existing installer is stale and was not used as evidence for current source.
+
+## P28 Release Artifact Validation — 2026-09-11
+
+- `npm run desktop:package`: passed and rebuilt `release\Job-Browser-Setup-1.1.0.exe`.
+- `npm run desktop:smoke:packaged`: passed.
+- Silent install of the rebuilt installer: exit code 0.
+- `npm run desktop:smoke:installed`: passed against the installed copy.
+- `npm run desktop:smoke:packaged -- --upgrade`: passed through migration 034.
+- `npm run privacy:check`: 3 files / 11 tests passed against the rebuilt distribution.
+- `npm run nlp:security-audit`: 1 file / 3 tests passed.
+- Installer: 253,595,714 bytes, SHA-256 `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C`.
+- Packaged and installed app.asar: 74,029,786 bytes, SHA-256 `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`.
+- Installed executable version resource: ProductVersion `1.1.0.0`, FileVersion `1.1.0`.
+- Cleanup check: no Job Browser/Electron/Playwright process or port 6783 listener remained.

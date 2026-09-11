@@ -1,18 +1,19 @@
 # NLP Intelligence Final Handoff
 
-Date: 2026-09-10
+Date: 2026-09-11
 
 ## Final Status
 
-**NLP SHADOW MODE VALIDATED**
+**NLP EXPLANATION AND ENRICHMENT PROMOTION VALIDATED**
 
-**NLP PRODUCTION PROMOTION NOT YET VALIDATED**
+**NLP SCORING AND HARD-GATE PROMOTION NOT AUTHORIZED**
 
 The validation covers the local deterministic shadow contract, evidence,
 persistence boundary, diagnostics, UI labeling, evaluation gate, performance
-baseline, privacy checks, production-score regression, and Windows package
-smoke. It does not authorize Level 3 user-assisted suggestions or Level 4
-production scoring/gate integration.
+baseline, privacy checks, production-score regression, Windows package smoke,
+and the P28 rebuilt installer. It authorizes only the field-specific states
+listed below. It does not authorize Level 3 user-assisted suggestions, Level 4
+production scoring, or hard-gate integration.
 
 ## 43-Point Report
 
@@ -57,7 +58,7 @@ production scoring/gate integration.
 39. [PASS] Deterministic production scoring is byte-for-byte unchanged before and after representative shadow operations.
 40. [PASS] `npm run verify` passes: 136 files and 1344 tests.
 41. [PASS] `npm run privacy:check` passes: 3 files and 11 tests.
-42. [PASS] Current Windows package validation passes packaged, installed, and packaged-upgrade smoke; installer SHA-256 is `B0DCA751C245DCAF4BF71E511D7F724BB15C46BBAAEF3EE7CF4716C4C3A25DCE` and `app.asar` SHA-256 is `5C9A474B5924EF6A74D36A652E1E30FD8086DD8EB6AE75C8621F45C1A810CA53`.
+42. [PASS] Current Windows package validation passes packaged, installed, and packaged-upgrade smoke; installer SHA-256 is `09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C` and `app.asar` SHA-256 is `1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268`.
 43. [PASS] Roadmap, Project Memory, README, changelog, architecture, session handoff, audit documents, and release boundary are reconciled.
 
 ## Production Promotion Update — 2026-09-11
@@ -76,7 +77,11 @@ This section supersedes the historical corpus counts and artifact hashes in the 
 
 The expanded 66-case gate passes with 95.8% category precision, 93.2% category recall, 98.5% strength accuracy, 92.7% entity precision, 97.4% entity recall, and zero critical failures across 11 adversarial cases. P23 processed 500 real local jobs in a disposable copy with zero failures and no jobs-table drift. P24 passed verify 157/1,445, privacy 11/11, security 3/3, direct smoke, current unpacked-package smoke, and packaged-upgrade smoke.
 
-The validated current app.asar is 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. The existing 1.1.0 installer predates these changes and remains stale pending the explicit P28 release decision. No capability reached SCORING or HARD_GATE, and productionEffect: 'none' remains the score/gate boundary.
+P28 rebuilt the 1.1.0 installer after explicit user approval. The validated installer is `release\Job-Browser-Setup-1.1.0.exe`, 253,595,714 bytes, SHA-256 09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C. Packaged smoke, installed smoke after silent install, seeded packaged-upgrade smoke, privacy, and NLP security audit passed. The packaged and installed app.asar are identical: 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. No capability reached SCORING or HARD_GATE, and productionEffect: 'none' remains the score/gate boundary.
+
+## P29 Final Promotion Report
+
+The promoted capabilities are bounded to explanation and exact-tie enrichment. Job Intelligence facts and resume coverage, role-family suggestions, search-profile feedback, and target-role supporting evidence are visible interpretation aids only. Search relevance may participate only as an off-by-default exact deterministic tie-break. Persisted deterministic-vs-NLP comparison remains SHADOW for audit. Recommendation score, eligibility, lifecycle, status, active/manual removal, and every hard gate remain deterministic-only.
 
 ## Handoff Rule
 
