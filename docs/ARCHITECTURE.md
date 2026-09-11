@@ -219,6 +219,10 @@ implemented within their approved boundaries.
   allowed to perform normal recovery. Integrity is verified before migration
   backup or migration, and incoherent or corrupt sets are quarantined with the
   originals preserved.
+- Desktop startup runs the shadow-copy integrity verification in a worker
+  thread, keeping the Electron main process responsive while the existing
+  database is checked. Recovery and quarantine decisions remain in the parent
+  process.
 - Editable CandidateProfile and scoring preferences remain file-authoritative.
   Validated API routes use the shared unified-preference resolver, but startup
   stale-score and post-discovery analysis currently omit that resolver path and

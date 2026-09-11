@@ -14,6 +14,7 @@ import {
 import {
   defaultDatabasePath,
   openDatabase,
+  type OpenDatabaseOptions,
   type JobDatabase,
 } from '../db/database.js';
 import {
@@ -52,6 +53,7 @@ import { ZipRecruiterProvider } from '../providers/ziprecruiter.provider.js';
 import { UsaJobsProvider } from '../providers/usajobs.provider.js';
 
 export interface BackendOptions extends AppOptions {
+  databaseOpener?: DatabaseOpener;
   databasePath?: string;
   migrationsDirectory?: string;
   backupDirectory?: string;
@@ -107,7 +109,8 @@ export async function startBackend(
   let server: Server | undefined;
   try {
     options.onStartupProgress?.('checking-database');
-    database = openDatabase(
+    const databaseOpener = options.databaseOpener ?? openDatabase;
+    database = await databaseOpener(
       databasePath,
       quarantineDirectory === undefined
         ? {}
@@ -371,6 +374,11 @@ export async function startBackend(
     throw error;
   }
 }
+
+type DatabaseOpener = (
+  filename: string,
+  options: OpenDatabaseOptions,
+) => JobDatabase | Promise<JobDatabase>;
 
 export {
   restorePersistenceSet,

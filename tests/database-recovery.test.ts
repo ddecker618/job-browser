@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   DatabaseRecoveryError,
   openDatabase,
+  openDatabaseAsync,
   verifyDatabaseIntegrity,
 } from '../src/db/database.js';
 import { quarantineDatabaseSet } from '../src/db/database-recovery.js';
@@ -74,6 +75,26 @@ describe('database recovery', () => {
     recovered.close();
   });
 
+  it('opens an existing database through the asynchronous verification path', async () => {
+    const directory = temporary();
+    const databasePath = join(directory, 'jobs.sqlite');
+    const database = openDatabase(databasePath);
+    database.exec(
+      "CREATE TABLE async_marker (value TEXT NOT NULL); INSERT INTO async_marker VALUES ('preserved')",
+    );
+    database.close();
+
+    const reopened = await openDatabaseAsync(databasePath, {
+      quarantineDirectory: join(directory, 'quarantine'),
+    });
+    expect(
+      reopened
+        .prepare<[], { value: string }>('SELECT value FROM async_marker')
+        .get()?.value,
+    ).toBe('preserved');
+    reopened.close();
+  });
+
   it('quarantines a corrupt database set without replacing the originals', () => {
     const directory = temporary();
     const databasePath = join(directory, 'jobs.sqlite');
@@ -117,6 +138,31 @@ describe('database recovery', () => {
 
     const second = quarantineDatabaseSet(databasePath, quarantineRoot, error);
     expect(second.directory).not.toBe(error.quarantine!.directory);
+  });
+
+  it('preserves quarantine behavior through asynchronous verification', async () => {
+    const directory = temporary();
+    const databasePath = join(directory, 'jobs.sqlite');
+    const quarantineRoot = join(directory, 'quarantine');
+    const original = Buffer.alloc(4096, 0xa5);
+    writeFileSync(databasePath, original);
+
+    let error: unknown;
+    try {
+      await openDatabaseAsync(databasePath, {
+        quarantineDirectory: quarantineRoot,
+      });
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(DatabaseRecoveryError);
+    const recovery = error as DatabaseRecoveryError;
+    expect(recovery.quarantine).toBeDefined();
+    expect(readFileSync(databasePath)).toEqual(original);
+    expect(
+      readFileSync(join(recovery.quarantine!.directory, 'jobs.sqlite')),
+    ).toEqual(original);
   });
 
   it('quarantines orphaned sidecars without creating an empty database', () => {

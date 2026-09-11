@@ -1,5 +1,6 @@
 import type { BackendHandle, BackendStartupPhase } from '../server/backend.js';
 import { startBackend } from '../server/backend.js';
+import { openDatabaseAsync } from '../db/database.js';
 import { databaseStartupError } from './errors.js';
 import type { DesktopPaths } from './paths.js';
 import {
@@ -25,6 +26,7 @@ export class BackendManager {
     if (this.handle !== null) return this.handle;
     try {
       this.handle = await startBackend({
+        databaseOpener: openDatabaseAsync,
         databasePath: paths.database,
         databaseQuarantineDirectory: paths.databaseQuarantine,
         migrationsDirectory: paths.migrations,
