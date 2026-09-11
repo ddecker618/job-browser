@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P1 (production promotion audit + capability matrix) - in progress
-CURRENT_TASK:        Matrix written for every capability; begin P2 trust levels
-LAST_COMPLETED:      P0 desktop startup + NLP repair baseline: commits f0c41c7, 036d75c (local only); npm run verify 136 files / 1346 tests; real 253 MB DB main-thread responsiveness proven
-NEXT_ACTION:         P2 - define the five NLP production trust levels with per-level tests
-FILES_IN_PROGRESS:   docs/Intelligence_Roadmap.md (Part B appended)
-TESTS_TO_RUN:        npm run verify (136 files / 1346 tests); npm run privacy:check (11 pass); npx vitest run tests/job-nlp-acceptance.test.ts
+CURRENT_STAGE:       P3 (async NLP materialization + envelope wiring) - not started
+CURRENT_TASK:        Wire reconciliation and boilerplate into the envelope; add dropped fields; staged extraction contract
+LAST_COMPLETED:      P2 trust levels: src/intelligence/nlp/trustLevel.ts + docs/NLP_TRUST_LEVELS.md + 6 tests green (Level 0-4 monotonic, sprint max = enrichment)
+NEXT_ACTION:         P3 first implementable unit: envelope wiring (conflict, isBoilerplate, dropped fields)
+FILES_IN_PROGRESS:   none
+TESTS_TO_RUN:        npm run verify (136 files / 1346 tests + P2 6 tests); npm run privacy:check (11 pass)
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   P0 baseline checkpoint commits f0c41c7 and 036d75c created locally, NOT pushed (repo rule)
+LATEST_CHECKPOINT:   P2 checkpoint commit (NLP trust levels) is the next commit after this roadmap update
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -865,21 +865,24 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 
 ## P2 — NLP Production Trust Levels
 
-- **Status:** [ ]
-- **Objective:** define five explicit trust levels used for every future promotion
-  decision: `SHADOW` (current; stored, never shown opaquely), `EXPLANATION` (typed
-  add-on to production display, always labelled), `ENRICHMENT` (additive, affects
-  indexing/relevance only, never scores or gates), `SCORING` (bounded, explicit,
-  percentage-capped contribution to a displayed recommendation metric only),
-  `HARD_GATE` (overrides deterministic eligibility; requires the strongest evidence
-  a new authorization and is out of scope for this sprint).
-- **Implementation tasks:** `docs/NLP_TRUST_LEVELS.md` (responsibilities, permitted
-  consumers, labelling, rollback, per-level evidence requirements); schema type
-  `NlpProductionLevel`; per-level tests that assert harder levels require more
-  evidence and that no consumer below the level may use the output.
-- **Tests:** new `tests/job-nlp-trust-levels.test.ts` (structure, monotonic evidence
-  requirement, no-SCORING/HARD_GATE consumers in the tree).
-- **Current task:** not started.
+- **Status:** [x]
+- **Objective:** define five explicit trust levels mapped onto the Level 0-4 ladder
+  used for every future promotion decision: `SHADOW` (0), `EXPLANATION` (1),
+  `ENRICHMENT` (2), `SCORING` (3), `HARD_GATE` (4). Promotion is monotonic,
+  one-step, evidence-gated, and fail-closed; this sprint never exceeds Level 2.
+- **Implementation tasks:** `src/intelligence/nlp/trustLevel.ts` (level ladder,
+  descriptors, `canPromoteNlpLevel` with sprint maximum);
+  `docs/NLP_TRUST_LEVELS.md` (permitted consumers, labelling, rollback, evidence
+  ladder); `tests/job-nlp-trust-levels.test.ts` (module/ladder consistency,
+  monotonic evidence, fail-closed unknown evidence, sprint maximum, no
+  production consumers).
+- **Tests:** 6 trust-level tests (see tasks); builds on promotion design (Stage 27).
+- **Validation evidence:** `npx vitest run tests/job-nlp-trust-levels.test.ts` =
+  6 pass; `npx vitest run tests/job-nlp-promotion-design.test.ts
+  tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier clean.
+- **Known limitations:** no consumer exists above SHADOW yet; SCORING/HARD_GATE
+  require new authorization and remain unreachable by design.
+- **Current task:** complete.
 - **Exact next action:** P3 - async NLP materialization and envelope wiring.
 
 ---
@@ -1225,7 +1228,8 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 | 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated   |
 | 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`     |
 | 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7` |
-| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                |
+| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)               |
+| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)      |
 
 ## NLP integration repair — verified
 
