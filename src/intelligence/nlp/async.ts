@@ -28,6 +28,7 @@ export interface AsyncWorkerOptions {
   maxTotal?: number;
   timeoutPerJobMs?: number;
   abortSignal?: AbortSignal;
+  afterJobId?: string | null;
   onBatchComplete?: (progress: AsyncWorkerProgress) => void;
 }
 
@@ -164,7 +165,7 @@ export async function runNlpBackgroundWorker(
   let totalExtracted = 0;
   let totalSkipped = 0;
   let totalFailed = 0;
-  let lastJobId: string | null = null;
+  let lastJobId: string | null = options.afterJobId ?? null;
   let hasMore = true;
   const allFailedJobIds: string[] = [];
 

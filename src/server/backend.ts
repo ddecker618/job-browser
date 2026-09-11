@@ -41,6 +41,11 @@ import { EmployerDiscoveryIntelligenceService } from '../discovery/employerDisco
 import { DiscoveryAlertService } from '../discovery/discoveryAlertService.js';
 import { DiscoveryAnalyticsService } from '../discovery/discoveryAnalyticsService.js';
 import { unavailableCredentialResolver } from '../discovery/credentialResolver.js';
+import { NlpBackgroundWorker } from '../intelligence/nlp/backgroundWorker.js';
+import { DatabaseJobNlpCandidateSource } from '../intelligence/nlp/jobCandidateProvider.js';
+import { extractNlpDocument } from '../intelligence/nlp/document.js';
+import { JobNlpEnrichmentRepository } from '../database/jobNlpEnrichmentRepository.js';
+import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { IntelligenceEngine } from '../intelligence/intelligenceEngine.js';
 import { loadCandidateProfile } from '../config/candidate-profile.js';
 import { loadScoringConfig } from '../config/scoring-config.js';
@@ -285,6 +290,31 @@ export async function startBackend(
           )
         : null;
     scheduler?.start();
+    const nlpCandidateSource = new DatabaseJobNlpCandidateSource(
+      activeDatabase,
+    );
+    const nlpEnrichmentStore = new JobNlpEnrichmentRepository(activeDatabase);
+    const nlpBackgroundWorker = new NlpBackgroundWorker(
+      {
+        target: nlpEnrichmentStore,
+        extractionVersion: NLP_EXTRACTION_VERSION,
+        builder: async (candidate, signal) => {
+          const parts = nlpCandidateSource.load(candidate.jobId);
+          if (parts === null) {
+            throw new Error(`Job ${candidate.jobId} no longer exists`);
+          }
+          return extractNlpDocument(parts, signal);
+        },
+        candidateProvider: (afterJobId, limit) =>
+          Promise.resolve(nlpCandidateSource.page(afterJobId, limit)),
+      },
+      {
+        staleHint: () =>
+          nlpCandidateSource.countMissingOrVersionMismatch(
+            NLP_EXTRACTION_VERSION,
+          ),
+      },
+    );
     const app = createApp(database, {
       ...options,
       coordinator,
@@ -295,6 +325,7 @@ export async function startBackend(
       employerDiscoveryIntelligence,
       discoveryAlertService,
       discoveryAnalyticsService,
+      nlpBackgroundWorker,
     });
     if (options.development === true) {
       const { createServer } = await import('vite');
@@ -331,6 +362,7 @@ export async function startBackend(
       throw new Error('Backend did not select a TCP port');
     const url = `http://${host}:${String(address.port)}`;
     logger('info', 'Backend started', { url, pendingMigrations });
+    nlpBackgroundWorker.start();
     let stopped = false;
     return {
       database: activeDatabase,
@@ -356,6 +388,7 @@ export async function startBackend(
         stopped = true;
         if (scheduler !== null) await scheduler.stop();
         else await coordinator.stop();
+        await nlpBackgroundWorker.stop();
         await new Promise<void>((resolveStop, reject) => {
           server?.close((error) =>
             error === undefined ? resolveStop() : reject(error),

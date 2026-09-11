@@ -80,4 +80,17 @@ describe('connected shadow NLP API', () => {
       db.prepare('SELECT COUNT(*) AS count FROM job_nlp_enrichments').get(),
     ).toEqual({ count: 0 });
   });
+  it('exposes read-only NLP worker status', async () => {
+    const { url } = await setup();
+    const response = await fetch(url + '/api/intelligence/status');
+    const body = (await response.json()) as {
+      worker: unknown;
+      extractionVersion: string;
+      documentVersion: string;
+    };
+    expect(response.status).toBe(200);
+    expect(body.worker).toBeNull();
+    expect(body.documentVersion).toMatch(/^document-v/);
+    expect(body.extractionVersion).toMatch(/^job-nlp-v/);
+  });
 });

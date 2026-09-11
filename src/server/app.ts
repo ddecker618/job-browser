@@ -3,8 +3,10 @@ import { JobNlpEnrichmentRepository } from '../database/jobNlpEnrichmentReposito
 import {
   documentHash,
   extractNlpDocument,
+  NLP_DOCUMENT_VERSION,
 } from '../intelligence/nlp/document.js';
 import { inspectJobNlp } from '../intelligence/nlp/inspector.js';
+import type { NlpWorkerStatus } from '../intelligence/nlp/backgroundWorker.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
@@ -119,6 +121,7 @@ export interface AppOptions {
     options?: AtsDetectorOptions,
   ) => Promise<AtsDetectionResult>;
   availabilityFetcher?: import('../intelligence/jobAvailability.js').AvailabilityFetcher;
+  nlpBackgroundWorker?: { status: () => NlpWorkerStatus };
 }
 
 const asyncRoute =
@@ -216,6 +219,13 @@ export function createApp(
 
   app.get('/api/health', (_request, response) =>
     response.json({ status: 'ok' }),
+  );
+  app.get('/api/intelligence/status', (_request, response) =>
+    response.json({
+      worker: options.nlpBackgroundWorker?.status() ?? null,
+      extractionVersion: NLP_EXTRACTION_VERSION,
+      documentVersion: NLP_DOCUMENT_VERSION,
+    }),
   );
   app.get('/api/dashboard', (_request, response) =>
     response.json(repository.getSummary()),

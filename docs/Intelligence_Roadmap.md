@@ -34,14 +34,14 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P3 (async NLP materialization + envelope wiring) - complete
-CURRENT_TASK:        P4: wire the worker into app.ts (startup hook, single-flight, diagnostics endpoint) + client status
-LAST_COMPLETED:      P3a envelope meta + P3b async worker; npm run verify 140/1369 green (commit 30b74dd, 2d9ad2c)
-NEXT_ACTION:         P4: DB-backed candidate provider + app.ts auto-materialization after backend ready; read-only diagnostics
+CURRENT_STAGE:       P4 (background worker wiring + diagnostics) - complete
+CURRENT_TASK:        P5: production Job Intelligence projection (evidence, interpretation labels, deterministic authoritative)
+LAST_COMPLETED:      P4 worker wiring; npm run verify 141/1378 green (commit after 2d9ad2c)
+NEXT_ACTION:         P5: projection of JobNlpEnrichment into the production Job Intelligence UI + contract
 FILES_IN_PROGRESS:   none
-TESTS_TO_RUN:        npm run verify (140 files / 1369 tests); npx vitest run tests/job-nlp-async.test.ts
+TESTS_TO_RUN:        npm run verify (141 files / 1378 tests)
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   P3b checkpoint commit 2d9ad2c (local only, not pushed)
+LATEST_CHECKPOINT:   P4 checkpoint commit (local only, not pushed)
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -914,7 +914,7 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 
 ## P4 — Bounded Background Worker + Diagnostics
 
-- **Status:** [ ]
+- **Status:** [x]
 - **Objective:** bounded, local, queue-based enrichment worker (per-app single-flight,
   batch cap, per-job deadline, backpressure, no Redis); progress + failures surfaced in
   a read-only diagnostics view; worker never touches scoring/eligibility tables.
@@ -922,7 +922,15 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
   desktop integration so enrichment starts after backend ready and yields to UI;
   diagnostics (analysed/pending/failed/stale counts, last failure reason) exposed via a
   read-only status endpoint + Settings page; tests for budget/abort/idempotency.
-- **Current task:** not started.
+- **Done:** `async.ts` worker (P3b) wired into `backend.ts` via `NlpBackgroundWorker`
+  (started after backend ready, stopped on shutdown, persisted resume cursor across
+  capped sweeps, per-job deadline, single-flight) using `DatabaseJobNlpCandidateSource`;
+  read-only `GET /api/intelligence/status` endpoint in `app.ts`.
+- **Tests:** `tests/job-nlp-background-worker.test.ts` (8) + status endpoint in
+  `job-nlp-connected-api.test.ts`.
+- **Validation evidence:** `npm run verify` = 141 files / 1378 tests green.
+- **Known limitations:** Settings-page status surface is P22; per-capability flags P20.
+- **Current task:** complete.
 - **Exact next action:** P5 - production Job Intelligence projection.
 
 ---
@@ -1236,6 +1244,7 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
 | 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)        |
 | 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly         |
 | 2026-09-10 | P3b async worker         | verify 140/1369 green; 7 worker tests; commit `2d9ad2c`                      |
+| 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green            |
 
 ## NLP integration repair — verified
 
