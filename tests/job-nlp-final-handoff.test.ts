@@ -12,8 +12,12 @@ describe('NLP final handoff (Stage 29)', () => {
     const numberedPoints = [...handoff.matchAll(/^\d+\. /gm)];
 
     expect(numberedPoints).toHaveLength(43);
-    expect(handoff).toContain('NLP SHADOW MODE VALIDATED');
-    expect(handoff).toContain('NLP PRODUCTION PROMOTION NOT YET VALIDATED');
+    expect(handoff).toContain(
+      'NLP EXPLANATION AND ENRICHMENT PROMOTION VALIDATED',
+    );
+    expect(handoff).toContain(
+      'NLP SCORING AND HARD-GATE PROMOTION NOT AUTHORIZED',
+    );
     expect(handoff).toContain("productionEffect: 'none'");
   });
 });

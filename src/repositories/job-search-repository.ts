@@ -501,6 +501,7 @@ export class JobSearchRepository {
             CountRow
           >("SELECT COUNT(*) AS value FROM sqlite_master WHERE type = 'table' AND name = 'job_search_fts'")
           .get()?.value === 1;
+      if (alreadyProvisioned && this.ftsSynchronized()) return true;
       this.database.exec('BEGIN IMMEDIATE');
       transactionStarted = true;
       this.database.exec(`
@@ -571,6 +572,29 @@ export class JobSearchRepository {
       }
       return false;
     }
+  }
+
+  private ftsSynchronized(): boolean {
+    const triggerCount = this.database
+      .prepare<
+        [],
+        CountRow
+      >("SELECT COUNT(*) AS value FROM sqlite_master WHERE type = 'trigger' AND name IN ('job_search_fts_insert', 'job_search_fts_update', 'job_search_fts_delete')")
+      .get()?.value;
+    if (triggerCount !== 3) return false;
+    const orphans = this.database
+      .prepare<
+        [],
+        CountRow
+      >('SELECT COUNT(*) AS value FROM (SELECT job_id FROM job_search_fts EXCEPT SELECT id FROM jobs)')
+      .get()?.value;
+    const missing = this.database
+      .prepare<
+        [],
+        CountRow
+      >('SELECT COUNT(*) AS value FROM (SELECT id FROM jobs EXCEPT SELECT job_id FROM job_search_fts)')
+      .get()?.value;
+    return orphans === 0 && missing === 0;
   }
 }
 

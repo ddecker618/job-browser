@@ -559,6 +559,17 @@ P30 installer rebuild is complete. `npm run desktop:package` rebuilt the install
 
 Resume at the next bounded NLP module. Do not repeat full release validation until another source change needs to ship.
 
+## Recovery checkpoint — P31 FTS provisioning startup fix verified (2026-09-11)
+
+Live startup timing was verified against a disposable copy of the user's real 478 MB database, and the launch freeze was removed. `startBackend()` instrumentation exposed a 43,863 ms `creating-api-application` phase on every cold start; the cause was `JobSearchRepository.provisionFts()` re-running a full FTS5 reconcile on every construction even when the index was in sync (UNINDEXED `job_id` forces a whole-table scan per membership probe).
+
+- **D-NLP-095:** `provisionFts()` now short-circuits via a cheap `ftsSynchronized()` guard: verifies the three FTS triggers exist and that `job_search_fts`/`jobs` membership is exactly equal (`EXCEPT` set equality). When sound, startup skips the reconcile entirely; when stale it still runs the deterministic repair, so the fallback behavior is unchanged.
+- **D-NLP-096:** Measured on a fresh copy of the real database (temp copy deleted after; real data untouched): `createApp` 43,863 ms -> 45 ms; `new JobSearchRepository` 38,964 ms -> 34 ms; second in-sync construction 34 ms.
+- **D-NLP-097:** Minimal hygiene committed with the fix: two pre-existing P30 lint errors in `src/intelligence/nlp/compensation.ts` and stale P24-era wording assertions in `tests/job-nlp-final-handoff.test.ts`. Behavior unchanged.
+- **D-NLP-098:** Full `npm run verify` passed: format + eslint + `tsc --noEmit` + 158 files / 1453 tests. No installer or version change (still 1.1.1). Nothing pushed.
+
+Resume at the next bounded NLP module (recommended candidate: enable Job Intelligence explanations). Do not restart P0-P31.
+
 ## Recovery checkpoint — P31 desktop startup performance release (2026-09-11)
 
 P31 responds to the slow-load diagnosis from the user's live database. The visible 1,298 jobs were not the direct startup blocker; the live SQLite set was much larger, and startup was doing full-database maintenance before the local service became reachable. P31 keeps database verification, migrations, deterministic scoring, eligibility, lifecycle rules, NLP extraction, and trust boundaries unchanged while moving non-critical startup maintenance behind the first successful backend start.
@@ -568,5 +579,3 @@ P31 responds to the slow-load diagnosis from the user's live database. The visib
 - **D-NLP-092:** Focused validation passed after the source change and version bump: Prettier check, ESLint, `tsc --noEmit`, and `vitest run tests/backend-lifecycle.test.ts tests/scoring-reprocessing.test.ts` = 2 files / 11 tests.
 - **D-NLP-093:** Version bumped from 1.1.0 to 1.1.1 in `package.json` and `package-lock.json`.
 - **D-NLP-094:** Final P31 installer: `release\Job-Browser-Setup-1.1.1.exe`, 253,596,928 bytes, SHA-256 1101A3795CCB930C9966DC02198B60EFCF757221496B61728C2B9C9E8886C815. Packaged and installed `app.asar` are identical: 74,041,483 bytes, SHA-256 CEE52B0E0F625F25B26970ECCFF8637C27CFA2E0C243484FF3E76930613BB35F. Installed executable reports ProductVersion 1.1.1.0 and FileVersion 1.1.1. Packaged, installed, and seeded upgrade smokes passed.
-
-Resume at live startup verification on the user's real database, then the next bounded NLP module.

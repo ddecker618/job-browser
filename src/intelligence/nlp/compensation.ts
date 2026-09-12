@@ -111,7 +111,6 @@ export function extractCompensationBatch(
 function* moneyMentions(text: string): Generator<MoneyMention> {
   for (const match of text.matchAll(MONEY_PATTERN)) {
     const raw = match[0];
-    if (raw === undefined || match.index === undefined) continue;
     const value = parseMoney(match[1] ?? '', match[2] ?? '');
     if (value === null) continue;
     yield {
@@ -213,6 +212,9 @@ function normalizedAmount(
   maximum: number | null,
   period: CompensationPeriod,
 ): string {
-  const range = maximum === null ? String(minimum) : `${minimum}-${maximum}`;
+  const range =
+    maximum === null
+      ? String(minimum)
+      : `${String(minimum)}-${String(maximum)}`;
   return `${kind}:USD:${period}:${range}`;
 }

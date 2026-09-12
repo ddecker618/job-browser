@@ -189,177 +189,242 @@ export async function startBackend(
       ensureInstalledAt(activeDatabase);
       await providerRegistry.loadProviders();
     });
-    if (options.linkedinProfile) {
-      const linkedIn = providerRegistry.get('linkedin');
-      if (linkedIn instanceof LinkedInProvider) {
-        linkedIn.setBrowserProfileDir(options.linkedinProfile);
+    await yieldStartup();
+    timeStartupPhase(logger, 'configuring-provider-profiles', () => {
+      if (options.linkedinProfile) {
+        const linkedIn = providerRegistry.get('linkedin');
+        if (linkedIn instanceof LinkedInProvider) {
+          linkedIn.setBrowserProfileDir(options.linkedinProfile);
+        }
       }
-    }
-    if (options.diceProfile) {
-      const dice = providerRegistry.get('dice');
-      if (dice instanceof DiceProvider) {
-        dice.setBrowserProfileDir(options.diceProfile);
+      if (options.diceProfile) {
+        const dice = providerRegistry.get('dice');
+        if (dice instanceof DiceProvider) {
+          dice.setBrowserProfileDir(options.diceProfile);
+        }
       }
-    }
-    if (options.handshakeProfile) {
-      const handshake = providerRegistry.get('handshake');
-      if (handshake instanceof HandshakeProvider) {
-        handshake.setBrowserProfileDir(options.handshakeProfile);
+      if (options.handshakeProfile) {
+        const handshake = providerRegistry.get('handshake');
+        if (handshake instanceof HandshakeProvider) {
+          handshake.setBrowserProfileDir(options.handshakeProfile);
+        }
       }
-    }
-    if (options.indeedProfile) {
-      const indeed = providerRegistry.get('indeed');
-      if (indeed instanceof IndeedProvider) {
-        indeed.setBrowserProfileDir(options.indeedProfile);
+      if (options.indeedProfile) {
+        const indeed = providerRegistry.get('indeed');
+        if (indeed instanceof IndeedProvider) {
+          indeed.setBrowserProfileDir(options.indeedProfile);
+        }
       }
-    }
-    if (options.wellfoundProfile) {
-      const wellfound = providerRegistry.get('wellfound');
-      if (wellfound instanceof WellfoundProvider) {
-        wellfound.setBrowserProfileDir(options.wellfoundProfile);
+      if (options.wellfoundProfile) {
+        const wellfound = providerRegistry.get('wellfound');
+        if (wellfound instanceof WellfoundProvider) {
+          wellfound.setBrowserProfileDir(options.wellfoundProfile);
+        }
       }
-    }
-    if (options.ziprecruiterProfile) {
-      const ziprecruiter = providerRegistry.get('ziprecruiter');
-      if (ziprecruiter instanceof ZipRecruiterProvider) {
-        ziprecruiter.setBrowserProfileDir(options.ziprecruiterProfile);
+      if (options.ziprecruiterProfile) {
+        const ziprecruiter = providerRegistry.get('ziprecruiter');
+        if (ziprecruiter instanceof ZipRecruiterProvider) {
+          ziprecruiter.setBrowserProfileDir(options.ziprecruiterProfile);
+        }
       }
-    }
-    if (options.usaJobsProfile) {
-      const usajobs = providerRegistry.get('usajobs');
-      if (usajobs instanceof UsaJobsProvider) {
-        usajobs.setBrowserProfileDir(options.usaJobsProfile);
+      if (options.usaJobsProfile) {
+        const usajobs = providerRegistry.get('usajobs');
+        if (usajobs instanceof UsaJobsProvider) {
+          usajobs.setBrowserProfileDir(options.usaJobsProfile);
+        }
       }
-    }
-    const sourceRepository = new SourceRepository(
-      database,
-      options.profilePreferencesPath,
+    });
+    await yieldStartup();
+    const sourceRepository = timeStartupPhase(
+      logger,
+      'initializing-source-state',
+      () => {
+        const repository = new SourceRepository(
+          activeDatabase,
+          options.profilePreferencesPath,
+        );
+        repository.reconcileProviders(providerRegistry.list());
+        if (options.seedDefaultSources === true) {
+          repository.ensureDefaultSources();
+        }
+        repository.recoverInterruptedRuns();
+        return repository;
+      },
     );
-    sourceRepository.reconcileProviders(providerRegistry.list());
-    if (options.seedDefaultSources === true) {
-      sourceRepository.ensureDefaultSources();
-    }
-    sourceRepository.recoverInterruptedRuns();
-    const jobLifecycle = new JobLifecycleRepository(database);
-    const discoveryAlertService = new DiscoveryAlertService(database);
-    const discoveryAnalyticsService = new DiscoveryAnalyticsService(database);
+    await yieldStartup();
+    const startupServices = timeStartupPhase(
+      logger,
+      'constructing-startup-services',
+      () => {
+        const jobLifecycle = new JobLifecycleRepository(activeDatabase);
+        const discoveryAlertService = new DiscoveryAlertService(activeDatabase);
+        const discoveryAnalyticsService = new DiscoveryAnalyticsService(
+          activeDatabase,
+        );
+        const coordinator = new DiscoveryCoordinator(
+          activeDatabase,
+          providerRegistry,
+          {
+            credentialResolver:
+              options.credentialResolver ?? unavailableCredentialResolver,
+            writeLog: logger,
+            ...(options.profilePreferencesPath === undefined
+              ? {}
+              : { profilePreferencesPath: options.profilePreferencesPath }),
+            analyze: () =>
+              new IntelligenceEngine(activeDatabase).analyze(
+                loadCandidateProfile(options.candidateProfilePath),
+                loadScoringConfig(options.scoringConfigPath),
+              ),
+            evaluateAlerts: () => discoveryAlertService.evaluateRules(),
+          },
+        );
+        const employerRepository = new EmployerRepository(activeDatabase);
+        const employerDiscoveryIntelligence =
+          new EmployerDiscoveryIntelligenceService(activeDatabase);
+        const employerDiscoveryService = new EmployerDiscoveryService(
+          employerRepository,
+          sourceRepository,
+          providerRegistry,
+          coordinator,
+          options.credentialResolver ?? unavailableCredentialResolver,
+          employerDiscoveryIntelligence,
+        );
+        const careerSiteHealthService = new CareerSiteHealthService(
+          employerRepository,
+          employerDiscoveryService,
+          options.atsDetector,
+        );
+        const scheduler =
+          options.enableScheduler === true
+            ? new DiscoveryScheduler(
+                sourceRepository,
+                coordinator,
+                30_000,
+                employerDiscoveryService,
+                undefined,
+                careerSiteHealthService,
+                jobLifecycle,
+                discoveryAlertService,
+              )
+            : null;
+        return {
+          careerSiteHealthService,
+          coordinator,
+          discoveryAlertService,
+          discoveryAnalyticsService,
+          employerDiscoveryIntelligence,
+          employerDiscoveryService,
+          employerRepository,
+          jobLifecycle,
+          scheduler,
+        };
+      },
+    );
 
-    const coordinator = new DiscoveryCoordinator(database, providerRegistry, {
-      credentialResolver:
-        options.credentialResolver ?? unavailableCredentialResolver,
-      writeLog: logger,
-      ...(options.profilePreferencesPath === undefined
-        ? {}
-        : { profilePreferencesPath: options.profilePreferencesPath }),
-      analyze: () =>
-        new IntelligenceEngine(activeDatabase).analyze(
-          loadCandidateProfile(options.candidateProfilePath),
-          loadScoringConfig(options.scoringConfigPath),
-        ),
-      evaluateAlerts: () => discoveryAlertService.evaluateRules(),
-    });
-    const employerRepository = new EmployerRepository(database);
-    const employerDiscoveryIntelligence =
-      new EmployerDiscoveryIntelligenceService(database);
-    const employerDiscoveryService = new EmployerDiscoveryService(
-      employerRepository,
-      sourceRepository,
-      providerRegistry,
-      coordinator,
-      options.credentialResolver ?? unavailableCredentialResolver,
-      employerDiscoveryIntelligence,
-    );
-    const careerSiteHealthService = new CareerSiteHealthService(
-      employerRepository,
-      employerDiscoveryService,
-      options.atsDetector,
-    );
-    const scheduler =
-      options.enableScheduler === true
-        ? new DiscoveryScheduler(
-            sourceRepository,
-            coordinator,
-            30_000,
-            employerDiscoveryService,
-            undefined,
-            careerSiteHealthService,
-            jobLifecycle,
-            discoveryAlertService,
-          )
-        : null;
-    const nlpCandidateSource = new DatabaseJobNlpCandidateSource(
-      activeDatabase,
-    );
-    const nlpEnrichmentStore = new JobNlpEnrichmentRepository(activeDatabase);
-    const nlpRelevanceStore = new NlpRelevanceRepository(activeDatabase);
-    const nlpPersistenceTarget = withNlpComparisonPersistence(
-      activeDatabase,
-      withSearchRelevanceIndex(nlpEnrichmentStore, nlpRelevanceStore),
-      new NlpComparisonRepository(activeDatabase),
-    );
-    const nlpBackgroundWorker = new NlpBackgroundWorker(
-      {
-        target: nlpPersistenceTarget,
-        extractionVersion: NLP_EXTRACTION_VERSION,
-        builder: async (candidate, signal) => {
-          const parts = nlpCandidateSource.load(candidate.jobId);
-          if (parts === null) {
-            throw new Error(`Job ${candidate.jobId} no longer exists`);
-          }
-          return extractNlpDocument(parts, signal);
-        },
-        candidateProvider: (afterJobId, limit) =>
-          Promise.resolve(nlpCandidateSource.page(afterJobId, limit)),
-      },
-      {
-        staleHint: () =>
-          nlpCandidateSource.countMissingOrVersionMismatch(
-            NLP_EXTRACTION_VERSION,
-          ),
+    await yieldStartup();
+    const nlpBackgroundWorker = timeStartupPhase(
+      logger,
+      'constructing-nlp-worker',
+      () => {
+        const nlpCandidateSource = new DatabaseJobNlpCandidateSource(
+          activeDatabase,
+        );
+        const nlpEnrichmentStore = new JobNlpEnrichmentRepository(
+          activeDatabase,
+        );
+        const nlpRelevanceStore = new NlpRelevanceRepository(activeDatabase);
+        const nlpPersistenceTarget = withNlpComparisonPersistence(
+          activeDatabase,
+          withSearchRelevanceIndex(nlpEnrichmentStore, nlpRelevanceStore),
+          new NlpComparisonRepository(activeDatabase),
+        );
+        return new NlpBackgroundWorker(
+          {
+            target: nlpPersistenceTarget,
+            extractionVersion: NLP_EXTRACTION_VERSION,
+            builder: async (candidate, signal) => {
+              const parts = nlpCandidateSource.load(candidate.jobId);
+              if (parts === null) {
+                throw new Error(`Job ${candidate.jobId} no longer exists`);
+              }
+              return extractNlpDocument(parts, signal);
+            },
+            candidateProvider: (afterJobId, limit) =>
+              Promise.resolve(nlpCandidateSource.page(afterJobId, limit)),
+          },
+          {
+            staleHint: () =>
+              nlpCandidateSource.countMissingOrVersionMismatch(
+                NLP_EXTRACTION_VERSION,
+              ),
+          },
+        );
       },
     );
-    const app = createApp(database, {
-      ...options,
-      coordinator,
-      sourceRepository,
-      employerRepository,
-      employerDiscoveryService,
-      careerSiteHealthService,
-      employerDiscoveryIntelligence,
-      discoveryAlertService,
-      discoveryAnalyticsService,
-      nlpBackgroundWorker,
-    });
+    await yieldStartup();
+    const app = timeStartupPhase(logger, 'creating-api-application', () =>
+      createApp(activeDatabase, {
+        ...options,
+        coordinator: startupServices.coordinator,
+        sourceRepository,
+        employerRepository: startupServices.employerRepository,
+        employerDiscoveryService: startupServices.employerDiscoveryService,
+        careerSiteHealthService: startupServices.careerSiteHealthService,
+        employerDiscoveryIntelligence:
+          startupServices.employerDiscoveryIntelligence,
+        discoveryAlertService: startupServices.discoveryAlertService,
+        discoveryAnalyticsService: startupServices.discoveryAnalyticsService,
+        nlpBackgroundWorker,
+      }),
+    );
+    await yieldStartup();
     if (options.development === true) {
-      const { createServer } = await import('vite');
-      const vite = await createServer({
-        server: { middlewareMode: true },
-        appType: 'spa',
-      });
-      app.use(vite.middlewares);
+      await timeStartupPhase(
+        logger,
+        'attaching-development-client',
+        async () => {
+          const { createServer } = await import('vite');
+          const vite = await createServer({
+            server: { middlewareMode: true },
+            appType: 'spa',
+          });
+          app.use(vite.middlewares);
+        },
+      );
     } else {
-      const clientDirectory =
-        options.clientDirectory ?? resolve(process.cwd(), 'dist', 'client');
-      app.use(
-        rateLimit({
-          windowMs: 60_000,
-          limit: options.clientRequestsPerMinute ?? 1_200,
-          standardHeaders: 'draft-8',
-          legacyHeaders: false,
-          message: { error: 'Too many client requests; retry in one minute' },
-        }),
-      );
-      app.use(express.static(clientDirectory));
-      app.use((_request, response) =>
-        response.sendFile(resolve(clientDirectory, 'index.html')),
-      );
+      timeStartupPhase(logger, 'attaching-production-client', () => {
+        const clientDirectory =
+          options.clientDirectory ?? resolve(process.cwd(), 'dist', 'client');
+        app.use(
+          rateLimit({
+            windowMs: 60_000,
+            limit: options.clientRequestsPerMinute ?? 1_200,
+            standardHeaders: 'draft-8',
+            legacyHeaders: false,
+            message: { error: 'Too many client requests; retry in one minute' },
+          }),
+        );
+        app.use(express.static(clientDirectory));
+        app.use((_request, response) =>
+          response.sendFile(resolve(clientDirectory, 'index.html')),
+        );
+      });
     }
+    await yieldStartup();
     const host = options.host ?? '127.0.0.1';
     const port = options.port ?? 0;
-    server = await new Promise<Server>((resolveServer, reject) => {
-      const candidate = app.listen(port, host, () => resolveServer(candidate));
-      candidate.once('error', reject);
-    });
+    server = await timeStartupPhase(
+      logger,
+      'binding-local-service',
+      () =>
+        new Promise<Server>((resolveServer, reject) => {
+          const candidate = app.listen(port, host, () =>
+            resolveServer(candidate),
+          );
+          candidate.once('error', reject);
+        }),
+    );
     const address = server.address();
     if (address === null || typeof address === 'string')
       throw new Error('Backend did not select a TCP port');
@@ -380,7 +445,7 @@ export async function startBackend(
               'reconcile-known-closures',
               () => {
                 const lifecycleReconciliation =
-                  jobLifecycle.reconcileKnownClosures();
+                  startupServices.jobLifecycle.reconcileKnownClosures();
                 if (lifecycleReconciliation.changed > 0) {
                   logger(
                     'info',
@@ -431,14 +496,14 @@ export async function startBackend(
               logger,
               'evaluate-discovery-alerts',
               () => {
-                discoveryAlertService.evaluateRules();
+                startupServices.discoveryAlertService.evaluateRules();
               },
             );
             runStartupMaintenanceStep(
               logger,
               'start-discovery-scheduler',
               () => {
-                scheduler?.start();
+                startupServices.scheduler?.start();
               },
             );
             runStartupMaintenanceStep(logger, 'start-nlp-worker', () => {
@@ -460,7 +525,7 @@ export async function startBackend(
       url,
       pendingMigrations,
       migrationBackupPath,
-      coordinator,
+      coordinator: startupServices.coordinator,
       startupMaintenance,
       backup: async () => {
         if (persistenceSetPaths === null)
@@ -483,8 +548,9 @@ export async function startBackend(
           resolveStartupMaintenance?.();
         }
         await startupMaintenance;
-        if (scheduler !== null) await scheduler.stop();
-        else await coordinator.stop();
+        if (startupServices.scheduler !== null)
+          await startupServices.scheduler.stop();
+        else await startupServices.coordinator.stop();
         await nlpBackgroundWorker.stop();
         await new Promise<void>((resolveStop, reject) => {
           server?.close((error) =>
@@ -566,6 +632,10 @@ function logStartupPhaseCompleted(
 
 function elapsedMs(startedAt: number): number {
   return Math.round((performance.now() - startedAt) * 10) / 10;
+}
+
+function yieldStartup(): Promise<void> {
+  return new Promise((resolveYield) => setImmediate(resolveYield));
 }
 
 function isPromiseLike<T>(value: T | PromiseLike<T>): value is PromiseLike<T> {

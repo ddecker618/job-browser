@@ -36,10 +36,10 @@ roles:
 ```
 CURRENT_STAGE:       P31 desktop startup performance release complete
 CURRENT_TASK:        verify live startup timing or choose the next NLP module
-LAST_COMPLETED:      P31; version 1.1.1 installer rebuilt and packaged/
-                     installed/upgrade smoke passed
-NEXT_ACTION:         live startup timing check against the user's real database,
-                     then loop back to the next bounded NLP module
+LAST_COMPLETED:      P31 + FTS provisioning fix; live startup timing verified
+                     on real database copy (createApp 43.9s -> 45ms)
+NEXT_ACTION:         loop back to the next bounded NLP module
+                     (e.g., Job Intelligence explanations enablement)
 FILES_IN_PROGRESS:   none; P31 source and release docs committed locally
 TESTS_TO_RUN:        none until the next source change
 KNOWN_FAILURES:      none
@@ -60,17 +60,17 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      boundary-aware and overlapping aliases must prefer the longest
                      evidence; raw skill text must remain separate from canonical
                       names; per-mention context is clause-scoped; boilerplate
-                      signals must never discard applicant-directed requirements;
-                      generic soft skills such as excellent communication remain
-                      requirements; broad company-description patterns must not
-                      swallow EEO sentences; reconciliation must preserve both
-                      sides and treat deterministic values as authoritative;
-                       missing dimensions are not silent agreement; persistence must
-                       use a separate additive table, validate the full envelope,
-                       preserve created_at, use source hash/version staleness checks,
-                        and never update jobs; reprocessing must sort/dedupe
-                        candidates, bound each batch, skip fresh rows, preserve
-                        completed saves after failures, validate builder version/hash,
+                       signals must never discard applicant-directed requirements;
+                       generic soft skills such as excellent communication remain
+                       requirements; broad company-description patterns must not
+                       swallow EEO sentences; reconciliation must preserve both
+                       sides and treat deterministic values as authoritative;
+                        missing dimensions are not silent agreement; persistence must
+                        use a separate additive table, validate the full envelope,
+                        preserve created_at, use source hash/version staleness checks,
+                         and never update jobs; reprocessing must sort/dedupe
+                         candidates, bound each batch, skip fresh rows, preserve
+                         completed saves after failures, validate builder version/hash,
                          and never expose archive/score/eligibility operations;
                           inspector must be read-only, deterministically ordered,
                           and redact emails, phones, SSNs, secrets, profiles, and
@@ -1377,41 +1377,56 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   Packaged/installed `app.asar`: 74,041,483 bytes, SHA-256
   CEE52B0E0F625F25B26970ECCFF8637C27CFA2E0C243484FF3E76930613BB35F.
   Installed executable reports ProductVersion 1.1.1.0 and FileVersion 1.1.1.
-- **Exact next action:** verify live launch timing against the user's real database,
-  then loop back to the next bounded NLP module.
+- **Exact next action:** loop back to the next bounded NLP module (recommended:
+  enable Job Intelligence explanations via the existing shadow pipeline).
+- **Post-release verification fix:** live launch timing against a copy of the
+  user's real 478 MB database showed `creating-api-application` at 43,863 ms on
+  every cold start. Root cause: `JobSearchRepository.provisionFts()` re-ran a
+  full FTS5 reconcile (DELETE orphans + INSERT missing) on every construction,
+  even when the index was already in sync, because `job_id` is UNINDEXED in FTS5
+  so each membership probe scans the whole table. Added a cheap
+  `ftsSynchronized()` guard (trigger presence + `EXCEPT` set equality) that
+  returns `true` without writing when the index is sound, preserving the
+  deterministic repair path when it is not. Verified on a disposable copy of the
+  real database: `createApp` dropped from 43,863 ms to 45 ms and
+  `new JobSearchRepository` from 38,964 ms to 34 ms. Full `npm run verify`
+  passed 158 files / 1453 tests. Also fixed two pre-existing P30 lint issues in
+  `compensation.ts` and the stale P24-era wording assertion in
+  `tests/job-nlp-final-handoff.test.ts` so the regression gate is green.
 
 ---
 
 ## Verification Ledger (NLP program)
 
-| Date       | Action                   | Result                                                                                   |
-| ---------- | ------------------------ | ---------------------------------------------------------------------------------------- |
-| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                                    |
-| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean                |
-| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`                       |
-| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark                  |
-| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                                    |
-| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                               |
-| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                                  |
-| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS              |
-| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated               |
-| 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`                 |
-| 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7`             |
-| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                            |
-| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)                    |
-| 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly                     |
-| 2026-09-10 | P3b async worker         | verify 140/1369 green; 7 worker tests; commit `2d9ad2c`                                  |
-| 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green                        |
-| 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21`     |
-| 2026-09-11 | P6 relevance index       | derive + repo + composite worker target + search tie-break (flag off); verify 143/1399   |
-| 2026-09-11 | P7 role family suggest   | reconciled suggestion projection + intelligence endpoint; verify 144/1407                |
-| 2026-09-11 | P18-P23 promotion safety | verify 157/1445; 500-job real-copy run; checkpoint b89cea1                               |
-| 2026-09-11 | P24 full gate            | verify 157/1445; privacy 11/11; security 3/3; source/package/upgrade smoke PASS          |
-| 2026-09-11 | P25 desktop real copy    | direct smoke PASS; 205 shadow rows; 13,619,200 B growth; no orphan processes             |
-| 2026-09-11 | P26-P27 audit/docs       | current app.asar privacy/inventory PASS; all promotion documents reconciled              |
-| 2026-09-11 | P28-P29 release/report   | installer rebuilt; packaged/installed/upgrade smoke PASS; privacy 11/11; security 3/3    |
-| 2026-09-11 | P30 compensation module  | focused tests 18 PASS; final installer rebuilt; package/install/upgrade/privacy PASS     |
-| 2026-09-11 | P31 startup performance  | version 1.1.1; focused startup/scoring tests 11 PASS; package/install/upgrade smoke PASS |
+| Date       | Action                   | Result                                                                                                                               |
+| ---------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                                                                                |
+| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean                                                            |
+| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`                                                                   |
+| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark                                                              |
+| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                                                                                |
+| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                                                                           |
+| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                                                                              |
+| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS                                                          |
+| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated                                                           |
+| 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`                                                             |
+| 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7`                                                         |
+| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                                                                        |
+| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)                                                                |
+| 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly                                                                 |
+| 2026-09-10 | P3b async worker         | verify 140/1369 green; 7 worker tests; commit `2d9ad2c`                                                                              |
+| 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green                                                                    |
+| 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21`                                                 |
+| 2026-09-11 | P6 relevance index       | derive + repo + composite worker target + search tie-break (flag off); verify 143/1399                                               |
+| 2026-09-11 | P7 role family suggest   | reconciled suggestion projection + intelligence endpoint; verify 144/1407                                                            |
+| 2026-09-11 | P18-P23 promotion safety | verify 157/1445; 500-job real-copy run; checkpoint b89cea1                                                                           |
+| 2026-09-11 | P24 full gate            | verify 157/1445; privacy 11/11; security 3/3; source/package/upgrade smoke PASS                                                      |
+| 2026-09-11 | P25 desktop real copy    | direct smoke PASS; 205 shadow rows; 13,619,200 B growth; no orphan processes                                                         |
+| 2026-09-11 | P26-P27 audit/docs       | current app.asar privacy/inventory PASS; all promotion documents reconciled                                                          |
+| 2026-09-11 | P28-P29 release/report   | installer rebuilt; packaged/installed/upgrade smoke PASS; privacy 11/11; security 3/3                                                |
+| 2026-09-11 | P30 compensation module  | focused tests 18 PASS; final installer rebuilt; package/install/upgrade/privacy PASS                                                 |
+| 2026-09-11 | P31 startup performance  | version 1.1.1; focused startup/scoring tests 11 PASS; package/install/upgrade smoke PASS                                             |
+| 2026-09-11 | P31 FTS provisioning fix | live real-copy timing createApp 43,863ms -> 45ms; JobSearchRepository 38,964ms -> 34ms; `npm run verify` 158 files / 1453 tests PASS |
 
 | 2026-09-11 | P8 target-role search | verify 145/1416 PASS; build PASS; exact membership and current P6 evidence |
 

@@ -1,5 +1,15 @@
 # Session Handoff
 
+## Recovery checkpoint — P31 FTS provisioning startup fix verified (2026-09-11)
+
+P31 is complete, the installed app is version 1.1.1, and live startup timing is now verified against a copy of the user's real database with the launch freeze removed. Do not restart P0-P31. Next: loop back to the next bounded NLP module (recommended candidate: enable Job Intelligence explanations; audit then integrate existing NLP, do not rebuild stages 0-29).
+
+- On a disposable copy of the real 478 MB database, `creating-api-application` took 43,863 ms on every cold start because `JobSearchRepository.provisionFts()` re-ran a full FTS5 reconcile on every construction even when the index was in sync (each membership probe scans the whole UNINDEXED `job_id` FTS5 column).
+- Fix: `src/repositories/job-search-repository.ts` now short-circuits with a cheap `ftsSynchronized()` guard (3 triggers present + `EXCEPT` set equality between `jobs` and `job_search_fts`), preserving the deterministic repair path when the index is stale.
+- Verified on a fresh copy of the real database: `createApp` 43,863 ms -> 45 ms; `new JobSearchRepository` 38,964 ms -> 34 ms; second in-sync construction 34 ms. No real data touched; temp copies deleted.
+- Also committed minimal P30 lint repairs in `src/intelligence/nlp/compensation.ts` and refreshed the stale P24-era assertions in `tests/job-nlp-final-handoff.test.ts`; behavior unchanged.
+- Full `npm run verify` passed: format + eslint + `tsc --noEmit` + 158 files / 1453 tests. Focused `tests/job-search-repository.test.ts tests/backend-lifecycle.test.ts tests/scoring-reprocessing.test.ts` = 3 files / 18 tests PASS. No installer/version bump; still 1.1.1. Nothing pushed; local checkpoint commit only.
+
 ## Recovery checkpoint — P31 desktop startup performance release complete (2026-09-11)
 
 P31 is complete and the installed app is version 1.1.1. Do not restart P0-P31. Resume at live launch timing verification on the user's real database, then loop back to the next bounded NLP module.
