@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.1.2] - 2026-09-11
+
+### Desktop Startup
+
+- Shipped the FTS provisioning startup fix: `JobSearchRepository` now
+  short-circuits with a cheap `ftsSynchronized()` guard when the FTS5 index is
+  already in sync, removing the full index reconcile that ran on every open of
+  a large database. Measured on a disposable copy of the real database,
+  `createApp` startup dropped from 43,863 ms to 45 ms. Stale-index repair and
+  recovery behavior are unchanged.
+
+### Job Intelligence
+
+- Job Intelligence explanations now work at the documented EXPLANATION (1)
+  trust level by default. The `jobIntelligenceExplanation` capability flag
+  defaults on (all other NLP flags stay off); the read-only cached-analysis
+  GET route (`GET /api/jobs/:id/intelligence`) serves current analysis on
+  reopen; and the preview has coherent states — Analyze, analyzing, current +
+  Re-analyze, actionable failure alert, and a genuinely-disabled notice with
+  no actionable button. Deterministic scoring, eligibility, lifecycle rules,
+  and ranking authority are unchanged; Job Intelligence remains display-only.
+- Rebuilt and validated the versioned installer:
+  `release\Job-Browser-Setup-1.1.2.exe`, 253,597,831 bytes, SHA-256
+  `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`.
+  Packaged and installed `app.asar` match SHA-256
+  `5BC4F99DF1AA000186E7D684B955B6B29DEE8F6701385E12B720FFEA862D2E8E`.
+  Installed executable reports ProductVersion `1.1.2.0` and FileVersion
+  `1.1.2`.
+- Validated against the installed artifact: packaged smoke, installed smoke,
+  and seeded packaged-upgrade smoke passed; installed Job Intelligence proved
+  functional end-to-end (default-enabled analysis, cached GET on reopen,
+  re-analyze, and explicit-disable gating); production data untouched and
+  intact. Final gates at release state green: `npm run verify` 158 files /
+  1460 tests, `npm run privacy:check` 11/11, `npm run nlp:security-audit`
+  3/3.
+
 ## [1.1.1] - 2026-09-11
 
 ### Desktop Startup

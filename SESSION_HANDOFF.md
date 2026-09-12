@@ -1,5 +1,86 @@
 # Session Handoff
 
+## Recovery checkpoint — P33 release boundary 1.1.2 complete (2026-09-11)
+
+P33 is complete: the verified P31 FTS startup fix (`c9508ae`) and P32 Job
+Intelligence enablement (`d0bee84`) now ship in a current 1.1.2 installer, and
+the installed artifact demonstrably serves Job Intelligence at EXPLANATION
+trust. Do not restart P0-P33. Next: the next bounded NLP module (e.g.,
+role-family / search-profile EXPLANATION defaults).
+
+- Version bumped 1.1.1 -> 1.1.2 (`package.json`, `package-lock.json`). Release
+  artifact: `release\Job-Browser-Setup-1.1.2.exe`, 253,597,831 B, SHA-256
+  `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`; packaged
+  app.asar 74,047,442 B, SHA-256
+  `5BC4F99DF1AA000186E7D684B955B6B29DEE8F6701385E12B720FFEA862D2E8E`.
+- No prior installed app existed on the machine (only a stale 1.0.28 uninstall
+  registry key) — silent fresh install exit 0; installed exe ProductVersion
+  1.1.2.0 / FileVersion 1.1.2; installed asar hash identical to packaged.
+- Validation: packaged smoke (~7.3s, no startup freeze), installed smoke,
+  seeded packaged-upgrade smoke — all passed. Installed Job Intelligence
+  validated end-to-end on the installed binary against disposable seeded DBs:
+  default state (no stored flags row) GET 404 `nlp_no_analysis` (NOT disabled),
+  POST analyze 200 with evidence facts (factCount 3), comparison authority
+  `score: unchanged`, role-family suggestion still gated off by default,
+  production score 42 unchanged, cached GET identical to POST, re-analyze
+  consistent; explicit-disable instance GET + POST both 409
+  `nlp_capability_disabled`. UI states (Analyze / cached reopen / no-button
+  disabled notice) are covered by `tests/job-intelligence-ui.test.tsx`
+  (verified in the 1460-test run) and the renderer loads under installed smoke.
+- Final gates at release state green: `npm run verify` 158 files / 1460 tests;
+  `npm run privacy:check` 11/11; `npm run nlp:security-audit` 3/3. Production
+  DB hash unchanged (BC5A3DBA…) — data intact; no orphan Job Browser/Electron
+  process; port 6783 free.
+- Note: untracked scratch `scripts/__flags-check.ts` (pre-existing, left alone)
+  recompiles into `dist/scripts/__flags-check.js` on every `npm run build`,
+  which trips the distribution privacy scan; compiled outputs were removed from
+  `dist/` for this release and must be removed after any future local build.
+  The installer excludes `dist/scripts/**` regardless. Nothing pushed.
+
+## Recovery checkpoint — P32 Job Intelligence explanations enabled (2026-09-11)
+
+The active task "JOB INTELLIGENCE EXPLANATIONS ARE DISABLED" is complete and
+verified. Job Intelligence is now functional at the documented EXPLANATION (1)
+trust level. Do not restart P0-P32; next is the next bounded NLP module (e.g.,
+role-family / search-profile EXPLANATION defaults) or the next release
+boundary. No push; local checkpoint commit only; no installer rebuild (release
+deferred per directive).
+
+- Root cause: `DEFAULT_NLP_CAPABILITY_FLAGS.jobIntelligenceExplanation = false`,
+  with no Settings toggle, no server write path, and no migration seeding the
+  `app_settings` row — the real DB has no row, so `POST /api/jobs/:id/intelligence`
+  always answered 409 `nlp_capability_disabled` while docs already authorized
+  EXPLANATION (1) "evidence-labelled display only" (classification A + E; the
+  preview also kept an actionable button on 409s).
+- Fix: `src/intelligence/nlp/capabilityFlags.ts` flips the default to `true` (the
+  documented EXPLANATION default). `capabilityEnabled()` still gates both routes,
+  so an explicit `false` row still 409s. Other flags stay off; malformed/absent
+  values fall back to these documented defaults (production-affecting flags
+  remain fail-closed). `projectNlpStatus` for a fresh install is now `ready`.
+- Added read-only `GET /api/jobs/:id/intelligence` in `src/server/app.ts`
+  sharing the POST payload assembly (`jobIntelligenceDetails`). Purely read-only
+  (no writes to `job_nlp_enrichments`/`job_nlp_comparisons`); 404 `nlp_no_analysis`
+  when absent or stale; 409 when disabled. No second analysis pipeline.
+- `src/client/components/JobIntelligencePreview.tsx` now has coherent states via
+  `useQuery` (GET on mount) + mutation: not-analyzed (Analyze), analyzing,
+  current cached analysis on reopen + Re-analyze, actionable failure alert,
+  genuinely-disabled notice with no actionable button (and no stale cached
+  projection). `src/client/api.ts` adds `api.jobIntelligence` and shares one
+  `JobIntelligenceResult` type.
+- Tests: `tests/job-nlp-capability-flags.test.ts` (default on / independence /
+  status ready), `tests/job-nlp-connected-api.test.ts` (+5: default-enable 200
+  with no flags row and deterministic score unchanged; GET serves cached == POST
+  without persisting; GET 404 before analysis and when stale; GET 409 when
+  disabled), `tests/job-intelligence-ui.test.tsx` (reopen-with-cache, disabled
+  state); harness guards added in `tests/dashboard-ui.test.tsx` and
+  `tests/applications-ui.test.tsx` for the new job-intelligence GET.
+- Validation: `npm run verify` green — 158 files / 1460 tests (was 1453);
+  `npm run privacy:check` 11/11; `npm run nlp:security-audit` 3/3.
+- Docs reconciled: `docs/NLP_TRUST_LEVELS.md`, `docs/NLP_FINAL_HANDOFF.md`,
+  `docs/Intelligence_Roadmap.md` (RESUME POINT, matrix, ledger P32),
+  `docs/BETA_IMPLEMENTATION_TRACKER.md` (ledger), `docs/PROJECT_MEMORY.md`
+  (D-NLP-099..102).
+
 ## Recovery checkpoint — P31 FTS provisioning startup fix verified (2026-09-11)
 
 P31 is complete, the installed app is version 1.1.1, and live startup timing is now verified against a copy of the user's real database with the launch freeze removed. Do not restart P0-P31. Next: loop back to the next bounded NLP module (recommended candidate: enable Job Intelligence explanations; audit then integrate existing NLP, do not rebuild stages 0-29).
