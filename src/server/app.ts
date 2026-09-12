@@ -15,6 +15,7 @@ import { capabilityEnabled } from '../intelligence/nlp/capabilityFlags.js';
 import { projectNlpStatus } from '../intelligence/nlp/nlpStatus.js';
 import type { NlpWorkerStatus } from '../intelligence/nlp/backgroundWorker.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
+import type { JobNlpEnrichment } from '../schemas/job-nlp.js';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 
@@ -274,6 +275,103 @@ export function createApp(
     response.json(job);
   });
   let nlpAnalysisRunning = false;
+  const jobIntelligenceDetails = (
+    job: NonNullable<ReturnType<typeof repository.getJob>>,
+    jobId: string,
+    enrichment: JobNlpEnrichment,
+  ) => {
+    const deterministicJob = jobRepository.findJob(jobId);
+    const roleFamily = capabilityEnabled(database, 'roleFamilySuggestion')
+      ? projectRoleFamilySuggestion(jobId, {
+          title: job.title,
+          profile: loadLegacySearchProfile(),
+        })
+      : null;
+    const application = new ApplicationRepository(database).findByJobId(jobId);
+    const snapshotId = application?.submittedResumeSnapshotId ?? null;
+    const snapshotSource =
+      snapshotId === null
+        ? null
+        : new ResumeSnapshotRepository(database).findEvidenceSource(snapshotId);
+    const coverage =
+      snapshotSource === null
+        ? null
+        : projectRequirementCoverage(
+            enrichment,
+            adaptResumeSnapshotEvidence(snapshotSource),
+            {
+              certificationCatalog: loadScoringConfig(
+                scoringPath,
+                profilePreferencesPath,
+              ).certifications,
+            },
+          );
+    const deterministicSide = {
+      clearanceRequirement:
+        deterministicJob?.clearanceRequirement ??
+        job.clearanceRequirement ??
+        null,
+      remoteType: job.remoteType,
+      location: job.location,
+      estimatedExperienceYears:
+        deterministicJob?.estimatedExperienceYears ?? null,
+    };
+    const comparison = buildNlpComparisonReport(
+      jobId,
+      enrichment,
+      deterministicSide,
+    );
+    return {
+      ...projectJobIntelligence(jobId, enrichment, deterministicSide),
+      comparison,
+      roleFamily,
+      coverage,
+      coverageSource:
+        snapshotSource === null
+          ? null
+          : {
+              snapshotId: snapshotSource.snapshotId,
+              parserVersion: snapshotSource.parserVersion,
+              normalizationVersion: snapshotSource.normalizationVersion,
+            },
+    };
+  };
+  app.get('/api/jobs/:id/intelligence', (request, response) => {
+    const jobId = routeParameter(request, 'id');
+    const job = repository.getJob(jobId);
+    if (job === null) {
+      response.status(404).json({ error: 'Job not found' });
+      return;
+    }
+    if (!capabilityEnabled(database, 'jobIntelligenceExplanation')) {
+      response.status(409).json({
+        error: 'Job Intelligence explanations are disabled.',
+        code: 'nlp_capability_disabled',
+        details: { capability: 'jobIntelligenceExplanation' },
+      });
+      return;
+    }
+    const store = new JobNlpEnrichmentRepository(database);
+    const parts = {
+      title: job.title,
+      location: job.location,
+      description: job.description,
+      requirements: job.requirements,
+      preferredQualifications: job.preferredQualifications,
+    };
+    const hash = documentHash(parts);
+    const enrichment = store.isStale(jobId, NLP_EXTRACTION_VERSION, hash)
+      ? null
+      : store.get(jobId);
+    if (enrichment === null) {
+      response.status(404).json({
+        error: 'No current analysis exists for this job.',
+        code: 'nlp_no_analysis',
+      });
+      return;
+    }
+    response.json(jobIntelligenceDetails(job, jobId, enrichment));
+  });
   app.post(
     '/api/jobs/:id/intelligence',
     asyncRoute(async (request, response) => {
@@ -336,75 +434,9 @@ export function createApp(
           return;
         }
         if (cached === null) store.save(jobId, result);
-        const deterministicJob = jobRepository.findJob(jobId);
-        const roleFamily = capabilityEnabled(database, 'roleFamilySuggestion')
-          ? projectRoleFamilySuggestion(jobId, {
-              title: job.title,
-              profile: loadLegacySearchProfile(),
-            })
-          : null;
-        const application = new ApplicationRepository(database).findByJobId(
-          jobId,
-        );
-        const snapshotId = application?.submittedResumeSnapshotId ?? null;
-        const snapshotSource =
-          snapshotId === null
-            ? null
-            : new ResumeSnapshotRepository(database).findEvidenceSource(
-                snapshotId,
-              );
-        const coverage =
-          snapshotSource === null
-            ? null
-            : projectRequirementCoverage(
-                result,
-                adaptResumeSnapshotEvidence(snapshotSource),
-                {
-                  certificationCatalog: loadScoringConfig(
-                    scoringPath,
-                    profilePreferencesPath,
-                  ).certifications,
-                },
-              );
-        const deterministicSide = {
-          clearanceRequirement:
-            deterministicJob?.clearanceRequirement ??
-            job.clearanceRequirement ??
-            null,
-          remoteType: job.remoteType,
-          location: job.location,
-          estimatedExperienceYears:
-            deterministicJob?.estimatedExperienceYears ?? null,
-        };
-        const comparison = buildNlpComparisonReport(
-          jobId,
-          result,
-          deterministicSide,
-        );
-        new NlpComparisonRepository(database).save(comparison);
-        response.json({
-          ...projectJobIntelligence(jobId, result, {
-            clearanceRequirement:
-              deterministicJob?.clearanceRequirement ??
-              job.clearanceRequirement ??
-              null,
-            remoteType: job.remoteType,
-            location: job.location,
-            estimatedExperienceYears:
-              deterministicJob?.estimatedExperienceYears ?? null,
-          }),
-          comparison,
-          roleFamily,
-          coverage,
-          coverageSource:
-            snapshotSource === null
-              ? null
-              : {
-                  snapshotId: snapshotSource.snapshotId,
-                  parserVersion: snapshotSource.parserVersion,
-                  normalizationVersion: snapshotSource.normalizationVersion,
-                },
-        });
+        const details = jobIntelligenceDetails(job, jobId, result);
+        new NlpComparisonRepository(database).save(details.comparison);
+        response.json(details);
       } catch (error) {
         if (controller.signal.aborted) return;
         if (error instanceof RangeError) {

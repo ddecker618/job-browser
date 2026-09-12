@@ -1,34 +1,64 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JobDetail } from '../../models/dashboard.js';
-import { api } from '../api.js';
+import { api, ApiRequestError } from '../api.js';
+
+function capabilityDisabled(error: unknown): boolean {
+  return (
+    error instanceof ApiRequestError && error.code === 'nlp_capability_disabled'
+  );
+}
 
 export function JobIntelligencePreview({
   job,
 }: {
   job: Pick<JobDetail, 'id'>;
 }) {
+  const client = useQueryClient();
+  const existing = useQuery({
+    queryKey: ['job-intelligence', job.id],
+    queryFn: () => api.jobIntelligence(job.id),
+    retry: false,
+  });
   const analysis = useMutation({
     mutationFn: () => api.analyzeJobIntelligence(job.id),
+    onSuccess: (data) =>
+      client.setQueryData(['job-intelligence', job.id], data),
   });
-  const projection = analysis.data;
+  const projection = analysis.data ?? existing.data ?? null;
+  const disabled =
+    capabilityDisabled(existing.error) || capabilityDisabled(analysis.error);
+  const failure = capabilityDisabled(analysis.error) ? null : analysis.error;
   return (
     <section className="job-intelligence-preview" aria-label="Job Intelligence">
       <h3>Job Intelligence</h3>
-      <p>
-        App-generated explanations of the saved posting. Each claim shows its
-        supporting text and is labeled as an interpretation (EXPLANATION level).
-      </p>
-      <button
-        type="button"
-        disabled={analysis.isPending}
-        onClick={() => analysis.mutate()}
-      >
-        {analysis.isPending
-          ? 'Analyzing requirements…'
-          : 'Analyze requirements'}
-      </button>
-      {analysis.error && <p role="alert">{analysis.error.message}</p>}
-      {projection && (
+      {disabled ? (
+        <p role="status">
+          Job Intelligence is disabled on this device, so these explanations are
+          not available. Nothing about score, eligibility, ranking, filtering,
+          lifecycle, or source job data is affected.
+        </p>
+      ) : (
+        <>
+          <p>
+            App-generated explanations of the saved posting. Each claim shows
+            its supporting text and is labeled as an interpretation (EXPLANATION
+            level).
+          </p>
+          <button
+            type="button"
+            disabled={analysis.isPending}
+            onClick={() => analysis.mutate()}
+          >
+            {analysis.isPending
+              ? 'Analyzing requirements…'
+              : projection
+                ? 'Re-analyze requirements'
+                : 'Analyze requirements'}
+          </button>
+          {failure && <p role="alert">{failure.message}</p>}
+        </>
+      )}
+      {!disabled && projection && (
         <div aria-live="polite">
           <p>
             {projection.summary.factCount} requirement interpretation

@@ -79,6 +79,22 @@ export class ApiRequestError extends Error {
   }
 }
 
+export type JobIntelligenceResult =
+  import('../intelligence/nlp/projection.js').JobIntelligenceProjection & {
+    comparison: import('../intelligence/nlp/comparison.js').NlpComparisonReport;
+    roleFamily:
+      | import('../intelligence/nlp/roleFamilySuggestion.js').RoleFamilySuggestion
+      | null;
+    coverage:
+      | import('../intelligence/nlp/requirementCoverage.js').RequirementCoverageProjection
+      | null;
+    coverageSource: {
+      snapshotId: string;
+      parserVersion: string;
+      normalizationVersion: string;
+    } | null;
+  };
+
 export function apiRequestErrorReason(error: unknown): string | null {
   if (!(error instanceof ApiRequestError)) return null;
   const reason = error.details['reason'];
@@ -169,25 +185,17 @@ export const api = {
       `/api/jobs/search${searchParameters(query)}`,
       signal === undefined ? undefined : { signal },
     ),
+  jobIntelligence: (id: string) =>
+    request<JobIntelligenceResult>(
+      '/api/jobs/' + encodeURIComponent(id) + '/intelligence',
+    ),
   analyzeJobIntelligence: (id: string) =>
-    request<
-      import('../intelligence/nlp/projection.js').JobIntelligenceProjection & {
-        comparison: import('../intelligence/nlp/comparison.js').NlpComparisonReport;
-        roleFamily:
-          | import('../intelligence/nlp/roleFamilySuggestion.js').RoleFamilySuggestion
-          | null;
-        coverage:
-          | import('../intelligence/nlp/requirementCoverage.js').RequirementCoverageProjection
-          | null;
-        coverageSource: {
-          snapshotId: string;
-          parserVersion: string;
-          normalizationVersion: string;
-        } | null;
-      }
-    >('/api/jobs/' + encodeURIComponent(id) + '/intelligence', {
-      method: 'POST',
-    }),
+    request<JobIntelligenceResult>(
+      '/api/jobs/' + encodeURIComponent(id) + '/intelligence',
+      {
+        method: 'POST',
+      },
+    ),
   job: (id: string) => request<JobDetail>(`/api/jobs/${id}`),
   updateJob: (
     id: string,

@@ -17,13 +17,18 @@ afterEach(() => {
 });
 
 describe('NLP capability flags and status (P20-P22)', () => {
-  it('fails closed to independent off-by-default flags', () => {
+  it('enables EXPLANATION display by default and fails other capabilities closed', () => {
     const database = createTestDatabase();
     databases.push(database);
     expect(readNlpCapabilityFlags(database)).toEqual(
       DEFAULT_NLP_CAPABILITY_FLAGS,
     );
+    expect(capabilityEnabled(database, 'jobIntelligenceExplanation')).toBe(
+      true,
+    );
     expect(capabilityEnabled(database, 'searchTieBreak')).toBe(false);
+    expect(capabilityEnabled(database, 'roleFamilySuggestion')).toBe(false);
+    expect(capabilityEnabled(database, 'searchProfileFeedback')).toBe(false);
     database
       .prepare(
         'INSERT INTO app_settings (setting_key,setting_value_json,updated_at) VALUES (?,?,?)',
@@ -38,9 +43,11 @@ describe('NLP capability flags and status (P20-P22)', () => {
     const database = createTestDatabase();
     databases.push(database);
     const flags = {
-      ...DEFAULT_NLP_CAPABILITY_FLAGS,
       version: NLP_CAPABILITY_FLAGS_VERSION,
+      jobIntelligenceExplanation: false,
+      roleFamilySuggestion: false,
       searchTieBreak: true,
+      searchProfileFeedback: false,
     };
     database
       .prepare(
@@ -51,13 +58,16 @@ describe('NLP capability flags and status (P20-P22)', () => {
     expect(capabilityEnabled(database, 'jobIntelligenceExplanation')).toBe(
       false,
     );
+    expect(capabilityEnabled(database, 'roleFamilySuggestion')).toBe(false);
+    expect(capabilityEnabled(database, 'searchProfileFeedback')).toBe(false);
   });
 
   it('projects bounded local status with exact trust wording', () => {
     const database = createTestDatabase();
     databases.push(database);
     const status = projectNlpStatus(database, null);
-    expect(status.state).toBe('disabled');
+    expect(status.state).toBe('ready');
+    expect(status.flags.jobIntelligenceExplanation).toBe(true);
     expect(status.counts).toEqual({
       jobs: 0,
       analyzed: 0,

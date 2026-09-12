@@ -67,7 +67,7 @@ This section supersedes the historical corpus counts and artifact hashes in the 
 
 | Capability                                      | Final P27 state | Default                | Authority                     |
 | ----------------------------------------------- | --------------- | ---------------------- | ----------------------------- |
-| Job Intelligence facts and resume coverage      | EXPLANATION (1) | Off                    | Display only                  |
+| Job Intelligence facts and resume coverage      | EXPLANATION (1) | On (default)           | Display only                  |
 | Reconciled role-family suggestion               | EXPLANATION (1) | Off                    | Deterministic catalog wins    |
 | Search-profile vocabulary feedback              | EXPLANATION (1) | Off                    | Read-only                     |
 | Target-role supporting evidence                 | EXPLANATION (1) | Current valid evidence | Deterministic membership wins |
@@ -88,6 +88,25 @@ The promoted capabilities are bounded to explanation and exact-tie enrichment. J
 P30 adds local deterministic compensation extraction to the NLP document pipeline. It captures USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, and bonus/commission/equity/sign-on/OTE signals with exact evidence spans and optional metadata. Compensation facts remain informational and shadow-only; they do not change score, eligibility, ranking, filters, lifecycle, or hard gates.
 
 The final P30 installer is `release\Job-Browser-Setup-1.1.0.exe`, 253,596,385 bytes, SHA-256 7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251. Packaged and installed app.asar are identical: 74,036,910 bytes, SHA-256 04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563. Focused NLP tests, packaged smoke, installed smoke, seeded upgrade smoke, privacy, and NLP security audit passed.
+
+## P32 Job Intelligence Explanation Enablement
+
+Job Intelligence explanations (EXPLANATION 1, evidence-labelled display only)
+are now enabled by default. The prior `jobIntelligenceExplanation: off` default
+contradicted the EXPLANATION promotion recorded above and left the feature
+permanently unreachable: there was no Settings toggle, no server write path,
+and no migration seeding the `app_settings` row, so every real install fell
+back to the default and `POST /api/jobs/:id/intelligence` always answered 409
+`nlp_capability_disabled`. P32 flips the documented EXPLANATION default to `on`
+(malformed or absent flags still fall back to these documented defaults; every
+score/eligibility/ranking/filter/lifecycle-affecting flag stays off). The
+analysis route is unchanged; a read-only `GET /api/jobs/:id/intelligence` now
+serves the current cached analysis (404 `nlp_no_analysis` when absent or stale
+so stale output is never presented as current) and the preview states are
+coherent (not-analyzed / analyzing / current + re-analyze / failed /
+genuinely-disabled without an actionable button). Verification:
+`npm run verify` 158 files / 1460 tests PASS, `privacy:check` 11/11,
+`nlp:security-audit` 3/3. Committed locally; no installer rebuilt.
 
 ## Handoff Rule
 

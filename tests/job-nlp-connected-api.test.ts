@@ -183,6 +183,97 @@ describe('connected shadow NLP API', () => {
       db.prepare('SELECT COUNT(*) AS count FROM job_nlp_enrichments').get(),
     ).toEqual({ count: 0 });
   });
+  it('uses Job Intelligence by default when no capability flags are stored', async () => {
+    const { db, url } = await setup();
+    db.prepare('DELETE FROM app_settings WHERE setting_key=?').run(
+      'nlp_capability_flags',
+    );
+    const before = db.prepare('SELECT * FROM jobs').all();
+    const response = await fetch(url + '/api/jobs/nlp-test/intelligence', {
+      method: 'POST',
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      summary: { factCount: number };
+      comparison: { authority: { score: string } };
+    };
+    expect(body.summary.factCount).toBeGreaterThan(0);
+    expect(body.comparison.authority.score).toBe('unchanged');
+    expect(db.prepare('SELECT * FROM jobs').all()).toEqual(before);
+    expect(
+      db.prepare('SELECT COUNT(*) AS count FROM job_nlp_enrichments').get(),
+    ).toEqual({ count: 1 });
+  });
+
+  it('serves current cached analysis read-only via GET without persisting changes', async () => {
+    const { db, url } = await setup();
+    const posted = await fetch(url + '/api/jobs/nlp-test/intelligence', {
+      method: 'POST',
+    });
+    expect(posted.status).toBe(200);
+    const before = db.prepare('SELECT * FROM jobs').all();
+    const beforeEnrichments = db
+      .prepare('SELECT COUNT(*) AS count FROM job_nlp_enrichments')
+      .get();
+    const response = await fetch(url + '/api/jobs/nlp-test/intelligence');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(await posted.json());
+    expect(db.prepare('SELECT * FROM jobs').all()).toEqual(before);
+    expect(
+      db.prepare('SELECT COUNT(*) AS count FROM job_nlp_enrichments').get(),
+    ).toEqual(beforeEnrichments);
+  });
+
+  it('returns nlp_no_analysis from GET before anything is analyzed', async () => {
+    const { db, url } = await setup();
+    const before = db.prepare('SELECT * FROM jobs').all();
+    const response = await fetch(url + '/api/jobs/nlp-test/intelligence');
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      code: 'nlp_no_analysis',
+    });
+    expect(db.prepare('SELECT * FROM jobs').all()).toEqual(before);
+    expect(
+      db.prepare('SELECT COUNT(*) AS count FROM job_nlp_enrichments').get(),
+    ).toEqual({ count: 0 });
+  });
+
+  it('refuses stale cached analysis via GET so output is never presented as current', async () => {
+    const { db, url } = await setup();
+    await fetch(url + '/api/jobs/nlp-test/intelligence', { method: 'POST' });
+    db.prepare(
+      "UPDATE jobs SET description='Python preferred.' WHERE id='nlp-test'",
+    ).run();
+    const response = await fetch(url + '/api/jobs/nlp-test/intelligence');
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      code: 'nlp_no_analysis',
+    });
+  });
+
+  it('gates GET like POST when the explanation capability is disabled', async () => {
+    const { db, url } = await setup();
+    db.prepare(
+      'UPDATE app_settings SET setting_value_json=? WHERE setting_key=?',
+    ).run(
+      JSON.stringify({
+        version: 'nlp-capability-flags-v1',
+        jobIntelligenceExplanation: false,
+        roleFamilySuggestion: false,
+        searchTieBreak: false,
+        searchProfileFeedback: false,
+      }),
+      'nlp_capability_flags',
+    );
+    const before = db.prepare('SELECT * FROM jobs').all();
+    const response = await fetch(url + '/api/jobs/nlp-test/intelligence');
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: 'nlp_capability_disabled',
+    });
+    expect(db.prepare('SELECT * FROM jobs').all()).toEqual(before);
+  });
+
   it('exposes read-only NLP worker status', async () => {
     const { url } = await setup();
     const response = await fetch(url + '/api/intelligence/status');

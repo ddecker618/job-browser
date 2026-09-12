@@ -17,7 +17,7 @@ export type NlpCapabilityFlags = z.infer<typeof flagsSchema>;
 
 export const DEFAULT_NLP_CAPABILITY_FLAGS: NlpCapabilityFlags = {
   version: NLP_CAPABILITY_FLAGS_VERSION,
-  jobIntelligenceExplanation: false,
+  jobIntelligenceExplanation: true,
   roleFamilySuggestion: false,
   searchTieBreak: false,
   searchProfileFeedback: false,

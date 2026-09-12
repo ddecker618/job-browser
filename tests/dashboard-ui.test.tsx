@@ -741,6 +741,20 @@ function mockFetch(handler: (url: string, init?: RequestInit) => unknown) {
     'fetch',
     vi.fn((input: string | URL | Request, init?: RequestInit) => {
       const url = input instanceof Request ? input.url : input.toString();
+      if (
+        (init?.method === undefined || init.method === 'GET') &&
+        /\/api\/jobs\/[^/]+\/intelligence$/.test(url)
+      ) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: 'No current analysis exists for this job.',
+              code: 'nlp_no_analysis',
+            }),
+            { status: 404, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      }
       const body = handler(url, init);
       return Promise.resolve(
         new Response(JSON.stringify(body), {

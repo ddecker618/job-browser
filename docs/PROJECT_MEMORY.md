@@ -579,3 +579,20 @@ P31 responds to the slow-load diagnosis from the user's live database. The visib
 - **D-NLP-092:** Focused validation passed after the source change and version bump: Prettier check, ESLint, `tsc --noEmit`, and `vitest run tests/backend-lifecycle.test.ts tests/scoring-reprocessing.test.ts` = 2 files / 11 tests.
 - **D-NLP-093:** Version bumped from 1.1.0 to 1.1.1 in `package.json` and `package-lock.json`.
 - **D-NLP-094:** Final P31 installer: `release\Job-Browser-Setup-1.1.1.exe`, 253,596,928 bytes, SHA-256 1101A3795CCB930C9966DC02198B60EFCF757221496B61728C2B9C9E8886C815. Packaged and installed `app.asar` are identical: 74,041,483 bytes, SHA-256 CEE52B0E0F625F25B26970ECCFF8637C27CFA2E0C243484FF3E76930613BB35F. Installed executable reports ProductVersion 1.1.1.0 and FileVersion 1.1.1. Packaged, installed, and seeded upgrade smokes passed.
+
+## Recovery checkpoint — P32 Job Intelligence explanations enabled (2026-09-11)
+
+The active task "JOB INTELLIGENCE EXPLANATIONS ARE DISABLED" traced the 409
+`nlp_capability_disabled` to `DEFAULT_NLP_CAPABILITY_FLAGS.jobIntelligenceExplanation
+= false` with no Settings toggle, no server write path, and no migration seeding
+the `app_settings` row — so every real install always fell back to the default and
+the documented EXPLANATION (1) display capability was permanently unreachable
+(classification A + E, compounded by a preview that still rendered an actionable
+button). The docs recorded EXPLANATION (1) as authorized for evidence-labelled
+display only, so the correct resolution was to enable the display default while
+keeping every production-affecting flag off.
+
+- **D-NLP-099:** `DEFAULT_NLP_CAPABILITY_FLAGS.jobIntelligenceExplanation = true`. The other three flags stay off. `capabilityEnabled()` still gates both routes, so a genuine user/config-disable writes the row with `false` and gets the same 409. Malformed/absent flags fall back to these documented defaults (EXPLANATION display on; score/eligibility/ranking/filter/lifecycle-affecting flags fail-closed). `projectNlpStatus` state for a fresh install is now `ready` with the same bounded notice.
+- **D-NLP-100:** Added read-only `GET /api/jobs/:id/intelligence` that reuses the existing POST assembly (`jobIntelligenceDetails`) and published projection/comparison/roleFamily/coverage. It is purely read-only (no `job_nlp_enrichments`/`job_nlp_comparisons` write), returns 404 `nlp_no_analysis` when absent or stale so stale output is never presented as current, and 409 `nlp_capability_disabled` when the capability is disabled. No second analysis pipeline was added.
+- **D-NLP-101:** `JobIntelligencePreview` states are now coherent: not-analyzed (Analyze), analyzing, current cached analysis on reopen (via GET) with Re-analyze, actionable failure alert, and a genuinely-disabled notice with no actionable button (hidden cached output too). Client `api.jobIntelligence`/`api.analyzeJobIntelligence` share one `JobIntelligenceResult` type; `ApiRequestError.code` distinguishes `nlp_no_analysis` from `nlp_capability_disabled`.
+- **D-NLP-102:** Test coverage grew 1453 -> 1460. New/default-updated checks: default-enabled analysis with no flags row (200, deterministic score unchanged, jobs table untouched); GET serves current cached analysis identical to POST without persisting; GET 404 `nlp_no_analysis` before analysis and after a description edit (stale); GET/POST gate 409 when disabled; flags default + per-capability independence; status `ready`; UI disabled state without an actionable button; reopen-with-cached-analysis UI. Full `npm run verify` passed (158 files / 1460 tests); `npm run privacy:check` 11/11; `npm run nlp:security-audit` 3/3. Docs (trust levels, final handoff, roadmap matrix + ledger, beta tracker) reconciled. Committed locally; no push; no installer rebuild (release deferred to the next boundary).

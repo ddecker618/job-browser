@@ -1427,6 +1427,18 @@ function mockFetch(
       init?: RequestInit,
     ): Promise<Response> => {
       const rawUrl = input instanceof Request ? input.url : input.toString();
+      if (
+        (init?.method === undefined || init.method === 'GET') &&
+        /\/api\/jobs\/[^/]+\/intelligence$/.test(rawUrl)
+      ) {
+        return response(
+          {
+            error: 'No current analysis exists for this job.',
+            code: 'nlp_no_analysis',
+          },
+          404,
+        );
+      }
       const result = await handler(new URL(rawUrl, 'http://localhost'), init);
       return result instanceof Response ? result : response(result, 200);
     },

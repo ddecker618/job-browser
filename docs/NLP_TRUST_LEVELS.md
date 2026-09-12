@@ -88,15 +88,24 @@ hard-gate`. No skipping.
 
 P27 records field-specific promotion while preserving shadow-mode authority:
 
-| Capability                                 | Current level           | Consumer flag/default           | Effect                                                  |
-| ------------------------------------------ | ----------------------- | ------------------------------- | ------------------------------------------------------- |
-| Extraction, reconciliation, comparison     | SHADOW (0)              | Background local processing     | Additive rows and diagnostics only                      |
-| Job Intelligence facts and resume coverage | EXPLANATION (1)         | jobIntelligenceExplanation: off | Evidence-labelled display only                          |
-| Reconciled role-family suggestion          | EXPLANATION (1)         | roleFamilySuggestion: off       | Suggestion only; deterministic family wins              |
-| Search-profile vocabulary feedback         | EXPLANATION (1)         | searchProfileFeedback: off      | Read-only feedback                                      |
-| Valid target-role supporting evidence      | EXPLANATION (1)         | No separate promotion flag      | Explains deterministic membership only                  |
-| Search relevance tie-break                 | ENRICHMENT (2)          | searchTieBreak: off             | Secondary ordering only inside exact deterministic ties |
-| Experimental recommendation contribution   | SHADOW (0), design only | No runtime consumer             | Zero production effect                                  |
-| Scoring and hard gates                     | Not promoted            | Unreachable                     | Deterministic only                                      |
+| Capability                                 | Current level           | Consumer flag/default                    | Effect                                                  |
+| ------------------------------------------ | ----------------------- | ---------------------------------------- | ------------------------------------------------------- |
+| Extraction, reconciliation, comparison     | SHADOW (0)              | Background local processing              | Additive rows and diagnostics only                      |
+| Job Intelligence facts and resume coverage | EXPLANATION (1)         | jobIntelligenceExplanation: on (default) | Evidence-labelled display only                          |
+| Reconciled role-family suggestion          | EXPLANATION (1)         | roleFamilySuggestion: off                | Suggestion only; deterministic family wins              |
+| Search-profile vocabulary feedback         | EXPLANATION (1)         | searchProfileFeedback: off               | Read-only feedback                                      |
+| Valid target-role supporting evidence      | EXPLANATION (1)         | No separate promotion flag               | Explains deterministic membership only                  |
+| Search relevance tie-break                 | ENRICHMENT (2)          | searchTieBreak: off                      | Secondary ordering only inside exact deterministic ties |
+| Experimental recommendation contribution   | SHADOW (0), design only | No runtime consumer                      | Zero production effect                                  |
+| Scoring and hard gates                     | Not promoted            | Unreachable                              | Deterministic only                                      |
 
-All flags are read locally at decision time and malformed values fail closed. Settings exposes them read-only. The acceptance, comparison, rollback, real-data, performance, privacy, packaging, and smoke evidence through P27 is recorded in the roadmap. SPRINT_MAXIMUM_LEVEL = 'enrichment' still applies; nothing reached SCORING or HARD_GATE.
+All flags are read locally at decision time. `jobIntelligenceExplanation` —
+the EXPLANATION-level display capability — is enabled by default (its prior
+default of `off` contradicted the promotion recorded below and left the
+feature unreachable). The remaining flags are off by default, and malformed
+settings values fall back to these documented defaults; every capability that
+could affect score, eligibility, ranking, filtering, or lifecycle stays
+fail-closed. Settings exposes the flags read-only. The acceptance,
+comparison, rollback, real-data, performance, privacy, packaging, and smoke
+evidence through P27 is recorded in the roadmap. SPRINT_MAXIMUM_LEVEL =
+'enrichment' still applies; nothing reached SCORING or HARD_GATE.

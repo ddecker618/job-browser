@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JobIntelligencePreview } from '../src/client/components/JobIntelligencePreview.js';
-import { api } from '../src/client/api.js';
+import { api, ApiRequestError } from '../src/client/api.js';
 import { extractNlpDocument } from '../src/intelligence/nlp/document.js';
 import { projectJobIntelligence } from '../src/intelligence/nlp/projection.js';
 import { buildNlpComparisonReport } from '../src/intelligence/nlp/comparison.js';
@@ -50,6 +50,13 @@ describe('P11 Job Intelligence coverage UI', () => {
       location: null,
       estimatedExperienceYears: null,
     };
+    vi.spyOn(api, 'jobIntelligence').mockRejectedValue(
+      new ApiRequestError(
+        404,
+        'nlp_no_analysis',
+        'No current analysis exists for this job.',
+      ),
+    );
     vi.spyOn(api, 'analyzeJobIntelligence').mockResolvedValue({
       ...projectJobIntelligence('job-1', enrichment, deterministic),
       roleFamily: projectRoleFamilySuggestion('job-1', {
