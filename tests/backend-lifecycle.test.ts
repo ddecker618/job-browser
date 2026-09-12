@@ -156,6 +156,20 @@ describe('backend lifecycle', () => {
     backup.close();
   });
 
+  it('starts the local service before deferred startup maintenance runs', async () => {
+    const directory = temporary();
+    const events: string[] = [];
+    const handle = await backend(directory, {
+      startupMaintenanceDelayMs: 60_000,
+      logger: (_level, message) => events.push(message),
+    });
+    handles.push(handle);
+
+    expect((await fetch(`${handle.url}/api/health`)).ok).toBe(true);
+    expect(events).toContain('Backend started');
+    expect(events).not.toContain('Startup maintenance phase completed');
+  });
+
   it('stops before backup or migration when recovery fails', async () => {
     const directory = temporary();
     const databasePath = join(directory, 'jobs.sqlite');

@@ -1,5 +1,6 @@
 import type { Server } from 'node:http';
 import { dirname, resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
 
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -84,6 +85,7 @@ export interface BackendOptions extends AppOptions {
   clientRequestsPerMinute?: number;
   databaseQuarantineDirectory?: string;
   onStartupProgress?: (phase: BackendStartupPhase) => void;
+  startupMaintenanceDelayMs?: number;
 }
 
 export type BackendStartupPhase =
@@ -99,6 +101,7 @@ export interface BackendHandle {
   pendingMigrations: string[];
   migrationBackupPath: string | null;
   coordinator: DiscoveryCoordinator;
+  startupMaintenance: Promise<void>;
   backup(): Promise<string>;
   listBackups(): BackupMetadata[];
   stop(): Promise<void>;
@@ -116,14 +119,20 @@ export async function startBackend(
       : resolve(dirname(databasePath), 'quarantine', 'database'));
   let database: JobDatabase | undefined;
   let server: Server | undefined;
+  let startupMaintenanceTimer: ReturnType<typeof setTimeout> | null = null;
+  let resolveStartupMaintenance: (() => void) | null = null;
+  let startupMaintenance: Promise<void> = Promise.resolve();
+  let stopped = false;
   try {
     options.onStartupProgress?.('checking-database');
     const databaseOpener = options.databaseOpener ?? openDatabase;
-    database = await databaseOpener(
-      databasePath,
-      quarantineDirectory === undefined
-        ? {}
-        : { quarantineDirectory: quarantineDirectory },
+    database = await timeStartupPhase(logger, 'checking-database', () =>
+      databaseOpener(
+        databasePath,
+        quarantineDirectory === undefined
+          ? {}
+          : { quarantineDirectory: quarantineDirectory },
+      ),
     );
     const activeDatabase = database;
     const migrationsDirectory =
@@ -156,20 +165,30 @@ export async function startBackend(
       options.backupBeforeMigrations === true &&
       options.backupDirectory !== undefined
     ) {
+      const backupDirectory = options.backupDirectory;
       options.onStartupProgress?.('backing-up-database');
-      migrationBackupPath = await createDatabaseBackup(
-        database,
-        options.backupDirectory,
-        'pre-migration',
+      migrationBackupPath = await timeStartupPhase(
+        logger,
+        'backing-up-database',
+        () =>
+          createDatabaseBackup(
+            activeDatabase,
+            backupDirectory,
+            'pre-migration',
+          ),
       );
     }
     options.onStartupProgress?.('applying-database-updates');
-    runMigrations(database, migrationsDirectory);
-    seedEmployerRegistry(database);
+    timeStartupPhase(logger, 'applying-database-updates', () => {
+      runMigrations(activeDatabase, migrationsDirectory);
+      seedEmployerRegistry(activeDatabase);
+    });
     options.onStartupProgress?.('starting-local-service');
-    seedKnownApplications(database);
-    ensureInstalledAt(database);
-    await providerRegistry.loadProviders();
+    await timeStartupPhase(logger, 'starting-local-service', async () => {
+      seedKnownApplications(activeDatabase);
+      ensureInstalledAt(activeDatabase);
+      await providerRegistry.loadProviders();
+    });
     if (options.linkedinProfile) {
       const linkedIn = providerRegistry.get('linkedin');
       if (linkedIn instanceof LinkedInProvider) {
@@ -222,33 +241,8 @@ export async function startBackend(
     }
     sourceRepository.recoverInterruptedRuns();
     const jobLifecycle = new JobLifecycleRepository(database);
-    const lifecycleReconciliation = jobLifecycle.reconcileKnownClosures();
-    if (lifecycleReconciliation.changed > 0) {
-      logger('info', 'Known job closures reconciled', lifecycleReconciliation);
-    }
-    new JobRepository(database).refreshMatchedFamilies();
-    const currentProfile = loadCandidateProfile(options.candidateProfilePath);
-    const currentScoring = loadScoringConfig(options.scoringConfigPath);
-    const reconciliation = new IntelligenceEngine(
-      database,
-      options.logger ?? logger,
-    ).reconcileStaleData(currentProfile, currentScoring);
-    if (
-      reconciliation.roleDetailsProcessed > 0 ||
-      reconciliation.scoresInvalidated > 0 ||
-      reconciliation.analysis !== null
-    ) {
-      logger('info', 'Stale role details and scores reconciled', {
-        roleDetailsProcessed: reconciliation.roleDetailsProcessed,
-        roleDetailsUpdated: reconciliation.roleDetailsUpdated,
-        roleDetailsSkipped: reconciliation.roleDetailsSkipped,
-        scoresInvalidated: reconciliation.scoresInvalidated,
-        scoresReprocessed: reconciliation.analysis?.jobsAnalyzed ?? 0,
-      });
-    }
     const discoveryAlertService = new DiscoveryAlertService(database);
     const discoveryAnalyticsService = new DiscoveryAnalyticsService(database);
-    discoveryAlertService.evaluateRules();
 
     const coordinator = new DiscoveryCoordinator(database, providerRegistry, {
       credentialResolver:
@@ -293,7 +287,6 @@ export async function startBackend(
             discoveryAlertService,
           )
         : null;
-    scheduler?.start();
     const nlpCandidateSource = new DatabaseJobNlpCandidateSource(
       activeDatabase,
     );
@@ -372,8 +365,95 @@ export async function startBackend(
       throw new Error('Backend did not select a TCP port');
     const url = `http://${host}:${String(address.port)}`;
     logger('info', 'Backend started', { url, pendingMigrations });
-    nlpBackgroundWorker.start();
-    let stopped = false;
+    startupMaintenance = new Promise<void>((resolveMaintenance) => {
+      resolveStartupMaintenance = resolveMaintenance;
+      startupMaintenanceTimer = setTimeout(() => {
+        startupMaintenanceTimer = null;
+        if (stopped) {
+          resolveMaintenance();
+          return;
+        }
+        Promise.resolve()
+          .then(() => {
+            runStartupMaintenanceStep(
+              logger,
+              'reconcile-known-closures',
+              () => {
+                const lifecycleReconciliation =
+                  jobLifecycle.reconcileKnownClosures();
+                if (lifecycleReconciliation.changed > 0) {
+                  logger(
+                    'info',
+                    'Known job closures reconciled',
+                    lifecycleReconciliation,
+                  );
+                }
+              },
+            );
+            runStartupMaintenanceStep(
+              logger,
+              'refresh-matched-families',
+              () => {
+                new JobRepository(activeDatabase).refreshMatchedFamilies();
+              },
+            );
+            runStartupMaintenanceStep(
+              logger,
+              'reconcile-stale-intelligence',
+              () => {
+                const currentProfile = loadCandidateProfile(
+                  options.candidateProfilePath,
+                );
+                const currentScoring = loadScoringConfig(
+                  options.scoringConfigPath,
+                );
+                const reconciliation = new IntelligenceEngine(
+                  activeDatabase,
+                  options.logger ?? logger,
+                ).reconcileStaleData(currentProfile, currentScoring);
+                if (
+                  reconciliation.roleDetailsProcessed > 0 ||
+                  reconciliation.scoresInvalidated > 0 ||
+                  reconciliation.analysis !== null
+                ) {
+                  logger('info', 'Stale role details and scores reconciled', {
+                    roleDetailsProcessed: reconciliation.roleDetailsProcessed,
+                    roleDetailsUpdated: reconciliation.roleDetailsUpdated,
+                    roleDetailsSkipped: reconciliation.roleDetailsSkipped,
+                    scoresInvalidated: reconciliation.scoresInvalidated,
+                    scoresReprocessed:
+                      reconciliation.analysis?.jobsAnalyzed ?? 0,
+                  });
+                }
+              },
+            );
+            runStartupMaintenanceStep(
+              logger,
+              'evaluate-discovery-alerts',
+              () => {
+                discoveryAlertService.evaluateRules();
+              },
+            );
+            runStartupMaintenanceStep(
+              logger,
+              'start-discovery-scheduler',
+              () => {
+                scheduler?.start();
+              },
+            );
+            runStartupMaintenanceStep(logger, 'start-nlp-worker', () => {
+              nlpBackgroundWorker.start();
+            });
+          })
+          .catch((error: unknown) => {
+            logger('error', 'Startup maintenance failed', {
+              error: error instanceof Error ? error.message : String(error),
+              stackTrace: error instanceof Error ? (error.stack ?? null) : null,
+            });
+          })
+          .finally(resolveMaintenance);
+      }, options.startupMaintenanceDelayMs ?? 10_000);
+    });
     return {
       database: activeDatabase,
       server,
@@ -381,6 +461,7 @@ export async function startBackend(
       pendingMigrations,
       migrationBackupPath,
       coordinator,
+      startupMaintenance,
       backup: async () => {
         if (persistenceSetPaths === null)
           throw new Error('Backup directory is not configured');
@@ -396,6 +477,12 @@ export async function startBackend(
       stop: async () => {
         if (stopped) return;
         stopped = true;
+        if (startupMaintenanceTimer !== null) {
+          clearTimeout(startupMaintenanceTimer);
+          startupMaintenanceTimer = null;
+          resolveStartupMaintenance?.();
+        }
+        await startupMaintenance;
         if (scheduler !== null) await scheduler.stop();
         else await coordinator.stop();
         await nlpBackgroundWorker.stop();
@@ -416,6 +503,78 @@ export async function startBackend(
     if (database?.open === true) database.close();
     throw error;
   }
+}
+
+function timeStartupPhase<T>(
+  logger: LogWriter,
+  phase: string,
+  action: () => T,
+): T {
+  const startedAt = performance.now();
+  try {
+    const result = action();
+    if (isPromiseLike(result)) {
+      return result.then((value) => {
+        logStartupPhaseCompleted(logger, phase, startedAt);
+        return value;
+      }) as T;
+    }
+    logStartupPhaseCompleted(logger, phase, startedAt);
+    return result;
+  } catch (error) {
+    logger('error', 'Startup phase failed', {
+      phase,
+      durationMs: elapsedMs(startedAt),
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
+
+function runStartupMaintenanceStep(
+  logger: LogWriter,
+  phase: string,
+  action: () => void,
+): void {
+  const startedAt = performance.now();
+  try {
+    action();
+    logger('info', 'Startup maintenance phase completed', {
+      phase,
+      durationMs: elapsedMs(startedAt),
+    });
+  } catch (error) {
+    logger('error', 'Startup maintenance phase failed', {
+      phase,
+      durationMs: elapsedMs(startedAt),
+      error: error instanceof Error ? error.message : String(error),
+      stackTrace: error instanceof Error ? (error.stack ?? null) : null,
+    });
+  }
+}
+
+function logStartupPhaseCompleted(
+  logger: LogWriter,
+  phase: string,
+  startedAt: number,
+): void {
+  logger('info', 'Startup phase completed', {
+    phase,
+    durationMs: elapsedMs(startedAt),
+  });
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.round((performance.now() - startedAt) * 10) / 10;
+}
+
+function isPromiseLike<T>(value: T | PromiseLike<T>): value is PromiseLike<T> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'then' in value &&
+    typeof value.then === 'function'
+  );
 }
 
 type DatabaseOpener = (

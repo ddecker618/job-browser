@@ -32,8 +32,10 @@ describe('scoring reprocessing and current ranking', () => {
       databasePath,
       enableScheduler: false,
       seedDefaultSources: false,
+      startupMaintenanceDelayMs: 0,
     });
     handles.push(first);
+    await first.startupMaintenance;
 
     const row = first.database
       .prepare<[], Record<string, unknown>>(
@@ -104,8 +106,10 @@ describe('scoring reprocessing and current ranking', () => {
       databasePath,
       enableScheduler: false,
       seedDefaultSources: false,
+      startupMaintenanceDelayMs: 0,
     });
     handles.push(second);
+    await second.startupMaintenance;
     const stable = second.database
       .prepare<[], { score: number; score_version: string }>(
         `SELECT score, score_version FROM jobs
