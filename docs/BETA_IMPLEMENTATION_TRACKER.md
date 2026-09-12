@@ -218,6 +218,7 @@ Phase 2 (performance) WORKING STATE:
 - `117018e` — recovery: adoption markers completed to full scope (route, client, Settings UI, tests), POST /api/sources ordering fixed (DEF-003), readSetting JSON round-trip, privacy-distribution flake timeout raised, tracker corrected (phase 17 reverted [ ]). Verify green 108/1101. NOT pushed.
 - `bec8644` — docs: tracker phase 13 privacy audit + phase 15 beta config (D-010 parallelization waiver for 1.1.0). NOT pushed.
 - `449aada` — release: version bump 1.0.28 → 1.1.0, full artifact validation (build, inspect, privacy, packaged/installed/upgrade smokes, SHA), docs (CHANGELOG/BETA_TESTING/BETA_PLAN/this tracker) + verdict READY FOR EXTERNAL BETA. Verify 108/1101 green at 1.1.0. NOT pushed.
+- `c83949b` — release: version bump 1.1.1 → 1.1.2, ship P31 FTS startup fix + P32 Job Intelligence enablement. Installer `release\Job-Browser-Setup-1.1.2.exe` 253,597,831 B / SHA-256 `A77B1F74…FE28F2`; asar 74,047,442 B / `5BC4F99D…62D2E8E`; packaged/installed/seeded-upgrade smokes pass; installed asar matches; installed Job Intelligence validated end-to-end (default-enabled 200, cached GET, re-analyze, explicit-disable 409, score unchanged); gates verify 158 files / 1460 tests, privacy 11/11, security 3/3; prod DB untouched. NOT pushed.
 
 ## Phase 1 bake-in status
 
