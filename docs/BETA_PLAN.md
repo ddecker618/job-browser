@@ -1,6 +1,6 @@
 # Beta Plan
 
-Targets the external beta of Job Browser 1.1.0.
+Targets the external beta of Job Browser 1.1.1.
 
 ## Goal
 
@@ -67,15 +67,15 @@ All milestones reached (2026-09-09). Exit criteria:
 
 1. Full gate green (`npm run verify`, 108 files / 1101 tests) + `npm run
 privacy:check` (11/11). ✅
-2. Packaged smoke + installed smoke pass on the 1.1.0 artifact; upgrade
+2. Packaged smoke + installed smoke pass on the 1.1.1 artifact; upgrade
    preservation verified with a seeded synthetic database. ✅
 3. No unresolved data-integrity or privacy defects from beta findings
    (no external findings yet; pre-release audit clean). ✅
 4. Beta findings triaged; release blockers fixed. Cross-source
-   parallelization waived for 1.1.0 with reason (tracker decision D-010). ✅
+   parallelization waived for the beta line with reason (tracker decision D-010). ✅
 
-Beta artifact: `release\Job-Browser-Setup-1.1.0.exe`
-(253,596,385 B, SHA-256
-`7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251`).
+Beta artifact: `release\Job-Browser-Setup-1.1.1.exe`
+(253,596,928 B, SHA-256
+`1101A3795CCB930C9966DC02198B60EFCF757221496B61728C2B9C9E8886C815`).
 
 Verdict: **READY FOR EXTERNAL BETA**.

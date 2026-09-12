@@ -558,3 +558,15 @@ P30 installer rebuild is complete. `npm run desktop:package` rebuilt the install
 - **D-NLP-089:** Final validation commands passed: `npm run desktop:smoke:packaged`, `npm run desktop:smoke:installed`, `npm run desktop:smoke:packaged -- --upgrade`, `npm run privacy:check` (3 files / 11 tests), and `npm run nlp:security-audit` (1 file / 3 tests). No Job Browser/Electron/Playwright process or port 6783 listener remained afterward.
 
 Resume at the next bounded NLP module. Do not repeat full release validation until another source change needs to ship.
+
+## Recovery checkpoint — P31 desktop startup performance release (2026-09-11)
+
+P31 responds to the slow-load diagnosis from the user's live database. The visible 1,298 jobs were not the direct startup blocker; the live SQLite set was much larger, and startup was doing full-database maintenance before the local service became reachable. P31 keeps database verification, migrations, deterministic scoring, eligibility, lifecycle rules, NLP extraction, and trust boundaries unchanged while moving non-critical startup maintenance behind the first successful backend start.
+
+- **D-NLP-090:** `startBackend()` now logs timed startup phases for database checking, migration/update work, and local-service startup.
+- **D-NLP-091:** Known-closure reconciliation, matched role-family refresh, stale intelligence reconciliation, discovery alert evaluation, scheduler startup, and NLP background-worker startup now run as deferred startup maintenance after the backend is listening. Default delay: 10 seconds. Tests can set `startupMaintenanceDelayMs` and await `handle.startupMaintenance`.
+- **D-NLP-092:** Focused validation passed after the source change and version bump: Prettier check, ESLint, `tsc --noEmit`, and `vitest run tests/backend-lifecycle.test.ts tests/scoring-reprocessing.test.ts` = 2 files / 11 tests.
+- **D-NLP-093:** Version bumped from 1.1.0 to 1.1.1 in `package.json` and `package-lock.json`.
+- **D-NLP-094:** Final P31 installer: `release\Job-Browser-Setup-1.1.1.exe`, 253,596,928 bytes, SHA-256 1101A3795CCB930C9966DC02198B60EFCF757221496B61728C2B9C9E8886C815. Packaged and installed `app.asar` are identical: 74,041,483 bytes, SHA-256 CEE52B0E0F625F25B26970ECCFF8637C27CFA2E0C243484FF3E76930613BB35F. Installed executable reports ProductVersion 1.1.1.0 and FileVersion 1.1.1. Packaged, installed, and seeded upgrade smokes passed.
+
+Resume at live startup verification on the user's real database, then the next bounded NLP module.

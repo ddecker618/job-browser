@@ -1,12 +1,12 @@
 # Beta Testing Guide
 
-This page tells external beta users how to install Job Browser 1.1.0, run the
+This page tells external beta users how to install Job Browser 1.1.1, run the
 key scenarios, and report findings. It pairs with `docs/BETA_PLAN.md` (goals,
 scope, and exit criteria) and `docs/KNOWN_QUIRKS.md` (known behaviors).
 
 ## Install
 
-1. Copy the beta installer `Job-Browser-Setup-1.1.0.exe` to the test machine.
+1. Copy the beta installer `Job-Browser-Setup-1.1.1.exe` to the test machine.
 2. Install over an existing Job Browser 1.0.x copy, or run it on a clean
    machine.
 3. Launch Job Browser, complete onboarding, add at least two sources (one

@@ -311,6 +311,7 @@ async function runDesktopSmoke(): Promise<void> {
     await assertPageText(window.webContents, 'Opportunity command center');
     if (process.env['JOB_BROWSER_SMOKE_UPGRADE'] === '1') {
       recordSmokeStage('asserting-upgrade-reconciliation');
+      await handle.startupMaintenance;
       assertUpgradeReconciliation(handle.database);
     }
     recordSmokeStage('creating-application-fixture');

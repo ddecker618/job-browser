@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.1.1] - 2026-09-11
+
+### Desktop Startup
+
+- Deferred non-critical startup maintenance until after the local service is
+  reachable, so the app can open before known-closure reconciliation, matched
+  role-family refresh, stale intelligence reconciliation, discovery alert
+  evaluation, scheduler startup, and the NLP background worker begin competing
+  for the database.
+- Added timed startup and maintenance log entries for database checking,
+  migration/update work, local-service startup, and each deferred maintenance
+  phase. Deterministic scoring, eligibility, lifecycle rules, NLP extraction
+  output, and trust boundaries remain unchanged.
+- Rebuilt and validated the versioned installer:
+  `release\Job-Browser-Setup-1.1.1.exe`, 253,596,928 bytes, SHA-256
+  `1101A3795CCB930C9966DC02198B60EFCF757221496B61728C2B9C9E8886C815`.
+  Packaged and installed `app.asar` match SHA-256
+  `CEE52B0E0F625F25B26970ECCFF8637C27CFA2E0C243484FF3E76930613BB35F`.
+  Installed executable reports ProductVersion `1.1.1.0` and FileVersion
+  `1.1.1`.
+
 ## Unreleased — NLP explanation and enrichment promotion (P8-P29)
 
 - Added target-role selection, exact family membership, and supporting current NLP index evidence. Stale derived data falls back to title evidence.

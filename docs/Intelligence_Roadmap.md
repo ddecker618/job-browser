@@ -34,15 +34,16 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P30 compensation extraction complete; release artifact validated
-CURRENT_TASK:        ready for review or next NLP module
-LAST_COMPLETED:      P30; focused NLP tests, installer rebuild, packaged/installed/
-                     upgrade smoke, privacy, and NLP security all passed
-NEXT_ACTION:         review P30 or choose the next bounded NLP module
-FILES_IN_PROGRESS:   none; P30 source and release docs committed locally
+CURRENT_STAGE:       P31 desktop startup performance release complete
+CURRENT_TASK:        verify live startup timing or choose the next NLP module
+LAST_COMPLETED:      P31; version 1.1.1 installer rebuilt and packaged/
+                     installed/upgrade smoke passed
+NEXT_ACTION:         live startup timing check against the user's real database,
+                     then loop back to the next bounded NLP module
+FILES_IN_PROGRESS:   none; P31 source and release docs committed locally
 TESTS_TO_RUN:        none until the next source change
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   P28-P29 release checkpoint; see git log HEAD
+LATEST_CHECKPOINT:   P31 startup performance release; see git log HEAD
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -1355,35 +1356,62 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 ---
 
+## P31 — Desktop Startup Performance Release
+
+- **Status:** [x]
+- **Objective:** reduce perceived launch delay on large existing databases by moving
+  non-critical maintenance behind the first successful local-service start while
+  preserving database safety checks, migrations, deterministic scoring, eligibility,
+  lifecycle authority, and NLP trust boundaries.
+- **Current task:** Complete. `startBackend()` now logs timed startup phases and
+  defers known-closure reconciliation, matched role-family refresh, stale
+  intelligence reconciliation, discovery alert evaluation, scheduler startup, and
+  NLP background-worker startup until after the backend is listening. The default
+  maintenance delay is 10 seconds, and tests can force/await it through
+  `startupMaintenanceDelayMs` and `handle.startupMaintenance`. Focused validation
+  passed: Prettier check, ESLint, `tsc --noEmit`, and
+  `vitest run tests/backend-lifecycle.test.ts tests/scoring-reprocessing.test.ts`
+  = 2 files / 11 tests. Final privacy/NLP security validation passed 4 files / 14 tests. Version bumped to 1.1.1. Installer rebuilt and validated:
+  `release\Job-Browser-Setup-1.1.1.exe`, 253,596,928 bytes, SHA-256
+  1101A3795CCB930C9966DC02198B60EFCF757221496B61728C2B9C9E8886C815.
+  Packaged/installed `app.asar`: 74,041,483 bytes, SHA-256
+  CEE52B0E0F625F25B26970ECCFF8637C27CFA2E0C243484FF3E76930613BB35F.
+  Installed executable reports ProductVersion 1.1.1.0 and FileVersion 1.1.1.
+- **Exact next action:** verify live launch timing against the user's real database,
+  then loop back to the next bounded NLP module.
+
+---
+
 ## Verification Ledger (NLP program)
 
-| Date       | Action                   | Result                                                                                 |
-| ---------- | ------------------------ | -------------------------------------------------------------------------------------- |
-| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                                  |
-| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean              |
-| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`                     |
-| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark                |
-| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                                  |
-| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                             |
-| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                                |
-| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS            |
-| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated             |
-| 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`               |
-| 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7`           |
-| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                          |
-| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)                  |
-| 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly                   |
-| 2026-09-10 | P3b async worker         | verify 140/1369 green; 7 worker tests; commit `2d9ad2c`                                |
-| 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green                      |
-| 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21`   |
-| 2026-09-11 | P6 relevance index       | derive + repo + composite worker target + search tie-break (flag off); verify 143/1399 |
-| 2026-09-11 | P7 role family suggest   | reconciled suggestion projection + intelligence endpoint; verify 144/1407              |
-| 2026-09-11 | P18-P23 promotion safety | verify 157/1445; 500-job real-copy run; checkpoint b89cea1                             |
-| 2026-09-11 | P24 full gate            | verify 157/1445; privacy 11/11; security 3/3; source/package/upgrade smoke PASS        |
-| 2026-09-11 | P25 desktop real copy    | direct smoke PASS; 205 shadow rows; 13,619,200 B growth; no orphan processes           |
-| 2026-09-11 | P26-P27 audit/docs       | current app.asar privacy/inventory PASS; all promotion documents reconciled            |
-| 2026-09-11 | P28-P29 release/report   | installer rebuilt; packaged/installed/upgrade smoke PASS; privacy 11/11; security 3/3  |
-| 2026-09-11 | P30 compensation module  | focused tests 18 PASS; final installer rebuilt; package/install/upgrade/privacy PASS   |
+| Date       | Action                   | Result                                                                                   |
+| ---------- | ------------------------ | ---------------------------------------------------------------------------------------- |
+| 2026-09-10 | Baseline before NLP work | `npm run verify` 108 files / 1101 tests PASS (v1.1.0)                                    |
+| 2026-09-10 | Stage 1 contract         | `npx vitest run tests/job-nlp-schema.test.ts` 17 PASS; eslint + tsc clean                |
+| 2026-09-10 | Stage 23 coverage        | `npm run verify` 130 files / 1334 tests PASS; checkpoint `97dbf23`                       |
+| 2026-09-10 | Stage 24 performance     | `npm run verify` 131 files / 1336 tests PASS; 54-case offline benchmark                  |
+| 2026-09-10 | Stage 25 security        | focused audit 3 PASS; `npm run privacy:check` 11 PASS                                    |
+| 2026-09-10 | Stage 26 UX              | focused UI test 2 PASS; read-only unknown-coverage preview                               |
+| 2026-09-10 | Stage 27 promotion       | focused design test 1 PASS; no promotion implementation                                  |
+| 2026-09-10 | Stage 28 regression      | `npm run verify` 135 files / 1343 tests; package/install/upgrade smoke PASS              |
+| 2026-09-10 | Stage 29 handoff         | 43-point report; `npm run verify` 136 files / 1344 tests; shadow validated               |
+| 2026-09-10 | NLP repair connected     | `npm run verify` 136 files / 1346 tests; privacy 11/11; commit `036d75c`                 |
+| 2026-09-10 | P0 startup fix           | worker verification; real 253 MB DB main-thread responsive; commit `f0c41c7`             |
+| 2026-09-10 | P1 promotion audit       | matrix complete; no production NLP consumers confirmed (grep)                            |
+| 2026-09-10 | P2 trust levels          | 6 tests pass; tsc + prettier clean; sprint max = enrichment (Level 2)                    |
+| 2026-09-10 | P3a envelope wiring      | document-v2 meta; verify 139/1362 green; old rows re-extract cleanly                     |
+| 2026-09-10 | P3b async worker         | verify 140/1369 green; 7 worker tests; commit `2d9ad2c`                                  |
+| 2026-09-10 | P4 worker wiring         | background worker in app + status endpoint; verify 141/1378 green                        |
+| 2026-09-11 | P5 projection            | JobIntelligenceProjection + deterministic reconciliation; verify 142/1388; `7651d21`     |
+| 2026-09-11 | P6 relevance index       | derive + repo + composite worker target + search tie-break (flag off); verify 143/1399   |
+| 2026-09-11 | P7 role family suggest   | reconciled suggestion projection + intelligence endpoint; verify 144/1407                |
+| 2026-09-11 | P18-P23 promotion safety | verify 157/1445; 500-job real-copy run; checkpoint b89cea1                               |
+| 2026-09-11 | P24 full gate            | verify 157/1445; privacy 11/11; security 3/3; source/package/upgrade smoke PASS          |
+| 2026-09-11 | P25 desktop real copy    | direct smoke PASS; 205 shadow rows; 13,619,200 B growth; no orphan processes             |
+| 2026-09-11 | P26-P27 audit/docs       | current app.asar privacy/inventory PASS; all promotion documents reconciled              |
+| 2026-09-11 | P28-P29 release/report   | installer rebuilt; packaged/installed/upgrade smoke PASS; privacy 11/11; security 3/3    |
+| 2026-09-11 | P30 compensation module  | focused tests 18 PASS; final installer rebuilt; package/install/upgrade/privacy PASS     |
+| 2026-09-11 | P31 startup performance  | version 1.1.1; focused startup/scoring tests 11 PASS; package/install/upgrade smoke PASS |
 
 | 2026-09-11 | P8 target-role search | verify 145/1416 PASS; build PASS; exact membership and current P6 evidence |
 
