@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe('NLP capability flags and status (P20-P22)', () => {
-  it('enables EXPLANATION display by default and fails other capabilities closed', () => {
+  it('enables EXPLANATION projections by default and keeps ranking enrichment closed', () => {
     const database = createTestDatabase();
     databases.push(database);
     expect(readNlpCapabilityFlags(database)).toEqual(
@@ -27,8 +27,8 @@ describe('NLP capability flags and status (P20-P22)', () => {
       true,
     );
     expect(capabilityEnabled(database, 'searchTieBreak')).toBe(false);
-    expect(capabilityEnabled(database, 'roleFamilySuggestion')).toBe(false);
-    expect(capabilityEnabled(database, 'searchProfileFeedback')).toBe(false);
+    expect(capabilityEnabled(database, 'roleFamilySuggestion')).toBe(true);
+    expect(capabilityEnabled(database, 'searchProfileFeedback')).toBe(true);
     database
       .prepare(
         'INSERT INTO app_settings (setting_key,setting_value_json,updated_at) VALUES (?,?,?)',

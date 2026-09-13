@@ -205,6 +205,48 @@ describe('connected shadow NLP API', () => {
     ).toEqual({ count: 1 });
   });
 
+  it('serves role-family and search-profile EXPLANATION projections by default', async () => {
+    const { db, url } = await setup();
+    db.prepare('DELETE FROM app_settings WHERE setting_key=?').run(
+      'nlp_capability_flags',
+    );
+    const response = await fetch(url + '/api/jobs/nlp-test/intelligence', {
+      method: 'POST',
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      roleFamily: {
+        suggestionVersion: string;
+        state: string;
+        suggestedFamilyKey: string | null;
+        authority: { gate: 'never' };
+      };
+    };
+    expect(body.roleFamily.suggestionVersion).toBe('role-family-suggestion-v1');
+    expect(body.roleFamily.authority.gate).toBe('never');
+    expect([
+      'agreement',
+      'deterministic-only',
+      'nlp-only',
+      'conflict',
+      'unknown',
+    ]).toContain(body.roleFamily.state);
+    const profile = await fetch(url + '/api/search-profile/intelligence');
+    expect(profile.status).toBe(200);
+    const projection = (await profile.json()) as {
+      version: string;
+      roleFamilies: unknown[];
+      skillCoverage: { configuredCount: number; recognizedCount: number };
+      preferenceAuthority: string;
+      productionEffect: string;
+    };
+    expect(projection.version).toBe('search-profile-intelligence-v1');
+    expect(Array.isArray(projection.roleFamilies)).toBe(true);
+    expect(projection.skillCoverage.configuredCount).toBeGreaterThanOrEqual(0);
+    expect(projection.preferenceAuthority).toBe('deterministic-only');
+    expect(projection.productionEffect).toBe('none');
+  });
+
   it('serves current cached analysis read-only via GET without persisting changes', async () => {
     const { db, url } = await setup();
     const posted = await fetch(url + '/api/jobs/nlp-test/intelligence', {

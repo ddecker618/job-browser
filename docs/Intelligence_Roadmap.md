@@ -34,18 +34,22 @@ roles:
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P33 release boundary 1.1.2 complete
-CURRENT_TASK:        shipped the P31 FTS startup fix + P32 Job Intelligence
-                     enablement in a current 1.1.2 installer
-LAST_COMPLETED:      built/validated 1.1.2 (installer + installed asar hash match);
-                     installed Job Intelligence validated end-to-end (default-enable
-                     200, cached GET, re-analyze, explicit-disable 409); gates green
-NEXT_ACTION:         next bounded NLP module (role-family / search-profile EXPLANATION
-                     defaults) or the next release boundary
-FILES_IN_PROGRESS:   none; release checkpoint committed locally
-TESTS_TO_RUN:        none until the next source change
+CURRENT_STAGE:       P35 EXPLANATION defaults shipped (role-family +
+                     search-profile projections default-on; searchTieBreak
+                     stays off)
+CURRENT_TASK:        role-family / search-profile EXPLANATION defaults
+LAST_COMPLETED:      flipped roleFamilySuggestion + searchProfileFeedback to
+                     on-by-default in DEFAULT_NLP_CAPABILITY_FLAGS; added
+                     default-on connected-API coverage; verify 159/1472 green
+NEXT_ACTION:         submit the EXPLANATION-default P35 checkpoint, then the
+                     next bounded NLP module or the next release boundary
+FILES_IN_PROGRESS:   capabilityFlags defaults + connected-API test (done);
+                     docs updated, checkpoint commit pending
+TESTS_TO_RUN:        run npm run verify after any further source change (1472
+                     tests green as of P35)
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   P33 release boundary 1.1.2; see git log HEAD
+LATEST_CHECKPOINT:   P35 EXPLANATION defaults shipped (uncommitted); see git
+                     log HEAD + docs/CHANGELOG for context
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -86,7 +90,8 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   next NLP module planning; do not restart completed P0-P33
+SAFE_RESUME_POINT:   P35 EXPLANATION defaults shipped; do not restart
+                     completed P0-P35
 ```
 
 ---

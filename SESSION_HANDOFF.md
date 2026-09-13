@@ -1,5 +1,32 @@
 # Session Handoff
 
+## Recovery checkpoint — P35 EXPLANATION defaults complete (2026-09-12)
+
+Next NLP module shipped: role-family / search-profile EXPLANATION defaults.
+
+`DEFAULT_NLP_CAPABILITY_FLAGS` now defaults `roleFamilySuggestion` and
+`searchProfileFeedback` to `true`; `searchTieBreak` stays `false` (enrichment-
+level ordering, behind its production-vs-shadow diff gate). Effects (both
+read-only, EXPLANATION trust, evidence-bearing, deterministic authoritative on
+conflict):
+
+- every `/api/jobs/:id/intelligence` payload now includes the reconciled
+  `roleFamily` suggestion (agreement/deterministic-only/abstain states);
+- `GET /api/search-profile/intelligence` is served by default (role-family
+  inventory, skill coverage w/ unknowns, reviewed skill clusters;
+  `preferenceAuthority:'deterministic-only'`, `productionEffect:'none'`).
+
+No stored-flag version bump (stored opt-outs override defaults at decision
+time). New default-on connected-API coverage; `npm run verify` 159 files /
+1472 tests green. Files: `src/intelligence/nlp/capabilityFlags.ts`,
+`tests/job-nlp-capability-flags.test.ts`, `tests/job-nlp-connected-api.test.ts`,
+docs CHANGELOG/tracker/roadmap. Checkpoint commit NOT yet made.
+
+Also cleared (2026-09-12): stale "Job Browser 1.0.28" Add/Remove Programs
+entry removed by deleting the orphaned HKCU uninstall key
+`014daef4-a2a3-5bc8-9b5d-5b8cc68f4ea0` (its uninstaller path no longer
+existed on disk).
+
 ## Recovery checkpoint — P34 source health audit complete (2026-09-12)
 
 P34 SOURCE HEALTH AUDIT is code-complete and verified at 159 files / 1471

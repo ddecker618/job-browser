@@ -33,6 +33,14 @@ privacy:check` 3 files / 11 tests.
 
 ### Post-sprint maintenance (2026-09-12)
 
+- P35 next-NLP-module planning consumed: DESCOPE CONFIRMED -> role-family /
+  search-profile EXPLANATION defaults shipped. `DEFAULT_NLP_CAPABILITY_FLAGS`
+  now enables `roleFamilySuggestion` and `searchProfileFeedback` by default
+  (`searchTieBreak` stays off behind its enrichment-level diff gate). Both
+  projections are read-time-only, carry structured evidence, and mark
+  deterministic values authoritative on conflict; no stored-flag version bump
+  (stored opt-outs still override defaults). `npm run verify` 159 files / 1472
+  tests green (new default-on connected-API coverage).
 - P34 SOURCE HEALTH AUDIT complete. `npm run verify` 159 files / 1471 tests
   green. Live-probed the Intel / Etsy / Encyclis / Dice endpoints and shipped a
   controlled source-repair CLI (`npm run sources:repair`) with the same

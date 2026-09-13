@@ -2,6 +2,26 @@
 
 ## [Unreleased] - 2026-09-12
 
+### Job Intelligence — EXPLANATION defaults
+
+- The `roleFamilySuggestion` and `searchProfileFeedback` capability flags now
+  default on, completing the EXPLANATION (1) trust surface: every job's
+  intelligence payload includes the reconciled role-family suggestion
+  (`/api/jobs/:id/intelligence` → `roleFamily`) and the bounded search-profile
+  projection (`GET /api/search-profile/intelligence`) is served without an
+  explicit opt-in. Both are read-time-only, carry structured evidence, mark
+  deterministic values authoritative on conflict, and never change score,
+  eligibility, ranking, filtering, or lifecycle (`authority.gate: 'never'`,
+  `productionEffect: 'none'`). The `searchTieBreak` capability stays off by
+  default because it is enrichment-level — it alters search ordering and
+  remains behind its production-vs-shadow diff gate.
+- No schema or flag-version change: `DEFAULT_NLP_CAPABILITY_FLAGS` values
+  changed only, and stored/parsed capability rows (explicit opt-outs) continue
+  to override defaults at decision time.
+- Added regression coverage: default-on role-family + search-profile
+  projection assertions in `tests/job-nlp-connected-api.test.ts` and updated
+  default-flag assertions in `tests/job-nlp-capability-flags.test.ts`.
+
 ### Source Health Audit (P34)
 
 - Corrected the failed-run health taxonomy in `discoveryCoordinator.translateError`:
