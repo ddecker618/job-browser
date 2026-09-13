@@ -5,14 +5,20 @@
 P34 SOURCE HEALTH AUDIT is code-complete and verified at 159 files / 1471
 tests (`npm run verify`). Do not restart P0-P33.
 
-NEXT TASK (small): apply the planned source repairs to the LIVE database —
-close the Job Browser desktop app, run
-`npm run sources:repair -- --live` (auto: verified backup →
-`%APPDATA%\Job Browser\data\backups\pre-source-remediation-*.sqlite`), then
-re-run the affected sources (Intel/Workday `External`, Etsy/Workday
-`etsy_careers`, Encyclis/iCIMS) to confirm healthy. If the user declines, the
-applied-to-copy evidence in `%TEMP%\opencode\p34-repair-copy.sqlite` stands as
-the validated result.
+LIVE REPAIRS APPLIED (2026-09-13 local) against
+`%APPDATA%\Job Browser\data\jobs.sqlite` via
+`npm run sources:repair -- --live`. Verified pre-change backup:
+`%APPDATA%\Job Browser\backups\pre-source-remediation-2026-09-13T01-08-51-450Z.sqlite`
+(SHA-256 `3A49D1…EE1BC`). Post-apply verification (read-only probe) confirmed:
+Intel source → Workday `https://intel.wd1.myworkdayjobs.com/External`,
+available, never-run / 0 failures; Etsy → Workday `etsy_careers`, available,
+never-run / 0; Encyclis → iCIMS `/jobs/intro`, available, never-run / 0;
+`career_sites` retired the legacy `jobs.intel.com` row and the ligature
+`Intel_External` history rows carry `ats-changed` + resulting healthy. Post-apply
+DB SHA-256 `FA3008…D5DB2` (pre-apply `942E81…69A19`).
+
+NEXT (small): start the desktop app and re-run the three repaired sources
+(Intel, Etsy, Encyclis) to confirm healthy with fresh jobs.
 
 - Taxonomy: `discoveryCoordinator.translateError` now distinguishes (1) engine
   deadline → "Discovery run timed out before collecting results"; (2) genuine

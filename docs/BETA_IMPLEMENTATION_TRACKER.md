@@ -39,13 +39,16 @@ privacy:check` 3 files / 11 tests.
   verified-backup guarantee as `sources:remediate`. Fixes landed for the Dice
   run-deadline misclassification (previously translated as "Timeout: The server
   did not respond in time"), the Dice false-positive login detection, and the
-  zero-card hang that consumed the full 30-minute engine deadline. Repairs were
-  validated against a disposable copy of the live database.
-- NOTE (incomplete): the live-DB apply (Intel site slug `Intel_External` ->
-  `External`, Etsy BambooHR -> Workday repoint, Encyclis re-enable) is pending:
-  the desktop app was open during the audit, so production writes wait until
-  the app is closed, then `npm run sources:repair -- --live` (backup is
-  automatic). The Dice source remains enabled by policy (protected provider).
+  zero-card hang that consumed the full 30-minute engine deadline.
+- LIVE DB APPLIED 2026-09-13 local: `npm run sources:repair -- --live` on
+  `%APPDATA%\Job Browser\data\jobs.sqlite` (app closed) applied all 3 repairs
+  and created verified backup
+  `%APPDATA%\Job Browser\backups\pre-source-remediation-2026-09-13T01-08-51-450Z.sqlite`
+  (SHA-256 `3A49D1…EE1BC`). Post-apply probe confirmed Intel (Workday `External`,
+  never-run/0), Etsy (Workday `etsy_careers`, available), Encyclis (iCIMS
+  `/jobs/intro`, available); legacy `jobs.intel.com` career_site retired;
+  `ats-changed` evidence rows appended. The Dice source remains enabled by
+  policy (protected provider); one signed-in Dice re-run is the standing item.
 - No version bump and no installer rebuild: the `1.1.2` artifact remains
   current for the shipped fixes; `docs/Intelligence_Roadmap.md` intentionally
   unchanged (this is non-NLP maintenance).
