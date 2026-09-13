@@ -255,11 +255,10 @@ describe('discovery coordinator', () => {
       .get();
     expect(row).toEqual({
       health_status: 'credentials-required',
-      health_message:
-        'Verification required: Complete the security check or log in',
+      health_message: 'Login required: Sign in on the provider site and retry',
     });
     expect(coordinator.status().lastError).toBe(
-      'Verification required: Complete the security check or log in',
+      'Login required: Sign in on the provider site and retry',
     );
     await coordinator.stop();
   });
@@ -619,14 +618,14 @@ describe('translateError', () => {
     );
   });
 
-  it('classifies browser login and verification walls as needing verification', () => {
+  it('classifies browser login and verification walls distinctly', () => {
     expect(
       translateError(
         new Error(
           'Dice login timed out. Please log in manually and try again.',
         ),
       ),
-    ).toBe('Verification required: Complete the security check or log in');
+    ).toBe('Login required: Sign in on the provider site and retry');
     expect(
       translateError(
         new Error('Failed to navigate to https://www.linkedin.com/checkpoint/'),
@@ -634,6 +633,36 @@ describe('translateError', () => {
     ).toBe('Verification required: Complete the security check or log in');
     expect(translateError(new Error('Hit an authwall during sign-in'))).toBe(
       'Verification required: Complete the security check or log in',
+    );
+  });
+
+  it('separates an exceeded run deadline from a genuine server timeout', () => {
+    expect(
+      translateError(
+        new Error(
+          'Discovery run exceeded the 1800000ms deadline for provider dice',
+        ),
+      ),
+    ).toBe('Discovery run timed out before collecting results');
+  });
+
+  it('keeps genuine server timeouts labelled as server timeouts', () => {
+    expect(
+      translateError(
+        new Error('Request to providers board timed out after 5000ms'),
+      ),
+    ).toBe('Timeout: The server did not respond in time');
+  });
+
+  it('classifies a board that rendered no job cards as no results returned', () => {
+    expect(
+      translateError(
+        new Error(
+          'Dice board did not render any job listings: no job cards appeared after 4 queries; the site may now require sign-in or changed its layout',
+        ),
+      ),
+    ).toBe(
+      'Provider unavailable: The provider did not return any search results',
     );
   });
 

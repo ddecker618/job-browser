@@ -1,5 +1,50 @@
 # Changelog
 
+## [Unreleased] - 2026-09-12
+
+### Source Health Audit (P34)
+
+- Corrected the failed-run health taxonomy in `discoveryCoordinator.translateError`:
+  an exceeded discovery engine deadline ("Discovery run exceeded the ... ms
+  deadline ...") is now classified distinctly as "Discovery run timed out before
+  collecting results" instead of being misreported as
+  "Timeout: The server did not respond in time". Genuine server timeouts keep
+  their original message. Browser login walls now classify as
+  "Login required: Sign in on the provider site and retry" (a new
+  `requiresUserAction` class), separate from verification walls
+  ("Verification required: Complete the security check or log in"); boards that
+  render no job listings classify as
+  "Provider unavailable: The provider did not return any search results".
+- Hardened the Dice browser provider (`src/providers/dice.provider.ts`):
+  fixed the false-positive signed-in detection (any page with a nav/header/main
+  was treated as logged in, so the manual-login wait was a no-op); the provider
+  now navigates to the first query before deciding whether a login wall exists.
+  Added a zero-card fast-fail that aborts a run with a categorized message after
+  two consecutive queries render no job cards (instead of grinding for the full
+  30-minute engine deadline), a 20-minute internal fetch budget, and fixed
+  double-counting of raw results in query diagnostics. The Dice source remains
+  enabled by policy (protected provider).
+- Added a controlled-source-repair CLI `npm run sources:repair`
+  (`src/discovery/cli/repair-sources.ts`) with the same verified-backup
+  guarantee as `sources:remediate`. Live-verified repairs, proven against a
+  disposable copy of the production database:
+  - Intel (Workday): stale posting-site slug `Intel_External` corrected to
+    `External` (CXS probe: `External` 200 / 592 jobs; `Intel_External` 404
+    `S21`);
+  - Etsy: BambooHR -> Workday migration repoint (`etsy` / `etsy_careers`, 46
+    live jobs) and re-enabled;
+  - Encyclis: re-enabled the reachable iCIMS hosted-v1 portal
+    (careers-encyclis.icims.com reachable; earlier "unreachable or inactive"
+    classification was a transient misclassification).
+    Repairs record append-only `ats-changed` evidence in
+    `career_site_verification_history`, update/retire the affected `career_sites`
+    rows, and never delete records.
+- Added regression coverage: `tests/repair-sources.test.ts` (plan/apply/
+  idempotence/append-only evidence) and extended `tests/dice-completion.test.ts`
+  (zero-card abort, partial recovery, raw-result accounting) and
+  `tests/discovery-coordinator.test.ts` (deadline vs timeout vs login vs render
+  taxonomy).
+
 ## [1.1.2] - 2026-09-11
 
 ### Desktop Startup

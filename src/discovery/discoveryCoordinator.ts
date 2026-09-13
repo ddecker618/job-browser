@@ -314,8 +314,16 @@ export function translateError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
 
   if (
+    message.toLowerCase().includes('login required') ||
+    message.toLowerCase().includes('login is required') ||
     message.toLowerCase().includes('login timed out') ||
     message.toLowerCase().includes('please log in manually') ||
+    message.toLowerCase().includes('log in to continue') ||
+    message.toLowerCase().includes('sign in to continue')
+  ) {
+    return 'Login required: Sign in on the provider site and retry';
+  }
+  if (
     message.toLowerCase().includes('authwall') ||
     message.toLowerCase().includes('auth wall') ||
     message.toLowerCase().includes('security challenge') ||
@@ -333,10 +341,12 @@ export function translateError(error: unknown): string {
   ) {
     return 'HTTP 404: Board not found or inactive';
   }
+  if (message.toLowerCase().includes('deadline')) {
+    return 'Discovery run timed out before collecting results';
+  }
   if (
     message.toLowerCase().includes('timeout') ||
-    message.toLowerCase().includes('timed out') ||
-    message.toLowerCase().includes('deadline')
+    message.toLowerCase().includes('timed out')
   ) {
     return 'Timeout: The server did not respond in time';
   }
@@ -391,6 +401,12 @@ export function translateError(error: unknown): string {
     return 'Provider unavailable: Network error or DNS resolution failed';
   }
   if (
+    message.toLowerCase().includes('did not render any job listings') ||
+    message.toLowerCase().includes('no job cards appeared')
+  ) {
+    return 'Provider unavailable: The provider did not return any search results';
+  }
+  if (
     message.includes('No jobs matched current filters') ||
     message.includes('No jobs matched the configured filters') ||
     message.includes('No open positions found') ||
@@ -421,6 +437,7 @@ export function translateError(error: unknown): string {
 
 function requiresUserAction(translated: string): boolean {
   return (
+    translated.startsWith('Login') ||
     translated.startsWith('Authentication') ||
     translated.startsWith('Verification')
   );

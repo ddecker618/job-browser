@@ -23,6 +23,7 @@ vi.mock('../src/providers/linkedIn/browserSession.js', () => ({
   takeDiagnosticScreenshot: vi.fn(() => Promise.resolve(undefined)),
 }));
 
+import { waitForContent } from '../src/providers/linkedIn/browserSession.js';
 import { DiceProvider } from '../src/providers/dice.provider.js';
 import type { ProviderSearch } from '../src/models/discovery.js';
 
@@ -275,5 +276,81 @@ describe('Dice completion semantics', () => {
     expect((result.records[0] as { salaryText?: string }).salaryText).toBe(
       '$100k',
     );
+  });
+
+  it('aborts the fetch when two consecutive queries render no job cards and nothing was collected', async () => {
+    vi.mocked(waitForContent).mockResolvedValue(false);
+    vi.spyOn(
+      provider as unknown as DicePrivateApi,
+      'collectCards',
+    ).mockResolvedValue([]);
+    await expect(provider.fetch(makeSearch())).rejects.toThrow(
+      /did not render any job listings/,
+    );
+    expect(vi.mocked(waitForContent)).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps running when a single query fails to render cards but a later one succeeds', async () => {
+    let renderCount = 0;
+    vi.mocked(waitForContent).mockImplementation(() => {
+      renderCount++;
+      return Promise.resolve(renderCount !== 1);
+    });
+    vi.spyOn(
+      provider as unknown as DicePrivateApi,
+      'collectCards',
+    ).mockImplementation(() =>
+      Promise.resolve([
+        rawJob({
+          jobId: `recovered-${String(renderCount)}`,
+          title: 'Recovered',
+          company: 'C',
+          location: 'Remote',
+          postingUrl: `https://dice.com/${String(renderCount)}`,
+          employmentType: 'full-time',
+        }),
+      ]),
+    );
+    passThroughEnrich();
+    const result = await provider.fetch(makeSearch());
+    expect(result.complete).toBe(false);
+    expect(result.completedQueries).toBe(2);
+    expect(result.failedQueries).toBe(1);
+    expect(result.records.length).toBe(2);
+  });
+
+  it('reports raw results once per card returned without double counting', async () => {
+    vi.spyOn(
+      provider as unknown as DicePrivateApi,
+      'collectCards',
+    ).mockResolvedValue([
+      rawJob({
+        jobId: 'single-raw-job',
+        title: 'Single Raw',
+        company: 'C',
+        location: 'Remote',
+        postingUrl: 'https://dice.com/single-raw',
+        employmentType: 'full-time',
+      }),
+    ]);
+    passThroughEnrich();
+    const result = await provider.fetch(
+      makeSearch({
+        configuration: {
+          searchKeywords: 'Engineer',
+          location: '',
+          queries: [{ keywords: 'Engineer', location: '' }],
+          remoteFilter: '',
+          distance: 25,
+          datePosted: 'month',
+          maxResults: 50,
+          browserProfileDir: '/mock/dice-profile',
+          keepBrowserOpen: false,
+          debugMode: false,
+        },
+      }),
+    );
+    expect(result.queryDiagnostics?.[0]?.rawResultsReturned).toBe(1);
+    expect(result.queryDiagnostics?.[0]?.duplicatesRemoved).toBe(0);
   });
 });

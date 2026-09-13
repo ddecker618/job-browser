@@ -44,6 +44,7 @@
     "employers:import": "tsx src/discovery/cli/import-employers.ts",
     "employers:cleanup": "tsx src/discovery/cli/cleanup-remediation.ts",
     "sources:remediate": "tsx src/discovery/cli/remediate-sources.ts",
+    "sources:repair": "tsx src/discovery/cli/repair-sources.ts",
     "analyze": "tsx src/intelligence/cli.ts",
     "analyze:test": "tsx src/intelligence/cli.ts --fixture",
     "nlp:benchmark": "npm run build && node dist/scripts/benchmark-nlp.js",

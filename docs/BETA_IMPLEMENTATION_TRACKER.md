@@ -31,6 +31,25 @@ privacy:check` 3 files / 11 tests.
   installed, seeded upgrade smokes pass; installed Job Intelligence validated
   (P33 release boundary).
 
+### Post-sprint maintenance (2026-09-12)
+
+- P34 SOURCE HEALTH AUDIT complete. `npm run verify` 159 files / 1471 tests
+  green. Live-probed the Intel / Etsy / Encyclis / Dice endpoints and shipped a
+  controlled source-repair CLI (`npm run sources:repair`) with the same
+  verified-backup guarantee as `sources:remediate`. Fixes landed for the Dice
+  run-deadline misclassification (previously translated as "Timeout: The server
+  did not respond in time"), the Dice false-positive login detection, and the
+  zero-card hang that consumed the full 30-minute engine deadline. Repairs were
+  validated against a disposable copy of the live database.
+- NOTE (incomplete): the live-DB apply (Intel site slug `Intel_External` ->
+  `External`, Etsy BambooHR -> Workday repoint, Encyclis re-enable) is pending:
+  the desktop app was open during the audit, so production writes wait until
+  the app is closed, then `npm run sources:repair -- --live` (backup is
+  automatic). The Dice source remains enabled by policy (protected provider).
+- No version bump and no installer rebuild: the `1.1.2` artifact remains
+  current for the shipped fixes; `docs/Intelligence_Roadmap.md` intentionally
+  unchanged (this is non-NLP maintenance).
+
 ### Global guardrails (never violate)
 
 - Create/update this tracker BEFORE substantial code changes; update at every checkpoint: phase change, decision, defect, test run, commit.

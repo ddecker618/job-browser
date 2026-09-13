@@ -34,6 +34,9 @@ const DEFAULT_FIXTURE_PATH = fileURLToPath(
   new URL('../fixtures/dice-search-response.json', import.meta.url),
 );
 
+const DICE_ZERO_CARD_FAIL_LIMIT = 2;
+const DICE_FETCH_BUDGET_MS = 20 * 60_000;
+
 const diceQuerySchema = z.strictObject({
   keywords: z.string().trim().min(1, 'Keywords are required'),
   location: z.string().optional().default(''),
@@ -233,8 +236,33 @@ export class DiceProvider extends BaseProvider {
       });
       checkCancelled();
 
-      const loggedIn = await diceIsLoggedIn(page);
-      if (!loggedIn) {
+      const queries = this.resolveQueries(config);
+      if (queries.length === 0)
+        throw new Error('Dice configuration has no queries');
+
+      const fetchStartedAt = Date.now();
+      const allUnique: DiceRawJob[] = [];
+      const seen = new Set<string>();
+      const diagnostics: QueryDiagnostics[] = [];
+      let completedQueries = 0;
+      let failedQueries = 0;
+      let truncatedQueries = 0;
+      let consecutiveZeroCardQueries = 0;
+
+      const firstQuery = queries[0];
+      if (!firstQuery) throw new Error('Dice configuration has no queries');
+      const firstUrl = this.buildSearchUrl(
+        firstQuery.keywords,
+        firstQuery.location,
+        {
+          remoteFilter: firstQuery.remoteFilter ?? '',
+          distance: firstQuery.distance ?? 25,
+          datePosted: firstQuery.datePosted ?? 'any',
+        } as DiceConfiguration,
+      );
+      await navigateWithRetry(page, firstUrl, { retries: 3 });
+
+      if (!(await diceIsLoggedIn(page)) && isDiceAuthPath(page.url())) {
         log('info', 'Dice login required, navigating to login page');
         await page.goto('https://www.dice.com/login', {
           waitUntil: 'domcontentloaded',
@@ -242,23 +270,17 @@ export class DiceProvider extends BaseProvider {
         });
         const loginCompleted = await diceWaitForLogin(page, 300_000);
         if (!loginCompleted)
-          throw new Error(
-            'Dice login timed out. Please log in manually and try again.',
-          );
+          throw new Error('Dice login is required to view search results');
       }
 
       checkCancelled();
 
-      const queries = this.resolveQueries(config);
-      const allUnique: DiceRawJob[] = [];
-      const seen = new Set<string>();
-      const diagnostics: QueryDiagnostics[] = [];
-      let completedQueries = 0;
-      let failedQueries = 0;
-      let truncatedQueries = 0;
-
       for (const q of queries) {
         checkCancelled();
+
+        if (Date.now() - fetchStartedAt >= DICE_FETCH_BUDGET_MS) {
+          break;
+        }
 
         const queryStarted = nowUtc();
         const queryStartMs = Date.now();
@@ -277,7 +299,27 @@ export class DiceProvider extends BaseProvider {
         log('info', `Dice: searching for "${q.keywords}"`);
         try {
           await navigateWithRetry(page, url, { retries: 3 });
-          await waitForContent(page, ['[data-testid="job-card"]'], 3000);
+          const rendered = await waitForContent(
+            page,
+            ['[data-testid="job-card"]'],
+            3000,
+          );
+
+          if (!rendered) {
+            consecutiveZeroCardQueries++;
+            if (
+              allUnique.length === 0 &&
+              consecutiveZeroCardQueries >= DICE_ZERO_CARD_FAIL_LIMIT
+            ) {
+              throw new DiceFetchAbortError(
+                `Dice board did not render any job listings: no job cards appeared after ${String(consecutiveZeroCardQueries)} queries; the site may now require sign-in or changed its layout`,
+              );
+            }
+            throw new Error(
+              `Dice job card list did not render for query "${q.keywords}"`,
+            );
+          }
+          consecutiveZeroCardQueries = 0;
 
           const cards = await this.collectCards(
             page,
@@ -312,6 +354,7 @@ export class DiceProvider extends BaseProvider {
 
           completedQueries++;
         } catch (error) {
+          if (error instanceof DiceFetchAbortError) throw error;
           failedQueries++;
           terminationReason =
             error instanceof Error && error.message.includes('cancelled')
@@ -334,8 +377,7 @@ export class DiceProvider extends BaseProvider {
           location: q.location,
           requestStarted: queryStarted,
           requestCompleted: nowUtc(),
-          rawResultsReturned:
-            queryCards.length + dedupedCount + queryCards.length,
+          rawResultsReturned: queryCards.length + dedupedCount,
           uniqueResultsRetained: queryCards.length,
           duplicatesRemoved: dedupedCount,
           errors: queryErrors,
@@ -722,22 +764,23 @@ async function diceIsLoggedIn(page: Page): Promise<boolean> {
     )
       return true;
 
-    if (
-      url.startsWith('https://www.dice.com/') &&
-      url !== 'https://www.dice.com/'
-    ) {
-      if (
-        await page.$(
-          'form[action*="search"], input[type="search"], .search-form, nav, header, main',
-        )
-      )
-        return true;
-    }
-
     return false;
   } catch {
     return false;
   }
+}
+
+function isDiceAuthPath(url: string): boolean {
+  return (
+    url.includes('/login') ||
+    url.includes('/signin') ||
+    url.includes('/sign-in') ||
+    url.includes('/auth')
+  );
+}
+
+class DiceFetchAbortError extends Error {
+  public override readonly name = 'DiceFetchAbortError';
 }
 
 async function diceWaitForLogin(

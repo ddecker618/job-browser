@@ -1,5 +1,53 @@
 # Session Handoff
 
+## Recovery checkpoint — P34 source health audit complete (2026-09-12)
+
+P34 SOURCE HEALTH AUDIT is code-complete and verified at 159 files / 1471
+tests (`npm run verify`). Do not restart P0-P33.
+
+NEXT TASK (small): apply the planned source repairs to the LIVE database —
+close the Job Browser desktop app, run
+`npm run sources:repair -- --live` (auto: verified backup →
+`%APPDATA%\Job Browser\data\backups\pre-source-remediation-*.sqlite`), then
+re-run the affected sources (Intel/Workday `External`, Etsy/Workday
+`etsy_careers`, Encyclis/iCIMS) to confirm healthy. If the user declines, the
+applied-to-copy evidence in `%TEMP%\opencode\p34-repair-copy.sqlite` stands as
+the validated result.
+
+- Taxonomy: `discoveryCoordinator.translateError` now distinguishes (1) engine
+  deadline → "Discovery run timed out before collecting results"; (2) genuine
+  server timeouts → unchanged; (3) login walls → "Login required: Sign in on
+  the provider site and retry" (new `requiresUserAction` class); (4) boards
+  that render no cards → "Provider unavailable: The provider did not return any
+  search results". Before, the Dice deadline was misreported as "Timeout: The
+  server did not respond in time".
+- Dice provider hardening: fixed the false-positive signed-in detection
+  (removed the nav/header/main catch-all), navigate-then-check-login flow,
+  zero-card fast-fail after 2 consecutive empty queries (classified abort
+  instead of a 30-minute engine-deadline grind), 20-minute internal fetch
+  budget, and corrected the doubled `rawResultsReturned` diagnostic counting.
+  Dice remains enabled by policy (protected provider).
+- New controlled repair CLI `npm run sources:repair` (src/discovery/cli/
+  repair-sources.ts), same verified-backup semantics as `sources:remediate`.
+  Validated on a disposable copy of the real DB: Intel `Intel_External` ->
+  `External` (CXS 200 / 592 jobs vs 404 S21), Etsy BambooHR -> Workday
+  `etsy_careers` (46 jobs), Encyclis re-enable (iCIMS reachable). Append-only
+  `ats-changed` rows written to `career_site_verification_history`; no records
+  deleted. Job Browser is open on this machine, so the live-DB apply is the
+  deferred next step above.
+- Tests added/updated: `tests/repair-sources.test.ts` (new, 5 tests),
+  `tests/dice-completion.test.ts` (zero-card abort / partial recovery / raw
+  accounting), `tests/discovery-coordinator.test.ts` (taxonomy). Full suite
+  green: format:check + eslint + tsc + 1471 tests.
+- Docs: CHANGELOG "Unreleased — Source Health Audit (P34)"; tracker
+  "Post-sprint maintenance (2026-09-12)". Roadmap intentionally unchanged
+  (non-NLP maintenance). No version bump; installer 1.1.2 remains current —
+  do NOT rebuild the installer mid-remediation.
+- Scratch artifacts re the audit live in `%TEMP%\opencode\` (p34-*.mjs/out,
+  p34-repair-copy.sqlite + verification probe). Untracked
+  `scripts/__flags-check.ts` still excluded; remove `dist/scripts/__flags-check.js*`
+  after any future `npm run build`.
+
 ## Recovery checkpoint — P33 release boundary 1.1.2 complete (2026-09-11)
 
 P33 is complete: the verified P31 FTS startup fix (`c9508ae`) and P32 Job
