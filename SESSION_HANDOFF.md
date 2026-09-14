@@ -1,94 +1,45 @@
 # Session Handoff
 
-## Current status — Lifecycle harness 11/11 green, full verify green (2026-09-14)
+## Current status — 1.1.3 release-boundary closeout (2026-09-14)
 
-This is the active checkpoint. Older sections below are historical context; do
-not start additional work from them.
+The 1.1.3 release boundary is **complete**. This is the active checkpoint.
+Older sections below are historical context; do not start additional work
+from them.
 
-### What shipped this continuation
+### Release boundary state
 
-Building on commit `32d8b81` ("Package C native-dependency repair +
-lifecycle harness", where `scripts/__flags-check.ts` was accidentally
-committed — see removal note below), this continuation fixed the last
-5 failing harness scenarios and removed a privacy leak:
+- **Version:** `1.1.3` in `package.json` and `package-lock.json`.
+- **Installer rebuilt and validated:**
+  `release\Job-Browser-Setup-1.1.3.exe` (253,613,582 bytes, SHA-256
+  `E8788D4B6E37D72912E5F29BFF24A4B0B8F5F521F7E6334858D94B9D2FD34A01`).
+  Packaged and installed `app.asar` are identical (74,130,955 bytes,
+  SHA-256 `7FD522A609DCE15D1D03F50C94455D946293B35A18DD93A8241C7E3DCD1A6001`).
+  Installed executable reports ProductVersion `1.1.3.0` / FileVersion
+  `1.1.3` (silent upgrade from the 1.1.2 install, exit 0).
+- **Smokes passed:** packaged smoke, packaged seeded-upgrade smoke,
+  installed smoke, and installed seeded-upgrade smoke — all PASS.
+- **Lifecycle harness:** `npm run desktop:lifecycle-harness` — 11 of 11
+  scenarios pass.
+- **Full verification:** `npm run verify` — 169 files / 1,564 tests, all
+  pass.
+- **Privacy/security gates:** `npm run privacy:check` 11/11 and
+  `npm run nlp:security-audit` 3/3 pass.
+- **Notifications remain disabled:** `NotificationManager.tsx` returns
+  `null`; `main.ts` denies `notifications` permission checks/requests
+  before the BrowserWindow is created (verified inside the packaged asar).
+- **Production DB untouched.**
+- **No orphan processes:** no Job Browser/Electron processes and port 6783
+  is free after validation.
 
-1. **Shutdown no longer drops pending writes.**
-   `src/desktop/lifecycleController.ts` `shutdown()` used
-   `Promise.race([stop, timeout])`; when the timeout won, `finalizeExit`
-   called `app.exit(0)` before `backend.stop()` finished, losing writes
-   (notably a persisted `closeToTray=false`) and risking a half-closed
-   DB. It now always `await`s the real `stop`, using the timeout only to
-   flag `graceful:false`. Three controller tests were updated to resolve
-   the backend stop instead of hanging forever, and a regression test
-   asserts the stop still completes after the timeout fires.
-2. **Harness writes `closeToTray` through the real product path.**
-   The scenarios used to `PUT /api/desktop-settings` directly, which
-   persisted to the DB but never updated the `LifecycleController`
-   in-memory value, so `closeAction()` still hid the window instead of
-   exiting. Added a `set_close_to_tray` harness op
-   (`src/desktop/lifecycleHarness.ts`) wired to
-   `lifecycle.persistCloseToTray()` in `src/desktop/main.ts` — the same
-   IPC route the Settings UI uses. All close-to-tray scenarios now drive
-   that op.
-3. **Persisted-restart scenario actually shares the DB.**
-   `scripts/lifecycle-harness.ts` created a `sharedUserData` directory
-   but never passed it to `runScenarioStandalone`, so process 2 booted a
-   brand-new database and always read the default `true`. The scenario
-   now passes the shared directory to both processes.
-4. **Stale harness state no longer fools `waitForReady`.**
-   When two processes reused one userData directory, process 2 could
-   observe process 1's leftover `harness-state.json`
-   (`backendUrl` + `startupComplete`) and return before its own backend
-   was up. `launchElectron` now removes stale `harness-state.json`,
-   `harness-cmd.jsonl`, and `harness-resp-*.json` files before launch.
-5. **`query-session-end` scenario asserts process exit.**
-   `onWindowsSessionEnd` calls `app.exit(0)`, so a post-dispatch
-   in-band `get_state` is meaningless; the scenario now waits for the
-   process to exit within a bounded budget.
-6. **`waitForReady` accepts the startup-failure state.**
-   The forced-startup-failure path never sets `startupComplete`; the
-   harness now also accepts `trayCreated && backendRunning === false`.
-7. **Removed committed diagnostic `scripts/__flags-check.ts`.**
-   A one-off debug script (reads `nlp_capability_flags` from the
-   developer's own local production DB under the per-user `AppData`
-   Roaming profile, job data directory) was committed in `32d8b81`.
-   Its hardcoded username path made `tests/privacy-distribution.test.ts`
-   fail on **tracked files** and **compiled output** (tsc emitted
-   `dist/scripts/__flags-check.js`). Deleted, plus its stale
-   `dist/scripts/__flags-check.{js,js.map,d.ts}` outputs. Stale tsc output
-   is not removed by a normal build, so any new script under `scripts/`
-   needs a corresponding `dist` cleanup or a `dist` wipe on rebuild.
+### What shipped at this boundary (commit `1a6607b`)
 
-### Validation (all recorded against HEAD + this continuation's diff)
-
-- `npm run typecheck` — green.
-- `npm run lint` — green.
-- `npm run format:check` — green.
-- `npm run build` — green.
-- `npm run verify` — **169 test files / 1,564 tests, all pass.** The
-  previously recorded `privacy-distribution` failure is now resolved
-  (it was caused by the committed `__flags-check.ts`, not the runtime
-  code). Test-file growth vs `32d8b81` baseline: 168 → 169 files,
-  1,562 → 1,564 tests (the 3 updated + 1 new shutdown-regression test
-  net to +2 — one pre-existing test was removed with the file? No: the
-  +2 delta is the new regression test plus the earlier
-  `desktop-lifecycle-controller.test.ts` count revision during the
-  shutdown test rework).
-- `npm run desktop:lifecycle-harness` — **11 of 11 scenarios pass**:
-  1. ✅ `pause/resume preserves opt-out`
-  2. ✅ `external scheduler change updates tray`
-  3. ✅ `source attention count updates on refresh`
-  4. ✅ `close with close-to-tray on hides the window`
-  5. ✅ `close with close-to-tray off exits gracefully`
-  6. ✅ `tray Exit and repeated exit terminate cleanly`
-  7. ✅ `startup failure leaves a tray Exit path`
-  8. ✅ `tray creation failure falls back to closing`
-  9. ✅ `persisted closeToTray write`
-  10. ✅ `persisted closeToTray survives restart`
-  11. ✅ `query-session-end is bounded`
-- Native binary restored after the harness run:
-  `better_sqlite3.node` = 1,919,488 bytes; Node require test
-  `NODE OK` (host Node ABI 137, not Electron ABI 146).
+Package A/B/C desktop lifecycle on top of the 1.1.2 baseline: scoped
+"My matches / All jobs" views (A), consistent preference resolution via
+`profilePreferencesPath` (B), close-to-tray, tray manager,
+`LifecycleController` with Windows `query-session-end` / `session-end`
+handling (C), and the shutdown write-order fix (`backend.stop()` is always
+awaited before exit — previously a timeout could call `app.exit(0)` before
+DB writes flushed). See `docs/CHANGELOG.md` (1.1.3) for details.
 
 ### Remaining manual Windows acceptance items
 
@@ -102,26 +53,27 @@ committed — see removal note below), this continuation fixed the last
   programmatically. The harness verifies the in-band IPC and backend
   coordination that drive those OS-level behaviours.
 - Whether the brief `shutdown` timeout (default 5 s) is acceptable
-  for real Windows shutdown latency requires a packaged build and
-  real logoff timing.
+  for real Windows shutdown latency requires a real logoff timing on
+  a packaged build.
 - `src/client/components/NotificationManager.tsx` must remain **silent**
   (no browser/Windows notification sounds or OS notifications). Do not
   re-enable notifications during any future work.
 
 ### Recommended next task
 
-Run the automated desktop smoke and packaged/installed smoke paths
-(`npm run desktop:smoke`, `npm run desktop:smoke:packaged` /
-`desktop:smoke:installed`) now that the fixture harness is fully green,
-then perform the manual Windows acceptance items above on a packaged
-build. Note: `__flags-check.ts` removal shows `dist/scripts/` accumulates
-stale artifacts from tsc; prefer a `rm -rf dist/scripts` style clean when
-working on scripts. No product changes are expected for the harness fixes
-themselves; the only product change this continuation made is the
-shutdown write-order guarantee.
+No pending source or packaging work remains. On a future source change,
+rerun `npm run verify`, `npm run desktop:lifecycle-harness`, and the
+packaged/installed smokes before any new release boundary. Manual packaged
+Windows acceptance items above are the only outstanding verification.
 
-This is the active checkpoint. Older sections below are historical context; do
-not start additional work from them.
+---
+
+## Historical — Lifecycle-continuation checkpoint (2026-09-14, pre-release)
+
+This section is **historical**. It records the fixtures-and-shutdown-race
+continuation that produced commit `a7c4356` before the 1.1.3 boundary; the
+release itself is recorded in the current status above. Do not treat the
+"next tasks" here as the current queue.
 
 ### What this checkpoint actually fixes
 
