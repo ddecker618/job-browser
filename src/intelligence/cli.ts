@@ -5,10 +5,15 @@ import { runMigrations } from '../db/migration-runner.js';
 import { seedKnownApplications } from '../db/seeds/known-applications.js';
 import { DiscoveryEngine } from '../discovery/discoveryEngine.js';
 import { log } from '../logging/logger.js';
+import { resolveCliProfilePreferencesPath } from '../preferences/cliProfilePreferences.js';
 import { providerRegistry } from '../providers/providerRegistry.js';
 import { IntelligenceEngine } from './intelligenceEngine.js';
 
 const fixtureOnly = process.argv.includes('--fixture');
+const profilePreferencesPath = resolveCliProfilePreferencesPath(
+  process.argv,
+  process.env,
+);
 const database = openDatabase();
 
 try {
@@ -23,10 +28,14 @@ try {
     );
   }
   const summary = new IntelligenceEngine(database).analyze(
-    loadCandidateProfile(),
-    loadScoringConfig(),
+    loadCandidateProfile(undefined, profilePreferencesPath),
+    loadScoringConfig(undefined, profilePreferencesPath),
   );
-  log('info', 'Analysis command finished', { ...summary, fixtureOnly });
+  log('info', 'Analysis command finished', {
+    ...summary,
+    fixtureOnly,
+    profilePreferencesPath: profilePreferencesPath ?? null,
+  });
 } catch (error) {
   log('error', 'Analysis command failed', {
     error: error instanceof Error ? error.message : String(error),

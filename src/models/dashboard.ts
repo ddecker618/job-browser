@@ -169,5 +169,6 @@ export interface AppSettings {
 export interface SavedFilterView {
   id: string;
   name: string;
+  scope: 'matches' | 'all' | null;
   filters: Record<string, string | number | boolean>;
 }

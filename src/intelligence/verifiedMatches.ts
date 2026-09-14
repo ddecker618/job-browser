@@ -4,17 +4,22 @@ import { log } from '../logging/logger.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import { loadCandidateProfile } from '../config/candidate-profile.js';
 import { loadScoringConfig } from '../config/scoring-config.js';
+import { resolveCliProfilePreferencesPath } from '../preferences/cliProfilePreferences.js';
 import { IntelligenceEngine } from './intelligenceEngine.js';
 
 const command = process.argv[2] ?? 'report';
+const profilePreferencesPath = resolveCliProfilePreferencesPath(
+  process.argv,
+  process.env,
+);
 
 const database = openDatabase();
 
 try {
   runMigrations(database);
   const jobRepo = new JobRepository(database);
-  const profile = loadCandidateProfile();
-  const config = loadScoringConfig();
+  const profile = loadCandidateProfile(undefined, profilePreferencesPath);
+  const config = loadScoringConfig(undefined, profilePreferencesPath);
 
   if (command === 'report') {
     const jobs = jobRepo.listJobs();

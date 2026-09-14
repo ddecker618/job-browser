@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('jobBrowserDesktop', {
     ipcRenderer.invoke('desktop:get-usajobs-profile-path'),
   clearUsaJobsSession: () =>
     ipcRenderer.invoke('desktop:clear-usajobs-session'),
+  getCloseToTray: () => ipcRenderer.invoke('desktop:get-close-to-tray'),
+  setCloseToTray: (value: boolean) =>
+    ipcRenderer.invoke('desktop:set-close-to-tray', value),
+  getTraySummary: () => ipcRenderer.invoke('desktop:tray-summary'),
+  togglePauseDiscovery: () => ipcRenderer.invoke('desktop:tray-pause-toggle'),
   onStartupProgress: (callback: (stage: string) => void) => {
     ipcRenderer.on('desktop:startup-progress', (_event, stage: string) =>
       callback(stage),

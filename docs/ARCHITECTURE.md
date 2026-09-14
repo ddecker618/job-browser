@@ -246,19 +246,20 @@ reconcile, inspect, compare parsed resume evidence, and expose diagnostic UI,
 but it does not write production score, recommendation, eligibility, ranking,
 filtering, active/status/lifecycle, or removal fields.
 
-The read-only Job Intelligence preview is rendered in the existing job detail
-drawer. It consumes the existing `JobDetail` query, labels itself shadow-only,
-shows source/interpreted-as wording, and leaves disconnected resume coverage as
-`Unknown`. Stored NLP data is not exposed as an implicit production score.
+The Job Intelligence panel in the job detail drawer reads cached analysis via
+`GET /api/jobs/:id/intelligence` and analyzes or re-analyzes via the existing
+POST endpoint. It displays evidence-labelled EXPLANATION output, including
+supported immutable submitted-resume evidence; absent evidence stays unknown.
+Disabled, stale, missing, loading, and failed analyses have explicit UI states.
 
-The current maximum promotion level is Level 2: additive persisted shadow data
-and labeled diagnostics. Levels 3-4 require the field-specific hard gate in
-`docs/NLP_PROMOTION_DESIGN.md`, a new authorization, and a reversible rollout.
-Four local decision-time flags default off for Job Intelligence explanations,
-role-family suggestions, search-profile feedback, and the exact-tie relevance
-consumer. Valid target-role evidence can explain deterministic family membership;
-it never widens membership. Settings reports versions, counts, flags, and failures
-read-only. See docs/NLP_FINAL_HANDOFF.md for the current field-by-field boundary.
+Current source defaults through P35 enable Job Intelligence explanations,
+role-family suggestions, and search-profile feedback. The exact-tie relevance
+consumer remains off by default. Stored opt-outs override these defaults.
+EXPLANATION (1) permits labelled display; ENRICHMENT (2) permits only gated
+exact-tie relevance. SCORING (3) and HARD_GATE (4) are not implemented or
+authorized. Valid target-role evidence never widens deterministic membership.
+Settings reports versions, counts, flags, and failures read-only. See
+`NLP_FINAL_HANDOFF.md` for evidence and the P33 installer/P35 source distinction.
 
 Operational diagnostics retained from the existing architecture:
 

@@ -194,4 +194,64 @@ describe('discovery scheduler', () => {
     await Promise.all([evaluation, stopping]);
     expect(stopped).toBe(true);
   });
+
+  it('does not catch up overdue source runs after a long sleep/resume gap', async () => {
+    // Simulates the PC sleeping for a day: the scheduler's setTimeout fires
+    // once after waking, not 1,440 times. Source runs are still bounded by
+    // whatever listDue returns, not by the number of intervals that elapsed.
+    const dueIds: string[] = ['one'];
+    let now = new Date('2026-01-01T00:00:00.000Z');
+    const sources = {
+      getSchedulerEnabled: () => true,
+      listDue: () => dueIds.splice(0).map((id) => ({ id })),
+      getEmployerDiscoverySettings: () => ({
+        enabled: false,
+        lastEvaluatedAt: null,
+      }),
+      updateScheduleAfterRun: vi.fn(),
+    };
+    const runSource = vi.fn().mockResolvedValue([]);
+    const coordinator = { runSource, stop: vi.fn() };
+    const scheduler = new DiscoveryScheduler(
+      sources as never,
+      coordinator as never,
+      30_000,
+      undefined,
+      () => now,
+    );
+    scheduler.start();
+    // Wake the PC a day later.
+    now = new Date('2026-01-02T00:00:00.000Z');
+    dueIds.push('two', 'three');
+    await scheduler.evaluate();
+    expect(runSource).toHaveBeenCalledTimes(2);
+    await scheduler.stop();
+  });
+
+  it('skips source runs that are not yet due after a long gap', async () => {
+    const sources = {
+      getSchedulerEnabled: () => true,
+      listDue: () => [],
+      getEmployerDiscoverySettings: () => ({
+        enabled: false,
+        lastEvaluatedAt: null,
+      }),
+      updateScheduleAfterRun: vi.fn(),
+    };
+    const runSource = vi.fn().mockResolvedValue([]);
+    const coordinator = { runSource, stop: vi.fn() };
+    let now = new Date('2026-01-01T00:00:00.000Z');
+    const scheduler = new DiscoveryScheduler(
+      sources as never,
+      coordinator as never,
+      30_000,
+      undefined,
+      () => now,
+    );
+    scheduler.start();
+    now = new Date('2026-01-15T00:00:00.000Z');
+    await scheduler.evaluate();
+    expect(runSource).not.toHaveBeenCalled();
+    await scheduler.stop();
+  });
 });

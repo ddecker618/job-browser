@@ -724,14 +724,19 @@ jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
         'SELECT id, name, filters_json FROM saved_filters ORDER BY name',
       )
       .all()
-      .map((row) => ({
-        id: row.id,
-        name: row.name,
-        filters: parseJson<Record<string, string | number | boolean>>(
+      .map((row) => {
+        const stored = parseJson<Record<string, string | number | boolean>>(
           row.filters_json,
           {},
-        ),
-      }));
+        );
+        const { scope, ...filters } = stored;
+        return {
+          id: row.id,
+          name: row.name,
+          filters,
+          scope: scope === 'matches' || scope === 'all' ? scope : null,
+        };
+      });
   }
 
   public saveFilter(
@@ -746,7 +751,13 @@ jobs.first_seen_at, jobs.last_seen_at, jobs.favorite, jobs.active,
          VALUES (?, ?, ?, ?, ?)`,
       )
       .run(id, name, JSON.stringify(filters), timestamp, timestamp);
-    return { id, name, filters };
+    const { scope, ...rest } = filters;
+    return {
+      id,
+      name,
+      filters: rest,
+      scope: scope === 'matches' || scope === 'all' ? scope : null,
+    };
   }
 
   public deleteFilter(filterId: string): void {

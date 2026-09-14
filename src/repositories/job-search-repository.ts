@@ -106,7 +106,11 @@ export class JobSearchRepository {
   private readonly searchProfile: (() => SearchProfile) | undefined;
 
   public search(query: JobSearchQuery): JobSearchResponse {
-    const { sql: filterSql, parameters } = this.filters(query);
+    const currentScoreVersion = this.getScoreVersion?.();
+    const { sql: filterSql, parameters } = this.filters(
+      query,
+      currentScoreVersion,
+    );
     const filtered = `WITH filtered_jobs AS (SELECT jobs.id FROM jobs${filterSql})`;
     const total =
       this.database
@@ -180,6 +184,8 @@ export class JobSearchRepository {
       facets: this.facets(filtered, parameters),
       searchMode: this.searchMode,
       role: appliedRole,
+      scope: query.scope === 'all' ? 'all' : 'matches',
+      currentScoreVersion: currentScoreVersion ?? null,
     };
   }
 
@@ -237,14 +243,16 @@ export class JobSearchRepository {
     return result;
   }
 
-  private filters(query: JobSearchQuery): {
+  private filters(
+    query: JobSearchQuery,
+    scoreVersion: string | undefined,
+  ): {
     sql: string;
     parameters: unknown[];
   } {
     const clauses: string[] = [];
     const parameters: unknown[] = [];
-    const scoreVersion = this.getScoreVersion?.();
-    if (scoreVersion !== undefined) {
+    if (scoreVersion !== undefined && query.scope !== 'all') {
       clauses.push(
         query.active === 'removed'
           ? "(jobs.active = 0 OR jobs.status = 'expired' OR jobs.score_version = ?)"
@@ -252,7 +260,7 @@ export class JobSearchRepository {
       );
       parameters.push(scoreVersion);
     }
-    if (query.includeIneligible !== true) {
+    if (query.includeIneligible !== true && query.scope !== 'all') {
       clauses.push('COALESCE(jobs.eligibility_passed, 1) = 1');
     }
     if (query.q !== undefined) {

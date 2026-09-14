@@ -12,6 +12,7 @@ export const JOB_SEARCH_SORT_FIELDS = [
 
 export type JobSearchSortField = (typeof JOB_SEARCH_SORT_FIELDS)[number];
 export type JobSearchMode = 'fts5' | 'indexed';
+export type JobSearchScope = 'matches' | 'all';
 
 export interface JobSearchQuery {
   q?: string | undefined;
@@ -39,6 +40,7 @@ export interface JobSearchQuery {
   targetRole?: string | undefined;
   verificationStatus?: string | undefined;
   includeIneligible?: boolean | undefined;
+  scope?: JobSearchScope | undefined;
   page: number;
   pageSize: number;
   sort: JobSearchSortField;
@@ -150,4 +152,6 @@ export interface JobSearchResponse {
   facets: JobSearchFacets;
   searchMode: JobSearchMode;
   role: JobSearchAppliedRole | null;
+  scope: JobSearchScope;
+  currentScoreVersion: string | null;
 }

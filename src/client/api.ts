@@ -334,13 +334,20 @@ export const api = {
       json('PUT', profile),
     ),
   savedFilters: () => request<SavedFilterView[]>('/api/saved-filters'),
+  viewScope: () => request<{ scope: 'matches' | 'all' }>('/api/view-scope'),
+  saveViewScope: (scope: 'matches' | 'all') =>
+    request<{ scope: 'matches' | 'all' }>(
+      '/api/view-scope',
+      json('PUT', { scope }),
+    ),
   saveFilter: (
     name: string,
+    scope: 'matches' | 'all',
     filters: Record<string, string | number | boolean>,
   ) =>
     request<SavedFilterView>(
       '/api/saved-filters',
-      json('POST', { name, filters }),
+      json('POST', { name, scope, filters }),
     ),
   deleteFilter: (id: string) =>
     request<undefined>(`/api/saved-filters/${id}`, { method: 'DELETE' }),

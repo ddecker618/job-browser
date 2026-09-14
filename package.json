@@ -29,6 +29,7 @@
     "desktop:smoke": "npm run desktop:build && tsx scripts/desktop-smoke.ts",
     "desktop:smoke:packaged": "tsx scripts/desktop-smoke.ts --packaged",
     "desktop:smoke:installed": "tsx scripts/desktop-smoke.ts --installed",
+    "desktop:lifecycle-harness": "npm run build && tsx scripts/lifecycle-harness.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

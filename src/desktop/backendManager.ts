@@ -13,6 +13,7 @@ import type { CredentialResolver } from '../discovery/credentialResolver.js';
 
 export class BackendManager {
   private handle: BackendHandle | null = null;
+  private shutdownPromise: Promise<void> | null = null;
 
   public async start(
     paths: DesktopPaths,
@@ -77,10 +78,33 @@ export class BackendManager {
     return this.handle;
   }
 
+  /**
+   * The currently in-flight shutdown, if any. Repeated quit attempts can
+   * await this so the backend is not stopped twice in parallel and so
+   * later callers see the same completion signal as the first.
+   */
+  public get currentShutdown(): Promise<void> | null {
+    return this.shutdownPromise;
+  }
+
   public async stop(): Promise<void> {
+    // A second stop() while a previous shutdown is still running should
+    // share the same promise; clearing `handle` before awaiting means
+    // other code may see "no backend" while cleanup is still happening.
+    if (this.shutdownPromise !== null) {
+      await this.shutdownPromise;
+      return;
+    }
     const handle = this.handle;
     this.handle = null;
-    await handle?.stop();
+    if (handle === null) return;
+    const promise = handle.stop();
+    this.shutdownPromise = promise;
+    try {
+      await promise;
+    } finally {
+      this.shutdownPromise = null;
+    }
   }
 }
 

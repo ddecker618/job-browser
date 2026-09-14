@@ -2,7 +2,7 @@
 
 Job Browser is a local application for discovering, deduplicating, analyzing, and tracking realistic job opportunities. It runs as a Windows desktop application or as a local Node.js/Express dashboard over the same SQLite-backed services.
 
-Discovery supports Greenhouse, Lever, Ashby, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Handshake, Indeed, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. There is no automatic application submission or AI-generated application answer workflow.
+Discovery supports Greenhouse, Lever, `Ashby`, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Handshake, Indeed, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. There is no automatic application submission or AI-generated application answer workflow.
 
 ## Screenshots
 
@@ -28,12 +28,12 @@ Screenshots use clearly fictional fixture data.
 Behavior that looks odd is often deliberate. See [Known Quirks](docs/KNOWN_QUIRKS.md)
 for the index of intentional behaviors and their workarounds.
 
-Release status: **1.1.0 — READY FOR EXTERNAL BETA**. See the
+Release status: **1.1.2 — READY FOR EXTERNAL BETA** (latest validated P33 installer; current source is through P35). See the
 [beta-readiness report](docs/BETA_READINESS_REPORT.md) (verdict + full
 evidence), the [beta plan](docs/BETA_PLAN.md), and the
 [beta-testing guide](docs/BETA_TESTING.md).
 
-NLP intelligence status: **FIELD-SPECIFIC EXPLANATION/ENRICHMENT VALIDATED THROUGH P27; CONSUMER FLAGS DEFAULT OFF**. See the [NLP final handoff](docs/NLP_FINAL_HANDOFF.md) and [real-data validation](docs/NLP_REAL_DATA_VALIDATION.md). NLP does not change production scoring, eligibility, deterministic role membership, primary ranking, filtering, lifecycle, or removal behavior.
+NLP intelligence status: **P35 COMPLETE; EXPLANATION DEFAULTS ON; SEARCH TIE-BREAK DEFAULT OFF**. See the [NLP final handoff](docs/NLP_FINAL_HANDOFF.md) and [real-data validation](docs/NLP_REAL_DATA_VALIDATION.md). NLP does not change production scoring, eligibility, deterministic role membership, primary ranking, filtering, lifecycle, or removal behavior.
 
 ## Requirements
 
@@ -61,7 +61,7 @@ The default database is `data/job-browser.sqlite`. Set `JOB_BROWSER_DB_PATH` to 
 
 ## Windows Desktop Application
 
-The current release installer is `release/Job-Browser-Setup-1.1.0.exe` (253,596,385 bytes; SHA-256 `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251`). It was rebuilt on 2026-09-11 after the P30 compensation NLP module and includes the current NLP explanation/enrichment promotion work. Source, package, installed, upgrade, privacy, security, and real-copy smoke validation have passed. The current-user NSIS installer creates Desktop and Start Menu shortcuts and preserves application data during uninstall.
+The latest validated release installer is `release/Job-Browser-Setup-1.1.2.exe` (253,597,831 bytes; SHA-256 `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`). P33 includes P31 startup fixes and P32 Job Intelligence enablement; packaged, installed, and seeded-upgrade validation passed. P34 source-health fixes and P35 explanation defaults are later source changes and require a new validated release to reach the installer. The current-user NSIS installer creates Desktop and Start Menu shortcuts and preserves application data during uninstall.
 
 The desktop application:
 

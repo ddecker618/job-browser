@@ -29,6 +29,20 @@ export interface DesktopBridge {
   clearUsaJobsCredentials(): Promise<void>;
   getUsaJobsProfilePath(): Promise<string>;
   clearUsaJobsSession(): Promise<{ cleared: boolean }>;
+  getCloseToTray(): Promise<{ closeToTray: boolean }>;
+  setCloseToTray(value: boolean): Promise<{ closeToTray: boolean }>;
+  getTraySummary(): Promise<{
+    schedulerEnabled: boolean;
+    running: boolean;
+    attentionSources: number;
+    startupComplete: boolean;
+  }>;
+  togglePauseDiscovery(): Promise<{
+    schedulerEnabled: boolean;
+    running: boolean;
+    attentionSources: number;
+    startupComplete: boolean;
+  }>;
   onStartupProgress(callback: (stage: string) => void): void;
   onStartupFailure(callback: (payload: Record<string, string>) => void): void;
 }

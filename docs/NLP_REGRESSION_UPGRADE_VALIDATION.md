@@ -1,6 +1,8 @@
 # NLP Regression And Upgrade Validation
 
-Status: complete for the current P29 handoff candidate.
+Historical validation record: complete for the P29 handoff candidate.
+For current P35 source status and the validated P33 installer boundary, see
+`NLP_FINAL_HANDOFF.md` and `../SESSION_HANDOFF.md`.
 
 ## Shadow Regression
 

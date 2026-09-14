@@ -61,6 +61,7 @@ export const jobSearchQuerySchema = z
     targetRole: trimmed.optional(),
     verificationStatus: z.enum(['verified', 'closed', 'unverified']).optional(),
     includeIneligible: queryBoolean.optional(),
+    scope: z.enum(['matches', 'all']).default('matches'),
     page: queryInteger(1, 1_000_000, 1),
     pageSize: queryInteger(1, 100, 25),
     sort: z.enum(JOB_SEARCH_SORT_FIELDS).default('score'),

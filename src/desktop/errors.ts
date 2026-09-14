@@ -10,6 +10,7 @@ export type StartupErrorCode =
   | 'backend-failed'
   | 'health-timeout'
   | 'assets-missing'
+  | 'native-module-load-failed'
   | 'unknown';
 
 interface DesktopStartupErrorOptions extends ErrorOptions {
@@ -30,10 +31,55 @@ export class DesktopStartupError extends Error {
   }
 }
 
+/**
+ * Codes that indicate the startup failure is in the verification
+ * infrastructure itself (native module ABI mismatch, missing dependency)
+ * rather than in the database files. When these are detected, we must
+ * not present the failure as database corruption/recovery: the database
+ * is untouched.
+ */
+const NATIVE_MODULE_ERROR_CODES: readonly string[] = [
+  'ERR_DLOPEN_FAILED',
+  'MODULE_NOT_FOUND',
+];
+
+function isNativeModuleLoadFailure(error: DatabaseRecoveryError): boolean {
+  if (NATIVE_MODULE_ERROR_CODES.some((code) => error.sqliteCode === code)) {
+    return true;
+  }
+  // Defensive: some Node versions prefix `code` differently. Inspect the
+  // chain of causes so the classification stays accurate even when the
+  // recovery wrapper only forwards a generic message.
+  let current: unknown = error;
+  const seen = new Set<unknown>();
+  while (current instanceof Error && !seen.has(current)) {
+    seen.add(current);
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === 'string') {
+      if (NATIVE_MODULE_ERROR_CODES.includes(code)) return true;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 export function databaseStartupError(
   error: unknown,
 ): DesktopStartupError | null {
   if (!(error instanceof DatabaseRecoveryError)) return null;
+
+  // Native-module load failures must be reported accurately: the
+  // database files were not touched, but the verification infrastructure
+  // could not run. Distinguishing this from a database integrity
+  // failure prevents unnecessary quarantine, repair, or recovery
+  // actions against the user's data.
+  if (isNativeModuleLoadFailure(error)) {
+    return new DesktopStartupError(
+      'native-module-load-failed',
+      'Job Browser could not load a required native module to verify the database. The database files were not modified. This is typically caused by a Node.js / Electron version mismatch in the native dependency (for example, after an interrupted `npm rebuild` or `prebuild-install` run). Reinstall the application or run `npm rebuild better-sqlite3` against the current runtime, then restart Job Browser.',
+      { cause: error },
+    );
+  }
 
   if (error.quarantine !== undefined) {
     return new DesktopStartupError(
@@ -90,5 +136,7 @@ export function userFacingError(error: unknown): string {
     return 'Job Browser cannot write to the selected data directory.';
   if (/malformed|corrupt|integrity/i.test(message))
     return 'The Job Browser database could not pass its integrity check.';
+  if (/ERR_DLOPEN_FAILED|MODULE_NOT_FOUND|native module/i.test(message))
+    return 'Job Browser could not load a required native module. Your database files were not modified. Reinstall or run `npm rebuild better-sqlite3` against the current runtime, then restart Job Browser.';
   return 'Job Browser could not finish starting. Your existing data has not been deleted or replaced.';
 }

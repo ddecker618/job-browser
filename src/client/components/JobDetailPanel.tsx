@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 
 import { api } from '../api.js';
 import { AppliedCreationDialog } from './AppliedCreationDialog.js';
+import { FreshnessBadge } from './FreshnessBadge.js';
 import { getFocusableElements } from './Dialog.js';
 import { JobIntelligencePreview } from './JobIntelligencePreview.js';
 import { ErrorState, LoadingState } from './States.js';
@@ -54,9 +55,11 @@ function eligibilityRejectionLabel(reason: string | null): string {
 export function JobDetailPanel({
   jobId,
   onClose,
+  currentScoreVersion = null,
 }: {
   jobId: string;
   onClose: () => void;
+  currentScoreVersion?: string | null;
 }) {
   const client = useQueryClient();
   const drawerRef = useRef<HTMLElement>(null);
@@ -188,6 +191,10 @@ export function JobDetailPanel({
                 </span>
                 <span className="recommendation-badge">
                   {job.data.recommendation ?? 'Unscored'}
+                  <FreshnessBadge
+                    evidence={job.data}
+                    currentScoreVersion={currentScoreVersion}
+                  />
                 </span>
                 <span>{job.data.workArrangement ?? job.data.remoteType}</span>
                 <span>{job.data.status}</span>

@@ -2,20 +2,64 @@
 
 Date: 2026-09-11
 
+## Current project status
+
+Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
+Git/source evidence takes precedence over historical completion records.
+
+- Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
+  on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
+  9.6 seed manifest import is complete. These are not open implementation tasks.
+- The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
+  are separate numbering sequences.
+- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
+  Latest recorded full source verification: 159 files / 1,472 tests. The
+  2026-09-13 documentation reconciliation passed 3 focused test files / 12 tests;
+  it did not rerun the full suite or live-source validation.
+- Current package version and latest validated installer: **1.1.2**, released
+  at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
+  P35 defaults are later source changes and are not included in that recorded
+  installer. No later rebuild or installation is established by this record.
+- Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
+  and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
+  remain authoritative. Explanation is evidence-only; exact-tie enrichment is
+  gated. SCORING and HARD_GATE remain unimplemented and unauthorized.
+- Explicit availability/current-history separation is complete. Two complete
+  snapshot misses establish source disappearance; trusted closing evidence
+  establishes expiry. Posting age is not proof. Any active source keeps the
+  canonical job current; history and application evidence are retained.
+- P34 live repairs for Intel, Etsy, and Encyclis are recorded as applied with
+  a verified backup. Fresh discovery confirmation for all three and a signed-in
+  Dice rerun remain outstanding. Dice remains enabled by policy.
+- Next development work is not yet selected: discuss the employer-platform
+  direction, then define a bounded implementation scope or release boundary.
+  Do not restart completed phases or infer a new task from historical next steps.
+
+### Product direction awaiting implementation planning
+
+The intended direction is an industry-agnostic intelligent employment matching
+platform. Discuss company claiming and verification, direct employer postings,
+listing-origin provenance, transferable-skill matching, employer-side candidate
+matching, and eventual recruiting/ATS and monetization capabilities. These are
+future product directions, not completed features or an approved implementation
+sequence. Build on the existing Company identity and separate Employer registry;
+preserve local data, source provenance, and current deterministic authority.
+
 ## Final Status
 
 **NLP EXPLANATION AND ENRICHMENT PROMOTION VALIDATED**
 
 **NLP SCORING AND HARD-GATE PROMOTION NOT AUTHORIZED**
 
-The validation covers the local deterministic shadow contract, evidence,
+The historical P28 validation covers the local deterministic shadow contract, evidence,
 persistence boundary, diagnostics, UI labeling, evaluation gate, performance
 baseline, privacy checks, production-score regression, Windows package smoke,
 and the P28 rebuilt installer. It authorizes only the field-specific states
 listed below. It does not authorize Level 3 user-assisted suggestions, Level 4
 production scoring, or hard-gate integration.
 
-## 43-Point Report
+## Historical 43-Point Report — original shadow baseline
 
 1. [PASS] The NLP roadmap is maintained separately from the long-term product roadmap.
 2. [PASS] NLP remains an additive shadow plane and does not become a production authority.
@@ -61,35 +105,35 @@ production scoring, or hard-gate integration.
 42. [PASS] Current Windows package validation passes packaged, installed, and packaged-upgrade smoke; installer SHA-256 is `7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251` and `app.asar` SHA-256 is `04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563`.
 43. [PASS] Roadmap, Project Memory, README, changelog, architecture, session handoff, audit documents, and release boundary are reconciled.
 
-## Production Promotion Update — 2026-09-11
+## Current Production Promotion Matrix — P35
 
 This section supersedes the historical corpus counts and artifact hashes in the original 43-point shadow baseline above.
 
-| Capability                                      | Final P27 state | Default                | Authority                     |
-| ----------------------------------------------- | --------------- | ---------------------- | ----------------------------- |
-| Job Intelligence facts and resume coverage      | EXPLANATION (1) | On (default)           | Display only                  |
-| Reconciled role-family suggestion               | EXPLANATION (1) | Off                    | Deterministic catalog wins    |
-| Search-profile vocabulary feedback              | EXPLANATION (1) | Off                    | Read-only                     |
-| Target-role supporting evidence                 | EXPLANATION (1) | Current valid evidence | Deterministic membership wins |
-| Search relevance tie-break                      | ENRICHMENT (2)  | Off                    | Exact deterministic ties only |
-| Persisted comparison                            | SHADOW (0)      | Background             | No production decision        |
-| Recommendation score and every eligibility gate | No promotion    | Unreachable            | Deterministic only            |
+| Capability                                      | Authorized level | Default                | Authority                     |
+| ----------------------------------------------- | ---------------- | ---------------------- | ----------------------------- |
+| Job Intelligence facts and resume coverage      | EXPLANATION (1)  | On (default)           | Display only                  |
+| Reconciled role-family suggestion               | EXPLANATION (1)  | On (default)           | Deterministic catalog wins    |
+| Search-profile vocabulary feedback              | EXPLANATION (1)  | On (default)           | Read-only                     |
+| Target-role supporting evidence                 | EXPLANATION (1)  | Current valid evidence | Deterministic membership wins |
+| Search relevance tie-break                      | ENRICHMENT (2)   | Off                    | Exact deterministic ties only |
+| Persisted comparison                            | SHADOW (0)       | Background             | No production decision        |
+| Recommendation score and every eligibility gate | No promotion     | Unreachable            | Deterministic only            |
 
 The expanded 66-case gate passes with 95.8% category precision, 93.2% category recall, 98.5% strength accuracy, 92.7% entity precision, 97.4% entity recall, and zero critical failures across 11 adversarial cases. P23 processed 500 real local jobs in a disposable copy with zero failures and no jobs-table drift. P24 passed verify 157/1,445, privacy 11/11, security 3/3, direct smoke, current unpacked-package smoke, and packaged-upgrade smoke.
 
 P28 rebuilt the 1.1.0 installer after explicit user approval. The validated installer is `release\Job-Browser-Setup-1.1.0.exe`, 253,595,714 bytes, SHA-256 09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C. Packaged smoke, installed smoke after silent install, seeded packaged-upgrade smoke, privacy, and NLP security audit passed. The packaged and installed app.asar are identical: 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. No capability reached SCORING or HARD_GATE, and productionEffect: 'none' remains the score/gate boundary.
 
-## P29 Final Promotion Report
+## Historical P29 Final Promotion Report
 
 The promoted capabilities are bounded to explanation and exact-tie enrichment. Job Intelligence facts and resume coverage, role-family suggestions, search-profile feedback, and target-role supporting evidence are visible interpretation aids only. Search relevance may participate only as an off-by-default exact deterministic tie-break. Persisted deterministic-vs-NLP comparison remains SHADOW for audit. Recommendation score, eligibility, lifecycle, status, active/manual removal, and every hard gate remain deterministic-only.
 
-## P30 Compensation Module Update
+## Historical P30 Compensation Module Update
 
 P30 adds local deterministic compensation extraction to the NLP document pipeline. It captures USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, and bonus/commission/equity/sign-on/OTE signals with exact evidence spans and optional metadata. Compensation facts remain informational and shadow-only; they do not change score, eligibility, ranking, filters, lifecycle, or hard gates.
 
 The final P30 installer is `release\Job-Browser-Setup-1.1.0.exe`, 253,596,385 bytes, SHA-256 7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251. Packaged and installed app.asar are identical: 74,036,910 bytes, SHA-256 04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563. Focused NLP tests, packaged smoke, installed smoke, seeded upgrade smoke, privacy, and NLP security audit passed.
 
-## P32 Job Intelligence Explanation Enablement
+## Historical P32 Job Intelligence Explanation Enablement
 
 Job Intelligence explanations (EXPLANATION 1, evidence-labelled display only)
 are now enabled by default. The prior `jobIntelligenceExplanation: off` default
@@ -107,6 +151,13 @@ coherent (not-analyzed / analyzing / current + re-analyze / failed /
 genuinely-disabled without an actionable button). Verification:
 `npm run verify` 158 files / 1460 tests PASS, `privacy:check` 11/11,
 `nlp:security-audit` 3/3. Committed locally; no installer rebuilt.
+
+## P35 default enablement
+
+P35 (`fd63a2a`) enables role-family and search-profile explanations in current
+source. Stored opt-outs still win; searchTieBreak remains off. The P33 1.1.2
+installer predates this change. Recorded source verification is 159 files /
+1,472 tests.
 
 ## Handoff Rule
 

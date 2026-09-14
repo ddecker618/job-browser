@@ -8,8 +8,11 @@ import type { SearchProfile } from '../../config/search-profile.js';
 import { api } from '../api.js';
 import { JobDetailPanel } from '../components/JobDetailPanel.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { FreshnessBadge } from '../components/FreshnessBadge.js';
 import { EmptyState, ErrorState, LoadingState } from '../components/States.js';
 import { SCORING_RULES_VERSION } from '../../intelligence/scoringVersion.js';
+
+type ViewScope = 'matches' | 'all';
 
 interface Filters {
   q: string;
@@ -76,7 +79,24 @@ export function JobsPage() {
   );
   const deferredSearch = useDeferredValue(filters.q);
   const page = positiveInteger(searchParams.get('page')) ?? 1;
-  const sort = readSort(searchParams.get('sort'));
+  const scopeParam = readScope(searchParams.get('scope'));
+  const legacyNavigationState =
+    hasUrlFilters ||
+    searchParams.has('page') ||
+    searchParams.has('sort') ||
+    searchParams.has('job');
+  const rememberedScope = useQuery({
+    queryKey: ['view-scope'],
+    queryFn: api.viewScope,
+  });
+  const scopeAwaitingRemembered =
+    scopeParam === null && !legacyNavigationState && rememberedScope.isPending;
+  const scope: ViewScope =
+    scopeParam ??
+    (legacyNavigationState
+      ? 'matches'
+      : (rememberedScope.data?.scope ?? 'matches'));
+  const sort = readSort(searchParams.get('sort'), scope);
   const selectedJob = searchParams.get('job');
   const [showFilters, setShowFilters] = useState(false);
   const client = useQueryClient();
@@ -85,16 +105,35 @@ export function JobsPage() {
   );
 
   useEffect(() => {
-    if (hasUrlFilters || !hasFilters(storedFilters.current)) return;
+    if (
+      hasUrlFilters ||
+      !hasFilters(storedFilters.current) ||
+      scopeAwaitingRemembered
+    )
+      return;
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
         writeFilters(next, storedFilters.current);
+        next.set('scope', scope);
         return next;
       },
       { replace: true },
     );
-  }, [hasUrlFilters, setSearchParams]);
+  }, [hasUrlFilters, scopeAwaitingRemembered, scope, setSearchParams]);
+
+  useEffect(() => {
+    if (scopeParam !== null) return;
+    if (scopeAwaitingRemembered) return;
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.set('scope', scope);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [scopeParam, scopeAwaitingRemembered, scope, setSearchParams]);
 
   const serializedFilters = JSON.stringify(filters);
   useEffect(() => {
@@ -106,6 +145,7 @@ export function JobsPage() {
     pageSize,
     sort,
     direction: sort === 'company' || sort === 'title' ? 'asc' : 'desc',
+    scope,
     ...(deferredSearch === '' ? {} : { q: deferredSearch }),
     ...(filters.company === '' ? {} : { company: filters.company }),
     ...(filters.location === '' ? {} : { location: filters.location }),
@@ -146,6 +186,7 @@ export function JobsPage() {
   };
   const jobs = useQuery({
     queryKey: ['jobs', 'search', query],
+    enabled: !scopeAwaitingRemembered,
     queryFn: ({ signal }) => api.searchJobs(query, signal),
     placeholderData: (previous) => previous,
   });
@@ -165,7 +206,7 @@ export function JobsPage() {
     queryFn: api.savedFilters,
   });
   const saveFilter = useMutation({
-    mutationFn: (name: string) => api.saveFilter(name, { ...filters }),
+    mutationFn: (name: string) => api.saveFilter(name, scope, { ...filters }),
     onSuccess: () => client.invalidateQueries({ queryKey: ['saved-filters'] }),
   });
   const rows = jobs.data?.items ?? [];
@@ -211,6 +252,20 @@ export function JobsPage() {
       return next;
     });
   };
+  const saveViewScope = useMutation({
+    mutationFn: (next: ViewScope) => api.saveViewScope(next),
+    scope: { id: 'job-view-scope' },
+    onSuccess: (saved) => client.setQueryData(['view-scope'], saved),
+  });
+  const setScope = (next: ViewScope) => {
+    setSearchParams((current) => {
+      const url = new URLSearchParams(current);
+      url.set('scope', next);
+      url.delete('page');
+      return url;
+    });
+    saveViewScope.mutate(next);
+  };
 
   if (jobs.isPending) return <LoadingState label="Loading job inventory" />;
   if (jobs.isError)
@@ -226,6 +281,28 @@ export function JobsPage() {
         description={`${String(jobs.data.total)} roles match the current view.`}
         actions={
           <>
+            <div
+              className="view-scope-toggle"
+              role="group"
+              aria-label="Job view"
+            >
+              <button
+                type="button"
+                className={scope === 'matches' ? 'active' : undefined}
+                aria-pressed={scope === 'matches'}
+                onClick={() => setScope('matches')}
+              >
+                My matches
+              </button>
+              <button
+                type="button"
+                className={scope === 'all' ? 'active' : undefined}
+                aria-pressed={scope === 'all'}
+                onClick={() => setScope('all')}
+              >
+                All jobs
+              </button>
+            </div>
             <button
               className="button"
               onClick={() => setShowFilters((value) => !value)}
@@ -255,6 +332,13 @@ export function JobsPage() {
           </>
         }
       />
+      {scope === 'all' ? (
+        <p className="jobs-note">
+          Browse listings collected from your configured sources. Coverage
+          depends on each source and its search settings; this is not the entire
+          job market.
+        </p>
+      ) : null}
       <div className="jobs-toolbar">
         <label className="search-box">
           <span aria-hidden="true">⌕</span>
@@ -276,6 +360,7 @@ export function JobsPage() {
                   for (const key of filterKeys) next.delete(key);
                   next.delete('page');
                   writeFilters(next, restored);
+                  next.set('scope', filter.scope === 'all' ? 'all' : 'matches');
                   return next;
                 });
               }}
@@ -596,6 +681,10 @@ export function JobsPage() {
                     <td>
                       <span className="recommendation-cell">
                         {job.recommendation ?? 'Unscored'}
+                        <FreshnessBadge
+                          evidence={job}
+                          currentScoreVersion={jobs.data.currentScoreVersion}
+                        />
                         {job.verificationStatus === 'verified' &&
                         job.eligibilityPassed ? (
                           <span
@@ -692,7 +781,11 @@ export function JobsPage() {
         </button>
       </div>
       {selectedJob === null ? null : (
-        <JobDetailPanel jobId={selectedJob} onClose={() => selectJob(null)} />
+        <JobDetailPanel
+          jobId={selectedJob}
+          onClose={() => selectJob(null)}
+          currentScoreVersion={jobs.data.currentScoreVersion}
+        />
       )}
     </>
   );
@@ -901,7 +994,10 @@ function booleanQuery(
   return value === '' ? {} : { [key]: value === 'true' };
 }
 
-function readSort(value: string | null): JobSearchQuery['sort'] {
+function readSort(
+  value: string | null,
+  scope: ViewScope,
+): JobSearchQuery['sort'] {
   const allowed: JobSearchQuery['sort'][] = [
     'score',
     'firstSeenAt',
@@ -911,7 +1007,14 @@ function readSort(value: string | null): JobSearchQuery['sort'] {
     'title',
     'materiallyUpdatedAt',
   ];
-  return allowed.find((candidate) => candidate === value) ?? 'score';
+  return (
+    allowed.find((candidate) => candidate === value) ??
+    (scope === 'all' ? 'firstSeenAt' : 'score')
+  );
+}
+
+function readScope(value: string | null): ViewScope | null {
+  return value === 'all' ? 'all' : value === 'matches' ? 'matches' : null;
 }
 
 function positiveInteger(value: string | null): number | null {

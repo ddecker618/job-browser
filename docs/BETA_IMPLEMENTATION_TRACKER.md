@@ -15,7 +15,51 @@
 | PUSH RULE                  | **NO PUSH during this sprint.** Local checkpoint commits only. Same for empty commits.                                               |
 | Acceptance                 | Final report states **READY FOR EXTERNAL BETA** or **NOT READY FOR EXTERNAL BETA** + reason. Version bump only after all gates pass. |
 
-### OVERALL STATUS
+## Current project status
+
+Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
+Git/source evidence takes precedence over historical completion records.
+
+- Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
+  on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
+  9.6 seed manifest import is complete. These are not open implementation tasks.
+- The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
+  are separate numbering sequences.
+- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
+  Latest recorded full source verification: 159 files / 1,472 tests. The
+  2026-09-13 documentation reconciliation passed 3 focused test files / 12 tests;
+  it did not rerun the full suite or live-source validation.
+- Current package version and latest validated installer: **1.1.2**, released
+  at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
+  P35 defaults are later source changes and are not included in that recorded
+  installer. No later rebuild or installation is established by this record.
+- Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
+  and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
+  remain authoritative. Explanation is evidence-only; exact-tie enrichment is
+  gated. SCORING and HARD_GATE remain unimplemented and unauthorized.
+- Explicit availability/current-history separation is complete. Two complete
+  snapshot misses establish source disappearance; trusted closing evidence
+  establishes expiry. Posting age is not proof. Any active source keeps the
+  canonical job current; history and application evidence are retained.
+- P34 live repairs for Intel, Etsy, and Encyclis are recorded as applied with
+  a verified backup. Fresh discovery confirmation for all three and a signed-in
+  Dice rerun remain outstanding. Dice remains enabled by policy.
+- Next development work is not yet selected: discuss the employer-platform
+  direction, then define a bounded implementation scope or release boundary.
+  Do not restart completed phases or infer a new task from historical next steps.
+
+### Product direction awaiting implementation planning
+
+The intended direction is an industry-agnostic intelligent employment matching
+platform. Discuss company claiming and verification, direct employer postings,
+listing-origin provenance, transferable-skill matching, employer-side candidate
+matching, and eventual recruiting/ATS and monetization capabilities. These are
+future product directions, not completed features or an approved implementation
+sequence. Build on the existing Company identity and separate Employer registry;
+preserve local data, source provenance, and current deterministic authority.
+
+### Historical beta acceptance — 2026-09-09
 
 **BETA READINESS IMPLEMENTATION COMPLETE — READY FOR EXTERNAL BETA** (2026-09-09).
 
@@ -25,7 +69,7 @@
   package-lock.json); `app.getVersion()` reports 1.1.0 in the built exe.
 - Full gate green: `npm run verify` 108 files / 1101 tests; `npm run
 privacy:check` 3 files / 11 tests.
-- Current artifact: `release\Job-Browser-Setup-1.1.2.exe` (253,597,831 B,
+- Latest validated artifact (P33; predates P34/P35): `release\Job-Browser-Setup-1.1.2.exe` (253,597,831 B,
   SHA-256 `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`);
   installed copy asar-identical (74,047,442 B / `5BC4F99D…62D2E8E`). Packaged,
   installed, seeded upgrade smokes pass; installed Job Intelligence validated
@@ -58,7 +102,7 @@ privacy:check` 3 files / 11 tests.
   `ats-changed` evidence rows appended. The Dice source remains enabled by
   policy (protected provider); one signed-in Dice re-run is the standing item.
 - No version bump and no installer rebuild: the `1.1.2` artifact remains
-  current for the shipped fixes; `docs/Intelligence_Roadmap.md` intentionally
+  the P33 release and does not include P34/P35 source changes; `docs/Intelligence_Roadmap.md` intentionally
   unchanged (this is non-NLP maintenance).
 
 ### Global guardrails (never violate)
@@ -280,7 +324,7 @@ Phase 2 (performance) WORKING STATE:
 ## Resume Instructions
 
 1. Re-read THIS file first. Update `Current Working State` to match reality before any new work.
-2. Queue = bundled in Phase Progress + Known Remaining Work; start at the first `[>]`/`[ ]` item.
+2. Use Current project status and Known Remaining Work; the beta phase table is completed history. Scope the next feature with the user before implementation.
 3. Run `npm run verify` before any source change if the code changed since last LEDGER row after a `git status` check.
 4. Keep units small; checkpoint-commit after each unit once verify is green. NEVER push.
 5. If prod DB is ever touched: confirm user consent, back up first (see D-001 pattern), log commands.

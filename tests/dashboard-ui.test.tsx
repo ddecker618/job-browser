@@ -259,6 +259,7 @@ describe('dashboard UI', () => {
     const calls: string[] = [];
     mockFetch((url) => {
       if (url.endsWith('/api/saved-filters')) return [];
+      if (url.endsWith('/api/view-scope')) return { scope: 'matches' };
       calls.push(url);
       return searchResponse([
         searchJob('1', 'Network Administrator', 'Beta Systems'),
@@ -274,11 +275,12 @@ describe('dashboard UI', () => {
     expect(
       await screen.findByText('Network Administrator'),
     ).toBeInTheDocument();
-    expect(calls[0]).toContain('/api/jobs/search?');
-    expect(calls[0]).toContain('company=Beta+Systems');
-    expect(calls[0]).toContain('minScore=75');
-    expect(calls[0]).toContain('page=2');
-    expect(calls[0]).toContain('sort=company');
+    const searchCall = calls.find((url) => url.includes('/api/jobs/search'));
+    expect(searchCall).toBeDefined();
+    expect(searchCall).toContain('company=Beta+Systems');
+    expect(searchCall).toContain('minScore=75');
+    expect(searchCall).toContain('page=2');
+    expect(searchCall).toContain('sort=company');
 
     await user.type(screen.getByLabelText('Search jobs'), 'security');
 

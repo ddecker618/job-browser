@@ -1820,6 +1820,52 @@ kbd {
   text-transform: uppercase;
 }
 
+.freshness-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.freshness-stale {
+  border: 1px solid rgba(200, 160, 80, 0.45);
+  color: #ffd9a0;
+}
+.freshness-unknown {
+  border: 1px solid rgba(130, 150, 175, 0.45);
+  color: #c3d4e6;
+}
+
+.view-scope-toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border, #334155);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.view-scope-toggle button {
+  padding: 0.35rem 0.9rem;
+  background: transparent;
+  border: none;
+  color: var(--muted-text, #64748b);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.view-scope-toggle button.active {
+  background: var(--button-bg, #2563eb);
+  color: #fff;
+}
+
+.jobs-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.8rem;
+  color: var(--muted-text, #64748b);
+}
+
 .eligibility-warning {
   margin: 0.8rem 0;
   padding: 0.7rem 0.9rem;

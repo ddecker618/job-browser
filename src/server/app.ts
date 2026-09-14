@@ -820,6 +820,21 @@ export function createApp(
     });
   });
 
+  // Toggles the global discovery scheduler only. Used by the tray menu's
+  // Pause/Resume Discovery entry so a pause/resume never silently flips
+  // the user's explicit employer-discovery opt-out.
+  app.put('/api/scheduler-control', (request, response) => {
+    const body = z
+      .strictObject({ schedulerEnabled: z.boolean() })
+      .parse(request.body);
+    sourceRepository.setSchedulerEnabled(body.schedulerEnabled);
+    response.json({
+      schedulerEnabled: sourceRepository.getSchedulerEnabled(),
+      employerDiscoveryEnabled:
+        sourceRepository.getEmployerDiscoverySettings().enabled,
+    });
+  });
+
   app.post('/api/employer-discovery/seeds', (request, response) => {
     const body = z
       .strictObject({
@@ -1111,6 +1126,72 @@ export function createApp(
     );
     response.json({ profile, analysis });
   });
+  app.get('/api/view-scope', (_request, response) => {
+    const raw = repository.getSetting('jobViewScope');
+    if (raw === null) return response.json({ scope: 'matches' });
+    try {
+      const { scope } = z
+        .strictObject({ scope: z.enum(['matches', 'all']) })
+        .parse(JSON.parse(raw));
+      response.json({ scope });
+    } catch {
+      response.json({ scope: 'matches' });
+    }
+  });
+  app.put('/api/view-scope', (request, response) => {
+    const { scope } = z
+      .strictObject({ scope: z.enum(['matches', 'all']) })
+      .parse(request.body);
+    repository.saveSetting('jobViewScope', JSON.stringify({ scope }));
+    response.json({ scope });
+  });
+  app.get('/api/desktop-settings', (_request, response) => {
+    const raw = repository.getSetting('closeToTray');
+    let value: boolean | null = null;
+    if (raw !== null) {
+      try {
+        const parsed = JSON.parse(raw) as { closeToTray?: unknown };
+        if (typeof parsed.closeToTray === 'boolean') value = parsed.closeToTray;
+      } catch {
+        value = null;
+      }
+    }
+    // Default-on so background discovery is the expected out-of-the-box
+    // behavior; the Desktop application panel exposes a checkbox that
+    // round-trips through PUT /api/desktop-settings.
+    response.json({ closeToTray: value === false ? false : true });
+  });
+  app.put('/api/desktop-settings', (request, response) => {
+    const body = z
+      .strictObject({ closeToTray: z.boolean() })
+      .parse(request.body);
+    repository.saveSetting('closeToTray', JSON.stringify(body));
+    response.json(body);
+  });
+  app.get('/api/tray-summary', (_request, response) => {
+    if (coordinator === undefined) {
+      response.json({
+        schedulerEnabled: false,
+        running: false,
+        attentionSources: 0,
+        startupComplete: false,
+      });
+      return;
+    }
+    const sources = sourceRepository.list();
+    const attentionSources = sources.filter(
+      (source) =>
+        source.enabled &&
+        (source.healthStatus === 'credentials-required' ||
+          source.healthStatus === 'failed'),
+    ).length;
+    response.json({
+      schedulerEnabled: sourceRepository.getSchedulerEnabled(),
+      running: coordinator.status().running,
+      attentionSources,
+      startupComplete: true,
+    });
+  });
   app.get('/api/saved-filters', (_request, response) =>
     response.json(repository.listSavedFilters()),
   );
@@ -1118,13 +1199,18 @@ export function createApp(
     const body = z
       .object({
         name: z.string().trim().min(1),
+        scope: z.enum(['matches', 'all']).optional(),
         filters: z.record(
           z.string(),
           z.union([z.string(), z.number(), z.boolean()]),
         ),
       })
       .parse(request.body);
-    response.status(201).json(repository.saveFilter(body.name, body.filters));
+    const stored =
+      body.scope === undefined
+        ? body.filters
+        : { ...body.filters, scope: body.scope };
+    response.status(201).json(repository.saveFilter(body.name, stored));
   });
   app.delete('/api/saved-filters/:id', (request, response) => {
     repository.deleteFilter(request.params.id);

@@ -1,64 +1,48 @@
-## Recovery checkpoint — P13 complete
-
-P13 is complete and verified (151 files / 1430 tests). The P12 formula exists only as an offline shadow calculator. Safety tests cover the cap, threshold guard, fail-closed inputs, monotonic qualifying evidence, unchanged baselines, and source isolation from both production scoring engines. Next: P14 tie-break explainability. No installer, production data, or remote push was touched.
-
-## Active recovery checkpoint — P13 in progress
-
-P12 design committed as 32d6550. P13 adds an offline-only shadow contribution calculator plus invariants for the 3-point cap, threshold guard, zero on absent/untrusted evidence, monotonic qualifying evidence, unchanged baseline objects, and source-level isolation from production scoring engines. No runtime consumer or production flag.
-
-## Recovery checkpoint — P12 complete (design only)
-
-P12 is documented in NLP_PROMOTION_DESIGN.md. It proposes a separate non-persisted metric with a 0–3 point cap, a next-threshold guard, eligibility-pass prerequisite, current evidence, >=0.90 confidence, dual-side agreement, and a fail-closed shadow diff gate. No runtime scoring path or flag was added. Next: P13 executable safety invariants. Latest code checkpoint: 031b3d8.
-
-## Recovery checkpoint — P11 complete
-
-P11 is complete and verified (150 files / 1426 tests). Job Intelligence displays diagnostic requirement coverage from the submitted immutable snapshot, including modality, source evidence, provenance, and parser version. The connected test confirms the job score remains unchanged. Next: P12 design-only bounded scoring proposal. Installer remains the stale 2026-09-10 20:07:47 build; no production data or remote push was touched.
-
-## Active recovery checkpoint — P11 in progress
-
-P10 committed as 36fbffc. P11 is wiring supported requirement coverage into the Job Intelligence API and UI from the application’s immutable submitted-resume snapshot. The ratio is explicitly diagnostic and has no score, eligibility, rank, filter, or lifecycle authority. No installer or production-data changes.
-
-## Recovery checkpoint — P10 complete
-
-P10 is complete and verified (147 files / 1422 tests). Snapshot evidence adapters now cover skills, certifications, experience, education, and clearance with parser provenance. Unparsed structural data produces UNKNOWN; normalized resume text remains internal and public snapshot responses do not expose it. Next: P11 diagnostic requirement coverage in Job Intelligence. No installer, production data, or remote push was touched.
-
-## Active recovery checkpoint — P10 in progress
-
-P9 committed as e21e898. P10 adds internal snapshot evidence retrieval and typed skill, certification, experience, education, and clearance adapters. Null or unparsed structured values must produce UNKNOWN, and every result remains evidence-only with parser provenance. No installer or production-data changes.
-
-## Recovery checkpoint — P9 complete
-
-P9 is complete and verified: reviewed canonical skills now drive relevance and skill coverage, source phrases remain unchanged, unknown terms abstain, and stale relevance indexes rebuild. Full verification passed 146 files / 1419 tests. Next: P10 resume evidence adapters for experience, education, and clearance. No installer, production data, or remote push was touched.
-
-## Active recovery checkpoint — P9 in progress
-
-P8 committed as e0eadf5. P9 connects reviewed canonical skills to relevance and coverage; raw text remains unchanged, unknown terms abstain. Run targeted normalized-consumer/search tests, then full verify. Continue P10 onward after P9; no checkpoint is a request to stop. No installer or production data changes.
-
 # Job Browser Project Memory
 
-## Recovery checkpoint — P14-P17 complete (2026-09-11)
+## Current project status
 
-P13 baseline is 6c0b766. P14-P17 implementation is complete; npm run verify
-passed 154 files / 1436 tests. P14 explains only validated current
-NLP tie-breaks and preserves deterministic score/eligibility/primary-sort authority.
-P15 adds a read-only profile vocabulary projection. P16 measured 500 real local job
-descriptions from a temporary database copy with 0 failures, 0 network requests, and
-0 source-database writes. P17 adds relevance source hashes, strict version/hash joins,
-and migration 033 change-only cache invalidation. Checkpoint ba674cb contains the verified implementation. Resume at P18
-regression-corpus expansion. The installer remains
-the stale 2026-09-10 20:07:47 build; no production data or remote push was touched.
+Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
+Git/source evidence takes precedence over historical completion records.
 
-## Current recovery checkpoint — P8 complete (2026-09-11)
+- Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
+  on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
+  9.6 seed manifest import is complete. These are not open implementation tasks.
+- The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
+  are separate numbering sequences.
+- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
+  Latest recorded full source verification: 159 files / 1,472 tests. The
+  2026-09-13 documentation reconciliation passed 3 focused test files / 12 tests;
+  it did not rerun the full suite or live-source validation.
+- Current package version and latest validated installer: **1.1.2**, released
+  at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
+  P35 defaults are later source changes and are not included in that recorded
+  installer. No later rebuild or installation is established by this record.
+- Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
+  and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
+  remain authoritative. Explanation is evidence-only; exact-tie enrichment is
+  gated. SCORING and HARD_GATE remain unimplemented and unauthorized.
+- Explicit availability/current-history separation is complete. Two complete
+  snapshot misses establish source disappearance; trusted closing evidence
+  establishes expiry. Posting age is not proof. Any active source keeps the
+  canonical job current; history and application evidence are retained.
+- P34 live repairs for Intel, Etsy, and Encyclis are recorded as applied with
+  a verified backup. Fresh discovery confirmation for all three and a signed-in
+  Dice rerun remain outstanding. Dice remains enabled by policy.
+- Next development work is not yet selected: discuss the employer-platform
+  direction, then define a bounded implementation scope or release boundary.
+  Do not restart completed phases or infer a new task from historical next steps.
 
-P7 baseline is e99c80e. P8 is complete: explicit target-role selection and exact
-structured-family membership; current P6 indexed skill evidence supplements title
-evidence without widening the result set. Missing/stale/corrupt derived evidence
-falls back safely. Production scores, eligibility, lifecycle, and default ordering
-are preserved. Full verification: 145 files / 1416 tests; production build PASS.
-No installer rebuilt, no version bumped, no data migration, nothing pushed.
-The next implementation task is P9 in docs/Intelligence_Roadmap.md. Resolve the P8
-checkpoint hash with git log. Historical shadow/beta resume instructions below
-are retained as history and do not supersede this checkpoint.
+### Product direction awaiting implementation planning
+
+The intended direction is an industry-agnostic intelligent employment matching
+platform. Discuss company claiming and verification, direct employer postings,
+listing-origin provenance, transferable-skill matching, employer-side candidate
+matching, and eventual recruiting/ATS and monetization capabilities. These are
+future product directions, not completed features or an approved implementation
+sequence. Build on the existing Company identity and separate Employer registry;
+preserve local data, source provenance, and current deterministic authority.
 
 ## Purpose
 
@@ -67,6 +51,9 @@ This file is the primary entry point for AI assistants working on Job Browser.
 Before proposing architectural changes, implementation plans, database changes, or new features, read this file and the authoritative documents referenced below.
 
 ## Authoritative Documents
+
+For current delivery queues also read `BETA_IMPLEMENTATION_TRACKER.md` and
+`Intelligence_Roadmap.md`; the implementation roadmap records product scope.
 
 Read in this order:
 
@@ -116,7 +103,8 @@ Phase 8 Milestones 8.1 through 8.8 are complete and Architect-approved. Phase 8
 is complete as of 2026-08-12. The independent Employer Discovery 9.1 through
 9.5 workstream is also complete and Architect-approved. The versioned Employer
 Seed Manifest Import (1.0.21) is complete. Migration head is
-`030_employer_aliases.sql`; current version is 1.0.25.
+`034_nlp_comparisons.sql`; current package version is 1.1.2. See the current
+status above for the source-versus-installer boundary.
 
 The current implementation additionally provides explicit non-destructive Job
 availability lifecycle. Two complete source-snapshot misses remain required for
@@ -294,7 +282,12 @@ importer evidence is added after verification so it survives the evidence wipe.
 Retired sites are reused as-is; existing disabled/archived Sources are never
 auto-re-enabled.
 
-## NLP Job Intelligence Program (shadow mode)
+## Historical NLP implementation and decision ledger
+
+The records below describe their named checkpoints, not the current queue.
+Current defaults and release state are in Current project status above.
+
+### NLP Job Intelligence Program — original shadow implementation
 
 Program tracker: `docs/Intelligence_Roadmap.md` (authoritative). This section
 records durable architectural truth only.
@@ -513,12 +506,12 @@ production scoring (deterministic scoring is unchanged, `productionEffect:
 
 - **D-NLP-067:** The regression corpus is 66 labeled local/synthetic cases. Explicitly negated requirements are informational under modality-classifier-v2; the acceptance gate remains fail-closed with zero permitted critical failures.
 - **D-NLP-068:** Deterministic-vs-NLP comparison is additive and versioned in job_nlp_comparisons. It retains both sides and evidence; structured values remain authoritative.
-- **D-NLP-069:** Consumer controls are four independent local flags, all off by default and read at decision time. Malformed settings fail closed.
+- **D-NLP-069:** Consumer controls are four independent local flags, read at decision time. P32/P35 subsequently enabled the three explanation defaults; searchTieBreak remains off. Malformed settings fail closed.
 - **D-NLP-070:** Disabled or failed intelligence visibly falls back to deterministic behavior. Current source hash and version joins prevent stale output from being rendered as fresh.
 - **D-NLP-071:** Settings exposes read-only versions, progress, failures, flags, and the exact trust statement “Not used for scoring or eligibility.”
 - **D-NLP-072:** P23 used a consistent backup of the real local database. 500/3,662 jobs completed with 0 failures, 2,079 event-loop ticks, and identical full jobs-table fingerprints before/after. The copy was deleted. Details: docs/NLP_REAL_DATA_VALIDATION.md.
 
-Focused validation passed 17 files / 96 tests; full npm run verify passed 157 files / 1,445 tests. Checkpoint b89cea1 contains the implementation. Resume at P24. The installer remains the stale 2026-09-10 20:07:47 build; do not rebuild it before the explicit P28 release decision.
+Focused validation passed 17 files / 96 tests; full npm run verify passed 157 files / 1,445 tests. Checkpoint b89cea1 contains the implementation. P24–P35 and the P28/P33 release decisions are now complete; use the current status above.
 
 ## Recovery checkpoint — promotion P24-P27 complete (2026-09-11)
 
@@ -528,7 +521,7 @@ Checkpoint 45a51b0 contains the verified P24-P27 promotion gates. This checkpoin
 - **D-NLP-074:** The desktop smoke harness accepts an explicit database copy and marks it as existing data. This preserves user source choices and skips only fresh-install starter-source inventory assertions; all app/API/navigation/migration/shutdown checks remain.
 - **D-NLP-075:** P25 real-copy desktop validation passed. The 253,034,496-byte copy reached migration 034, processed 205 rows per shadow table, grew by 13,619,200 bytes including migrations and smoke fixtures, and left zero Job Browser/Electron processes.
 - **D-NLP-076:** P26 source/current-unpacked audit passed. Current app.asar is 74,029,786 bytes with SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. No model runtime, external NLP transmission, telemetry, personal content, secret, or developer path was found.
-- **D-NLP-077:** Current promotion state is field-specific: Job Intelligence, role-family suggestions, and search-profile feedback are EXPLANATION (Level 1); the exact-tie search relevance consumer is ENRICHMENT (Level 2); their four consumer flags default off. Valid target-role evidence may be displayed, but deterministic membership stays authoritative. Comparison remains SHADOW (Level 0). SCORING and HARD_GATE remain unimplemented and unauthorized.
+- **D-NLP-077:** Current promotion state is field-specific: Job Intelligence, role-family suggestions, and search-profile feedback are EXPLANATION (Level 1); the exact-tie search relevance consumer is ENRICHMENT (Level 2); P35 enables the three explanation flags by default; searchTieBreak remains off. Valid target-role evidence may be displayed, but deterministic membership stays authoritative. Comparison remains SHADOW (Level 0). SCORING and HARD_GATE remain unimplemented and unauthorized.
 - **D-NLP-078:** The smoke timeout is unrefed after Electron exits, removing two minutes of idle validation overhead without weakening the 120-second hang deadline while the child process is active.
 
 At this point the existing installer was built 2026-09-10 20:07:47, was 253,571,410 bytes, and had SHA-256 02223EBE680CAD14708D2AECD25B5C7F2608C39F37D8002D228C29F60C33FA43. It was stale relative to current source and required the explicit P28 user decision. P28 later rebuilt and validated it.
@@ -557,8 +550,6 @@ P30 installer rebuild is complete. `npm run desktop:package` rebuilt the install
 - **D-NLP-088:** Final packaged and installed `app.asar` are identical: 74,036,910 bytes, SHA-256 04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563. Installed executable version resource still reports ProductVersion 1.1.0.0 and FileVersion 1.1.0.
 - **D-NLP-089:** Final validation commands passed: `npm run desktop:smoke:packaged`, `npm run desktop:smoke:installed`, `npm run desktop:smoke:packaged -- --upgrade`, `npm run privacy:check` (3 files / 11 tests), and `npm run nlp:security-audit` (1 file / 3 tests). No Job Browser/Electron/Playwright process or port 6783 listener remained afterward.
 
-Resume at the next bounded NLP module. Do not repeat full release validation until another source change needs to ship.
-
 ## Recovery checkpoint — P31 FTS provisioning startup fix verified (2026-09-11)
 
 Live startup timing was verified against a disposable copy of the user's real 478 MB database, and the launch freeze was removed. `startBackend()` instrumentation exposed a 43,863 ms `creating-api-application` phase on every cold start; the cause was `JobSearchRepository.provisionFts()` re-running a full FTS5 reconcile on every construction even when the index was in sync (UNINDEXED `job_id` forces a whole-table scan per membership probe).
@@ -567,8 +558,6 @@ Live startup timing was verified against a disposable copy of the user's real 47
 - **D-NLP-096:** Measured on a fresh copy of the real database (temp copy deleted after; real data untouched): `createApp` 43,863 ms -> 45 ms; `new JobSearchRepository` 38,964 ms -> 34 ms; second in-sync construction 34 ms.
 - **D-NLP-097:** Minimal hygiene committed with the fix: two pre-existing P30 lint errors in `src/intelligence/nlp/compensation.ts` and stale P24-era wording assertions in `tests/job-nlp-final-handoff.test.ts`. Behavior unchanged.
 - **D-NLP-098:** Full `npm run verify` passed: format + eslint + `tsc --noEmit` + 158 files / 1453 tests. No installer or version change (still 1.1.1). Nothing pushed.
-
-Resume at the next bounded NLP module (recommended candidate: enable Job Intelligence explanations). Do not restart P0-P31.
 
 ## Recovery checkpoint — P31 desktop startup performance release (2026-09-11)
 
@@ -592,7 +581,7 @@ button). The docs recorded EXPLANATION (1) as authorized for evidence-labelled
 display only, so the correct resolution was to enable the display default while
 keeping every production-affecting flag off.
 
-- **D-NLP-099:** `DEFAULT_NLP_CAPABILITY_FLAGS.jobIntelligenceExplanation = true`. The other three flags stay off. `capabilityEnabled()` still gates both routes, so a genuine user/config-disable writes the row with `false` and gets the same 409. Malformed/absent flags fall back to these documented defaults (EXPLANATION display on; score/eligibility/ranking/filter/lifecycle-affecting flags fail-closed). `projectNlpStatus` state for a fresh install is now `ready` with the same bounded notice.
+- **D-NLP-099:** `DEFAULT_NLP_CAPABILITY_FLAGS.jobIntelligenceExplanation = true`. P35 subsequently enabled roleFamilySuggestion and searchProfileFeedback; searchTieBreak stays off. `capabilityEnabled()` still gates both routes, so a genuine user/config-disable writes the row with `false` and gets the same 409. Malformed/absent flags fall back to these documented defaults (EXPLANATION display on; score/eligibility/ranking/filter/lifecycle-affecting flags fail-closed). `projectNlpStatus` state for a fresh install is now `ready` with the same bounded notice.
 - **D-NLP-100:** Added read-only `GET /api/jobs/:id/intelligence` that reuses the existing POST assembly (`jobIntelligenceDetails`) and published projection/comparison/roleFamily/coverage. It is purely read-only (no `job_nlp_enrichments`/`job_nlp_comparisons` write), returns 404 `nlp_no_analysis` when absent or stale so stale output is never presented as current, and 409 `nlp_capability_disabled` when the capability is disabled. No second analysis pipeline was added.
 - **D-NLP-101:** `JobIntelligencePreview` states are now coherent: not-analyzed (Analyze), analyzing, current cached analysis on reopen (via GET) with Re-analyze, actionable failure alert, and a genuinely-disabled notice with no actionable button (hidden cached output too). Client `api.jobIntelligence`/`api.analyzeJobIntelligence` share one `JobIntelligenceResult` type; `ApiRequestError.code` distinguishes `nlp_no_analysis` from `nlp_capability_disabled`.
 - **D-NLP-102:** Test coverage grew 1453 -> 1460. New/default-updated checks: default-enabled analysis with no flags row (200, deterministic score unchanged, jobs table untouched); GET serves current cached analysis identical to POST without persisting; GET 404 `nlp_no_analysis` before analysis and after a description edit (stale); GET/POST gate 409 when disabled; flags default + per-capability independence; status `ready`; UI disabled state without an actionable button; reopen-with-cached-analysis UI. Full `npm run verify` passed (158 files / 1460 tests); `npm run privacy:check` 11/11; `npm run nlp:security-audit` 3/3. Docs (trust levels, final handoff, roadmap matrix + ledger, beta tracker) reconciled. Committed locally; no push; no installer rebuild (release deferred to the next boundary).

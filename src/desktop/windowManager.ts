@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { BrowserWindow, screen, shell } from 'electron';
 
+import type { CloseAction } from './desktopLifecycle.js';
 import { classifyNavigation } from './navigation.js';
 
 interface WindowBounds {
@@ -12,17 +13,37 @@ interface WindowBounds {
   maximized?: boolean;
 }
 
+export interface WindowManagerOptions {
+  preload: string;
+  startupHtml: string;
+  icon: string;
+  windowState: string;
+  development: boolean;
+  /**
+   * Called on every window-close attempt. The returned action decides
+   * whether the window actually closes (existing behavior) or is hidden
+   * so the backend, scheduler, and tray remain available.
+   */
+  closeDecision?: () => CloseAction;
+  /**
+   * Optional Windows session-end handlers. `querySessionEnd` runs while
+   * shutdown can still be delayed (e.g. for best-effort bounded cleanup);
+   * `sessionEnd` runs when the session is already ending and cannot be
+   * prevented. Both are best-effort and must not block indefinitely.
+   */
+  querySessionEnd?: () => Promise<void> | void;
+  sessionEnd?: () => Promise<void> | void;
+}
+
 export class WindowManager {
   public window: BrowserWindow | null = null;
   private applicationOrigin = '';
+  private closeDecision: () => CloseAction = () => 'close';
 
-  public create(options: {
-    preload: string;
-    startupHtml: string;
-    icon: string;
-    windowState: string;
-    development: boolean;
-  }): BrowserWindow {
+  public create(options: WindowManagerOptions): BrowserWindow {
+    if (options.closeDecision !== undefined) {
+      this.closeDecision = options.closeDecision;
+    }
     const bounds = loadBounds(options.windowState);
     const validated = validateBounds(bounds);
     const window = new BrowserWindow({
@@ -50,7 +71,29 @@ export class WindowManager {
     window.setMenuBarVisibility(false);
     if (bounds.maximized === true) window.maximize();
     window.once('ready-to-show', () => window.show());
-    window.on('close', () => saveBounds(window, options.windowState));
+    window.on('close', (event) => {
+      saveBounds(window, options.windowState);
+      if (this.closeDecision() === 'hide') {
+        event.preventDefault();
+        window.hide();
+      }
+    });
+    if (options.querySessionEnd !== undefined) {
+      window.on('query-session-end', (event) => {
+        // Best-effort bounded cleanup; delay shutdown slightly so cleanup
+        // has a chance to flush. Do not block indefinitely: Windows will
+        // terminate regardless, and the cleanup is bounded by the
+        // controller's shutdownTimeoutMs.
+        event.preventDefault();
+        void options.querySessionEnd?.();
+      });
+    }
+    if (options.sessionEnd !== undefined) {
+      window.on('session-end', () => {
+        // Last-chance cleanup; cannot prevent shutdown. Best-effort only.
+        void options.sessionEnd?.();
+      });
+    }
     window.webContents.setWindowOpenHandler(({ url }) => {
       const decision = classifyNavigation(url, this.applicationOrigin);
       if (decision.action === 'external') void shell.openExternal(decision.url);

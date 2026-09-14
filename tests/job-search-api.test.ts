@@ -46,12 +46,117 @@ describe('job search API', () => {
     'newlyDiscovered=1',
     'firstDiscoveredFrom=yesterday',
     'sort=raw_sql',
+    'scope=everything',
     'unknown=value',
   ])('returns 400 for invalid query %s', async (query) => {
     const handle = await backend();
     const response = await fetch(`${handle.url}/api/jobs/search?${query}`);
     expect(response.status).toBe(400);
   });
+
+  it('reports the resolved scope and current score version on search responses', async () => {
+    const handle = await backend();
+    const all = await fetch(
+      `${handle.url}/api/jobs/search?scope=all&pageSize=10`,
+    );
+    expect(all.status).toBe(200);
+    const allBody = (await all.json()) as {
+      scope: string;
+      currentScoreVersion: string | null;
+    };
+    expect(allBody.scope).toBe('all');
+    expect(allBody.currentScoreVersion).toEqual(expect.any(String));
+
+    const matches = await fetch(`${handle.url}/api/jobs/search?pageSize=10`);
+    const matchesBody = (await matches.json()) as {
+      scope: string;
+      currentScoreVersion: string | null;
+    };
+    expect(matchesBody.scope).toBe('matches');
+    expect(matchesBody.currentScoreVersion).toEqual(expect.any(String));
+  });
+
+  it('round-trips the remembered view scope through the API', async () => {
+    const handle = await backend();
+    expect(await readScope(handle)).toBe('matches');
+
+    const put = await fetch(`${handle.url}/api/view-scope`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope: 'all' }),
+    });
+    expect(put.status).toBe(200);
+    expect((await put.json()) as { scope: string }).toEqual({ scope: 'all' });
+    expect(await readScope(handle)).toBe('all');
+
+    const invalid = await fetch(`${handle.url}/api/view-scope`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope: 'everything' }),
+    });
+    expect(invalid.status).toBe(400);
+  });
+
+  it('records scope on new saved filters and keeps legacy filters scope-free', async () => {
+    const handle = await backend();
+    const saved = await fetch(`${handle.url}/api/saved-filters`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Remote security',
+        scope: 'all',
+        filters: { remoteType: 'remote' },
+      }),
+    });
+    expect(saved.status).toBe(201);
+    const created = (await saved.json()) as {
+      scope: string | null;
+      filters: Record<string, unknown>;
+    };
+    expect(created.scope).toBe('all');
+    expect(created.filters).toEqual({ remoteType: 'remote' });
+
+    const legacy = await fetch(`${handle.url}/api/saved-filters`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Legacy filter',
+        filters: { company: 'Acme' },
+      }),
+    });
+    expect(legacy.status).toBe(201);
+    expect(
+      ((await legacy.json()) as { scope: string | null }).scope,
+    ).toBeNull();
+
+    const listed = await fetch(`${handle.url}/api/saved-filters`);
+    const filters = (await listed.json()) as {
+      name: string;
+      scope: string | null;
+      filters: Record<string, unknown>;
+    }[];
+    expect(filters).toHaveLength(2);
+    expect(filters.find((filter) => filter.name === 'Remote security')).toEqual(
+      {
+        id: expect.any(String) as unknown,
+        name: 'Remote security',
+        scope: 'all',
+        filters: { remoteType: 'remote' },
+      },
+    );
+    expect(filters.find((filter) => filter.name === 'Legacy filter')).toEqual({
+      id: expect.any(String) as unknown,
+      name: 'Legacy filter',
+      scope: null,
+      filters: { company: 'Acme' },
+    });
+  });
+
+  async function readScope(handle: BackendHandle): Promise<string> {
+    const response = await fetch(`${handle.url}/api/view-scope`);
+    expect(response.status).toBe(200);
+    return ((await response.json()) as { scope: string }).scope;
+  }
 
   async function backend(): Promise<BackendHandle> {
     const directory = mkdtempSync(join(tmpdir(), 'job-browser-search-api-'));

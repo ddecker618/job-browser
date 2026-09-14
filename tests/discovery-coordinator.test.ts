@@ -671,4 +671,26 @@ describe('translateError', () => {
       translateError(new Error('Authentication failed: invalid credentials')),
     ).toBe('Authentication required: Invalid or missing credentials');
   });
+
+  it('awaits an in-flight discovery run when stop() is called (clean exit)', async () => {
+    const database = createDatabase();
+    const registry = new ProviderRegistry();
+    const provider = new ControlledAshbyProvider();
+    registry.register(provider);
+    prepareAshbySource(database, registry);
+    const coordinator = createCoordinator(database, registry);
+
+    const run = coordinator.runFixture('provider:ashby');
+    await provider.waitForSearch(1);
+    let stopped = false;
+    const stop = coordinator.stop().then(() => {
+      stopped = true;
+    });
+    await Promise.resolve();
+    expect(stopped).toBe(false);
+    provider.release(0);
+    await run;
+    await stop;
+    expect(stopped).toBe(true);
+  });
 });

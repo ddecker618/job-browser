@@ -5,23 +5,49 @@
 > architecture decisions, persistence schemas, and detailed feature behavior
 > belong in their respective specifications.
 
-## Current Phase
+## Current project status
 
-> **Section purpose:** State the active delivery phase and any gate that must be
-> cleared before the next phase begins.
+Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
+Git/source evidence takes precedence over historical completion records.
 
-Phase 7 discovery and source-management work is complete. Phase 8 Milestones
-8.1 through 8.8 are complete and Architect-approved; Phase 8 is complete as of
-2026-08-12. Approved bounded provider validation may continue
-independently; browser-backed providers remain opt-in and subject to site terms,
-robots policies, login controls, and security checks.
+- Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
+  on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
+  9.6 seed manifest import is complete. These are not open implementation tasks.
+- The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
+  are separate numbering sequences.
+- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
+  Latest recorded full source verification: 159 files / 1,472 tests. The
+  2026-09-13 documentation reconciliation passed 3 focused test files / 12 tests;
+  it did not rerun the full suite or live-source validation.
+- Current package version and latest validated installer: **1.1.2**, released
+  at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
+  P35 defaults are later source changes and are not included in that recorded
+  installer. No later rebuild or installation is established by this record.
+- Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
+  and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
+  remain authoritative. Explanation is evidence-only; exact-tie enrichment is
+  gated. SCORING and HARD_GATE remain unimplemented and unauthorized.
+- Explicit availability/current-history separation is complete. Two complete
+  snapshot misses establish source disappearance; trusted closing evidence
+  establishes expiry. Posting age is not proof. Any active source keeps the
+  canonical job current; history and application evidence are retained.
+- P34 live repairs for Intel, Etsy, and Encyclis are recorded as applied with
+  a verified backup. Fresh discovery confirmation for all three and a signed-in
+  Dice rerun remain outstanding. Dice remains enabled by policy.
+- Next development work is not yet selected: discuss the employer-platform
+  direction, then define a bounded implementation scope or release boundary.
+  Do not restart completed phases or infer a new task from historical next steps.
 
-Employer Discovery is an approved parallel workstream, not a later phase. It
-became authorized to begin after final Architect approval of Milestone 8.3, and
-its design and implementation may proceed alongside Milestones 8.4 through 8.8.
-It does not block Phase 8, and Phase 8 does not depend on it; the workstream
-boundaries remain independent. Employer Discovery 9.1 through 9.5 is complete
-and Architect-approved as of 2026-08-12.
+### Product direction awaiting implementation planning
+
+The intended direction is an industry-agnostic intelligent employment matching
+platform. Discuss company claiming and verification, direct employer postings,
+listing-origin provenance, transferable-skill matching, employer-side candidate
+matching, and eventual recruiting/ATS and monetization capabilities. These are
+future product directions, not completed features or an approved implementation
+sequence. Build on the existing Company identity and separate Employer registry;
+preserve local data, source provenance, and current deterministic authority.
 
 ## Completed Phases
 
@@ -96,7 +122,7 @@ session handoff.
 Legacy follow-up ideas from this phase are retained under Future Phases for
 triage. They are not part of the completed Phase 7 acceptance boundary.
 
-## Upcoming Phases
+## Completed Application Intelligence Scope
 
 > **Section purpose:** Describe approved or proposed next phases at a planning
 > level. A listed phase is not implemented until its completion criteria are
@@ -411,14 +437,9 @@ remain future work until separately approved.
 
 ### Parallel Workstream: Employer Discovery Platform
 
-> **Workstream status:** Approved as an independent parallel workstream. Design
-> and implementation became authorized after final Milestone 8.3 Architect
-> approval and may proceed alongside Milestones 8.4 through 8.8. It must not
-> block Phase 8, Phase 8 must not depend on it, and the workstream boundaries
-> remain independent. A real Employer Registry / CareerSite / ATS-fingerprint
-> vertical slice is implemented in the current worktree. Milestone 9.3 is
-> Architect-approved; Milestone 9.4 is the accepted implementation baseline.
-> Milestone 9.5 is completion-gate complete pending final acceptance.
+> **Workstream status:** Employer Discovery 9.1–9.5 is complete and
+> Architect-approved (2026-08-12); 9.6 seed manifest import is complete
+> (2026-08-16). Its original authorization was independent of Phase 8.
 
 Objective
 

@@ -43,6 +43,16 @@ describe('JobSearchRepository', () => {
 
   afterEach(() => database.close());
 
+  it('captures the score version once for filtering and response metadata', () => {
+    let reads = 0;
+    const repository = new JobSearchRepository(database, {
+      getScoreVersion: () => 'version-' + String(++reads),
+    });
+    const result = repository.search(jobSearchQuerySchema.parse({}));
+    expect(reads).toBe(1);
+    expect(result.currentScoreVersion).toBe('version-1');
+  });
+
   it('combines every filter and preserves every source membership', () => {
     const now = new Date();
     const firstSeen = new Date(
@@ -259,6 +269,99 @@ describe('JobSearchRepository', () => {
     const repository = new JobSearchRepository(database);
     expect(() => repository.search(parse({ q: 'OR "* -( )' }))).not.toThrow();
     expect(() => repository.search(parse({ q: '***' }))).not.toThrow();
+  });
+
+  it('matches scope only widens the eligibility and score-version gates', () => {
+    const current = insertJob({ score: 88, recommendation: 'Strong Match' });
+    database
+      .prepare('UPDATE jobs SET score_version = ? WHERE id = ?')
+      .run('current-version', current);
+    const stale = insertJob({ score: 70, recommendation: 'Match' });
+    database
+      .prepare('UPDATE jobs SET score_version = ? WHERE id = ?')
+      .run('old-version', stale);
+    const ineligible = insertJob({ score: 55, recommendation: 'Hard No' });
+    database
+      .prepare(
+        `UPDATE jobs SET score_version = ?, eligibility_passed = 0,
+           eligibility_rejection = ? WHERE id = ?`,
+      )
+      .run('current-version', 'location_outside_radius', ineligible);
+    const unscored = insertJob({ score: null, recommendation: null });
+    database
+      .prepare(
+        'UPDATE jobs SET score = NULL, recommendation = NULL, score_version = NULL WHERE id = ?',
+      )
+      .run(unscored);
+    const ignored = insertJob({ score: 60, recommendation: 'Match' });
+    database
+      .prepare(
+        `UPDATE jobs SET status = 'ignored', score_version = ? WHERE id = ?`,
+      )
+      .run('current-version', ignored);
+
+    const repository = new JobSearchRepository(database, {
+      getScoreVersion: () => 'current-version',
+      forceFallback: true,
+    });
+
+    const matches = repository.search(parse());
+    expect(matches.items.map((job) => job.id)).toEqual([current]);
+    expect(matches.scope).toBe('matches');
+    expect(matches.currentScoreVersion).toBe('current-version');
+
+    const explicitMatches = repository.search(parse({ scope: 'matches' }));
+    expect(explicitMatches.items.map((job) => job.id)).toEqual([current]);
+    expect(explicitMatches.currentScoreVersion).toBe('current-version');
+
+    const all = repository.search(parse({ scope: 'all' }));
+    expect(all.scope).toBe('all');
+    expect(all.currentScoreVersion).toBe('current-version');
+    expect(all.items.map((job) => job.id).sort()).toEqual(
+      [current, stale, ineligible, unscored].sort(),
+    );
+    expect(all.items.some((job) => job.id === ignored)).toBe(false);
+    expect(all.facets.recommendations).toEqual(
+      expect.arrayContaining([
+        { value: 'Strong Match', label: 'Strong Match', count: 1 },
+        { value: 'Hard No', label: 'Hard No', count: 1 },
+      ]),
+    );
+  });
+
+  it('all jobs scope drops only the score-version pin for full-history searches', () => {
+    const current = insertJob({ score: 90, recommendation: 'Strong Match' });
+    database
+      .prepare('UPDATE jobs SET score_version = ? WHERE id = ?')
+      .run('current-version', current);
+    const removed = insertJob({ score: 40, recommendation: 'Review' });
+    database
+      .prepare(
+        `UPDATE jobs SET active = 0, lifecycle_reason = 'snapshot-missing',
+           removed_at = '2026-08-01T00:00:00.000Z', score_version = 'old-version'
+         WHERE id = ?`,
+      )
+      .run(removed);
+    const expired = insertJob({ score: 35, recommendation: 'Review' });
+    database
+      .prepare(
+        `UPDATE jobs SET status = 'expired', lifecycle_reason = 'closing-date-expired',
+           score_version = 'old-version' WHERE id = ?`,
+      )
+      .run(expired);
+
+    const repository = new JobSearchRepository(database, {
+      getScoreVersion: () => 'current-version',
+      forceFallback: true,
+    });
+
+    const matchesAllStates = repository.search(parse({ active: 'all' }));
+    expect(matchesAllStates.items.map((job) => job.id)).toEqual([current]);
+
+    const allStates = repository.search(parse({ scope: 'all', active: 'all' }));
+    expect(allStates.items.map((job) => job.id).sort()).toEqual(
+      [current, removed, expired].sort(),
+    );
   });
 
   function insertJob(

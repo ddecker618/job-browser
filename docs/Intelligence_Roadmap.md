@@ -25,6 +25,50 @@ roles:
 
 ---
 
+## Current project status
+
+Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
+Git/source evidence takes precedence over historical completion records.
+
+- Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
+  on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
+  9.6 seed manifest import is complete. These are not open implementation tasks.
+- The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
+  are separate numbering sequences.
+- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
+  Latest recorded full source verification: 159 files / 1,472 tests. The
+  2026-09-13 documentation reconciliation passed 3 focused test files / 12 tests;
+  it did not rerun the full suite or live-source validation.
+- Current package version and latest validated installer: **1.1.2**, released
+  at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
+  P35 defaults are later source changes and are not included in that recorded
+  installer. No later rebuild or installation is established by this record.
+- Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
+  and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
+  remain authoritative. Explanation is evidence-only; exact-tie enrichment is
+  gated. SCORING and HARD_GATE remain unimplemented and unauthorized.
+- Explicit availability/current-history separation is complete. Two complete
+  snapshot misses establish source disappearance; trusted closing evidence
+  establishes expiry. Posting age is not proof. Any active source keeps the
+  canonical job current; history and application evidence are retained.
+- P34 live repairs for Intel, Etsy, and Encyclis are recorded as applied with
+  a verified backup. Fresh discovery confirmation for all three and a signed-in
+  Dice rerun remain outstanding. Dice remains enabled by policy.
+- Next development work is not yet selected: discuss the employer-platform
+  direction, then define a bounded implementation scope or release boundary.
+  Do not restart completed phases or infer a new task from historical next steps.
+
+### Product direction awaiting implementation planning
+
+The intended direction is an industry-agnostic intelligent employment matching
+platform. Discuss company claiming and verification, direct employer postings,
+listing-origin provenance, transferable-skill matching, employer-side candidate
+matching, and eventual recruiting/ATS and monetization capabilities. These are
+future product directions, not completed features or an approved implementation
+sequence. Build on the existing Company identity and separate Employer registry;
+preserve local data, source provenance, and current deterministic authority.
+
 ## Status Legend
 
 `[x]` complete · `[>]` in progress · `[ ]` not started · `[!]` blocked · `[-]` deferred
@@ -41,14 +85,14 @@ CURRENT_TASK:        role-family / search-profile EXPLANATION defaults
 LAST_COMPLETED:      flipped roleFamilySuggestion + searchProfileFeedback to
                      on-by-default in DEFAULT_NLP_CAPABILITY_FLAGS; added
                      default-on connected-API coverage; verify 159/1472 green
-NEXT_ACTION:         submit the EXPLANATION-default P35 checkpoint, then the
+NEXT_ACTION:         discuss and scope the next feature; P35 committed. Then the
                      next bounded NLP module or the next release boundary
 FILES_IN_PROGRESS:   capabilityFlags defaults + connected-API test (done);
-                     docs updated, checkpoint commit pending
+                     no P35 files pending; checkpoint fd63a2a committed
 TESTS_TO_RUN:        run npm run verify after any further source change (1472
                      tests green as of P35)
 KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   P35 EXPLANATION defaults shipped (uncommitted); see git
+LATEST_CHECKPOINT:   P35 committed as fd63a2a; see git
                      log HEAD + docs/CHANGELOG for context
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
@@ -194,6 +238,12 @@ Only after sufficient historical data exists: interview/offer probability, perso
 
 ---
 
+## Historical implementation records
+
+Stages and checkpoint records below retain evidence as of their implementation.
+Their limitations, test counts, and release artifacts are historical; use the
+current status and capability matrix for present behavior.
+
 ## Stage 0 — Current Intelligence Architecture Audit
 
 - **Status:** [x]
@@ -223,7 +273,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** baseline `npm run verify` green (see validation).
 - **Validation evidence:** pipeline + versioning + gate inventory captured above from source; no behavior modified (docs-only).
 - **Known limitations:** coordinate atlas is small (15 cities); `role_details_json` currently persists only in `IntelligenceEngine.analyze()` while backfill persists independently; explanations are unformatted text, not structured.
-- **Current task / exact next action:** done — persist this audit (this file), then start Stage 1 (NLP data contract + versioning).
+- **Checkpoint completion record:** Complete; subsequent stages are also complete.
 
 ---
 
@@ -243,8 +293,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 17 schema tests (version independence, category×strength cross-product validates, fused-strength rejection, unknown category/method rejection, confidence bounds, evidence provenance, span integrity, conflict-state/nature enums, envelope acceptance + stale-version rejection).
 - **Validation evidence:** `npx vitest run tests/job-nlp-schema.test.ts` = 17 pass; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** contract is schema-only — no extractor produces these documents yet (stages 2-11); conflict values stay null until Stage 12.
-- **Current task:** complete.
-- **Exact next action:** Stages 2-14 delivered (segmentation, categories, strength, education, experience, certifications, clearance/citizenship, location/remote/hybrid, skills/technology, boilerplate filtering, reconciliation, shadow persistence, reprocessing); proceed to Stage 15.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -263,8 +312,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 17 segmenter tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-segmenter.test.ts tests/job-nlp-schema.test.ts` = 34 pass; `npm run verify` = 110 files / 1135 tests green, eslint clean, `tsc --noEmit` clean, prettier clean.
 - **Known limitations:** segmentation is layout+punctuation heuristics only — it does not yet classify content (Stage 3) or distinguish required vs preferred (Stage 4).
-- **Current task:** complete.
-- **Exact next action:** Stage 3 - classify meaningful segments (skill/experience/education/certification/clearance/citizenship/location/work arrangement/travel/schedule/responsibility/compensation/benefit/company description/EEO/unknown) with multi-label support.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -286,8 +334,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 20 classifier tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-categorizer.test.ts` = 20 pass; `npm run verify` = 111 files / 1155 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** category classification is vocabulary-pattern based — no skill entity normalization yet (Stage 10), no strength/modality (Stage 4), clearance level/citizenship detail extraction (Stage 8), compensation entity parsing (Stage 11/12).
-- **Current task:** complete.
-- **Exact next action:** Stage 4 - strength/modality classifier (required/preferred/nice-to-have/alternative/equivalency/future/post-hire/ability-to-obtain/informational) with extensive paraphrase + adversarial tests.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -306,8 +353,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 19 strength tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-strength.test.ts` = 19 pass; `npm run verify` = 112 files / 1174 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** section context ("Preferred Qualifications" heading) not yet used to boost intent (Stage 5-11 area); no chained compound requirements ("required for X, preferred for Y") disambiguation.
-- **Current task:** complete.
-- **Exact next action:** Stage 5 - education intelligence (degree level, field, required/preferred, equivalency, experience substitution, combined education/experience).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -325,8 +371,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 14 education tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-education.test.ts` = 14 pass; `npm run verify` = 113 files / 1188 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** no GPA/minor/institution extraction; field capture is phrase-anchored (`in/of`); no degree-equivalency for specific laddered degrees beyond level precedence.
-- **Current task:** complete.
-- **Exact next action:** Stage 6 - experience intelligence (min/preferred years, ranges, domain, role context, nested experience, alternatives; never fabricate years; preserve ranges).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -345,8 +390,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 13 experience tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-experience.test.ts` = 13 pass; `npm run verify` = 114 files / 1201 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** no semantic range interpretation ("2-4" may mean preferred range not literal); alternatives limited to "or" + year clauses; role-context capture is phrase heuristics only.
-- **Current task:** complete.
-- **Exact next action:** Stage 7 - certification intelligence (normalize known certs: Security+, Network+, A+, CySA+, SecurityX/CASP+, CISSP, CISM, CCNA, Microsoft/Azure/AWS families; required/preferred/equivalent/after-hire/must-obtain; no false equivalencies).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -362,8 +406,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 15 certification tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-certifications.test.ts` = 15 pass; `npm run verify` = 115 files / 1216 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** family-level matches (AWS/Azure/Microsoft) are coarse and rely on the certification category gate to avoid false positives; the catalog is curated (unknowable certs are not guessed); `cross-certification` equivalencies are NOT claimed (a Microsoft cert is never equated to a Comptia cert).
-- **Current task:** complete.
-- **Exact next action:** Stage 8 - clearance and citizenship intelligence (clearance level/current/ability-to-obtain/maintain/preferred/public-trust; citizenship; adversarial "cleared team" sentences must not imply applicant clearance).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -381,8 +424,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 17 clearance/citizenship tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-clearance.test.ts` = 17 pass; `npm run verify` = 116 files / 1233 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** clause scoping currently uses semicolons only to avoid splitting abbreviations such as `U.S.`; clearance and citizenship catalogs are deterministic and curated; no adjudication/date/agency normalization yet.
-- **Current task:** complete.
-- **Exact next action:** Stage 9 - location / remote / hybrid intelligence (remote, hybrid, onsite, commute distance, excluded states, occasional onsite, relocation, travel; compare with the existing geographic engine and never weaken hard gates).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -400,8 +442,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 17 location/remote/hybrid tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-location.test.ts` = 17 pass; `npm run verify` = 117 files / 1250 tests green; eslint clean; `tsc --noEmit` clean; prettier clean. A transient API `fetch failed: bad port` occurred once during a parallel full run; the three affected API files passed on rerun and the subsequent full gate passed.
 - **Known limitations:** city extraction is intentionally limited to city/state forms; state-limited scope is text evidence, not geographic eligibility; clause context is heuristic; occasional onsite can conflict with existing deterministic precedence; no provider-field or geographic-engine persistence/reconciliation exists yet.
-- **Current task:** complete.
-- **Exact next action:** Stage 10 - skill and technology extraction (required/preferred/mentioned/environment/responsibility; conservative alias normalization while preserving raw entities).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -419,8 +460,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 12 skill/technology tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-skills.test.ts` = 12 pass; `npm run verify` = 118 files / 1262 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** default technology classification is a curated fallback; unknown skills are not guessed; context is lexical and clause-scoped; no semantic synonym expansion or production catalog mutation exists yet.
-- **Current task:** complete.
-- **Exact next action:** Stage 11 - boilerplate and non-requirement filtering (EEO, benefits, marketing, legal, accommodation, compensation, cultural, and description content; preserve real soft-skill requirements).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -438,8 +478,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 14 boilerplate/filtering tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-boilerplate.test.ts` = 14 pass; `npm run verify` = 119 files / 1276 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** phrase rules are conservative and English-only; no section-level filtering context or fact assembler exists yet; mixed statements intentionally require later reconciliation rather than automatic removal.
-- **Current task:** complete.
-- **Exact next action:** Stage 12 - deterministic + NLP reconciliation (agreement/conflict states, deterministic authority, value/modality/entity/scope conflict details, still shadow-only).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -457,8 +496,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 10 reconciliation tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-reconciliation.test.ts` = 10 pass; `npm run verify` = 120 files / 1286 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** this stage provides a pure utility only; no job-level fact assembler, database persistence, or UI projection exists yet; deterministic side authority is diagnostic and does not authorize promotion to production behavior.
-- **Current task:** complete.
-- **Exact next action:** Stage 13 - shadow-mode persistence (versioned enrichment storage, source hash, safe upsert, no production document overwrite, conflict/debug retention).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -478,8 +516,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 5 persistence tests plus migration-preservation coverage (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-persistence.test.ts tests/migrations.test.ts tests/application-event-migration.test.ts` = 15 pass; `npm run verify` = 121 files / 1291 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** only the current enrichment is stored (no append-only history); no job-level NLP assembler is wired yet; reprocessing, invalidation, and UI/debug projections remain Stage 14+ work.
-- **Current task:** complete.
-- **Exact next action:** Stage 14 - invalidation and reprocessing (stale version/hash discovery, bounded resumable work, idempotence, crash safety, no auto-archive).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -497,8 +534,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 7 reprocessing tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-reprocessing.test.ts` = 7 pass; `npm run verify` = 122 files / 1298 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** candidates/source hashes are supplied by the caller until a job-level assembler supplies current source hashes; failures are returned for retry but no queue/worker scheduler exists yet; persistence history is still current-row only.
-- **Current task:** complete.
-- **Exact next action:** Stage 15 - NLP debug / intelligence inspector (developer-facing evidence/category/strength/entity/confidence/source/method/version/reconciliation view with secret and personal-data redaction).
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -516,8 +552,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 4 inspector tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-inspector.test.ts` = 4 pass; `npm run verify` = 123 files / 1302 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** redaction is deterministic pattern-based and not a general DLP classifier; the inspector is currently a pure module with no HTTP/UI route; source text remains available only through explicitly redacted evidence fields.
-- **Current task:** complete.
-- **Exact next action:** Stage 23 delivered (diagnostic modality-weighted coverage with no production effect); begin Stage 24 - performance audit.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -535,8 +570,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 3 corpus integrity tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-evaluation-corpus.test.ts` = 3 pass; `npm run verify` = 124 files / 1305 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** Stage 16 labels are not yet accuracy scores; Stage 17 must run the current extractors against the corpus and report false positives/negatives without changing labels to fit the implementation.
-- **Current task:** complete.
-- **Exact next action:** Stage 17 - representative job evaluation using this corpus plus additional local representative descriptions.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -555,8 +589,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 4 evaluation tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-evaluation.test.ts` = 4 pass; `npm run verify` = 126 files / 1312 tests green; eslint clean; `tsc --noEmit` clean; prettier clean. Corrected report: category exact 88.9% (precision 93.1%, recall 91.5%), strength accuracy 96.3%, entity exact 94.4% (precision 96.6%, recall 90.3%), arrangement 7/8, label disagreement 13.0%, critical adversarial failures 0/7.
 - **Known limitations:** results are synthetic/local and not representative of live provider distributions; category and entity misses remain to be triaged; the report measures disagreement against explicit labels, not deterministic production-score changes.
-- **Current task:** complete.
-- **Exact next action:** Stage 18 delivered; proceed to the acceptance gate record below.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -575,8 +608,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 3 acceptance-gate tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-acceptance.test.ts` = 3 pass; `npm run verify` = 126 files / 1312 tests green; corrected evaluation report passes all thresholds with zero critical failures.
 - **Known limitations:** the gate consumes evidence booleans and does not itself open a database or run a production-vs-shadow diff; Stage 19 remains design-only and no semantic model/runtime has been added.
-- **Current task:** complete.
-- **Exact next action:** Stage 19 - semantic normalization/embedding design with measured packaging/runtime impact and no silent downloads.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -593,8 +625,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** no new runtime tests; the design is validated by the full repository gate.
 - **Validation evidence:** `npm run verify` = 126 files / 1312 tests green; no semantic dependency or model artifact added; no network/model download path added.
 - **Known limitations:** model/runtime selection remains open pending benchmark evidence; thresholds and package budgets are intentionally not invented; future semantic work must remain behind an adapter and acceptance gate.
-- **Current task:** complete.
-- **Exact next action:** Stage 20 - semantic role matching shadow mode using deterministic fallback and no production scoring/eligibility integration.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -612,8 +643,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 6 role-matching tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-role-matching.test.ts` = 6 pass; `npm run verify` = 127 files / 1318 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** token overlap is not semantic similarity and cannot infer unseen role concepts; persistence is caller-provided and not wired to a production database; Stage 21 owns canonical skill relationships.
-- **Current task:** complete.
-- **Exact next action:** Stage 21 - semantic skill normalization shadow mode with exact/alias/related/unknown relationship labels and adversarial tests.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -631,8 +661,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 6 skill-normalization tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-skill-normalization.test.ts` = 6 pass; `npm run verify` = 128 files / 1324 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** reviewed relationships are intentionally small and deterministic; no unseen-skill embedding search exists; persistence and resume evidence matching remain later stages.
-- **Current task:** complete.
-- **Exact next action:** Stage 22 - resume evidence matching shadow mode with direct/related/weak/no-evidence/unknown outcomes and no resume modification.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -650,8 +679,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 5 resume-evidence tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-resume-evidence.test.ts` = 5 pass; `npm run verify` = 129 files / 1329 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** the first matcher covers skill/certification-like concepts supplied through the catalog; experience/education/clearance evidence adapters remain future work; no resume-evidence persistence or UI route is added.
-- **Current task:** complete.
-- **Exact next action:** Stage 23 - requirement coverage model with direct/related/missing/unknown evidence and modality weighting separate from production scoring.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -669,8 +697,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 5 requirement-coverage tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-requirement-coverage.test.ts` = 5 pass; `npm run verify` = 130 files / 1334 tests green; eslint clean; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** the model currently consumes skill/certification evidence rows; experience/education/clearance-specific evidence adapters and UI rendering remain future work; weights require later product calibration.
-- **Current task:** complete.
-- **Exact next action:** Stage 24 - NLP/semantic performance audit with stable fingerprints and no correctness regressions.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -691,8 +718,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 2 performance-audit tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-performance-audit.test.ts` = 2 pass; `npm run nlp:benchmark` = 54-case report; `npm run verify` = 131 files / 1336 tests green; no embedding runtime or network request observed.
 - **Known limitations:** the SQLite result uses a minimal valid enrichment payload; cold import is not inference; installer impact is zero for optional NLP artifacts because none exist, while full installer smoke belongs to Stage 28.
-- **Current task:** complete.
-- **Exact next action:** Stage 25 - security/privacy/packaging audit with no telemetry, secret, PII, dev-path, or unlicensed-model leakage.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -712,8 +738,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 3 security/privacy/packaging tests (see tasks); `npm run privacy:check` = 3 files / 11 tests.
 - **Validation evidence:** `npm run nlp:security-audit` = 3 pass; `npm run privacy:check` = 11 pass; `npm run verify` = 132 files / 1339 tests green; source/dependency scan found no prohibited runtime/model/network/path/secret marker.
 - **Known limitations:** no installer rebuild is required for the absent model/runtime artifact; final packaged smoke and artifact inventory remain part of Stage 28 after the UX prototype changes.
-- **Current task:** complete.
-- **Exact next action:** Stage 26 - Job Intelligence UI prototype, read-only and explicitly shadow-labeled.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -735,8 +760,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 2 intelligence UI tests (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-intelligence-ui.test.tsx` = 2 pass; `npm run verify` = 133 files / 1341 tests green; lint and typecheck clean.
 - **Known limitations:** no client API endpoint exposes stored NLP enrichments or resume evidence yet; all coverage rows are intentionally unknown; the prototype is not a promotion decision.
-- **Current task:** complete.
-- **Exact next action:** Stage 27 - promotion design with per-field quality, false-positive/false-negative consequence, fallback, evidence, and hard-gate criteria.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -754,8 +778,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 1 promotion-design test (see tasks).
 - **Validation evidence:** `npx vitest run tests/job-nlp-promotion-design.test.ts` = 1 pass; `npm run verify` = 134 files / 1342 tests green; Stage 18 acceptance and Stage 24 performance baselines are referenced; no production-scoring implementation was added.
 - **Known limitations:** live-provider labels, field-specific production-vs-shadow diffs, and Levels 3-4 authorization do not exist; therefore every field remains shadow-only or not eligible.
-- **Current task:** complete.
-- **Exact next action:** Stage 28 - full project regression, score-preservation test, and packaged upgrade validation.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -773,8 +796,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
 - **Tests:** 1 shadow-regression test (see tasks), plus the complete repository and desktop validation sequence.
 - **Validation evidence:** `npx vitest run tests/job-nlp-shadow-regression.test.ts` = 1 pass; `npm run verify` = 135 files / 1343 tests green; `npm run privacy:check` = 3 files / 11 tests green; packaged, installed, and packaged-upgrade desktop smoke passed. Installer: 253,570,850 B, SHA-256 `B0DCA751C245DCAF4BF71E511D7F724BB15C46BBAAEF3EE7CF4716C4C3A25DCE`; `app.asar`: 73,882,150 B, SHA-256 `5C9A474B5924EF6A74D36A652E1E30FD8086DD8EB6AE75C8621F45C1A810CA53`.
 - **Known limitations:** no cross-platform installer run is available in this Windows session; production-vs-shadow evidence covers the deterministic in-process score path and additive storage boundaries.
-- **Current task:** complete.
-- **Exact next action:** Stage 29 - final documentation reconciliation and 43-point handoff report.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -791,9 +813,8 @@ Only after sufficient historical data exists: interview/offer probability, perso
   - D-NLP-066: any future promotion must name a field, evidence cohort, threshold, owner, rollout, rollback trigger, and release in a new authorization.
 - **Tests:** 1 final-handoff test (see tasks); complete project, privacy, package, install, and upgrade evidence is recorded.
 - **Validation evidence:** `npx vitest run tests/job-nlp-final-handoff.test.ts` = 1 pass; `npm run verify` = 136 files / 1344 tests green; `npm run privacy:check` = 3 files / 11 tests green; `npm run nlp:security-audit` = 3 pass; package/install/upgrade smoke evidence is recorded above.
-- **Known limitations:** the final status is not a claim of live-provider or cross-platform accuracy; no Level 3/4 promotion exists; `SESSION_HANDOFF.md` is intentionally gitignored and remains a local handoff note.
-- **Current task:** complete.
-- **Exact next action:** none for the authorized shadow program; restart at Stage 27 with new authorization if production promotion is requested.
+- **Known limitations:** the final status is not a claim of live-provider or cross-platform accuracy; no Level 3/4 promotion exists; `SESSION_HANDOFF.md` is tracked in Git and contains the current resume point.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -820,8 +841,7 @@ Only after sufficient historical data exists: interview/offer probability, perso
   passed; isolated launch against a copy of the real 253 MB database: main process
   `Responding=True` throughout the ~30 s database phase, `window-created` at ~1.1 s.
 - **Harness update:** existing-data smoke mode now preserves user source choices while retaining application, API, navigation, migration, worker, and shutdown assertions.
-- **Current task:** complete.
-- **Exact next action:** P1 - production promotion audit and capability matrix.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -844,8 +864,7 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 - **Tests:** audit is read/evidence-based; existing per-module suites remain the
   per-field gate inputs.
 - **Validation evidence:** subagent audits (P1); `npm run verify` 136 files / 1346 tests.
-- **Current task:** complete; final per-capability state reconciled in P27.
-- **Exact next action:** P2 - NLP production trust levels.
+- **Checkpoint completion record:** complete; final per-capability state reconciled in P27.
 
 ### Production Promotion Matrix (P1)
 
@@ -873,8 +892,8 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 | ------------------------------------------------- | ----------------------- | ---------------------------- | ------------------------------------------------------------ |
 | Extraction, reconciliation, persisted comparison  | SHADOW (0)              | Background shadow processing | None                                                         |
 | Job Intelligence requirements and resume coverage | EXPLANATION (1)         | Flag on (default)            | Display only; structured values authoritative                |
-| Reconciled role-family suggestion                 | EXPLANATION (1)         | Flag off                     | Suggestion only; never a gate                                |
-| Search-profile vocabulary feedback                | EXPLANATION (1)         | Flag off                     | Read-only feedback                                           |
+| Reconciled role-family suggestion                 | EXPLANATION (1)         | Flag on (default)            | Suggestion only; never a gate                                |
+| Search-profile vocabulary feedback                | EXPLANATION (1)         | Flag on (default)            | Read-only feedback                                           |
 | Target-role supporting NLP evidence               | EXPLANATION (1)         | Current evidence when valid  | Deterministic family membership remains decisive             |
 | Search relevance tie-break                        | ENRICHMENT (2)          | Flag off                     | Only inside exact deterministic ties; primary sort unchanged |
 | Experimental recommendation contribution          | SHADOW (0), design only | No runtime consumer          | No score or recommendation change                            |
@@ -901,8 +920,7 @@ conflict`/`evidence`, per-cert `key`/`vendor`/`span`, and travel detail.
 tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier clean.
 - **Known limitations:** no consumer exists above SHADOW yet; SCORING/HARD_GATE
   require new authorization and remain unreachable by design.
-- **Current task:** complete.
-- **Exact next action:** P3 - async NLP materialization and envelope wiring.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -926,8 +944,7 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
   prettier/lint/tsc clean (commits `30b74dd`, `2d9ad2c`).
 - **Known limitations:** the worker is not yet wired into the app; app.ts startup
   hook, single-flight guard, and diagnostics endpoint are P4.
-- **Current task:** complete.
-- **Exact next action:** P4 - wire worker into app.ts + read-only diagnostics.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -949,8 +966,7 @@ tests/job-nlp-final-handoff.test.ts` = 2 pass; `tsc --noEmit` clean; prettier cl
   `job-nlp-connected-api.test.ts`.
 - **Validation evidence:** `npm run verify` = 141 files / 1378 tests green.
 - **Known limitations:** Settings-page status surface is P22; per-capability flags P20.
-- **Current task:** complete.
-- **Exact next action:** P5 - production Job Intelligence projection.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -992,8 +1008,7 @@ explanation`, `summary` with requirement/other/boilerplate/conflict/unreconciled
 - **Known limitations:** Settings-page status surface is P22; per-capability flags P20;
   experience-classifier phrasing gaps (e.g. "Minimum six years of IT experience")
   remain extractor-level backlog, not projection scope.
-- **Current task:** complete.
-- **Exact next action:** P6 - NLP-enhanced search index.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -1031,8 +1046,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Validation evidence:** `npm run verify` = 143 files / 1399 tests green.
 - **Known limitations:** per-capability flags P20; rename/matching consumers P8/P9; no
   UI surface for the tie-break label yet (P14).
-- **Current task:** complete.
-- **Exact next action:** P7 - canonical role family matching promoted to search
+- **Checkpoint completion record:** complete.
   suggestion.
 
 ---
@@ -1070,8 +1084,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Known limitations:** no search/UI consumption yet (P8 suggestion surface, P14
   explainability); shadow matcher remains a token-overlap fallback (no shared
   vocabulary beyond the configured family titles).
-- **Current task:** complete.
-- **Exact next action:** P8 - case/role-based search integration.
+- **Checkpoint completion record:** complete.
 
 ---
 
@@ -1085,8 +1098,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Decision:** P6 contains skill/signals, not role membership. Its evidence supplements the deterministic role match; it does not invent an NLP-only family or widen the result set. The existing P6 optional tie-break is unchanged.
 - **Recovery fixes:** repaired the unfinished UI's undefined-role crash, guarded older responses, and corrected substring role filtering.
 - **Validation:** npm run verify PASS (145 files / 1416 tests); npm run build PASS. Includes API acceptance/rejection, role membership/order, disabled roles, stale/corrupt index fallback, SQL wildcard negatives, no job mutation, selector/URL/page-reset/clear and evidence rendering.
-- **Current task:** complete.
-- **Exact next action:** P9 skill normalization in matching/coverage.
+- **Checkpoint completion record:** complete.
 - **Release boundary:** no version bump, installer replacement, production-data writes, or push.
 
 ---
@@ -1097,9 +1109,8 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** use normalized canonical skills (EXACT/alias/related/unknown) inside
   requirement coverage and search relevance; unknown phrases always abstain; never
   mutate the raw skill text or expand catalog automatically.
-- **Current task:** Complete. Search relevance v2 uses reviewed canonical labels only; exact posting mentions remain raw evidence; unknown or contradictory labels abstain. A read-only coverage adapter preserves exact phrases and classifies exact, alias, strong-related, weak-related, and unknown evidence.
+- **Checkpoint completion record:** Complete. Search relevance v2 uses reviewed canonical labels only; exact posting mentions remain raw evidence; unknown or contradictory labels abstain. A read-only coverage adapter preserves exact phrases and classifies exact, alias, strong-related, weak-related, and unknown evidence.
 - **Verification:** targeted 22 tests PASS; full verify 146 files / 1419 tests PASS.
-- **Exact next action:** P10 - full resume evidence matching.
 
 ---
 
@@ -1109,9 +1120,8 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** extend resume evidence adapters to experience/education/clearance
   snapshots; every match row remains expressly evidence-of-match, never possession;
   parser versions recorded; unmatched/null concepts = UNKNOWN not missing.
-- **Current task:** Complete. The internal snapshot adapter reads versioned capture-time data without exposing normalized resume text through the public snapshot API. It emits typed skill, certification, experience, education, and clearance evidence with parser provenance. Unparsed or null structural concepts yield UNKNOWN; results remain evidence-only and never assert possession.
+- **Checkpoint completion record:** Complete. The internal snapshot adapter reads versioned capture-time data without exposing normalized resume text through the public snapshot API. It emits typed skill, certification, experience, education, and clearance evidence with parser provenance. Unparsed or null structural concepts yield UNKNOWN; results remain evidence-only and never assert possession.
 - **Verification:** focused 22 tests PASS; full verify 147 files / 1422 tests PASS.
-- **Exact next action:** P11 - requirement coverage goes live.
 
 ---
 
@@ -1122,9 +1132,8 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   modality weighting, evidence, and provenance) is shown in production Job
   Intelligence; it is explicitly a diagnostic ratio and is never called a score and
   never changes ranks/eligibility.
-- **Current task:** Complete. Job Intelligence now reads the application’s submitted immutable resume snapshot, projects supported requirements as direct/related/weak/missing/unknown rows with modality and provenance, and labels the weighted ratio as diagnostic evidence coverage. No coverage field has score, eligibility, rank, filter, or lifecycle authority. Jobs without a captured snapshot return coverage=null.
+- **Checkpoint completion record:** Complete. Job Intelligence now reads the application’s submitted immutable resume snapshot, projects supported requirements as direct/related/weak/missing/unknown rows with modality and provenance, and labels the weighted ratio as diagnostic evidence coverage. No coverage field has score, eligibility, rank, filter, or lifecycle authority. Jobs without a captured snapshot return coverage=null.
 - **Verification:** focused API/UI/projection tests PASS; full verify 150 files / 1426 tests PASS.
-- **Exact next action:** P12 - bounded NLP scoring contribution design.
 
 ---
 
@@ -1135,8 +1144,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   recommendation metric from corroborated, high-confidence ENRICHMENT/SCORING-capable
   signals; require: score cap below any eligibility boundary, monotone evidence,
   dual-side consistency (deterministic vs NLP), and a shadow diff gate.
-- **Current task:** Complete as design only in `docs/NLP_PROMOTION_DESIGN.md`: separate non-persisted experimental metric; absolute 3-point cap; next-threshold guard; zero on failed eligibility, stale/unknown/conflicting/uncorroborated evidence; dual-side agreement and >=0.90 confidence; monotone qualifying evidence; byte-identical disabled/rollback diff gate. No runtime scoring consumer or flag was added.
-- **Exact next action:** P13 - scoring safety invariants.
+- **Checkpoint completion record:** Complete as design only in `docs/NLP_PROMOTION_DESIGN.md`: separate non-persisted experimental metric; absolute 3-point cap; next-threshold guard; zero on failed eligibility, stale/unknown/conflicting/uncorroborated evidence; dual-side agreement and >=0.90 confidence; monotone qualifying evidence; byte-identical disabled/rollback diff gate. No runtime scoring consumer or flag was added.
 
 ---
 
@@ -1147,9 +1155,8 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   never changes ranking basis below the cap, contribution is capped, contribution is
   zero when evidence/confidence absent, and removal of the feature restores previous
   scores byte-for-byte.
-- **Current task:** Complete. An offline-only calculator encodes the 3-point cap, next-threshold guard, eligibility prerequisite, current evidence and span validation, >=0.90 confidence, deterministic/NLP agreement, and future approval requirement. Tests prove zero contribution on missing/untrusted inputs, monotonic qualifying evidence, unchanged baseline objects, and no imports from production scoring engines.
+- **Checkpoint completion record:** Complete. An offline-only calculator encodes the 3-point cap, next-threshold guard, eligibility prerequisite, current evidence and span validation, >=0.90 confidence, deterministic/NLP agreement, and future approval requirement. Tests prove zero contribution on missing/untrusted inputs, monotonic qualifying evidence, unchanged baseline objects, and no imports from production scoring engines.
 - **Verification:** focused 21 tests PASS; full verify 151 files / 1430 tests PASS.
-- **Exact next action:** P14 - search-result explainability.
 
 ---
 
@@ -1164,7 +1171,6 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   tied deterministic baseline value, secondary relevance value, and exact evidence.
   Score, eligibility, and primary-sort authority are explicitly unchanged.
 - **Validation:** repository and UI explainability tests pass; full verify: 154 files / 1436 tests.
-- **Exact next action:** P15 - search profile NLP.
 
 ---
 
@@ -1179,7 +1185,6 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   pairs. The editor states that saved changes remain deterministic preferences; the
   projection has no write path or production effect.
 - **Validation:** projection immutability and editor rendering tests pass; full verify: 154 files / 1436 tests.
-- **Exact next action:** P16 - performance measurement at production loads.
 
 ---
 
@@ -1196,7 +1201,6 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   607.918/666.770 ms, heap delta 72,112,512 B, 2,609 event-loop heartbeats, and a
   second pass skipped all 500 current cache entries. Network and source DB writes: 0.
 - **Validation:** harness tests and the real local-copy run pass; full verify: 154 files / 1436 tests.
-- **Exact next action:** P17 - indexing/cache strategy.
 
 ---
 
@@ -1214,7 +1218,6 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   One primary-keyed enrichment and relevance row per job bounds growth.
 - **Validation:** invalidation, unchanged-observation, bounded-row, stale-version, and
   current-evidence tests pass; full verify: 154 files / 1436 tests.
-- **Exact next action:** P18 - regression corpus expansion.
 
 ---
 
@@ -1225,8 +1228,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   adversarial) so every promoted capability has both true-positive and false-positive
   boundaries; acceptance gate must fail closed on any critical failure before a
   promotion is recorded.
-- **Current task:** Complete. The labeled set now has 66 cases (54 base plus 12 representative), including promoted-surface coverage, paraphrases, technical-remote false positives, employer-tool mentions, and negated clearance/degree requirements. Modality classifier v2 classifies explicit negation as informational. The fail-closed acceptance gate passes with zero critical failures.
-- **Exact next action:** P19 - production-vs-shadow comparison.
+- **Checkpoint completion record:** Complete. The labeled set now has 66 cases (54 base plus 12 representative), including promoted-surface coverage, paraphrases, technical-remote false positives, employer-tool mentions, and negated clearance/degree requirements. Modality classifier v2 classifies explicit negation as informational. The fail-closed acceptance gate passes with zero critical failures.
 
 ---
 
@@ -1237,8 +1239,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   interpretation per job in the shadow store; report agreement/conflict rates per
   capability on the local corpus; conflicts are surfaced in UI, never silently
   resolved.
-- **Current task:** Complete. Migration 034 adds one versioned comparison row per job with change-only invalidation. The worker and explicit Job Intelligence action persist deterministic and NLP sides, evidence, and agreement/conflict/one-sided states. The UI shows persisted agreement/conflict counts while structured values remain authoritative.
-- **Exact next action:** P20 - feature flags.
+- **Checkpoint completion record:** Complete. Migration 034 adds one versioned comparison row per job with change-only invalidation. The worker and explicit Job Intelligence action persist deterministic and NLP sides, evidence, and agreement/conflict/one-sided states. The UI shows persisted agreement/conflict counts while structured values remain authoritative.
 
 ---
 
@@ -1248,8 +1249,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** per-capability local flags (off by default) with per-feature rollback;
   disabling a flag restores prior behaviour exactly (regression test per feature);
   flags are read at decision time, cached safely, and surfaced read-only in Settings.
-- **Current task:** Complete. Four independent local flags are read at each decision boundary and default off: Job Intelligence explanation, role-family suggestion, search tie-break, and search-profile feedback. Tests cover fail-closed parsing and rollback for every consumer.
-- **Exact next action:** P21 - failure fallback behaviour.
+- **Checkpoint completion record:** Complete. Four independent local flags are read at each decision boundary. P32/P35 subsequently enabled Job Intelligence explanation, role-family suggestion, and search-profile feedback defaults; search tie-break remains off. Tests cover fail-closed parsing and rollback for every consumer.
 
 ---
 
@@ -1259,8 +1259,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** when extraction/worker/index fails or is disabled, production
   surfaces degrade to the deterministic baseline silently but visibly (a status
   indicator), and no stale enrichment is ever rendered as fresh.
-- **Current task:** Complete. Disabled capabilities and worker item failures visibly report that deterministic behavior remains active. Search ignores missing, stale, invalid, or disabled NLP data. Source changes invalidate derived rows, so stale enrichment is never rendered as current.
-- **Exact next action:** P22 - user-visible NLP status.
+- **Checkpoint completion record:** Complete. Disabled capabilities and worker item failures visibly report that deterministic behavior remains active. Search ignores missing, stale, invalid, or disabled NLP data. Source changes invalidate derived rows, so stale enrichment is never rendered as current.
 
 ---
 
@@ -1270,8 +1269,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** read-only NLP status in Settings: extraction version, analysed
   counts, last success/failure, flags, and "Not used for scoring/eligibility" wording
   that matches the trust level of what is actually on.
-- **Current task:** Complete. Settings shows the extraction version, last successful sweep, current enrichment/index/comparison counts, per-capability flags, last failure, and the exact trust notice “Not used for scoring or eligibility.” The projection is read-only.
-- **Exact next action:** P23 - real-data validation session.
+- **Checkpoint completion record:** Complete. Settings shows the extraction version, last successful sweep, current enrichment/index/comparison counts, per-capability flags, last failure, and the exact trust notice “Not used for scoring or eligibility.” The projection is read-only.
 
 ---
 
@@ -1281,8 +1279,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** validation run against the user's real local database copy: run the
   worker, compare deterministic vs NLP interpretation, verify no score/eligibility
   drift (P19 harness), measure responsiveness (P0 harness), and record outcomes.
-- **Current task:** Complete. A consistent backup of the real local database was processed and deleted after validation. 500/3,662 jobs produced 500 enrichment/index/comparison rows with 0 failures in 4,575.04 ms and 2,079 event-loop ticks. The complete jobs-table fingerprint was identical before/after. See docs/NLP_REAL_DATA_VALIDATION.md.
-- **Exact next action:** P24 - full verification gate.
+- **Checkpoint completion record:** Complete. A consistent backup of the real local database was processed and deleted after validation. 500/3,662 jobs produced 500 enrichment/index/comparison rows with 0 failures in 4,575.04 ms and 2,079 event-loop ticks. The complete jobs-table fingerprint was identical before/after. See docs/NLP_REAL_DATA_VALIDATION.md.
 
 ---
 
@@ -1292,8 +1289,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** `npm run verify` + `npm run privacy:check` + NLP security audit all
   green; source/packaged/upgrade smoke green; acceptance gate fail-closed on the
   expanded corpus; checkpoint commit.
-- **Current task:** Complete. npm run verify passed 157 files / 1,445 tests; privacy passed 3 files / 11 tests; the expanded NLP security audit passed 3/3; the 66-case acceptance gate passed with zero critical failures. Direct source, rebuilt unpacked-package, and seeded packaged-upgrade smoke all passed.
-- **Exact next action:** P25 - desktop performance validation.
+- **Checkpoint completion record:** Complete. npm run verify passed 157 files / 1,445 tests; privacy passed 3 files / 11 tests; the expanded NLP security audit passed 3/3; the 66-case acceptance gate passed with zero critical failures. Direct source, rebuilt unpacked-package, and seeded packaged-upgrade smoke all passed.
 
 ---
 
@@ -1303,8 +1299,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** installed/direct launch with real DB: main thread responsive during
   any watchdog activity, backend free on exit, no orphan processes, worker yields to
   UI, results in acceptable additional disk budget.
-- **Current task:** Complete through the direct/current-source path. A fresh backup of the 253,034,496-byte real database launched, migrated through 034, navigated all smoke routes, processed 205 shadow rows before exit, and closed cleanly with zero Job Browser/Electron processes. The database set grew 13,619,200 bytes during migrations, smoke fixtures, and background processing; P23 separately measured 500 worker items and 2,079 event-loop yields.
-- **Exact next action:** P26 - privacy/packaging audit.
+- **Checkpoint completion record:** Complete through the direct/current-source path. A fresh backup of the 253,034,496-byte real database launched, migrated through 034, navigated all smoke routes, processed 205 shadow rows before exit, and closed cleanly with zero Job Browser/Electron processes. The database set grew 13,619,200 bytes during migrations, smoke fixtures, and background processing; P23 separately measured 500 worker items and 2,079 event-loop yields.
 
 ---
 
@@ -1314,8 +1309,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** re-run Stage 25 audit for the promoted surfaces: no telemetry, no
   external transmission, no secrets/PII/dev paths, no model artifacts, installer
   contents inspected, fresh-install neutral state.
-- **Current task:** Complete for source and the current unpacked artifact. The expanded audit scans all NLP modules, three repositories, and migrations 031-034; it found no hosted model/runtime, network call, telemetry, developer path, secret, or model artifact. Privacy checks passed on tracked files, dist, and current app.asar; fresh NLP tables are empty. Current app.asar is 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. The existing installer is correctly recorded as stale and its replacement audit belongs to P28 after approval.
-- **Exact next action:** P27 - documentation.
+- **Checkpoint completion record:** Complete for source and the current unpacked artifact. The expanded audit scans all NLP modules, three repositories, and migrations 031-034; it found no hosted model/runtime, network call, telemetry, developer path, secret, or model artifact. Privacy checks passed on tracked files, dist, and current app.asar; fresh NLP tables are empty. Current app.asar is 74,029,786 bytes, SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. The existing installer is correctly recorded as stale and its replacement audit belongs to P28 after approval.
 
 ---
 
@@ -1325,8 +1319,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** reconcile this roadmap, PROJECT_MEMORY, CHANGELOG, SESSION_HANDOFF,
   NLP_FINAL_HANDOFF (add a production promotion section), trust levels, promotion
   design, and README with exact per-field promotion status and gates.
-- **Current task:** Complete. Roadmap, Project Memory, changelog, session handoff, final handoff, trust levels, promotion design, architecture, regression/audit documents, and README now state the same per-capability levels, off-by-default flags, unchanged deterministic authority, current validation evidence, and stale-installer boundary.
-- **Exact next action:** P28 - release/release decision.
+- **Checkpoint completion record:** Complete. Roadmap, Project Memory, changelog, session handoff, final handoff, trust levels, promotion design, architecture, regression/audit documents, and README now state the same per-capability levels, off-by-default flags, unchanged deterministic authority, current validation evidence, and stale-installer boundary.
 
 ---
 
@@ -1336,8 +1329,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** version/artifact decision with the user; rebuild installer and run the
   full artifact validation sequence only with explicit user approval; local
   checkpoint commits; nothing pushed without explicit instruction.
-- **Current task:** Complete. The user approved rebuilding the 1.1.0 installer on 2026-09-11. `npm run desktop:package` rebuilt `release\Job-Browser-Setup-1.1.0.exe` from current source; packaged smoke, installed smoke after silent install, seeded packaged-upgrade smoke, privacy, and NLP security audit all passed. Installer: 253,595,714 bytes, SHA-256 09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C. Packaged and installed app.asar both match SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. No Job Browser/Electron/Playwright process or port 6783 listener remained after validation. Nothing pushed.
-- **Exact next action:** P29 - final report.
+- **Checkpoint completion record:** Complete. The user approved rebuilding the 1.1.0 installer on 2026-09-11. `npm run desktop:package` rebuilt `release\Job-Browser-Setup-1.1.0.exe` from current source; packaged smoke, installed smoke after silent install, seeded packaged-upgrade smoke, privacy, and NLP security audit all passed. Installer: 253,595,714 bytes, SHA-256 09328F21F77469BFBA6FB9A80627FC284C7695A7B087D86CABA197472917BE1C. Packaged and installed app.asar both match SHA-256 1984327AFA57400A8E9CBCC457CC3DFF4B2FF4E480511A837DBE3849B1023268. No Job Browser/Electron/Playwright process or port 6783 listener remained after validation. Nothing pushed.
 
 ---
 
@@ -1347,8 +1339,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** report which capabilities moved from SHADOW to EXPLANATION/ENRICHMENT
   (and whether any reached SCORING), the evidence for each, the explicitly unchanged
   hard gates, and the record of what remains SHADOW-only with exact reasons.
-- **Current task:** Complete. NLP_FINAL_HANDOFF, regression/upgrade validation, security/privacy packaging audit, changelog, beta release evidence, Project Memory, and this roadmap now record the final P28 artifact evidence and unchanged authority boundary: Job Intelligence, role-family suggestions, search-profile feedback, and target-role supporting evidence are EXPLANATION; exact-tie search relevance is ENRICHMENT; comparison remains SHADOW; SCORING and HARD_GATE remain unimplemented and unauthorized.
-- **Exact next action:** loop back to additional NLP modules only under the same staged, deterministic-first promotion discipline.
+- **Checkpoint completion record:** Complete. NLP_FINAL_HANDOFF, regression/upgrade validation, security/privacy packaging audit, changelog, beta release evidence, Project Memory, and this roadmap now record the final P28 artifact evidence and unchanged authority boundary: Job Intelligence, role-family suggestions, search-profile feedback, and target-role supporting evidence are EXPLANATION; exact-tie search relevance is ENRICHMENT; comparison remains SHADOW; SCORING and HARD_GATE remain unimplemented and unauthorized.
 
 ---
 
@@ -1358,8 +1349,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 - **Objective:** add a bounded local NLP module for compensation/pay evidence using
   deterministic extraction, versioned metadata, focused tests, and no score/gate
   authority.
-- **Current task:** Complete. `src/intelligence/nlp/compensation.ts` extracts USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, sign-on/bonus/commission/equity/OTE signals, exact spans, and version metadata. `extractNlpDocument()` emits compensation facts with normalized entities and additive `meta.compensation`; these facts remain `informational` and shadow-only. The synthetic evaluator now counts compensation entities. Focused validation passed: `npx vitest run tests/job-nlp-compensation.test.ts tests/job-nlp-document.test.ts tests/job-nlp-evaluation.test.ts` = 3 files / 18 tests. The installer was rebuilt after P30 and validated with packaged smoke, silent install, installed smoke, seeded upgrade smoke, privacy 11/11, NLP security 3/3, installed/packaged app.asar hash match, and clean process/port cleanup. Installer: 253,596,385 bytes, SHA-256 7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251. Packaged/installed app.asar: 74,036,910 bytes, SHA-256 04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563.
-- **Exact next action:** review P30 or start the next bounded NLP module.
+- **Checkpoint completion record:** Complete. `src/intelligence/nlp/compensation.ts` extracts USD pay ranges, hourly/annual/monthly/one-time cadence, compact thousands, sign-on/bonus/commission/equity/OTE signals, exact spans, and version metadata. `extractNlpDocument()` emits compensation facts with normalized entities and additive `meta.compensation`; these facts remain `informational` and shadow-only. The synthetic evaluator now counts compensation entities. Focused validation passed: `npx vitest run tests/job-nlp-compensation.test.ts tests/job-nlp-document.test.ts tests/job-nlp-evaluation.test.ts` = 3 files / 18 tests. The installer was rebuilt after P30 and validated with packaged smoke, silent install, installed smoke, seeded upgrade smoke, privacy 11/11, NLP security 3/3, installed/packaged app.asar hash match, and clean process/port cleanup. Installer: 253,596,385 bytes, SHA-256 7E57A444A100F34BF5D481846CAA6A7BEE7FB13A162099E81FB790F97C9CA251. Packaged/installed app.asar: 74,036,910 bytes, SHA-256 04315DEB302F784D8EED0901D729F0B2564BB07D1925EB4E7A1A1913EBF09563.
 
 ---
 
@@ -1370,7 +1360,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   non-critical maintenance behind the first successful local-service start while
   preserving database safety checks, migrations, deterministic scoring, eligibility,
   lifecycle authority, and NLP trust boundaries.
-- **Current task:** Complete. `startBackend()` now logs timed startup phases and
+- **Checkpoint completion record:** Complete. `startBackend()` now logs timed startup phases and
   defers known-closure reconciliation, matched role-family refresh, stale
   intelligence reconciliation, discovery alert evaluation, scheduler startup, and
   NLP background-worker startup until after the backend is listening. The default
@@ -1384,7 +1374,6 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
   Packaged/installed `app.asar`: 74,041,483 bytes, SHA-256
   CEE52B0E0F625F25B26970ECCFF8637C27CFA2E0C243484FF3E76930613BB35F.
   Installed executable reports ProductVersion 1.1.1.0 and FileVersion 1.1.1.
-- **Exact next action:** loop back to the next bounded NLP module (recommended:
   enable Job Intelligence explanations via the existing shadow pipeline).
 - **Post-release verification fix:** live launch timing against a copy of the
   user's real 478 MB database showed `creating-api-application` at 43,863 ms on

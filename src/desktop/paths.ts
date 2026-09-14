@@ -13,6 +13,15 @@ export interface DesktopPathInput {
   resourcesPath: string;
   projectRoot: string;
   databaseOverride?: string;
+  /**
+   * Explicit override for the writable root directory. Used by the
+   * lifecycle harness to force every writable path (database, settings,
+   * credentials, resumes, snapshots, logs, browser profiles) into a
+   * temporary fixture directory. When provided, this value is used as
+   * the root instead of `userDataPath` (packaged) or
+   * `projectRoot/data/desktop-dev` (unpackaged). Test-only.
+   */
+  testRootOverride?: string;
 }
 
 export interface DesktopPaths {
@@ -47,9 +56,11 @@ export interface DesktopPaths {
 }
 
 export function resolveDesktopPaths(input: DesktopPathInput): DesktopPaths {
-  const root = input.isPackaged
-    ? input.userDataPath
-    : resolve(input.projectRoot, 'data', 'desktop-dev');
+  const root =
+    input.testRootOverride ??
+    (input.isPackaged
+      ? input.userDataPath
+      : resolve(input.projectRoot, 'data', 'desktop-dev'));
   const settings = resolve(root, 'settings');
   const assets = input.isPackaged
     ? resolve(input.resourcesPath, 'assets')
@@ -174,4 +185,57 @@ function readRuntimeDatabase(path: string): string | null {
 function isWithin(parent: string, candidate: string): boolean {
   const path = relative(resolve(parent), resolve(candidate));
   return path === '' || (!path.startsWith('..') && !path.includes(':'));
+}
+
+/**
+ * Returns the list of writable paths on a `DesktopPaths` object. Used by
+ * the lifecycle harness to verify that every writable location is
+ * inside the configured root before launching Electron, so a test
+ * cannot accidentally write to the host filesystem.
+ */
+export function writablePaths(paths: DesktopPaths): string[] {
+  return [
+    paths.root,
+    paths.data,
+    paths.database,
+    paths.resumes,
+    paths.snapshots,
+    paths.logs,
+    paths.backups,
+    paths.databaseQuarantine,
+    paths.diagnostics,
+    paths.settings,
+    paths.profilePreferences,
+    paths.candidateProfile,
+    paths.scoringConfig,
+    paths.runtimeSettings,
+    paths.credentials,
+    paths.windowState,
+    paths.linkedinProfile,
+    paths.diceProfile,
+    paths.handshakeProfile,
+    paths.indeedProfile,
+    paths.wellfoundProfile,
+    paths.ziprecruiterProfile,
+    paths.usaJobsProfile,
+  ];
+}
+
+/**
+ * Asserts that every writable path is inside `root`. Throws with the
+ * first offender otherwise. Used by the harness before launching
+ * Electron so a misconfigured fixture cannot escape isolation.
+ */
+export function assertAllPathsInsideRoot(
+  paths: DesktopPaths,
+  root: string,
+): void {
+  const normalizedRoot = resolve(root);
+  for (const candidate of writablePaths(paths)) {
+    if (!isWithin(normalizedRoot, candidate)) {
+      throw new Error(
+        `Writable path ${candidate} is outside test root ${normalizedRoot}`,
+      );
+    }
+  }
 }

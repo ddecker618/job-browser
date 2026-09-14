@@ -36,7 +36,7 @@ separate field-specific authorization (consistent with decision D-NLP-060).
 
 ## Permitted consumers
 
-- **SHADOW (0).** The current state. Output is persisted in the additive
+- **SHADOW (0).** The extraction/comparison storage state. Output is persisted in the additive
   `job_nlp_enrichments` table and consumed by diagnostics and by the
   `POST /api/jobs/:id/intelligence` endpoint. It is never consulted by any
   production decide path, never rendered opaquely as a fact, and never
@@ -86,14 +86,14 @@ hard-gate`. No skipping.
 
 ## Current status
 
-P27 records field-specific promotion while preserving shadow-mode authority:
+P35 current-source defaults apply to the P27 field-specific promotion levels:
 
 | Capability                                 | Current level           | Consumer flag/default                    | Effect                                                  |
 | ------------------------------------------ | ----------------------- | ---------------------------------------- | ------------------------------------------------------- |
 | Extraction, reconciliation, comparison     | SHADOW (0)              | Background local processing              | Additive rows and diagnostics only                      |
 | Job Intelligence facts and resume coverage | EXPLANATION (1)         | jobIntelligenceExplanation: on (default) | Evidence-labelled display only                          |
-| Reconciled role-family suggestion          | EXPLANATION (1)         | roleFamilySuggestion: off                | Suggestion only; deterministic family wins              |
-| Search-profile vocabulary feedback         | EXPLANATION (1)         | searchProfileFeedback: off               | Read-only feedback                                      |
+| Reconciled role-family suggestion          | EXPLANATION (1)         | roleFamilySuggestion: on (default)       | Suggestion only; deterministic family wins              |
+| Search-profile vocabulary feedback         | EXPLANATION (1)         | searchProfileFeedback: on (default)      | Read-only feedback                                      |
 | Valid target-role supporting evidence      | EXPLANATION (1)         | No separate promotion flag               | Explains deterministic membership only                  |
 | Search relevance tie-break                 | ENRICHMENT (2)          | searchTieBreak: off                      | Secondary ordering only inside exact deterministic ties |
 | Experimental recommendation contribution   | SHADOW (0), design only | No runtime consumer                      | Zero production effect                                  |
@@ -102,7 +102,8 @@ P27 records field-specific promotion while preserving shadow-mode authority:
 All flags are read locally at decision time. `jobIntelligenceExplanation` —
 the EXPLANATION-level display capability — is enabled by default (its prior
 default of `off` contradicted the promotion recorded below and left the
-feature unreachable). The remaining flags are off by default, and malformed
+feature unreachable). P35 also enables roleFamilySuggestion and searchProfileFeedback by default;
+searchTieBreak remains off. Malformed
 settings values fall back to these documented defaults; every capability that
 could affect score, eligibility, ranking, filtering, or lifecycle stays
 fail-closed. Settings exposes the flags read-only. The acceptance,

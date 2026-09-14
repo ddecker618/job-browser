@@ -14,6 +14,7 @@ import {
 
 import { BackendManager } from './backendManager.js';
 import { DesktopStartupError, userFacingError } from './errors.js';
+import { LifecycleController } from './lifecycleController.js';
 import { createDesktopLogger } from './logger.js';
 import { CredentialVault } from './credentialVault.js';
 import {
@@ -21,6 +22,7 @@ import {
   resolveDesktopPaths,
   type DesktopPaths,
 } from './paths.js';
+import { TrayManager, type TraySummary } from './trayManager.js';
 import { WindowManager } from './windowManager.js';
 import {
   applicationIdFromSmokeCreateResponse,
@@ -33,6 +35,11 @@ import type { NormalizedJob } from '../schemas/normalized-job.js';
 import { ROLE_DETAILS_VERSION } from '../schemas/role-details.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import { SourceRepository } from '../repositories/source-repository.js';
+import {
+  attachHarnessStdio,
+  installLifecycleHarnessHooks,
+  type LifecycleHarnessHooks,
+} from './lifecycleHarness.js';
 
 const DESKTOP_SMOKE_RESUME_ID = '00000000-0000-4000-8000-000000008303';
 const DESKTOP_SMOKE_TITLE = 'Desktop Smoke Application Engineer';
@@ -51,7 +58,34 @@ const smokeStatusPath = smokeTest
   ? resolve(app.getPath('userData'), 'smoke-status.txt')
   : null;
 recordSmokeStage('main-loaded');
-const lock = smokeTest || app.requestSingleInstanceLock();
+if (process.env['JOB_BROWSER_LIFECYCLE_TEST'] === '1') {
+  process.stderr.write('[lifecycle-harness] main loaded\n');
+}
+
+/**
+ * Lifecycle harness mode. Activated by `JOB_BROWSER_LIFECYCLE_TEST=1`.
+ * Forbids the single-instance lock (the harness spawns many short-lived
+ * Electron instances) and exposes test-only stdin/stdout hooks for
+ * scenario control. The userData and database are forced into the
+ * harness-provided temp directory; nothing reads from
+ * `projectRoot/data/desktop-dev` or `JOB_BROWSER_DB_PATH` outside the
+ * harness's control.
+ */
+const lifecycleTest = process.env['JOB_BROWSER_LIFECYCLE_TEST'] === '1';
+const lifecycleTestRoot = process.env['JOB_BROWSER_LIFECYCLE_TEST_ROOT'];
+const forceStartupFailure =
+  process.env['JOB_BROWSER_FORCE_STARTUP_FAILURE'] === '1';
+const forceTrayCreationFailure =
+  process.env['JOB_BROWSER_FORCE_TRAY_FAILURE'] === '1';
+if (lifecycleTest && lifecycleTestRoot !== undefined) {
+  app.setPath('userData', lifecycleTestRoot);
+  process.env['JOB_BROWSER_DB_PATH'] = resolve(
+    lifecycleTestRoot,
+    'data',
+    'jobs.sqlite',
+  );
+}
+const lock = smokeTest || lifecycleTest || app.requestSingleInstanceLock();
 if (!lock) app.exit(0);
 
 const backend = new BackendManager();
@@ -62,17 +96,78 @@ let credentialVault: CredentialVault;
 let diagnosticText = '';
 let starting = false;
 let commitIdentifier = 'local-dev';
+let tray: TrayManager | null = null;
+let lifecycle: LifecycleController | null = null;
+let harnessHooks: LifecycleHarnessHooks | null = null;
+if (lifecycleTest) {
+  harnessHooks = installLifecycleHarnessHooks(() => ({
+    backendUrl: backend.current?.url ?? null,
+    closeToTray: lifecycle?.getCloseToTray() ?? true,
+    trayCreated: tray?.isCreated ?? false,
+    quitRequested: lifecycle?.isQuitRequested() ?? false,
+    windowExists: windows.window !== null,
+    windowVisible: windows.window?.isVisible() ?? false,
+    startupComplete: backend.current !== null,
+    schedulerEnabled: true,
+    employerDiscoveryEnabled: true,
+    lastKnownPersisted: lifecycle?.getLastKnownPersisted() ?? null,
+    pendingWrites: 0,
+  }));
+}
+
+function requestQuit(): void {
+  lifecycle?.requestQuit();
+}
 
 app.on('second-instance', () => windows.focus());
-app.on('window-all-closed', () => app.quit());
-app.on('before-quit', (event) => {
-  if (backend.current !== null) {
-    event.preventDefault();
-    void backend.stop().finally(() => {
-      app.removeAllListeners('before-quit');
-      app.quit();
-    });
+app.on('window-all-closed', () => {
+  // `window-all-closed` fires when the last window is closed (or hidden
+  // when close-to-tray is on — see the `close` handler that preventDefaults
+  // when the lifecycle's close decision is "hide"). It does NOT fire when
+  // the window is hidden, so:
+  //  - close-to-tray on + tray available: window hides, this never fires.
+  //  - close-to-tray on + tray unavailable (startup failure): window
+  //    closes, quitRequested is set, we want a graceful exit.
+  //  - close-to-tray off: window closes, we want a graceful exit.
+  // In every case where this fires we want the application to exit; the
+  // `before-quit` handler does the actual coordination.
+  if (
+    lifecycle?.isQuitRequested() === true ||
+    backend.currentShutdown !== null
+  ) {
+    app.quit();
+    return;
   }
+  // Mark the quit here too so a close-to-tray=false close still triggers
+  // the `before-quit` coordination path on systems that close windows
+  // before emitting `before-quit`.
+  lifecycle?.markQuitRequested();
+  app.quit();
+});
+app.on('before-quit', (event) => {
+  // The single source of truth for quit coordination. Whether the
+  // trigger was a tray Exit, `desktop:safe-exit`, an ordinary close,
+  // `app.quit()` from a startup-failure path, or Windows shutdown,
+  // `before-quit` is where the bounded backend shutdown and `app.exit`
+  // happen. `requestQuit` sets the flag and destroys the tray before
+  // calling `app.quit()`, so by the time this fires we always know the
+  // intent was to exit.
+  if (lifecycle === null) return;
+  if (backend.currentShutdown !== null) {
+    // A shutdown is already running. Prevent default once and await
+    // the same promise; do not re-enter `finalizeExit`.
+    event.preventDefault();
+    void lifecycle.shutdown().finally(() => {
+      app.removeAllListeners('before-quit');
+      app.exit(0);
+    });
+    return;
+  }
+  event.preventDefault();
+  if (!lifecycle.isQuitRequested()) {
+    lifecycle.markQuitRequested();
+  }
+  void lifecycle.finalizeExit();
 });
 
 if (lock) void startDesktop();
@@ -100,6 +195,9 @@ async function startDesktop(): Promise<void> {
     ...(process.env['JOB_BROWSER_DB_PATH'] === undefined
       ? {}
       : { databaseOverride: process.env['JOB_BROWSER_DB_PATH'] }),
+    ...(lifecycleTest && lifecycleTestRoot !== undefined
+      ? { testRootOverride: lifecycleTestRoot }
+      : {}),
   });
   const defaultsRoot = app.isPackaged
     ? resolve(process.resourcesPath, 'assets', 'default-config')
@@ -108,14 +206,58 @@ async function startDesktop(): Promise<void> {
   recordSmokeStage('paths-ready');
   desktopLogger = createDesktopLogger(paths.logs);
   credentialVault = new CredentialVault(paths.credentials);
+  lifecycle = new LifecycleController({
+    backend,
+    tray: () => tray,
+    window: () => {
+      const w = windows.window;
+      return w === null
+        ? null
+        : {
+            isDestroyed: () => w.isDestroyed(),
+            hide: () => w.hide(),
+            show: () => w.show(),
+            focus: () => w.focus(),
+          };
+    },
+    app: {
+      quit: () => app.quit(),
+      exit: (code) => app.exit(code),
+    },
+    log: {
+      warn: (message, details) =>
+        desktopLogger.log(
+          'warn',
+          message,
+          (details ?? {}) as Record<string, unknown>,
+        ),
+      error: (message, details) =>
+        desktopLogger.log(
+          'error',
+          message,
+          (details ?? {}) as Record<string, unknown>,
+        ),
+    },
+  });
   windows.create({
     preload: resolve(app.getAppPath(), 'dist', 'src', 'desktop', 'preload.cjs'),
     startupHtml: paths.startupHtml,
     icon: paths.icon,
     windowState: paths.windowState,
     development: !app.isPackaged && !process.argv.includes('--built'),
+    closeDecision: () => lifecycle?.closeAction() ?? 'close',
+    querySessionEnd: () => {
+      // Bounded best-effort cleanup on Windows shutdown/logoff.
+      void lifecycle?.onWindowsSessionEnd(true, fetchJson);
+    },
+    sessionEnd: () => {
+      void lifecycle?.onWindowsSessionEnd(false, fetchJson);
+    },
   });
   recordSmokeStage('window-created');
+  await createTray();
+  recordSmokeStage('tray-created');
+  lifecycle.setTrayCreated(tray?.isCreated === true);
   session.defaultSession.setPermissionRequestHandler(
     (_contents, _permission, callback) => callback(false),
   );
@@ -139,7 +281,7 @@ async function startDesktop(): Promise<void> {
     app.exit(0);
   });
   ipcMain.handle('desktop:retry-startup', () => void runStartup());
-  ipcMain.handle('desktop:safe-exit', () => app.quit());
+  ipcMain.handle('desktop:safe-exit', () => lifecycle?.requestQuit());
   ipcMain.handle('desktop:credentials-status', async (event) => {
     ensureTrustedSender(event);
     return credentialVault.status('usajobs');
@@ -184,6 +326,33 @@ async function startDesktop(): Promise<void> {
     ensureTrustedSender(event);
     return paths.usaJobsProfile;
   });
+  ipcMain.handle('desktop:get-close-to-tray', (event) => {
+    ensureTrustedSender(event);
+    if (lifecycle === null) return { closeToTray: true };
+    return { closeToTray: lifecycle.getCloseToTray() };
+  });
+  ipcMain.handle('desktop:set-close-to-tray', async (event, value: unknown) => {
+    ensureTrustedSender(event);
+    if (typeof value !== 'boolean') {
+      throw new Error('closeToTray must be a boolean');
+    }
+    if (lifecycle === null) {
+      throw new Error('Desktop lifecycle is not ready');
+    }
+    const result = await lifecycle.persistCloseToTray(value, fetchJson);
+    if (!result.persisted) {
+      throw new Error('Could not save the background-mode preference.');
+    }
+    return { closeToTray: result.closeToTray };
+  });
+  ipcMain.handle('desktop:tray-summary', async (event) => {
+    ensureTrustedSender(event);
+    return readTraySummaryFromBackend();
+  });
+  ipcMain.handle('desktop:tray-pause-toggle', async (event) => {
+    ensureTrustedSender(event);
+    return toggleSchedulerFromBackend();
+  });
   ipcMain.handle('desktop:clear-usajobs-session', async (event) => {
     ensureTrustedSender(event);
     const { rmSync } = await import('node:fs');
@@ -207,7 +376,38 @@ async function startDesktop(): Promise<void> {
 
   await runStartup();
   recordSmokeStage('startup-finished');
-  if (smokeTest) await runDesktopSmoke();
+  if (lifecycleTest) {
+    harnessHooks?.onStartupComplete?.();
+    attachHarnessStdio({
+      getLifecycle: () => lifecycle,
+      getWindow: () => windows.window,
+      getTray: () => tray,
+      getBackendRunning: () => backend.current !== null,
+      getStartupComplete: () => backend.current !== null,
+      getSchedulerEnabled: async () => readSchedulerEnabled(),
+      getEmployerDiscoveryEnabled: async () => readEmployerDiscoveryEnabled(),
+      setSourceAttention: async (enabled: boolean, health) => {
+        await setSourceAttention(enabled, health);
+      },
+      getPendingWrites: () => 0,
+      getHarnessSnapshot: () => ({
+        backendUrl: backend.current?.url ?? null,
+        closeToTray: lifecycle?.getCloseToTray() ?? true,
+        quitRequested: lifecycle?.isQuitRequested() ?? false,
+        windowExists: windows.window !== null,
+        windowVisible: windows.window?.isVisible() ?? false,
+        startupComplete: backend.current !== null,
+        schedulerEnabled: true,
+        employerDiscoveryEnabled: true,
+        lastKnownPersisted: lifecycle?.getLastKnownPersisted() ?? null,
+      }),
+      refreshTray: async () => {
+        if (tray?.isCreated) await tray.refresh();
+      },
+    });
+  } else if (smokeTest) {
+    await runDesktopSmoke();
+  }
 }
 
 async function runStartup(): Promise<void> {
@@ -215,6 +415,9 @@ async function runStartup(): Promise<void> {
   starting = true;
   try {
     await backend.stop();
+    if (forceStartupFailure) {
+      throw new Error('Forced startup failure (test override)');
+    }
     windows.sendProgress('Preparing application');
     windows.sendProgress('Locating database');
     const handle = await backend.start(paths, {
@@ -227,6 +430,18 @@ async function runStartup(): Promise<void> {
     await windows.loadDashboard(handle.url);
     windows.sendProgress('Ready');
     diagnosticText = JSON.stringify(runtimeInfo(), null, 2);
+    await lifecycle?.loadCloseToTrayFromBackend(fetchJson);
+    await tray?.refresh();
+    if (lifecycleTest) {
+      harnessHooks?.onStartupComplete?.();
+    }
+    // Bounded background tray refresh so external scheduler/health
+    // changes that bypass the tray (e.g. Discovery Control) eventually
+    // show up in the menu and tooltip without manual intervention.
+    lifecycle?.startTrayRefreshLoop(() => {
+      if (!tray?.isCreated) return Promise.resolve();
+      return tray.refresh();
+    });
   } catch (error) {
     const startupError =
       error instanceof DesktopStartupError ? error : undefined;
@@ -281,6 +496,183 @@ function runtimeInfo() {
     rendererMode: isDev ? 'development' : 'packaged',
     commitIdentifier,
   };
+}
+
+async function createTray(): Promise<void> {
+  tray = new TrayManager({
+    iconPath: paths.icon,
+    actions: {
+      openDashboard: () => windows.focus(),
+      togglePause: async () => {
+        await toggleSchedulerFromBackend();
+      },
+      exit: () => requestQuit(),
+      refreshSummary: async () => readTraySummaryFromBackend(),
+    },
+    getSummary: async () => readTraySummaryFromBackend(),
+  });
+  try {
+    if (forceTrayCreationFailure) {
+      throw new Error('Forced tray creation failure (test override)');
+    }
+    await tray.create();
+    lifecycle?.setTrayCreated(true);
+    if (lifecycleTest) {
+      harnessHooks?.onTrayCreated?.();
+    }
+  } catch (error) {
+    // A tray creation failure (e.g., no display server in a smoke test)
+    // must not prevent the desktop from running; the window, IPC, and
+    // ordinary exit path remain available. With no tray, the close
+    // decision falls back to "close" so the user is never trapped
+    // behind a hidden window with no Exit.
+    desktopLogger.log('warn', 'Tray creation failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    tray = null;
+    lifecycle?.setTrayCreated(false);
+    if (lifecycleTest) {
+      harnessHooks?.onTrayCreated?.();
+    }
+  }
+}
+
+async function readTraySummaryFromBackend(): Promise<TraySummary> {
+  const fallback: TraySummary = {
+    schedulerEnabled: true,
+    running: backend.current !== null,
+    attentionSources: 0,
+    startupComplete: backend.current !== null,
+  };
+  const handle = backend.current;
+  if (handle === null) return fallback;
+  try {
+    const response = await fetchJson(`${handle.url}/api/tray-summary`);
+    if (!response.ok) return fallback;
+    const body = (await response.json()) as Partial<TraySummary>;
+    return {
+      schedulerEnabled: body.schedulerEnabled !== false,
+      running: body.running === true,
+      attentionSources:
+        typeof body.attentionSources === 'number' ? body.attentionSources : 0,
+      startupComplete: body.startupComplete === true,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+async function readSchedulerEnabled(): Promise<boolean> {
+  const handle = backend.current;
+  if (handle === null) return true;
+  try {
+    const response = await fetchJson(
+      `${handle.url}/api/sources/control-center`,
+    );
+    if (!response.ok) return true;
+    const body = (await response.json()) as { schedulerEnabled?: unknown };
+    return body.schedulerEnabled !== false;
+  } catch {
+    return true;
+  }
+}
+
+async function readEmployerDiscoveryEnabled(): Promise<boolean> {
+  const handle = backend.current;
+  if (handle === null) return true;
+  try {
+    const response = await fetchJson(
+      `${handle.url}/api/sources/control-center`,
+    );
+    if (!response.ok) return true;
+    const body = (await response.json()) as {
+      employerDiscoveryEnabled?: unknown;
+    };
+    return body.employerDiscoveryEnabled !== false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Test-only helper: mutate a source's health status so the tray menu
+ * picks up the attention count on its next refresh. No-op outside
+ * `JOB_BROWSER_LIFECYCLE_TEST=1`.
+ */
+async function setSourceAttention(
+  enabled: boolean,
+  health: 'healthy' | 'credentials-required' | 'failed' | 'never-run',
+): Promise<void> {
+  if (!lifecycleTest) return;
+  const handle = backend.current;
+  if (handle === null) return;
+  const database = handle.database;
+  database
+    .prepare(
+      `UPDATE sources
+          SET enabled = ?,
+              health_status = ?,
+              updated_at = ?
+        WHERE id = (SELECT id FROM sources ORDER BY id LIMIT 1)`,
+    )
+    .run(enabled ? 1 : 0, health, new Date().toISOString());
+  // Push a refresh so the harness sees the updated attention count.
+  if (tray?.isCreated) await tray.refresh();
+}
+
+/**
+ * Thin `fetch` wrapper that takes an absolute or backend-relative URL.
+ * Resolves backend URLs via the current handle so the controller can be
+ * exercised without depending on Electron's global `fetch` semantics.
+ */
+async function fetchJson(
+  input: string,
+  init?: {
+    method?: string;
+    body?: string;
+    headers?: Record<string, string>;
+  },
+): Promise<{
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+}> {
+  const handle = backend.current;
+  const url =
+    handle !== null && input.startsWith('/') ? `${handle.url}${input}` : input;
+  const response = await fetch(url, init);
+  return {
+    ok: response.ok,
+    status: response.status,
+    json: () => response.json(),
+  };
+}
+
+async function toggleSchedulerFromBackend(): Promise<TraySummary> {
+  const handle = backend.current;
+  if (handle === null) {
+    return readTraySummaryFromBackend();
+  }
+  // Read-modify-write: only flip `schedulerEnabled` so the user's explicit
+  // employer-discovery opt-out is preserved across pause/resume toggles.
+  const current = await readTraySummaryFromBackend();
+  try {
+    const response = await fetch(`${handle.url}/api/scheduler-control`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schedulerEnabled: !current.schedulerEnabled }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Backend rejected scheduler toggle: ${String(response.status)}`,
+      );
+    }
+  } catch (error) {
+    desktopLogger.log('warn', 'Tray pause toggle failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  return readTraySummaryFromBackend();
 }
 
 function ensureTrustedSender(event: IpcMainInvokeEvent): void {

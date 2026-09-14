@@ -273,8 +273,14 @@ export async function startBackend(
               : { profilePreferencesPath: options.profilePreferencesPath }),
             analyze: () =>
               new IntelligenceEngine(activeDatabase).analyze(
-                loadCandidateProfile(options.candidateProfilePath),
-                loadScoringConfig(options.scoringConfigPath),
+                loadCandidateProfile(
+                  options.candidateProfilePath,
+                  options.profilePreferencesPath,
+                ),
+                loadScoringConfig(
+                  options.scoringConfigPath,
+                  options.profilePreferencesPath,
+                ),
               ),
             evaluateAlerts: () => discoveryAlertService.evaluateRules(),
           },
@@ -468,9 +474,11 @@ export async function startBackend(
               () => {
                 const currentProfile = loadCandidateProfile(
                   options.candidateProfilePath,
+                  options.profilePreferencesPath,
                 );
                 const currentScoring = loadScoringConfig(
                   options.scoringConfigPath,
+                  options.profilePreferencesPath,
                 );
                 const reconciliation = new IntelligenceEngine(
                   activeDatabase,
