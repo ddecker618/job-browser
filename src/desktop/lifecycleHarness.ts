@@ -70,6 +70,11 @@ interface SetSourceAttentionCommand extends HarnessCommandBase {
   health?: 'healthy' | 'credentials-required' | 'failed' | 'never-run';
 }
 
+interface SetCloseToTrayCommand extends HarnessCommandBase {
+  op: 'set_close_to_tray';
+  value: boolean;
+}
+
 interface CloseCommand extends HarnessCommandBase {
   op: 'close';
 }
@@ -84,6 +89,7 @@ type HarnessCommand =
   | SimulateSessionEndCommand
   | RefreshTrayCommand
   | SetSourceAttentionCommand
+  | SetCloseToTrayCommand
   | CloseCommand;
 
 interface StateResponse {
@@ -132,6 +138,19 @@ interface DispatcherDeps {
   ) => Promise<void>;
   getPendingWrites: () => number;
   refreshTray: () => Promise<void>;
+  /**
+   * Toggle the global scheduler (read-modify-write against the backend)
+   * the same way the tray's Pause/Resume menu entry does. Returns the
+   * updated scheduler state.
+   */
+  toggleScheduler: () => Promise<{ schedulerEnabled: boolean }>;
+  /**
+   * Persist and update the in-memory close-to-tray value through the
+   * controller's write-serialized path (the same IPC route the Settings
+   * UI uses). This keeps the controller's in-memory state in sync with
+   * the backend, unlike a raw HTTP PUT to /api/desktop-settings.
+   */
+  setCloseToTray: (value: boolean) => Promise<{ closeToTray: boolean }>;
   /** Snapshot of the current observable harness state (backend URL, quit flag, etc.) */
   getHarnessSnapshot: () => Omit<
     HarnessStateFile,
@@ -354,6 +373,11 @@ async function dispatch(
         send({ ok: false, id: command.id, error: 'lifecycle not ready' });
         return;
       }
+      // Toggle the scheduler through the real backend path so the
+      // employer-discovery opt-out is preserved (read-modify-write
+      // against /api/scheduler-control). Then refresh the tray so the
+      // new label and tooltip are picked up.
+      await deps.toggleScheduler();
       await lifecycle.requestTrayRefresh(async () => {
         await deps.refreshTray();
       });
@@ -397,6 +421,14 @@ async function dispatch(
         command.enabled ?? true,
         command.health ?? 'credentials-required',
       );
+      send({ ok: true, id: command.id });
+      return;
+    }
+    case 'set_close_to_tray': {
+      const result = await deps.setCloseToTray(command.value);
+      if (result.closeToTray !== command.value) {
+        throw new Error('set_close_to_tray: backend rejected the update');
+      }
       send({ ok: true, id: command.id });
       return;
     }

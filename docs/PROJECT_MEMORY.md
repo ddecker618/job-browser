@@ -12,9 +12,10 @@ Git/source evidence takes precedence over historical completion records.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
-  Latest recorded full source verification: 159 files / 1,472 tests. The
-  2026-09-13 documentation reconciliation passed 3 focused test files / 12 tests;
-  it did not rerun the full suite or live-source validation.
+  Latest recorded full source verification: **169 files / 1,564 tests, fully
+  green (`npm run verify`, 2026-09-14, Package A/B/C lifecycle checkpoint)**.
+  The 2026-09-13 documentation reconciliation and the 2026-09-14 checkpoint
+  are committed locally; no push, no installer rebuild as part of docs work.
 - Current package version and latest validated installer: **1.1.2**, released
   at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
   P35 defaults are later source changes and are not included in that recorded
@@ -585,4 +586,41 @@ keeping every production-affecting flag off.
 - **D-NLP-100:** Added read-only `GET /api/jobs/:id/intelligence` that reuses the existing POST assembly (`jobIntelligenceDetails`) and published projection/comparison/roleFamily/coverage. It is purely read-only (no `job_nlp_enrichments`/`job_nlp_comparisons` write), returns 404 `nlp_no_analysis` when absent or stale so stale output is never presented as current, and 409 `nlp_capability_disabled` when the capability is disabled. No second analysis pipeline was added.
 - **D-NLP-101:** `JobIntelligencePreview` states are now coherent: not-analyzed (Analyze), analyzing, current cached analysis on reopen (via GET) with Re-analyze, actionable failure alert, and a genuinely-disabled notice with no actionable button (hidden cached output too). Client `api.jobIntelligence`/`api.analyzeJobIntelligence` share one `JobIntelligenceResult` type; `ApiRequestError.code` distinguishes `nlp_no_analysis` from `nlp_capability_disabled`.
 - **D-NLP-102:** Test coverage grew 1453 -> 1460. New/default-updated checks: default-enabled analysis with no flags row (200, deterministic score unchanged, jobs table untouched); GET serves current cached analysis identical to POST without persisting; GET 404 `nlp_no_analysis` before analysis and after a description edit (stale); GET/POST gate 409 when disabled; flags default + per-capability independence; status `ready`; UI disabled state without an actionable button; reopen-with-cached-analysis UI. Full `npm run verify` passed (158 files / 1460 tests); `npm run privacy:check` 11/11; `npm run nlp:security-audit` 3/3. Docs (trust levels, final handoff, roadmap matrix + ledger, beta tracker) reconciled. Committed locally; no push; no installer rebuild (release deferred to the next boundary).
-- **D-NLP-103:** P33 release boundary shipped P31 + P32 in a current installer. Version bumped 1.1.1 -> 1.1.2 (`package.json`, `package-lock.json`). Artifact: `release\Job-Browser-Setup-1.1.2.exe`, 253,597,831 B, SHA-256 `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`; packaged app.asar 74,047,442 B, SHA-256 `5BC4F99DF1AA000186E7D684B955B6B29DEE8F6701385E12B720FFEA862D2E8E`. Silent fresh install (no prior installed app on the machine — only a stale 1.0.28 uninstall registry key) exit 0; installed exe ProductVersion 1.1.2.0 / FileVersion 1.1.2; installed asar hash identical to packaged. Packaged smoke (~7.3s), installed smoke, and seeded packaged-upgrade smoke all passed. Installed Job Intelligence validated end-to-end on the installed binary against disposable seeded DBs: default state (no stored flags row) GET 404 `nlp_no_analysis` (not disabled), POST analyze 200 with evidence facts (factCount 3), comparison authority score `unchanged`, role-family suggestion still gated off by default, production score 42 unchanged, cached GET identical to POST, re-analyze consistent, explicit-disable instance GET+POST both 409 `nlp_capability_disabled`. Final gates at release state green: `npm run verify` 158 files / 1460 tests; `npm run privacy:check` 11/11; `npm run nlp:security-audit` 3/3. Production DB hash unchanged (BC5A3DBA…) with no orphan processes and port 6783 free. Note: untracked scratch `scripts/__flags-check.ts` (pre-existing, left alone) compiles into `dist/scripts/__flags-check.js` on `npm run build`; the compiled output trips the distribution privacy scan and must be removed after any local build (the installer excludes `dist/scripts/**` regardless).
+- **D-NLP-103:** P33 release boundary shipped P31 + P32 in a current installer. Version bumped 1.1.1 -> 1.1.2 (`package.json`, `package-lock.json`). Artifact: `release\Job-Browser-Setup-1.1.2.exe`, 253,597,831 B, SHA-256 `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`; packaged app.asar 74,047,442 B, SHA-256 `5BC4F99DF1AA000186E7D684B955B6B29DEE8F6701385E12B720FFEA862D2E8E`. Silent fresh install (no prior installed app on the machine — only a stale 1.0.28 uninstall registry key) exit 0; installed exe ProductVersion 1.1.2.0 / FileVersion 1.1.2; installed asar hash identical to packaged. Packaged smoke (~7.3s), installed smoke, and seeded packaged-upgrade smoke all passed. Installed Job Intelligence validated end-to-end on the installed binary against disposable seeded DBs: default state (no stored flags row) GET 404 `nlp_no_analysis` (not disabled), POST analyze 200 with evidence facts (factCount 3), comparison authority score `unchanged`, role-family suggestion still gated off by default, production score 42 unchanged, cached GET identical to POST, re-analyze consistent, explicit-disable instance GET+POST both 409 `nlp_capability_disabled`. Final gates at release state green: `npm run verify` 158 files / 1460 tests; `npm run privacy:check` 11/11; `npm run nlp:security-audit` 3/3. Production DB hash unchanged (BC5A3DBA…) with no orphan processes and port 6783 free.
+
+## Recovery checkpoint — Package A/B/C desktop lifecycle complete (2026-09-14)
+
+Package A ("My matches / All jobs": scope query, view-scope routes, scoped saved
+filters, toggle, freshness badges), Package B (consistent preference resolution:
+`backend.ts` passes `profilePreferencesPath`; `cliProfilePreferences.ts`
+helper), and Package C (close-to-tray, tray manager, lifecycle controller,
+Windows session-end, fixture-based lifecycle harness) are implemented and their
+validated state is committed.
+
+- **HARNESS:** `npm run desktop:lifecycle-harness` is **11/11 green**. It boots
+  real Electron against an isolated temp userData per scenario, drives the
+  lifecycle through in-band file commands, and covers pause/resume opt-out
+  preservation, external scheduler changes, source-attention refresh, both
+  close-to-tray behaviors, repeated exit, startup failure, tray creation
+  failure, persisted closeToTray across a real restart, and bounded
+  query-session-end. The harness backs up and restores the Node ABI
+  `better-sqlite3` binary around each run (Electron bundles ABI 146; host Node
+  is ABI 137; restore verified 1,919,488 bytes, `NODE OK`).
+- **SHUTDOWN RACE:** `LifecycleController.shutdown()` previously raced
+  `backend.stop()` against a 5 s timeout and could `app.exit(0)` while the DB
+  was still flushing pending writes (a persisted `closeToTray=false` could be
+  lost). It now always awaits `stop`; the timeout only flags `graceful:false`.
+  Regression-tested in `tests/desktop-lifecycle-controller.test.ts`.
+- **PRIVACY FIX:** the pre-existing `__flags-check.ts` diagnostic (committed in
+  `32d8b81`) hardcoded a personal AppData path and made the distribution
+  privacy scan fail on tracked files and on `dist/scripts/__flags-check.js`.
+  It is deleted (file + stale dist outputs). `npm run verify` is now fully
+  green: **169 files / 1,564 tests**. `scripts/_tmp_*.ts` remains gitignored;
+  prefer that prefix for scratch scripts so they never ship.
+- **NOTIFICATION POLICY:** `src/client/components/NotificationManager.tsx`
+  must remain silent (no browser/Windows notification sounds or OS
+  notifications); do not re-enable notifications in future desktop work.
+- **REMAINING (manual, packaged build):** real Windows shutdown/logoff
+  delivery of `query-session-end`; tray icon/menu/focus rendering; whether the
+  5 s shutdown budget fits real logoff latency. No push, no installer rebuild,
+  no live discovery as part of documentation work.

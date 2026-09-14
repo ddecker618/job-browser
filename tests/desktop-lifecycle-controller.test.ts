@@ -253,10 +253,10 @@ describe('LifecycleController', () => {
             return { stopCalls: 0 };
           },
           async stop() {
-            // Hangs forever; controller should not block past the timeout.
-            await new Promise(() => {
-              /* never resolves */
-            });
+            // Hangs past the timeout but eventually resolves so the
+            // controller still returns (the new "always await stop"
+            // contract means the test must let the stop finish).
+            await new Promise<void>((resolve) => setTimeout(resolve, 250));
           },
         },
         tray: () => makeTray(false),
@@ -266,9 +266,12 @@ describe('LifecycleController', () => {
         shutdownTimeoutMs: 50,
       });
       const start = Date.now();
-      await c.shutdown();
+      const result = await c.shutdown();
       const elapsed = Date.now() - start;
-      expect(elapsed).toBeLessThan(1_000);
+      // The timeout fires at 50 ms but we still wait for stop to
+      // complete (~250 ms), so elapsed should be at least 200 ms.
+      expect(elapsed).toBeGreaterThanOrEqual(200);
+      expect(result.graceful).toBe(false);
       expect(log.warns.length).toBeGreaterThan(0);
     });
   });
@@ -610,7 +613,7 @@ describe('LifecycleController', () => {
           get current() {
             return { stopCalls: 0 };
           },
-          stop: () => new Promise(() => undefined),
+          stop: () => new Promise<void>((resolve) => setTimeout(resolve, 80)),
         },
         tray: () => makeTray(false),
         window: () => makeWindow(),
@@ -630,7 +633,7 @@ describe('LifecycleController', () => {
           get current() {
             return { stopCalls: 0 };
           },
-          stop: () => new Promise(() => undefined),
+          stop: () => new Promise<void>((resolve) => setTimeout(resolve, 80)),
         },
         tray: () => makeTray(false),
         window: () => makeWindow(),
@@ -640,6 +643,42 @@ describe('LifecycleController', () => {
       });
       await c.finalizeExit();
       expect(app.exitCalls).toEqual([0]);
+    });
+
+    it('still awaits the actual backend stop after the timeout fires', async () => {
+      // Regression: a timed-out shutdown used to return via
+      // Promise.race, which let finalizeExit call app.exit before
+      // backend.stop() completed. The controller now always awaits
+      // the real stop so any pending DB writes are flushed.
+      let stopCompleted = false;
+      const log = makeLog();
+      const c = new LifecycleController({
+        backend: {
+          get current() {
+            return { stopCalls: 0 };
+          },
+          async stop() {
+            // Long enough that the timeout (50 ms) fires first, but
+            // short enough that the test stays fast.
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            stopCompleted = true;
+          },
+        },
+        tray: () => makeTray(false),
+        window: () => makeWindow(),
+        app: makeApp(),
+        log,
+        shutdownTimeoutMs: 50,
+      });
+      const start = Date.now();
+      const result = await c.shutdown();
+      const elapsed = Date.now() - start;
+      expect(result.graceful).toBe(false);
+      expect(stopCompleted).toBe(true);
+      // Stop should run to completion (>= 200 ms) even though the
+      // timeout fired at 50 ms.
+      expect(elapsed).toBeGreaterThanOrEqual(190);
+      expect(log.warns.length).toBeGreaterThan(0);
     });
   });
 

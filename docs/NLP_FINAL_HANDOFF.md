@@ -14,9 +14,10 @@ Git/source evidence takes precedence over historical completion records.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
-  Latest recorded full source verification: 159 files / 1,472 tests. The
-  2026-09-13 documentation reconciliation passed 3 focused test files / 12 tests;
-  it did not rerun the full suite or live-source validation.
+  Latest recorded full source verification: **169 files / 1,564 tests, fully
+  green (`npm run verify`, 2026-09-14, Package A/B/C lifecycle checkpoint)**.
+  The 2026-09-13 documentation reconciliation and the 2026-09-14 checkpoint
+  are committed locally; no push, no installer rebuild as part of docs work.
 - Current package version and latest validated installer: **1.1.2**, released
   at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
   P35 defaults are later source changes and are not included in that recorded

@@ -119,6 +119,19 @@ function requestQuit(): void {
   lifecycle?.requestQuit();
 }
 
+function installSilentNotificationPolicy(): void {
+  const denyNotifications = (permission: string): boolean =>
+    permission === 'notifications';
+
+  session.defaultSession.setPermissionRequestHandler(
+    (_contents, permission, callback) =>
+      callback(!denyNotifications(permission)),
+  );
+  session.defaultSession.setPermissionCheckHandler(
+    (_contents, permission) => !denyNotifications(permission),
+  );
+}
+
 app.on('second-instance', () => windows.focus());
 app.on('window-all-closed', () => {
   // `window-all-closed` fires when the last window is closed (or hidden
@@ -239,6 +252,7 @@ async function startDesktop(): Promise<void> {
         ),
     },
   });
+  installSilentNotificationPolicy();
   windows.create({
     preload: resolve(app.getAppPath(), 'dist', 'src', 'desktop', 'preload.cjs'),
     startupHtml: paths.startupHtml,
@@ -258,10 +272,6 @@ async function startDesktop(): Promise<void> {
   await createTray();
   recordSmokeStage('tray-created');
   lifecycle.setTrayCreated(tray?.isCreated === true);
-  session.defaultSession.setPermissionRequestHandler(
-    (_contents, _permission, callback) => callback(false),
-  );
-
   ipcMain.handle('desktop:runtime-info', (event) => {
     ensureTrustedSender(event);
     return runtimeInfo();
@@ -390,6 +400,16 @@ async function startDesktop(): Promise<void> {
         await setSourceAttention(enabled, health);
       },
       getPendingWrites: () => 0,
+      toggleScheduler: async () => {
+        const summary = await toggleSchedulerFromBackend();
+        return { schedulerEnabled: summary.schedulerEnabled };
+      },
+      setCloseToTray: async (value: boolean) => {
+        if (lifecycle === null)
+          throw new Error('Desktop lifecycle is not ready');
+        const result = await lifecycle.persistCloseToTray(value, fetchJson);
+        return { closeToTray: result.closeToTray };
+      },
       getHarnessSnapshot: () => ({
         backendUrl: backend.current?.url ?? null,
         closeToTray: lifecycle?.getCloseToTray() ?? true,

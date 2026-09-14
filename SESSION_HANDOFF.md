@@ -1,124 +1,94 @@
 # Session Handoff
 
-## Current status — Native-dependency repair + lifecycle harness validation (2026-09-14)
+## Current status — Lifecycle harness 11/11 green, full verify green (2026-09-14)
 
 This is the active checkpoint. Older sections below are historical context; do
 not start additional work from them.
 
-### Root cause of the "Database recovery required" misclassification
+### What shipped this continuation
 
-The dev database at `data\desktop-dev\data\jobs.sqlite` is **healthy and not
-corrupt** (PRAGMA `integrity_check` → `ok`, `quick_check(10)` → `ok`, 46 tables,
-75 jobs, 9 sources). The `database-recovery-failed` error the app showed
-after the previous shutdown was a **misclassification**: the desktop startup
-recovery flow wraps a native-module load failure in a
-`DatabaseRecoveryError`, which the `databaseStartupError()` helper then maps
-to the `database-recovery-failed` fallback because no BUSY/LOCKED/READONLY/
-CANTOPEN code matches. The actual cause was an ABI mismatch: the
-`better-sqlite3` native binary was compiled for the host Node's ABI
-(137), but Electron 42 bundles Node with a different `NODE_MODULE_VERSION`
-(146). `prebuild-install --runtime=electron --target=42.11.3` would have
-fixed it, but the interrupted session's rebuild never completed.
+Building on commit `32d8b81` ("Package C native-dependency repair +
+lifecycle harness", where `scripts/__flags-check.ts` was accidentally
+committed — see removal note below), this continuation fixed the last
+5 failing harness scenarios and removed a privacy leak:
 
-### Fixes shipped (uncommitted)
+1. **Shutdown no longer drops pending writes.**
+   `src/desktop/lifecycleController.ts` `shutdown()` used
+   `Promise.race([stop, timeout])`; when the timeout won, `finalizeExit`
+   called `app.exit(0)` before `backend.stop()` finished, losing writes
+   (notably a persisted `closeToTray=false`) and risking a half-closed
+   DB. It now always `await`s the real `stop`, using the timeout only to
+   flag `graceful:false`. Three controller tests were updated to resolve
+   the backend stop instead of hanging forever, and a regression test
+   asserts the stop still completes after the timeout fires.
+2. **Harness writes `closeToTray` through the real product path.**
+   The scenarios used to `PUT /api/desktop-settings` directly, which
+   persisted to the DB but never updated the `LifecycleController`
+   in-memory value, so `closeAction()` still hid the window instead of
+   exiting. Added a `set_close_to_tray` harness op
+   (`src/desktop/lifecycleHarness.ts`) wired to
+   `lifecycle.persistCloseToTray()` in `src/desktop/main.ts` — the same
+   IPC route the Settings UI uses. All close-to-tray scenarios now drive
+   that op.
+3. **Persisted-restart scenario actually shares the DB.**
+   `scripts/lifecycle-harness.ts` created a `sharedUserData` directory
+   but never passed it to `runScenarioStandalone`, so process 2 booted a
+   brand-new database and always read the default `true`. The scenario
+   now passes the shared directory to both processes.
+4. **Stale harness state no longer fools `waitForReady`.**
+   When two processes reused one userData directory, process 2 could
+   observe process 1's leftover `harness-state.json`
+   (`backendUrl` + `startupComplete`) and return before its own backend
+   was up. `launchElectron` now removes stale `harness-state.json`,
+   `harness-cmd.jsonl`, and `harness-resp-*.json` files before launch.
+5. **`query-session-end` scenario asserts process exit.**
+   `onWindowsSessionEnd` calls `app.exit(0)`, so a post-dispatch
+   in-band `get_state` is meaningless; the scenario now waits for the
+   process to exit within a bounded budget.
+6. **`waitForReady` accepts the startup-failure state.**
+   The forced-startup-failure path never sets `startupComplete`; the
+   harness now also accepts `trayCreated && backendRunning === false`.
+7. **Removed committed diagnostic `scripts/__flags-check.ts`.**
+   A one-off debug script (reads `nlp_capability_flags` from the
+   developer's own local production DB under the per-user `AppData`
+   Roaming profile, job data directory) was committed in `32d8b81`.
+   Its hardcoded username path made `tests/privacy-distribution.test.ts`
+   fail on **tracked files** and **compiled output** (tsc emitted
+   `dist/scripts/__flags-check.js`). Deleted, plus its stale
+   `dist/scripts/__flags-check.{js,js.map,d.ts}` outputs. Stale tsc output
+   is not removed by a normal build, so any new script under `scripts/`
+   needs a corresponding `dist` cleanup or a `dist` wipe on rebuild.
 
-1. `src/desktop/errors.ts`
-   - New `StartupErrorCode` value: `'native-module-load-failed'`.
-   - `databaseStartupError()` walks the `Error.cause` chain for
-     `ERR_DLOPEN_FAILED` / `MODULE_NOT_FOUND` and returns
-     `native-module-load-failed` with an accurate message instead of the
-     `database-recovery-failed` fallback. The user-facing message now
-     identifies a native module / dependency issue and tells the user the
-     database was **not modified**, preventing unnecessary quarantine or
-     recovery against a healthy DB.
-2. `scripts/native-dependencies.ts`
-   - Added `backupCurrentNativeBinary()` and
-     `restoreNativeBinaryFromBackup()` for durable recovery. A bare
-     `finally` block is insufficient when a process is killed
-     mid-swap; the on-disk backup is the recovery anchor for the next
-     harness run.
-   - `restoreNodeNativeDependencies()` now uses
-     `prebuild-install --runtime=node` instead of `npm rebuild`, which
-     on Windows without Python+MSVC toolchain would fail.
-3. `src/desktop/lifecycleHarness.ts`
-   - Added `writeHarnessState()` and `readHarnessState()`. The main
-     process writes `harness-state.json` with the current backend URL,
-     close-to-tray, and observable state. The harness reads this file
-     to discover the backend URL — stderr parsing is unreliable on
-     Windows GUI Electron because the desktop logger writes to a file
-     and `process.stdout` writes can be silently dropped.
-   - `get_state` IPC response now includes `backendUrl` so the harness
-     can also use the in-band protocol as a fallback.
-4. `scripts/lifecycle-harness.ts`
-   - Harness reads `harness-state.json` first, then falls back to
-     in-band `get_state` for the backend URL.
-   - Uses the new `backupCurrentNativeBinary()` at start and the
-     fallback `restoreNativeBinaryFromBackup()` in finally, so even
-     an abrupt computer shutdown does not leave Node ABI broken.
-   - Fixed a TypeScript parameter-property shorthand that Node's
-     `--experimental-strip-types` rejects, so the script can run via
-     `node` (used by the npm script via `tsx`).
-5. `src/desktop/main.ts`
-   - Passes a `getHarnessSnapshot()` callback to
-     `installLifecycleHarnessHooks()` so the on-disk state file is
-     kept current with the lifecycle controller's observable state.
-6. Tests
-   - `tests/native-dependencies.test.ts` (new, 5 tests): cover
-     `resolveElectronVersion`, `backupCurrentNativeBinary`,
-     `restoreNativeBinaryFromBackup`, including the missing-backup
-     failure path.
-   - `tests/desktop-startup.test.ts` (added 3 regression tests):
-     `ERR_DLOPEN_FAILED` shapes classify to
-     `native-module-load-failed`; cause-chain walking catches
-     `MODULE_NOT_FOUND` on the inner Error; genuine integrity
-     failures are still classified as `database-recovery-failed`.
-
-### Verified facts
-
-- Host Node 24.19.0, ABI 137. Electron 42.11.3 bundled Node 24.19.0,
-  ABI **146** (Electron patches the ABI for the same Node version).
-- `better-sqlite3` v12.11.1 does not ship Windows prebuilds; it
-  downloads a Node-compatible prebuild only when
-  `prebuild-install --runtime=node` is invoked without a `--target`.
-- A `better_sqlite3.node` for the wrong ABI fails with
-  `ERR_DLOPEN_FAILED` in `new Database(...)`; the desktop recovery
-  flow caught this and surfaced it as "Database recovery required".
-- The desktop logger writes to `<userData>/logs/job-browser-*.log`,
-  not stderr. Harness URL discovery must read the log file or a
-  dedicated state file (we chose a dedicated state file).
-
-### Validation
+### Validation (all recorded against HEAD + this continuation's diff)
 
 - `npm run typecheck` — green.
 - `npm run lint` — green.
 - `npm run format:check` — green.
-- `npx vitest run tests/native-dependencies.test.ts` — 5/5 pass.
-- `npx vitest run tests/desktop-startup.test.ts` — 8/8 pass.
 - `npm run build` — green.
-- `npm run verify` — 168 test files / 1,562 tests pass, 1 failure
-  (`tests/privacy-distribution.test.ts > contains no personal-data
-  markers in compiled output` — **pre-existing**, unrelated to this
-  work).
-- `npm run desktop:lifecycle-harness` — **6 of 11 scenarios pass**:
-  - ✅ `external scheduler change updates tray`
-  - ✅ `source attention count updates on refresh`
-  - ✅ `close with close-to-tray on hides the window`
-  - ✅ `tray Exit and repeated exit terminate cleanly`
-  - ✅ `tray creation failure falls back to closing`
-  - ✅ `persisted closeToTray write` (process 1)
-  - ❌ `pause/resume preserves opt-out` (pause toggle did not flip
-    schedulerEnabled — likely a timing race between the toggle and
-    the next `get_state` poll)
-  - ❌ `close with close-to-tray off exits gracefully` (Electron did
-    not exit within 8 s; the shutdown is happening but the bounded
-    timeout in `lifecycleController.shutdown()` is firing)
-  - ❌ `startup failure leaves a tray Exit path` (ready timeout, 30 s
-    insufficient under forced-startup-failure)
-  - ❌ `persisted closeToTray survives restart` (read returns the
-    default `true` rather than the previously-written `false` — DB
-    read or migration ordering issue)
-  - ❌ `query-session-end is bounded` (timeout under the 10 s in-band
-    budget)
+- `npm run verify` — **169 test files / 1,564 tests, all pass.** The
+  previously recorded `privacy-distribution` failure is now resolved
+  (it was caused by the committed `__flags-check.ts`, not the runtime
+  code). Test-file growth vs `32d8b81` baseline: 168 → 169 files,
+  1,562 → 1,564 tests (the 3 updated + 1 new shutdown-regression test
+  net to +2 — one pre-existing test was removed with the file? No: the
+  +2 delta is the new regression test plus the earlier
+  `desktop-lifecycle-controller.test.ts` count revision during the
+  shutdown test rework).
+- `npm run desktop:lifecycle-harness` — **11 of 11 scenarios pass**:
+  1. ✅ `pause/resume preserves opt-out`
+  2. ✅ `external scheduler change updates tray`
+  3. ✅ `source attention count updates on refresh`
+  4. ✅ `close with close-to-tray on hides the window`
+  5. ✅ `close with close-to-tray off exits gracefully`
+  6. ✅ `tray Exit and repeated exit terminate cleanly`
+  7. ✅ `startup failure leaves a tray Exit path`
+  8. ✅ `tray creation failure falls back to closing`
+  9. ✅ `persisted closeToTray write`
+  10. ✅ `persisted closeToTray survives restart`
+  11. ✅ `query-session-end is bounded`
+- Native binary restored after the harness run:
+  `better_sqlite3.node` = 1,919,488 bytes; Node require test
+  `NODE OK` (host Node ABI 137, not Electron ABI 146).
 
 ### Remaining manual Windows acceptance items
 
@@ -134,21 +104,21 @@ fixed it, but the interrupted session's rebuild never completed.
 - Whether the brief `shutdown` timeout (default 5 s) is acceptable
   for real Windows shutdown latency requires a packaged build and
   real logoff timing.
+- `src/client/components/NotificationManager.tsx` must remain **silent**
+  (no browser/Windows notification sounds or OS notifications). Do not
+  re-enable notifications during any future work.
 
 ### Recommended next task
 
-The remaining 5 lifecycle scenarios are timing/ordering bugs in the
-harness, not in the desktop lifecycle code. Tighten the harness
-synchronization: (a) poll the on-disk state file after the
-`simulate_tray_pause` command for a `schedulerEnabled` change before
-asserting; (b) increase the close-with-close-to-tray-off exit budget
-to 15 s and log whether `before-quit` or `window-all-closed`
-triggered; (c) verify the persisted-settings read by re-querying
-`/api/scheduler-control` after the restart, not just
-`/api/desktop-settings`; (d) for the startup-failure scenario,
-decrease the backend-start timeout used by `waitForReady` to match
-the forced-failure path. These are harness-correctness fixes, not
-product fixes.
+Run the automated desktop smoke and packaged/installed smoke paths
+(`npm run desktop:smoke`, `npm run desktop:smoke:packaged` /
+`desktop:smoke:installed`) now that the fixture harness is fully green,
+then perform the manual Windows acceptance items above on a packaged
+build. Note: `__flags-check.ts` removal shows `dist/scripts/` accumulates
+stale artifacts from tsc; prefer a `rm -rf dist/scripts` style clean when
+working on scripts. No product changes are expected for the harness fixes
+themselves; the only product change this continuation made is the
+shutdown write-order guarantee.
 
 This is the active checkpoint. Older sections below are historical context; do
 not start additional work from them.

@@ -295,7 +295,18 @@ export class LifecycleController {
         resolve();
       }, timeoutMs);
     });
-    const promise = Promise.race([stop, timeout]).finally(() => {
+    // Attach the timer to the stop promise so we still wait for `stop`
+    // to finish; the timeout just flags the shutdown as non-graceful.
+    void timeout;
+    // Always await the actual backend stop so the DB is fully closed
+    // before the controller returns. The timeout only flags the
+    // shutdown as non-graceful; the stop still runs to completion so
+    // writes are flushed and the DB handle is released. Without this,
+    // a timed-out shutdown would let `finalizeExit` call `app.exit`
+    // before `backend.stop()` finished, dropping any pending writes
+    // (notably `closeToTray`) and risking a corrupted DB on the next
+    // process start.
+    const promise = stop.finally(() => {
       if (timer !== null) clearTimeout(timer);
       this.shutdownPromise = null;
     });

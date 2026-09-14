@@ -37,9 +37,10 @@ Git/source evidence takes precedence over historical completion records.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
-  Latest recorded full source verification: 159 files / 1,472 tests. The
-  2026-09-13 documentation reconciliation passed 3 focused test files / 12 tests;
-  it did not rerun the full suite or live-source validation.
+  Latest recorded full source verification: **169 files / 1,564 tests, fully
+  green (`npm run verify`, 2026-09-14, Package A/B/C lifecycle checkpoint)**.
+  The 2026-09-13 documentation reconciliation and the 2026-09-14 checkpoint
+  are committed locally; no push, no installer rebuild as part of docs work.
 - Current package version and latest validated installer: **1.1.2**, released
   at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
   P35 defaults are later source changes and are not included in that recorded
@@ -1426,7 +1427,43 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 | 2026-09-11 | P32 Job Intelligence enablement | `jobIntelligenceExplanation` default on; read-only GET cached analysis route; coherent preview states; `npm run verify` 158 files / 1460 tests PASS; privacy 11/11; security 3/3                                                                                                                                                                                                          |
 | 2026-09-11 | P33 release boundary 1.1.2      | shipped P31 FTS fix + P32 enablement; installer 253,597,831 B / SHA `A77B1F74…FE28F2`; asar 74,047,442 B / SHA `5BC4F99D…62D2E8E`; packaged/installed/seeded-upgrade smokes PASS; installed Job Intelligence validated (default 404->200 on analyze, cached GET, re-analyze, explicit-disable 409, score unchanged); `npm run verify` 158 files / 1460 tests; privacy 11/11; security 3/3 |
 
+| 2026-09-14 | Package A/B/C lifecycle checkpoint | cross-cutting desktop lifecycle work completed and validated: scope query/routes/saved filters (A), preference resolution via `profilePreferencesPath` (B), close-to-tray + tray manager + `LifecycleController` + session-end + fixture harness (C); `npm run desktop:lifecycle-harness` **11/11**; shutdown race closed (`backend.stop()` always awaited); `set_close_to_tray` IPC harness op; `__flags-check.ts` privacy leak removed; `npm run verify` **169 files / 1564 tests, fully green**; typecheck/lint/format:check green; branch local, no push, no installer rebuild |
+
 | 2026-09-11 | P8 target-role search | verify 145/1416 PASS; build PASS; exact membership and current P6 evidence |
+
+## Package A/B/C desktop lifecycle — verified (2026-09-14)
+
+Cross-cutting desktop lifecycle work now lands on the shared source tree
+without changing NLP behavior or producing an installer.
+
+- **Scope (Package A + B):** "My matches / All jobs" scope query on the jobs
+  route, view-scope routes that skip the scope filter, scope-aware saved
+  filters, scope toggle, and freshness badges. Preference resolution made
+  consistent: `src/server/backend.ts` passes the real `profilePreferencesPath`
+  so JSON prefs live beside the DB; `cliProfilePreferences.ts` helper reused.
+- **Lifecycle (Package C):** close-to-tray, tray manager, updates, native image,
+  `LifecycleController` (persist default, Windows session-end → app exit),
+  and a fixture-based lifecycle harness. The 11-scenario harness boots real
+  Electron against isolated temp userData and is reproducible via
+  `npm run desktop:lifecycle-harness`. It is the prime evidence for "Package C
+  is complete" pending the manual packaged-shutdown acceptance items below.
+- **Shutdown race:** `LifecycleController.shutdown()` previously raced
+  `backend.stop()` and could call `app.exit(0)` before DB writes flushed
+  (persisted `closeToTray=false` could be lost). It now always awaits `stop`;
+  the timeout only flags `graceful:false`. Regression covered in
+  `tests/desktop-lifecycle-controller.test.ts` (26/26).
+- **Validation at checkpoint:** `npm run verify` 169 files / 1,564 tests (fully
+  green — the deleted `__flags-check.ts` had been leaking a personal path),
+  `npm run desktop:lifecycle-harness` 11/11, `npm run typecheck` / `lint` /
+  `format:check` green, `npm run build` exit 0. Node-ABI `better_sqlite3.node`
+  restored after harness runs.
+- **NOTIFICATION POLICY (unchanged):** `src/client/components/NotificationManager.tsx`
+  must remain silent — no browser/Windows notification sounds or OS
+  notifications; do not re-enable notifications in future desktop work.
+- **Remaining (manual, packaged build):** real Windows shutdown/logoff delivery
+  of `query-session-end`; tray icon/menu/focus rendering; fitting the 5 s
+  shutdown budget within real logoff latency. No push, no installer rebuild, no
+  live discovery as part of documentation work.
 
 ## NLP integration repair — verified
 
