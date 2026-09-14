@@ -13,13 +13,13 @@ Git/source evidence takes precedence over historical completion records.
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
   Latest recorded full source verification: **169 files / 1,564 tests, fully
-  green (`npm run verify`, 2026-09-14, Package A/B/C lifecycle checkpoint)**.
-  The 2026-09-13 documentation reconciliation and the 2026-09-14 checkpoint
-  are committed locally; no push, no installer rebuild as part of docs work.
-- Current package version and latest validated installer: **1.1.2**, released
-  at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
-  P35 defaults are later source changes and are not included in that recorded
-  installer. No later rebuild or installation is established by this record.
+  green (`npm run verify`, 2026-09-14)**. The 2026-09-14 Package A/B/C
+  lifecycle checkpoint and the 1.1.3 release boundary are committed locally;
+  no push.
+- Current package version and latest validated installer: **1.1.3**, released
+  at the Package A/B/C release boundary (2026-09-14). That artifact includes
+  the prior P31/P32/P34/P35 source plus Package A/B/C desktop lifecycle work.
+  No later rebuild or installation is established by this record.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is
@@ -620,6 +620,20 @@ validated state is committed.
 - **NOTIFICATION POLICY:** `src/client/components/NotificationManager.tsx`
   must remain silent (no browser/Windows notification sounds or OS
   notifications); do not re-enable notifications in future desktop work.
+  The main process (`src/desktop/main.ts`) denies `notifications` permission
+  checks/requests before the BrowserWindow is created.
+- **RELEASED AS 1.1.3 (2026-09-14):** `release\Job-Browser-Setup-1.1.3.exe`
+  253,613,582 B, SHA-256
+  `E8788D4B6E37D72912E5F29BFF24A4B0B8F5F521F7E6334858D94B9D2FD34A01`;
+  packaged and installed app.asar identical 74,130,955 B / SHA-256
+  `7FD522A609DCE15D1D03F50C94455D946293B35A18DD93A8241C7E3DCD1A6001`;
+  installed exe ProductVersion 1.1.3.0 / FileVersion 1.1.3. Silent upgrade
+  from the 1.1.2 install exit 0. Packaged smoke, packaged seeded-upgrade
+  smoke, installed smoke, installed seeded-upgrade smoke all PASS;
+  privacy:check 11/11; nlp:security-audit 3/3; lifecycle harness 11/11;
+  `npm run verify` 169 files / 1,564 tests. Notification silencing confirmed
+  in the packaged asar. Production DB untouched; no orphan processes and
+  port 6783 free after validation.
 - **REMAINING (manual, packaged build):** real Windows shutdown/logoff
   delivery of `query-session-end`; tray icon/menu/focus rendering; whether the
   5 s shutdown budget fits real logoff latency. No push, no installer rebuild,

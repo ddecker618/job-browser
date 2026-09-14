@@ -1,5 +1,49 @@
 # Changelog
 
+## [1.1.3] - 2026-09-14
+
+### Desktop Lifecycle (Package A/B/C)
+
+- **Close-to-tray and tray lifecycle shipped.** The desktop app now hides to
+  the system tray on window close when close-to-tray is enabled, exits
+  cleanly when it is disabled (or the tray is unavailable), persists the
+  close-to-tray preference across restarts, and provides tray actions
+  (Open Job Browser, Pause/Resume Discovery, Exit Job Browser). Windows
+  session-end (`query-session-end` / `session-end`) registration gives
+  bounded best-effort cleanup on shutdown/logoff. A fixture-based lifecycle
+  harness (`npm run desktop:lifecycle-harness`) boots real Electron against
+  an isolated temp user-data directory and validates all 11 lifecycle
+  scenarios.
+- **Shutdown write-order fix.** `LifecycleController.shutdown()` previously
+  raced `backend.stop()` against a timeout and could call `app.exit(0)`
+  while the database was still flushing writes (a persisted
+  `closeToTray=false` could be lost). It now always awaits the real
+  `backend.stop()`; the timeout only flags `graceful:false`.
+- **Scoped views (Package A).** "My matches / All jobs" scope query, scoped
+  routes, scope-aware saved filters, the All-jobs toggle, and
+  personal-score freshness badges.
+- **Consistent preference resolution (Package B).** `backend.ts` passes the
+  real `profilePreferencesPath` so JSON preferences live beside the
+  database; the `cliProfilePreferences` helper is reused by the auxiliary
+  CLIs.
+- **Notifications remain disabled.** `NotificationManager.tsx` stays silent
+  and the main process denies `notifications` permission checks/requests
+  before the BrowserWindow is created.
+- Rebuilt and validated the versioned installer:
+  `release\Job-Browser-Setup-1.1.3.exe`, 253,613,582 bytes, SHA-256
+  `E8788D4B6E37D72912E5F29BFF24A4B0B8F5F521F7E6334858D94B9D2FD34A01`.
+  Packaged and installed `app.asar` match SHA-256
+  `7FD522A609DCE15D1D03F50C94455D946293B35A18DD93A8241C7E3DCD1A6001`.
+  Installed executable reports ProductVersion `1.1.3.0` and FileVersion
+  `1.1.3`.
+- Validated against the packaged and installed artifacts: packaged smoke,
+  packaged seeded-upgrade smoke, installed smoke, and installed seeded-upgrade
+  smoke passed; installed asar matches packaged; privacy check 11/11;
+  NLP security audit 3/3; lifecycle harness 11/11. Final gates at release
+  state green: `npm run verify` 169 files / 1,564 tests, `npm run privacy:check`
+  11/11, `npm run nlp:security-audit` 3/3. No orphan processes and port 6783
+  free after validation; production data untouched.
+
 ## [Unreleased] - 2026-09-12
 
 ### Job Intelligence — EXPLANATION defaults

@@ -38,13 +38,13 @@ Git/source evidence takes precedence over historical completion records.
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
   Latest recorded full source verification: **169 files / 1,564 tests, fully
-  green (`npm run verify`, 2026-09-14, Package A/B/C lifecycle checkpoint)**.
-  The 2026-09-13 documentation reconciliation and the 2026-09-14 checkpoint
-  are committed locally; no push, no installer rebuild as part of docs work.
-- Current package version and latest validated installer: **1.1.2**, released
-  at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
-  P35 defaults are later source changes and are not included in that recorded
-  installer. No later rebuild or installation is established by this record.
+  green (`npm run verify`, 2026-09-14)**. The 2026-09-14 Package A/B/C
+  lifecycle checkpoint and the 1.1.3 release boundary are committed locally;
+  no push.
+- Current package version and latest validated installer: **1.1.3**, released
+  at the Package A/B/C release boundary (2026-09-14). That artifact includes
+  the prior P31/P32/P34/P35 source plus Package A/B/C desktop lifecycle work.
+  No later rebuild or installation is established by this record.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is
@@ -79,22 +79,35 @@ preserve local data, source provenance, and current deterministic authority.
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P35 EXPLANATION defaults shipped (role-family +
-                     search-profile projections default-on; searchTieBreak
-                     stays off)
-CURRENT_TASK:        role-family / search-profile EXPLANATION defaults
-LAST_COMPLETED:      flipped roleFamilySuggestion + searchProfileFeedback to
-                     on-by-default in DEFAULT_NLP_CAPABILITY_FLAGS; added
-                     default-on connected-API coverage; verify 159/1472 green
-NEXT_ACTION:         discuss and scope the next feature; P35 committed. Then the
-                     next bounded NLP module or the next release boundary
-FILES_IN_PROGRESS:   capabilityFlags defaults + connected-API test (done);
-                     no P35 files pending; checkpoint fd63a2a committed
-TESTS_TO_RUN:        run npm run verify after any further source change (1472
-                     tests green as of P35)
-KNOWN_FAILURES:      none
-LATEST_CHECKPOINT:   P35 committed as fd63a2a; see git
-                     log HEAD + docs/CHANGELOG for context
+CURRENT_STAGE:       Package A/B/C desktop lifecycle complete; 1.1.3 release
+                     boundary shipped and validated (close-to-tray, tray
+                     manager, LifecycleController, session-end, lifecycle
+                     harness)
+CURRENT_TASK:        release-boundary validation and packaging of Package
+                     A/B/C lifecycle work (no new NLP or feature work);
+                     documentation + commit done at the boundary
+LAST_COMPLETED:      1.1.3 release boundary: version bumped 1.1.2 -> 1.1.3,
+                     NSIS installer rebuilt and validated (installer + asar
+                     SHA-256 recorded in CHANGELOG); packaged/installed/upgrade
+                     smokes PASS; lifecycle harness 11/11; privacy 11/11;
+                     security 3/3; verify 169 files / 1,564 tests green;
+                     notifications confirmed disabled in the asar; no orphan
+                     processes; prod DB untouched
+NEXT_ACTION:         nothing pending in source; remaining acceptable work is
+                     manual packaged Windows acceptance (real logoff delivery
+                     of query-session-end, tray rendering, real shutdown-
+                     latency budget) or the next product feature branch
+FILES_IN_PROGRESS:   none; checkpoint a7c4356 + 1.1.3 release commit recorded
+TESTS_TO_RUN:        none new required; on any future source change rerun
+                     npm run verify + npm run desktop:lifecycle-harness +
+                     packaged/installed smokes
+KNOWN_FAILURES:      none in source; remaining manual Windows acceptance only
+                     (real logoff delivery of query-session-end, tray
+                     rendering, real shutdown-latency budget)
+LATEST_CHECKPOINT:   a7c4356 (Package A/B/C lifecycle; shutdown race fix)
+                     + 1.1.3 release boundary commit; P35 NLP defaults
+                     committed as fd63a2a; see git log HEAD + docs/CHANGELOG
+                     for context
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -135,8 +148,10 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P35 EXPLANATION defaults shipped; do not restart
-                     completed P0-P35
+SAFE_RESUME_POINT:   Package A/B/C lifecycle complete (a7c4356, harness
+                     11/11, verify 169/1564) + 1.1.3 release boundary
+                     committed; do not restart completed P0-P35 or Package
+                     A/B/C work
 ```
 
 ---
@@ -1460,6 +1475,14 @@ without changing NLP behavior or producing an installer.
 - **NOTIFICATION POLICY (unchanged):** `src/client/components/NotificationManager.tsx`
   must remain silent — no browser/Windows notification sounds or OS
   notifications; do not re-enable notifications in future desktop work.
+- **Released as 1.1.3 (2026-09-14):** `release\Job-Browser-Setup-1.1.3.exe`
+  253,613,582 B, SHA-256 `E8788D4B6E37D72912E5F29BFF24A4B0B8F5F521F7E6334858D94B9D2FD34A01`;
+  packaged and installed app.asar identical 74,130,955 B / SHA-256
+  `7FD522A609DCE15D1D03F50C94455D946293B35A18DD93A8241C7E3DCD1A6001`; installed
+  exe ProductVersion 1.1.3.0. Packaged smoke, packaged seeded-upgrade smoke,
+  installed smoke, installed seeded-upgrade smoke PASS; privacy:check 11/11;
+  nlp:security-audit 3/3; lifecycle harness 11/11; verify 169 files / 1,564
+  tests. Notification silencing confirmed in the packaged asar. No push.
 - **Remaining (manual, packaged build):** real Windows shutdown/logoff delivery
   of `query-session-end`; tray icon/menu/focus rendering; fitting the 5 s
   shutdown budget within real logoff latency. No push, no installer rebuild, no

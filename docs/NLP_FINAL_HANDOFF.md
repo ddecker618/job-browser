@@ -15,13 +15,13 @@ Git/source evidence takes precedence over historical completion records.
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
   Latest recorded full source verification: **169 files / 1,564 tests, fully
-  green (`npm run verify`, 2026-09-14, Package A/B/C lifecycle checkpoint)**.
-  The 2026-09-13 documentation reconciliation and the 2026-09-14 checkpoint
-  are committed locally; no push, no installer rebuild as part of docs work.
-- Current package version and latest validated installer: **1.1.2**, released
-  at P33 (`c83949b`). That artifact includes P31/P32. P34 source-health code and
-  P35 defaults are later source changes and are not included in that recorded
-  installer. No later rebuild or installation is established by this record.
+  green (`npm run verify`, 2026-09-14)**. The 2026-09-14 Package A/B/C
+  lifecycle checkpoint and the 1.1.3 release boundary are committed locally;
+  no push.
+- Current package version and latest validated installer: **1.1.3**, released
+  at the Package A/B/C release boundary (2026-09-14). That artifact includes
+  the prior P31/P32/P34/P35 source plus Package A/B/C desktop lifecycle work.
+  No later rebuild or installation is established by this record.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is
