@@ -36,11 +36,12 @@ Git/source evidence takes precedence over historical completion records.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
-  Latest recorded full source verification: **169 files / 1,564 tests, fully
-  green (`npm run verify`, 2026-09-14)**. The 2026-09-14 Package A/B/C
-  lifecycle checkpoint and the 1.1.3 release boundary are committed locally;
-  no push.
+- NLP Stages 0–29 and P0–P36 are complete. P36 is committed locally (not yet
+  pushed). P35 was committed as `fd63a2a`. Latest recorded full source
+  verification: **169 files / 1,573 tests, fully green (`npm run verify`,
+  2026-09-14)**. The 2026-09-14 Package A/B/C lifecycle checkpoint and the
+  1.1.3 release boundary are committed locally; P36 is also committed but
+  not yet pushed.
 - Current package version and latest validated installer: **1.1.3**, released
   at the Package A/B/C release boundary (2026-09-14). That artifact includes
   the prior P31/P32/P34/P35 source plus Package A/B/C desktop lifecycle work.
@@ -79,35 +80,26 @@ preserve local data, source provenance, and current deterministic authority.
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       Package A/B/C desktop lifecycle complete; 1.1.3 release
-                     boundary shipped and validated (close-to-tray, tray
-                     manager, LifecycleController, session-end, lifecycle
-                     harness)
-CURRENT_TASK:        release-boundary validation and packaging of Package
-                     A/B/C lifecycle work (no new NLP or feature work);
-                     documentation + commit done at the boundary
-LAST_COMPLETED:      1.1.3 release boundary: version bumped 1.1.2 -> 1.1.3,
-                     NSIS installer rebuilt and validated (installer + asar
-                     SHA-256 recorded in CHANGELOG); packaged/installed/upgrade
-                     smokes PASS; lifecycle harness 11/11; privacy 11/11;
-                     security 3/3; verify 169 files / 1,564 tests green;
-                     notifications confirmed disabled in the asar; no orphan
-                     processes; prod DB untouched
-NEXT_ACTION:         nothing pending in source; remaining acceptable work is
-                     manual packaged Windows acceptance (real logoff delivery
-                     of query-session-end, tray rendering, real shutdown-
-                     latency budget) or the next product feature branch
-FILES_IN_PROGRESS:   none; checkpoint a7c4356 + 1.1.3 release commit recorded
+CURRENT_STAGE:       P36 coverage abstention hygiene complete; 1.1.3 release
+                     boundary shipped; no push, no installer rebuild
+CURRENT_TASK:        none pending; P36 committed locally; ready for next
+                     development task or push of P36
+LAST_COMPLETED:      P36: consistent UNKNOWN abstention for failed resume
+                     snapshots, coverageContext capture-state payload, client
+                     abstention rendering (13 files, 1573 tests green);
+                     verify + privacy 11/11 + security 3/3 + build PASS
+NEXT_ACTION:         nothing pending in source; acceptable next work is push
+                     of P36, the next product feature branch, or manual
+                     packaged Windows acceptance
+FILES_IN_PROGRESS:   none; P36 committed locally alongside the existing
+                     a7c4356 + 1.1.3 release boundary commits
 TESTS_TO_RUN:        none new required; on any future source change rerun
                      npm run verify + npm run desktop:lifecycle-harness +
                      packaged/installed smokes
-KNOWN_FAILURES:      none in source; remaining manual Windows acceptance only
-                     (real logoff delivery of query-session-end, tray
-                     rendering, real shutdown-latency budget)
-LATEST_CHECKPOINT:   a7c4356 (Package A/B/C lifecycle; shutdown race fix)
-                     + 1.1.3 release boundary commit; P35 NLP defaults
-                     committed as fd63a2a; see git log HEAD + docs/CHANGELOG
-                     for context
+KNOWN_FAILURES:      none in source
+LATEST_CHECKPOINT:   P36 coverage abstention hygiene (local commit);
+                     P35 NLP defaults committed as fd63a2a; see git log
+                     HEAD + docs/CHANGELOG for context
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -148,10 +140,12 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   Package A/B/C lifecycle complete (a7c4356, harness
-                     11/11, verify 169/1564) + 1.1.3 release boundary
-                     committed; do not restart completed P0-P35 or Package
-                     A/B/C work
+SAFE_RESUME_POINT:   P36 coverage abstention hygiene complete and committed
+                     locally (13 files, verify 169/1573 green) atop the
+                     Package A/B/C lifecycle (a7c4356, harness 11/11) +
+                     1.1.3 release boundary commits; do not restart completed
+                     P0-P36 or Package A/B/C work; push of P36 remains
+                     pending user approval
 ```
 
 ---
@@ -1444,7 +1438,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 | 2026-09-14 | Package A/B/C lifecycle checkpoint | cross-cutting desktop lifecycle work completed and validated: scope query/routes/saved filters (A), preference resolution via `profilePreferencesPath` (B), close-to-tray + tray manager + `LifecycleController` + session-end + fixture harness (C); `npm run desktop:lifecycle-harness` **11/11**; shutdown race closed (`backend.stop()` always awaited); `set_close_to_tray` IPC harness op; `__flags-check.ts` privacy leak removed; `npm run verify` **169 files / 1564 tests, fully green**; typecheck/lint/format:check green; branch local, no push, no installer rebuild |
 
-| 2026-09-11 | P8 target-role search | verify 145/1416 PASS; build PASS; exact membership and current P6 evidence |
+| 2026-09-14 | P36 coverage abstention hygiene | snapshot parse failure now yields consistent UNKNOWN evidence for all five kinds (never MISSING); `coverageContext` capture-state payload (`no_application`/`no_snapshot`/`parsed`/`failed` + `parsingError`); client abstention notes; adapter bumped to `resume-snapshot-evidence-v2`; `npm run verify` **169 files / 1573 tests** PASS; privacy 11/11; security 3/3; build PASS; committed locally, not pushed |
 
 ## Package A/B/C desktop lifecycle — verified (2026-09-14)
 
@@ -1497,3 +1491,40 @@ invalidation) and rewrites the Job Intelligence preview UI to render real
 facts with evidence. Production scoring, eligibility, ranking, filtering, and
 lifecycle remain authoritative (`productionEffect: 'none'`). Verified:
 `npm run verify` 136 files / 1346 tests, `npm run privacy:check` 11/11.
+
+---
+
+## P36 — Coverage Absence Explainability and Snapshot Abstention Hygiene
+
+- **Status:** [x]
+- **Objective:** make coverage absence and snapshot parse failures explicit and
+  consistent everywhere NLP evidence is surfaced: never report `MISSING` for a
+  failed snapshot (and never silently claim coverage the client cannot rely
+  on), give the client a deterministic capture-state signal to drive absence
+  explanations, and keep all of this read-only and shadow-gated.
+- **Checkpoint completion record:** Complete. `snapshotEvidence.ts`
+  (`SNAPSHOT_EVIDENCE_ADAPTER_VERSION` bumped to `resume-snapshot-evidence-v2`)
+  now emits explicit unknown placeholders for all five resume-evidence kinds
+  (skills, certifications, experience, education, clearance) whenever the
+  evidence-source snapshot failed to parse, so failed snapshots report
+  consistent `UNKNOWN` per kind and never `MISSING`. The intelligence endpoint
+  now returns a read-only `coverageContext` payload in addition to `coverage`:
+  `captureState` is `no_application` | `no_snapshot` | `parsed` | `failed`,
+  plus `parsingError` for server/UI diagnosis. Types
+  `RequirementCoverageCaptureState` / `RequirementCoverageContext` were added to
+  `src/intelligence/nlp/requirementCoverage.ts`; `ResumeSnapshotEvidenceSource`
+  gained `parsingError` (additive model field, no SQL migration) populated by
+  the snapshot repository; `jobIntelligenceDetails` in
+  `src/server/app.ts` returns `coverageContext`. The Job Intelligence preview
+  renders an absence/abstention note per state and a failed-parse note above the
+  coverage section (`.job-intelligence-abstention-note`, unstyled). Focused
+  validation: `tests/job-nlp-snapshot-evidence.test.ts`,
+  `tests/job-nlp-production-coverage.test.ts`,
+  `tests/job-nlp-coverage-api.test.ts` (4 tests incl. failed-state all-UNKNOWN),
+  `tests/job-intelligence-coverage-ui.test.tsx` (5 tests), plus
+  `tests/job-intelligence-ui.test.tsx` and
+  `tests/job-nlp-shadow-regression.test.ts` updates. Full gate:
+  `npm run verify` **169 files / 1,573 tests** fully green, `npm run privacy:check`
+  11/11, `npm run nlp:security-audit` 3/3, `npm run build` PASS. This is
+  documentation-complete and committed locally (implementation commit + docs
+  commit); not pushed, no installer rebuilt, no version bump.

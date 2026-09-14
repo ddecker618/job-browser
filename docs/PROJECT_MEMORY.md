@@ -465,10 +465,11 @@ records durable architectural truth only.
 - **Intelligence UX prototype (Stage 26):**
   `src/client/components/JobIntelligencePreview.tsx` adds a drawer-local,
   read-only Job Intelligence preview with required/preferred/mentioned summary,
-  source labels, and `Interpreted as:` wording. Resume coverage is explicitly
-  `Unknown` until a separate read-only evidence endpoint exists; production
-  score/recommendation UI remains unchanged (D-NLP-057/058/059). Details live in
-  `docs/NLP_INTELLIGENCE_UX_PROTOTYPE.md`.
+  source labels, and `Interpreted as:` wording. Resume coverage is served from
+  the submitted immutable snapshot (P11); P36 added a `coverageContext` payload
+  with capture-state explanation and consistent abstention for failed snapshots.
+  Production score/recommendation UI remains unchanged (D-NLP-057/058/059).
+  Details live in `docs/NLP_INTELLIGENCE_UX_PROTOTYPE.md`.
 - **Promotion design (Stage 27):**
   `docs/NLP_PROMOTION_DESIGN.md` defines Levels 0-4 and a field-by-field hard
   promotion gate. The current maximum is Level 2 additive shadow output; no

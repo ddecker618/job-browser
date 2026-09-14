@@ -21,8 +21,12 @@ Implementation:
 - Required, preferred, and mentioned job statements are summarized separately.
 - Each row shows the raw job-detail phrase, its source field, and an explicit
   `Interpreted as:` description.
-- Every row is `Unknown` for coverage because the current client does not have a
-  resume-evidence read endpoint.
+- Every row was `Unknown` for coverage at prototype time (Stage 26) because the
+  client then had no resume-evidence read endpoint. That endpoint shipped in
+  P11: `GET/POST /api/jobs/:id/intelligence` serves a coverage projection from
+  the application's submitted immutable resume snapshot. P36 added capture-state
+  explanation (`coverageContext`) and consistent abstention (UNKNOWN, never
+  MISSING) for snapshots that failed to parse.
 - The section states that it does not change score, eligibility, ranking,
   filtering, lifecycle, or saved job data.
 - Empty descriptions render a neutral empty state instead of inferred facts.

@@ -198,8 +198,12 @@ All notable changes to this project will be documented in this file.
   persistence, reprocessing, evaluation, acceptance, performance, security,
   privacy, and regression validation through Stages 0-29.
 - Added a drawer-local Job Intelligence preview that shows traceable job text
-  and explicit `Unknown` resume coverage without changing production scoring or
-  eligibility.
+  and diagnostic requirement coverage from the submitted immutable resume
+  snapshot without changing production scoring or eligibility (P11).
+- Added capture-state explanation (`coverageContext`) and consistent snapshot
+  abstention (UNKNOWN, never MISSING) for resumes that failed to parse, so
+  absent, unparsed, and abstained coverage are honest and distinguishable
+  (P36).
 - Validated shadow mode with `npm run verify` (136 files / 1346 tests),
   `npm run privacy:check` (11 tests), and Windows packaged/installed/upgrade
   smoke. Production promotion remains not yet validated or authorized.
