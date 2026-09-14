@@ -1,45 +1,55 @@
 # Session Handoff
 
-## Current status — 1.1.3 release-boundary closeout (2026-09-14)
+## Current status — 1.1.4 release-boundary closeout (2026-09-14)
 
-The 1.1.3 release boundary is **complete**. This is the active checkpoint.
+The 1.1.4 release boundary is **complete**. This is the active checkpoint.
 Older sections below are historical context; do not start additional work
 from them.
 
 ### Release boundary state
 
-- **Version:** `1.1.3` in `package.json` and `package-lock.json`.
+- **Version:** `1.1.4` in `package.json` and `package-lock.json`.
 - **Installer rebuilt and validated:**
-  `release\Job-Browser-Setup-1.1.3.exe` (253,613,582 bytes, SHA-256
-  `E8788D4B6E37D72912E5F29BFF24A4B0B8F5F521F7E6334858D94B9D2FD34A01`).
-  Packaged and installed `app.asar` are identical (74,130,955 bytes,
-  SHA-256 `7FD522A609DCE15D1D03F50C94455D946293B35A18DD93A8241C7E3DCD1A6001`).
-  Installed executable reports ProductVersion `1.1.3.0` / FileVersion
-  `1.1.3` (silent upgrade from the 1.1.2 install, exit 0).
+  `release\Job-Browser-Setup-1.1.4.exe` (253,613,965 bytes, SHA-256
+  `C61A58FDEDFFE253E7E59B9BE28A88E4ACC03F58AD9687DF0BDBC639DF6DADF1`).
+  Packaged and installed `app.asar` are identical (74,133,415 bytes,
+  SHA-256 `0504650BBE543BD3D4A50B6E987F5246475F1C096ADCDEC3DE83A5D766E4B2CE`).
+  Installed executable reports ProductVersion `1.1.4.0` / FileVersion
+  `1.1.4` (silent upgrade from the 1.1.3 install, exit 0).
 - **Smokes passed:** packaged smoke, packaged seeded-upgrade smoke,
   installed smoke, and installed seeded-upgrade smoke — all PASS.
-- **Lifecycle harness:** `npm run desktop:lifecycle-harness` — 11 of 11
-  scenarios pass.
-- **Full verification:** `npm run verify` — 169 files / 1,564 tests, all
+- **Full verification:** `npm run verify` — 169 files / 1,573 tests, all
   pass.
 - **Privacy/security gates:** `npm run privacy:check` 11/11 and
   `npm run nlp:security-audit` 3/3 pass.
+- **P36 confirmed in the packaged asar:** `resume-snapshot-evidence-v2`,
+  `coverageContext`, `captureState`, `parsingError`, and the
+  `job-intelligence-abstention-note` client marker are all present in the
+  packaged app.asar.
 - **Notifications remain disabled:** `NotificationManager.tsx` returns
   `null`; `main.ts` denies `notifications` permission checks/requests
-  before the BrowserWindow is created (verified inside the packaged asar).
-- **Production DB untouched.**
+  before the BrowserWindow is created (verified inside the packaged asar:
+  `installSilentNotificationPolicy`, `setPermissionRequestHandler`, and
+  `setPermissionCheckHandler` are present).
+- **Production DB untouched** (prod DB SHA-256 and size unchanged across
+  the release).
 - **No orphan processes:** no Job Browser/Electron processes and port 6783
   is free after validation.
 
-### What shipped at this boundary (commit `1a6607b`)
+### What shipped at this boundary (P36, local commits `dbd0fdb` + `b4e6256` + 1.1.4 release commit)
 
-Package A/B/C desktop lifecycle on top of the 1.1.2 baseline: scoped
-"My matches / All jobs" views (A), consistent preference resolution via
-`profilePreferencesPath` (B), close-to-tray, tray manager,
-`LifecycleController` with Windows `query-session-end` / `session-end`
-handling (C), and the shutdown write-order fix (`backend.stop()` is always
-awaited before exit — previously a timeout could call `app.exit(0)` before
-DB writes flushed). See `docs/CHANGELOG.md` (1.1.3) for details.
+P36 coverage abstention hygiene on top of the 1.1.3 baseline:
+`snapshotEvidence.ts` emits consistent UNKNOWN coverage for all five
+evidence kinds when a resume snapshot failed to parse (never `MISSING`,
+adapter bumped to `resume-snapshot-evidence-v2`); `/api/jobs/:id/intelligence`
+returns a read-only `coverageContext` (`captureState`:
+`no_application` | `no_snapshot` | `parsed` | `failed`, plus
+`parsingError`); and the Job Intelligence preview renders capture-state
+absence notes and a failed-parse abstention note. P36 stays EXPLANATION/
+shadow-only — no scoring, eligibility, ranking, filtering, lifecycle,
+status, archive, removal, or hard-gate changes; no job-type expansion;
+no new NLP modules; no schema migration. See `docs/CHANGELOG.md` (1.1.4)
+for details.
 
 ### Remaining manual Windows acceptance items
 
@@ -61,10 +71,12 @@ DB writes flushed). See `docs/CHANGELOG.md` (1.1.3) for details.
 
 ### Recommended next task
 
-No pending source or packaging work remains. On a future source change,
-rerun `npm run verify`, `npm run desktop:lifecycle-harness`, and the
-packaged/installed smokes before any new release boundary. Manual packaged
-Windows acceptance items above are the only outstanding verification.
+No pending source or packaging work remains. The 1.1.4 release commit is
+local and **ready to push** pending user approval. On a future source
+change, rerun `npm run verify`, `npm run desktop:lifecycle-harness`, and
+the packaged/installed smokes before any new release boundary. Manual
+packaged Windows acceptance items above are the only outstanding
+verification.
 
 ---
 

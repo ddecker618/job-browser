@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.1.4] - 2026-09-14
+
+### Job Intelligence — P36 coverage abstention hygiene
+
+- **Consistent snapshot abstention.** `snapshotEvidence.ts`
+  (`SNAPSHOT_EVIDENCE_ADAPTER_VERSION` bumped to `resume-snapshot-evidence-v2`)
+  now emits explicit unknown placeholders for all five resume-evidence kinds
+  (skills, certifications, experience, education, clearance) when the submitted
+  resume snapshot failed to parse, so a failed snapshot reports consistent
+  `UNKNOWN` coverage and never `MISSING`.
+- **Coverage capture-state explanation.** `/api/jobs/:id/intelligence` now
+  returns a read-only `coverageContext` payload alongside `coverage`:
+  `captureState` is `no_application` | `no_snapshot` | `parsed` | `failed`,
+  plus `parsingError` for diagnosis. Absence, unparsed, and abstained coverage
+  are now honest and distinguishable in the Job Intelligence preview, which
+  renders a capture-state note and a failed-parse abstention note above the
+  coverage section.
+- **No authority change.** This remains EXPLANATION/shadow-only: it does not
+  change scoring, eligibility, ranking, filtering, lifecycle, status, archive,
+  or saved job data. No schema migration (additive model field only), no
+  job-type expansion, no new NLP modules.
+- **Notifications remain disabled.** `NotificationManager.tsx` stays silent and
+  the main process denies `notifications` permission checks/requests before the
+  BrowserWindow is created.
+- Rebuilt and validated the versioned installer:
+  `release\Job-Browser-Setup-1.1.4.exe`, 253,613,965 bytes, SHA-256
+  `C61A58FDEDFFE253E7E59B9BE28A88E4ACC03F58AD9687DF0BDBC639DF6DADF1`.
+  Packaged and installed `app.asar` are identical (74,133,415 bytes, SHA-256
+  `0504650BBE543BD3D4A50B6E987F5246475F1C096ADCDEC3DE83A5D766E4B2CE`).
+  Installed executable reports ProductVersion `1.1.4.0` and FileVersion
+  `1.1.4` (silent upgrade from the 1.1.3 install, exit 0).
+- Validated against the packaged and installed artifacts: packaged smoke,
+  packaged seeded-upgrade smoke, installed smoke, and installed seeded-upgrade
+  smoke passed; installed asar matches packaged; P36 code confirmed present in
+  the packaged asar (`resume-snapshot-evidence-v2`, `coverageContext`,
+  `captureState`, `parsingError`, `job-intelligence-abstention-note`);
+  notification-silencing permission handlers confirmed present in the packaged
+  asar. Final gates at release state green: `npm run verify` 169 files /
+  1,573 tests, `npm run privacy:check` 11/11, `npm run nlp:security-audit` 3/3.
+  No orphan processes and port 6783 free after validation; production data
+  untouched (prod DB SHA-256 unchanged).
+
 ## [1.1.3] - 2026-09-14
 
 ### Desktop Lifecycle (Package A/B/C)

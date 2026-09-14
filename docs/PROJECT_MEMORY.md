@@ -2,24 +2,24 @@
 
 ## Current project status
 
-Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
-Git/source evidence takes precedence over historical completion records.
+Reconciled against source checkpoint `b4e6256` (P36) and the P33/1.1.3 + 1.1.4
+release records. Git/source evidence takes precedence over historical completion
+records.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
   9.6 seed manifest import is complete. These are not open implementation tasks.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
-  Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
-  Latest recorded full source verification: **169 files / 1,564 tests, fully
-  green (`npm run verify`, 2026-09-14)**. The 2026-09-14 Package A/B/C
-  lifecycle checkpoint and the 1.1.3 release boundary are committed locally;
-  no push.
-- Current package version and latest validated installer: **1.1.3**, released
-  at the Package A/B/C release boundary (2026-09-14). That artifact includes
-  the prior P31/P32/P34/P35 source plus Package A/B/C desktop lifecycle work.
-  No later rebuild or installation is established by this record.
+- NLP Stages 0–29 and P0–P36 are complete. P36 is committed locally
+  (`dbd0fdb` implementation, `b4e6256` docs). Latest recorded full source
+  verification: **169 files / 1,573 tests, fully green (`npm run verify`,
+  2026-09-14)**. The 1.1.4 release boundary is committed locally; no push.
+- Current package version and latest validated installer: **1.1.4**, shipped
+  at the P36 release boundary (2026-09-14). That artifact includes the prior
+  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, and
+  P36 coverage abstention hygiene.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is
@@ -104,7 +104,7 @@ Phase 8 Milestones 8.1 through 8.8 are complete and Architect-approved. Phase 8
 is complete as of 2026-08-12. The independent Employer Discovery 9.1 through
 9.5 workstream is also complete and Architect-approved. The versioned Employer
 Seed Manifest Import (1.0.21) is complete. Migration head is
-`034_nlp_comparisons.sql`; current package version is 1.1.3. See the current
+`034_nlp_comparisons.sql`; current package version is 1.1.4. See the current
 status above for the source-versus-installer boundary.
 
 The current implementation additionally provides explicit non-destructive Job
@@ -635,6 +635,20 @@ validated state is committed.
   `npm run verify` 169 files / 1,564 tests. Notification silencing confirmed
   in the packaged asar. Production DB untouched; no orphan processes and
   port 6783 free after validation.
+- **RELEASED AS 1.1.4 (2026-09-14, P36):** `release\Job-Browser-Setup-1.1.4.exe`
+  253,613,965 B, SHA-256
+  `C61A58FDEDFFE253E7E59B9BE28A88E4ACC03F58AD9687DF0BDBC639DF6DADF1`;
+  packaged and installed app.asar identical 74,133,415 B / SHA-256
+  `0504650BBE543BD3D4A50B6E987F5246475F1C096ADCDEC3DE83A5D766E4B2CE`;
+  installed exe ProductVersion 1.1.4.0 / FileVersion 1.1.4. Silent upgrade
+  from the 1.1.3 install exit 0. Packaged smoke, packaged seeded-upgrade
+  smoke, installed smoke, installed seeded-upgrade smoke all PASS;
+  privacy:check 11/11; nlp:security-audit 3/3; `npm run verify`
+  169 files / 1,573 tests. P36 runtime markers confirmed in the packaged
+  asar (`resume-snapshot-evidence-v2`, `coverageContext`, `captureState`,
+  `parsingError`, `job-intelligence-abstention-note`); notification-silencing
+  permission handlers confirmed in the packaged asar. Production DB untouched
+  (SHA-256 unchanged); no orphan processes and port 6783 free after validation.
 - **REMAINING (manual, packaged build):** real Windows shutdown/logoff
   delivery of `query-session-end`; tray icon/menu/focus rendering; whether the
   5 s shutdown budget fits real logoff latency. No push, no installer rebuild,

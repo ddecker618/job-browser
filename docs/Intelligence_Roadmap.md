@@ -27,25 +27,24 @@ roles:
 
 ## Current project status
 
-Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
-Git/source evidence takes precedence over historical completion records.
+Reconciled against source checkpoint `b4e6256` (P36) and the 1.1.4 release
+record. Git/source evidence takes precedence over historical completion records.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
   9.6 seed manifest import is complete. These are not open implementation tasks.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
-  Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P36 are complete. P36 is committed locally (not yet
-  pushed). P35 was committed as `fd63a2a`. Latest recorded full source
-  verification: **169 files / 1,573 tests, fully green (`npm run verify`,
-  2026-09-14)**. The 2026-09-14 Package A/B/C lifecycle checkpoint and the
-  1.1.3 release boundary are committed locally; P36 is also committed but
-  not yet pushed.
-- Current package version and latest validated installer: **1.1.3**, released
-  at the Package A/B/C release boundary (2026-09-14). That artifact includes
-  the prior P31/P32/P34/P35 source plus Package A/B/C desktop lifecycle work.
-  No later rebuild or installation is established by this record.
+- NLP Stages 0–29 and P0–P36 are complete. P36 is committed locally and
+  shipped in the 1.1.4 release boundary (2026-09-14); the 1.1.4 release commit
+  is local and not pushed. P35 was committed as `fd63a2a`. Latest recorded
+  full source verification: **169 files / 1,573 tests, fully green
+  (`npm run verify`, 2026-09-14)**.
+- Current package version and latest validated installer: **1.1.4**, released
+  at the P36 release boundary (2026-09-14). That artifact includes the prior
+  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, and
+  P36 coverage abstention hygiene.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is
@@ -80,26 +79,30 @@ preserve local data, source provenance, and current deterministic authority.
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P36 coverage abstention hygiene complete; 1.1.3 release
-                     boundary shipped; no push, no installer rebuild
-CURRENT_TASK:        none pending; P36 committed locally; ready for next
-                     development task or push of P36
-LAST_COMPLETED:      P36: consistent UNKNOWN abstention for failed resume
-                     snapshots, coverageContext capture-state payload, client
-                     abstention rendering (13 files, 1573 tests green);
-                     verify + privacy 11/11 + security 3/3 + build PASS
+CURRENT_STAGE:       P36 coverage abstention hygiene released as 1.1.4;
+                     release commit local; no push
+CURRENT_TASK:        none pending; 1.1.4 installer validated (4 smokes,
+                     asar match, P36 + notifications confirmed in asar);
+                     ready to push on approval or next development task
+LAST_COMPLETED:      1.1.4 release boundary: P36 (consistent UNKNOWN
+                     abstention for failed resume snapshots, coverageContext
+                     capture-state payload, client abstention rendering)
+                     packaged as release\Job-Browser-Setup-1.1.4.exe;
+                     packaged/installed/upgrade smokes PASS; verify
+                     169 files / 1573 tests; privacy 11/11; security 3/3
 NEXT_ACTION:         nothing pending in source; acceptable next work is push
-                     of P36, the next product feature branch, or manual
-                     packaged Windows acceptance
-FILES_IN_PROGRESS:   none; P36 committed locally alongside the existing
-                     a7c4356 + 1.1.3 release boundary commits
+                     of the 1.1.4 release commit, the next product feature
+                     branch, or manual packaged Windows acceptance
+FILES_IN_PROGRESS:   none; P36 commits (dbd0fdb, b4e6256) + 1.1.4 release
+                     commit local
 TESTS_TO_RUN:        none new required; on any future source change rerun
                      npm run verify + npm run desktop:lifecycle-harness +
                      packaged/installed smokes
 KNOWN_FAILURES:      none in source
-LATEST_CHECKPOINT:   P36 coverage abstention hygiene (local commit);
-                     P35 NLP defaults committed as fd63a2a; see git log
-                     HEAD + docs/CHANGELOG for context
+LATEST_CHECKPOINT:   1.1.4 release boundary (version bump + installer) on
+                     dbd0fdb (P36 impl) + b4e6256 (P36 docs); P35 NLP
+                     defaults committed as fd63a2a; see git log HEAD +
+                     docs/CHANGELOG for context
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -140,12 +143,16 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P36 coverage abstention hygiene complete and committed
-                     locally (13 files, verify 169/1573 green) atop the
-                     Package A/B/C lifecycle (a7c4356, harness 11/11) +
-                     1.1.3 release boundary commits; do not restart completed
-                     P0-P36 or Package A/B/C work; push of P36 remains
-                     pending user approval
+SAFE_RESUME_POINT:   1.1.4 release boundary complete and committed
+                     locally: P36 packaged in release\Job-Browser-Setup-1.1.4
+                     .exe (253,613,965 B, SHA-256 C61A58FD...DF6DADF1; asar
+                     74,133,415 B, SHA-256 0504650B...66E4B2CE), 4 smokes
+                     PASS, verify 169/1573, privacy 11/11, security 3/3,
+                     P36 + notifications confirmed in the asar, prod DB
+                     untouched, port 6783 free. Commits: dbd0fdb (P36 impl)
+                     + b4e6256 (P36 docs) + 1.1.4 release commit. Do not
+                     restart completed P0-P36 or Package A/B/C work; the
+                     1.1.4 release commit push remains pending user approval
 ```
 
 ---
@@ -1438,7 +1445,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 | 2026-09-14 | Package A/B/C lifecycle checkpoint | cross-cutting desktop lifecycle work completed and validated: scope query/routes/saved filters (A), preference resolution via `profilePreferencesPath` (B), close-to-tray + tray manager + `LifecycleController` + session-end + fixture harness (C); `npm run desktop:lifecycle-harness` **11/11**; shutdown race closed (`backend.stop()` always awaited); `set_close_to_tray` IPC harness op; `__flags-check.ts` privacy leak removed; `npm run verify` **169 files / 1564 tests, fully green**; typecheck/lint/format:check green; branch local, no push, no installer rebuild |
 
-| 2026-09-14 | P36 coverage abstention hygiene | snapshot parse failure now yields consistent UNKNOWN evidence for all five kinds (never MISSING); `coverageContext` capture-state payload (`no_application`/`no_snapshot`/`parsed`/`failed` + `parsingError`); client abstention notes; adapter bumped to `resume-snapshot-evidence-v2`; `npm run verify` **169 files / 1573 tests** PASS; privacy 11/11; security 3/3; build PASS; committed locally, not pushed |
+| 2026-09-14 | P36 coverage abstention hygiene | snapshot parse failure now yields consistent UNKNOWN evidence for all five kinds (never MISSING); `coverageContext` capture-state payload (`no_application`/`no_snapshot`/`parsed`/`failed` + `parsingError`); client abstention notes; adapter bumped to `resume-snapshot-evidence-v2`; `npm run verify` **169 files / 1573 tests** PASS; privacy 11/11; security 3/3; build PASS; **released as 1.1.4** (installer 253,613,965 B / SHA-256 `C61A58FD…DF6DADF1`; asar 74,133,415 B / `0504650B…66E4B2CE`), 4 smokes PASS, P36 + notifications confirmed in asar, port 6783 free, prod DB untouched; release commit local, not pushed |
 
 ## Package A/B/C desktop lifecycle — verified (2026-09-14)
 
@@ -1525,6 +1532,18 @@ lifecycle remain authoritative (`productionEffect: 'none'`). Verified:
   `tests/job-intelligence-ui.test.tsx` and
   `tests/job-nlp-shadow-regression.test.ts` updates. Full gate:
   `npm run verify` **169 files / 1,573 tests** fully green, `npm run privacy:check`
-  11/11, `npm run nlp:security-audit` 3/3, `npm run build` PASS. This is
-  documentation-complete and committed locally (implementation commit + docs
-  commit); not pushed, no installer rebuilt, no version bump.
+  11/11, `npm run nlp:security-audit` 3/3, `npm run build` PASS. This was
+  committed locally as `dbd0fdb` (implementation) + `b4e6256` (docs) and then
+  **released as the 1.1.4 boundary (2026-09-14):** installer
+  `release\Job-Browser-Setup-1.1.4.exe` (253,613,965 B, SHA-256
+  `C61A58FDEDFFE253E7E59B9BE28A88E4ACC03F58AD9687DF0BDBC639DF6DADF1`),
+  packaged + installed app.asar identical (74,133,415 B, SHA-256
+  `0504650BBE543BD3D4A50B6E987F5246475F1C096ADCDEC3DE83A5D766E4B2CE`),
+  installed exe ProductVersion 1.1.4.0 / FileVersion 1.1.4, packaged smoke +
+  packaged seeded-upgrade smoke + installed smoke + installed seeded-upgrade
+  smoke all PASS, P36 runtime markers (`resume-snapshot-evidence-v2`,
+  `coverageContext`, `captureState`, `parsingError`,
+  `job-intelligence-abstention-note`) and notification-silencing permission
+  handlers confirmed in the packaged asar, port 6783 free, no orphan
+  processes, prod DB untouched. The 1.1.4 release commit is local and not
+  pushed.
