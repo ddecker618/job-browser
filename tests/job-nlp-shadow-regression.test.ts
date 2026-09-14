@@ -11,6 +11,7 @@ import { segmentRoleDescription } from '../src/intelligence/nlp/segmenter.js';
 import { classifyStrength } from '../src/intelligence/nlp/strength.js';
 import { extractSkills } from '../src/intelligence/nlp/skills.js';
 import { skillConcepts } from '../src/intelligence/nlp/skillNormalization.js';
+import { adaptResumeSnapshotEvidence } from '../src/intelligence/nlp/snapshotEvidence.js';
 import { createJobFixture } from './helpers/job-fixture.js';
 
 describe('NLP shadow regression (Stage 28)', () => {
@@ -78,6 +79,60 @@ describe('NLP shadow regression (Stage 28)', () => {
 
     const after = scoreJob(job, profile, config, analyzedAt);
 
+    expect(coverage.productionEffect).toBe('none');
+    expect(after).toEqual(before);
+    expect(JSON.stringify(job)).toBe(jobBeforeShadow);
+  });
+
+  it('keeps failed snapshot coverage abstained without touching production scoring', () => {
+    const job = createJobFixture({
+      title: 'Linux Administrator',
+      description: 'Linux required.',
+    });
+    const profile = loadCandidateProfile();
+    const config = loadScoringConfig();
+    const analyzedAt = '2026-09-10T00:00:00.000Z';
+    const before = scoreJob(job, profile, config, analyzedAt);
+    const jobBeforeShadow = JSON.stringify(job);
+
+    const concepts = skillConcepts();
+    const linux = concepts.find((concept) => concept.label === 'Linux') ?? null;
+    const evidence = adaptResumeSnapshotEvidence({
+      snapshotId: 's1',
+      interpretationId: 'i1',
+      schemaVersion: 1,
+      parserVersion: 'resume-parser-v1',
+      normalizationVersion: 'resume-normalization-v1',
+      parsingStatus: 'failed',
+      parsingError: 'Unsupported resume format',
+      normalizedText: null,
+      skills: [],
+      certifications: [],
+    });
+    const results = matchResumeEvidence({
+      requirements: [
+        {
+          requirementId: 'shadow-regression-failed-linux',
+          phrase: 'Linux',
+          kind: 'skill',
+          targetConcept: linux,
+        },
+      ],
+      evidence,
+    });
+    expect(results[0]?.status).toBe('UNKNOWN');
+    const coverage = buildRequirementCoverage(
+      results.map((result) => ({
+        requirementId: result.requirementId,
+        phrase: result.phrase,
+        category: 'skill',
+        strength: 'required',
+        evidence: result,
+      })),
+    );
+    expect(coverage.rows[0]?.status).toBe('UNKNOWN');
+
+    const after = scoreJob(job, profile, config, analyzedAt);
     expect(coverage.productionEffect).toBe('none');
     expect(after).toEqual(before);
     expect(JSON.stringify(job)).toBe(jobBeforeShadow);

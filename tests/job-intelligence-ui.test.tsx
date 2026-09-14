@@ -45,6 +45,10 @@ describe('connected Job Intelligence preview', () => {
         comparison: buildNlpComparisonReport('job-1', result, deterministic),
         coverage: null,
         coverageSource: null,
+        coverageContext: {
+          captureState: 'no_application' as const,
+          parsingError: null,
+        },
         roleFamily: projectRoleFamilySuggestion('job-1', {
           title: 'Analyst',
           profile: DEFAULT_SEARCH_PROFILE,

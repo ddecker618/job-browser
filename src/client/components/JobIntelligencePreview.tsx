@@ -92,7 +92,13 @@ export function JobIntelligencePreview({
           </p>
           {projection.coverage === null ? (
             <p>
-              No captured resume snapshot is available for diagnostic coverage.
+              {projection.coverageContext?.captureState === 'no_application'
+                ? 'No application has been submitted for this job, so no diagnostic coverage is available.'
+                : projection.coverageContext?.captureState === 'no_snapshot'
+                  ? 'The application did not include a resume snapshot, so no diagnostic coverage is available.'
+                  : projection.coverageContext?.captureState === 'failed'
+                    ? 'The submitted resume snapshot could not be parsed. No claim of capability or possession is made.'
+                    : 'No captured resume snapshot is available for diagnostic coverage.'}
             </p>
           ) : (
             <section
@@ -100,6 +106,13 @@ export function JobIntelligencePreview({
               aria-label="Diagnostic requirement coverage"
             >
               <h4>Diagnostic requirement coverage</h4>
+              {projection.coverageContext?.captureState === 'failed' && (
+                <p className="job-intelligence-abstention-note">
+                  The submitted resume snapshot could not be parsed; all
+                  coverage rows reflect parser abstention, not evidence of
+                  matched or missing capability.
+                </p>
+              )}
               <p>
                 {Math.round(
                   projection.coverage.summary.weightedDiagnosticCoverage * 100,

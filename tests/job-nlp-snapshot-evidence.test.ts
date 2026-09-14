@@ -15,6 +15,7 @@ const source: ResumeSnapshotEvidenceSource = {
   parserVersion: 'resume-parser-v1',
   normalizationVersion: 'resume-normalization-v1',
   parsingStatus: 'parsed',
+  parsingError: null,
   normalizedText:
     '7 years of professional experience bachelor degree active secret clearance',
   skills: [

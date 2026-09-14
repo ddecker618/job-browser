@@ -78,6 +78,17 @@ export interface RequirementCoverageProjection {
   productionEffect: 'none';
 }
 
+export type RequirementCoverageCaptureState =
+  | 'no_application'
+  | 'no_snapshot'
+  | 'parsed'
+  | 'failed';
+
+export interface RequirementCoverageContext {
+  captureState: RequirementCoverageCaptureState;
+  parsingError: string | null;
+}
+
 export function buildRequirementCoverage(
   inputs: readonly RequirementCoverageInput[],
 ): RequirementCoverageProjection {

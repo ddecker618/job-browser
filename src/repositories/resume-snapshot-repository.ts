@@ -146,6 +146,7 @@ export class ResumeSnapshotRepository {
       parserVersion: row.parser_version,
       normalizationVersion: row.normalization_version,
       parsingStatus: parsingStatus(row.parsing_status),
+      parsingError: row.parsing_error,
       normalizedText,
       skills: interpretation.skills,
       certifications: interpretation.certifications,

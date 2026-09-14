@@ -19,6 +19,7 @@ export interface ResumeSnapshotEvidenceSource {
   parserVersion: string;
   normalizationVersion: string;
   parsingStatus: ResumeSnapshotParsingStatus;
+  parsingError: string | null;
   normalizedText: string | null;
   skills: ResumeSnapshotSkill[];
   certifications: ResumeSnapshotCertification[];

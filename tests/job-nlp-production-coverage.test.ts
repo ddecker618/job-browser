@@ -19,6 +19,7 @@ describe('P11 production diagnostic requirement coverage', () => {
       parserVersion: 'resume-parser-v1',
       normalizationVersion: 'resume-normalization-v1',
       parsingStatus: 'parsed',
+      parsingError: null,
       normalizedText:
         '7 years of professional experience bachelor degree active secret clearance',
       skills: [
@@ -53,6 +54,7 @@ describe('P11 production diagnostic requirement coverage', () => {
       parserVersion: 'resume-parser-v1',
       normalizationVersion: 'resume-normalization-v1',
       parsingStatus: 'parsed',
+      parsingError: null,
       normalizedText: 'employment history available',
       skills: [],
       certifications: [],
@@ -60,5 +62,33 @@ describe('P11 production diagnostic requirement coverage', () => {
     expect(
       projectRequirementCoverage(enrichment, evidence).rows[0]?.status,
     ).toBe('UNKNOWN');
+  });
+  it('abstains across all kinds when the snapshot failed to parse', async () => {
+    const enrichment = await extractNlpDocument({
+      title: 'Analyst',
+      location: null,
+      description:
+        "Linux and Security+ required. 5 years of experience required. Bachelor's degree required. Secret clearance required.",
+      requirements: null,
+      preferredQualifications: null,
+    });
+    const evidence = adaptResumeSnapshotEvidence({
+      snapshotId: 's3',
+      interpretationId: 'i3',
+      schemaVersion: 1,
+      parserVersion: 'resume-parser-v1',
+      normalizationVersion: 'resume-normalization-v1',
+      parsingStatus: 'failed',
+      parsingError: 'Unsupported resume format',
+      normalizedText: null,
+      skills: [],
+      certifications: [],
+    });
+    const coverage = projectRequirementCoverage(enrichment, evidence);
+    expect(coverage.rows.length).toBeGreaterThan(0);
+    expect(coverage.rows.every((row) => row.status === 'UNKNOWN')).toBe(true);
+    expect(coverage.summary.productionEffect).toBe('none');
+    expect(coverage.summary.weightedDiagnosticCoverage).toBe(0);
+    expect(coverage).not.toHaveProperty('score');
   });
 });

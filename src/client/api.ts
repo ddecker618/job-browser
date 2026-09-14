@@ -93,6 +93,9 @@ export type JobIntelligenceResult =
       parserVersion: string;
       normalizationVersion: string;
     } | null;
+    coverageContext:
+      | import('../intelligence/nlp/requirementCoverage.js').RequirementCoverageContext
+      | null;
   };
 
 export function apiRequestErrorReason(error: unknown): string | null {

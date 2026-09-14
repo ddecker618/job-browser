@@ -321,6 +321,17 @@ export function createApp(
       enrichment,
       deterministicSide,
     );
+    const coverageContext =
+      application === null
+        ? { captureState: 'no_application' as const, parsingError: null }
+        : snapshotSource === null
+          ? { captureState: 'no_snapshot' as const, parsingError: null }
+          : snapshotSource.parsingStatus === 'parsed'
+            ? { captureState: 'parsed' as const, parsingError: null }
+            : {
+                captureState: 'failed' as const,
+                parsingError: snapshotSource.parsingError,
+              };
     return {
       ...projectJobIntelligence(jobId, enrichment, deterministicSide),
       comparison,
@@ -334,6 +345,7 @@ export function createApp(
               parserVersion: snapshotSource.parserVersion,
               normalizationVersion: snapshotSource.normalizationVersion,
             },
+      coverageContext,
     };
   };
   app.get('/api/jobs/:id/intelligence', (request, response) => {

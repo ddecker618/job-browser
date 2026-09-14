@@ -1,7 +1,10 @@
 import type { ResumeSnapshotEvidenceSource } from '../../models/resume-snapshot.js';
-import type { ResumeEvidenceItem } from './resumeEvidence.js';
+import type {
+  ResumeEvidenceItem,
+  ResumeEvidenceKind,
+} from './resumeEvidence.js';
 
-export const SNAPSHOT_EVIDENCE_ADAPTER_VERSION = 'resume-snapshot-evidence-v1';
+export const SNAPSHOT_EVIDENCE_ADAPTER_VERSION = 'resume-snapshot-evidence-v2';
 
 export function adaptResumeSnapshotEvidence(
   source: ResumeSnapshotEvidenceSource,
@@ -10,6 +13,15 @@ export function adaptResumeSnapshotEvidence(
     parserVersion: source.parserVersion,
     normalizationVersion: source.normalizationVersion,
   };
+  if (source.parsingStatus !== 'parsed') {
+    return [
+      unknown(source, 'skill'),
+      unknown(source, 'certification'),
+      unknown(source, 'experience'),
+      unknown(source, 'education'),
+      unknown(source, 'clearance'),
+    ];
+  }
   const result: ResumeEvidenceItem[] = [
     ...source.skills.map((item, index) => ({
       ...base,
@@ -26,7 +38,7 @@ export function adaptResumeSnapshotEvidence(
       provenance: item.provenance,
     })),
   ];
-  const text = source.parsingStatus === 'parsed' ? source.normalizedText : null;
+  const text = source.normalizedText;
   result.push(
     ...experienceEvidence(source, text),
     ...educationEvidence(source, text),
@@ -37,7 +49,7 @@ export function adaptResumeSnapshotEvidence(
 
 function common(
   source: ResumeSnapshotEvidenceSource,
-  kind: 'experience' | 'education' | 'clearance',
+  kind: ResumeEvidenceKind,
   index: number,
   rawLabel: string,
 ) {
@@ -126,7 +138,7 @@ function clearanceEvidence(
 
 function unknown(
   source: ResumeSnapshotEvidenceSource,
-  kind: 'experience' | 'education' | 'clearance',
+  kind: ResumeEvidenceKind,
 ): ResumeEvidenceItem {
   return {
     ...common(
