@@ -36,12 +36,13 @@ record. Git/source evidence takes precedence over historical completion records.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P36 are complete. P36 shipped in the 1.1.4 release
-  boundary (2026-09-14) and all three commits (`dbd0fdb`, `b4e6256`,
+- NLP Stages 0–29 and P0–P37 are complete. P37 shadow is committed locally
+  (no push). P36 was shipped in the 1.1.4 release boundary (2026-09-14)
+  and all three commits (`dbd0fdb`, `b4e6256`,
   `f05bee9`) are pushed to `origin/main` (HEAD == origin/main at `f05bee9`).
   P35 was committed as `fd63a2a`. Latest recorded
-  full source verification: **169 files / 1,573 tests, fully green
-  (`npm run verify`, 2026-09-14)**.
+  full source verification: **172 files / 1,605 tests, fully green
+  (`npm run verify`, 2026-09-14)** after the P37 shadow implementation.
 - Current package version and latest validated installer: **1.1.4**, released
   at the P36 release boundary (2026-09-14). That artifact includes the prior
   P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, and
@@ -80,34 +81,35 @@ preserve local data, source provenance, and current deterministic authority.
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P36 coverage abstention hygiene released as 1.1.4;
-                     release commit pushed to origin/main at f05bee9;
-                     P37 planning recorded; no source/tests touched
-CURRENT_TASK:        none pending in source; P37 plan in this file
-                     awaiting explicit implementation go-ahead; the
-                     implemented flow resumes after the P37 implementation
-                     prompt is approved
-LAST_COMPLETED:      1.1.4 release boundary: P36 (consistent UNKNOWN
-                     abstention for failed resume snapshots, coverageContext
-                     capture-state payload, client abstention rendering)
-                     packaged as release\Job-Browser-Setup-1.1.4.exe;
-                     packaged/installed/upgrade smokes PASS; verify
-                     169 files / 1573 tests; privacy 11/11; security 3/3;
-                     release commit f05bee9 pushed to origin/main
-NEXT_ACTION:         P37 implementation per the planning section below
-                     (a deterministic, versioned, local shadow occupation
-                     taxonomy module); no further source action until the
-                     implementation prompt is approved
-FILES_IN_PROGRESS:   none on disk; P36 commits (dbd0fdb, b4e6256) +
-                     1.1.4 release commit f05bee9 are pushed
+CURRENT_STAGE:       P37 shadow job-type taxonomy implemented (Direction A);
+                     committed locally; no push, no installer rebuild,
+                     no version bump
+CURRENT_TASK:        none pending; P37 shadow implementation committed; the
+                     implemented flow resumes after the next step (Direction A
+                     release-boundary authorization, EXPLANATION-1 promotion,
+                     Direction B / C / D / E, or a separate task) is approved
+LAST_COMPLETED:      P37 shadow: local deterministic occupation / job-type
+                     taxonomy (catalog + classifier) + 32 new tests;
+                     npm run verify 172 files / 1605 tests; privacy 11/11;
+                     security 3/3; build/format/lint/typecheck PASS;
+                     zero production-path imports confirmed
+NEXT_ACTION:         nothing pending in source; acceptable next work is a
+                     release-boundary task (version bump + installer rebuild
+                     + 4 smokes + privacy + NLP security), a Direction B / C
+                     / D / E planning/implementation slice, a separate
+                     EXPLANATION-1 authorization for the P37 shadow, or push
+                     approval for the local commit
+FILES_IN_PROGRESS:   none on disk; P37 planning commit + P37 shadow
+                     implementation commit are local
 TESTS_TO_RUN:        none new required; on any future source change rerun
                      npm run verify + npm run desktop:lifecycle-harness +
                      packaged/installed smokes
 KNOWN_FAILURES:      none in source
-LATEST_CHECKPOINT:   1.1.4 release boundary (version bump + installer)
-                     f05bee9 pushed to origin/main; P35 NLP defaults
-                     committed as fd63a2a; see git log HEAD +
-                     docs/CHANGELOG for context
+LATEST_CHECKPOINT:   P37 shadow job-type taxonomy implementation (local
+                     commit); the 1.1.4 release boundary f05bee9 is
+                     pushed to origin/main; P35 NLP defaults committed
+                     as fd63a2a; see git log HEAD + docs/CHANGELOG for
+                     context
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -148,19 +150,21 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   1.1.4 release boundary complete and pushed to
-                     origin/main at f05bee9: P36 packaged in
-                     release\Job-Browser-Setup-1.1.4.exe (253,613,965 B,
+SAFE_RESUME_POINT:   P37 shadow implementation committed locally atop the
+                     1.1.4 release boundary. P36 + 1.1.4 are pushed to
+                     origin/main at f05bee9 (installer 253,613,965 B,
                      SHA-256 C61A58FD...DF6DADF1; asar 74,133,415 B,
-                     SHA-256 0504650B...66E4B2CE), 4 smokes PASS, verify
-                     169/1573, privacy 11/11, security 3/3, P36 +
-                     notifications confirmed in the asar, prod DB
-                     untouched, port 6783 free. Commits (all pushed):
-                     dbd0fdb (P36 impl) + b4e6256 (P36 docs) + f05bee9
-                     (1.1.4 release). Do not restart completed P0-P36
-                     or Package A/B/C work; the next direction (P37)
-                     is planned in this file and awaits implementation
-                     go-ahead
+                     0504650B...66E4B2CE; 4 smokes PASS; verify
+                     169/1573; privacy 11/11; security 3/3). P37 source
+                     (jobTypeTaxonomy.ts, jobTypeNormalization.ts) + 3
+                     new tests stay local; verify on the local branch
+                     is 172 files / 1605 tests. Do not restart
+                     completed P0-P37 or Package A/B/C work; the
+                     remaining choices are a release-boundary task for
+                     P37 (version bump + installer rebuild), a
+                     separate EXPLANATION-1 authorization for the P37
+                     shadow, a Direction B / C / D / E slice, or push
+                     approval for the local commits
 ```
 
 ---
@@ -1455,6 +1459,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 | 2026-09-14 | P36 coverage abstention hygiene | snapshot parse failure now yields consistent UNKNOWN evidence for all five kinds (never MISSING); `coverageContext` capture-state payload (`no_application`/`no_snapshot`/`parsed`/`failed` + `parsingError`); client abstention notes; adapter bumped to `resume-snapshot-evidence-v2`; `npm run verify` **169 files / 1573 tests** PASS; privacy 11/11; security 3/3; build PASS; **released as 1.1.4** (installer 253,613,965 B / SHA-256 `C61A58FD…DF6DADF1`; asar 74,133,415 B / `0504650B…66E4B2CE`), 4 smokes PASS, P36 + notifications confirmed in asar, port 6783 free, prod DB untouched; release commit `f05bee9` pushed to `origin/main` |
 | 2026-09-14 | P37 occupation / job-type taxonomy planning | planning-only checkpoint (no source/tests touched); compared five candidate directions and recommended Direction A (local, deterministic, versioned occupation taxonomy + classifier mirror of `skillNormalization`); recommended slice stays `Level 0` SHADOW with an additive diagnostic projection; EXPLANATION-1 preview deliberately excluded and would require a later authorization + release boundary; `npm run format:check` PASS; committed locally; no push, no installer rebuild, no source feature code |
+| 2026-09-14 | P37 occupation / job-type taxonomy shadow module | Direction A implementation as SHADOW Level 0 only: `jobTypeTaxonomy.ts` (catalog + `JOB_TYPE_TAXONOMY_VERSION='job-type-taxonomy-v1'` + SHA-256 content hash) and `jobTypeNormalization.ts` (deterministic classifier, `JOB_TYPE_NORMALIZATION_VERSION='job-type-normalization-v1'`, method `deterministic-fallback`, enum `EXACT` \| `CANONICAL_ALIAS` \| `UNRELATED` \| `UNKNOWN`, populated abstention); 3 new tests (`tests/job-nlp-job-type-{taxonomy,normalization,snapshot-job-type}.test.ts`); repo-wide grep confirms zero production-path imports; **`npm run verify` 172 files / 1605 tests** PASS; privacy 11/11; security 3/3; build/format/lint/typecheck PASS; **no installer rebuild, no version bump, no push**; EXPLANATION-1 promotion and release boundary are explicitly out of scope |
 
 ## Package A/B/C desktop lifecycle — verified (2026-09-14)
 
@@ -1769,3 +1774,52 @@ snapshotHash, createdAt }`. No new SQL migration is required if the
 - Do not modify any deterministic scoring, eligibility, ranking, or
   lifecycle path, even if "small". All reads of the new shadow rows
   must go through a guarded path.
+
+---
+
+## P37 — Local occupation / job-type taxonomy shadow module
+
+- **Status:** [x] (shadow only; no release boundary in this commit)
+- **Objective:** ship Direction A from the P37 planning checkpoint as a
+  SHADOW (`Level 0`) only module. The classifier is callable, the
+  payload shape is frozen, and no production path consumes it.
+- **Checkpoint completion record:** Complete. New modules
+  `src/intelligence/nlp/jobTypeTaxonomy.ts` and
+  `src/intelligence/nlp/jobTypeNormalization.ts`. Catalog is versioned
+  (`JOB_TYPE_TAXONOMY_VERSION = 'job-type-taxonomy-v1'`) with a SHA-256
+  content hash for stale detection; classifier is versioned
+  (`JOB_TYPE_NORMALIZATION_VERSION = 'job-type-normalization-v1'`),
+  method `deterministic-fallback`, and emits a fixed enum
+  (`EXACT` | `CANONICAL_ALIAS` | `UNRELATED` | `UNKNOWN`) plus a
+  populated `catalogHash`, `strippedTokens`, `matchedAlias`, score,
+  abstention reason, and explanation. The classifier strips role-prefix
+  (senior/junior/lead/principal/staff/head/...), employment-type
+  (contract/temp/...), and generic (job/position/...) words before
+  performing whole-alias comparison; weak multi-token overlap and
+  ambiguous mixed-role titles fall through to `UNRELATED` / `UNKNOWN`.
+- **Production isolation.** Repo-wide grep confirms no
+  `src/intelligence/{scoringEngine,roleDetailsExtractor,federalElig,geographicElig,locationElig,verificationService,...}`
+  or other production-decide path, and no
+  `src/server/{app,backend}.ts`, no `src/client/**`, and no
+  `src/database/**` path, imports the new modules. The shadow output is
+  read-only and is not embedded in any `/api/jobs/:id/intelligence`
+  field, any score, any eligibility, any ranking, any filter, any
+  lifecycle, any status, any archive, or any removal path.
+- **Tests added.**
+  `tests/job-nlp-job-type-taxonomy.test.ts` (taxonomy lookup, alias
+  index, hash determinism + drift detection, collision lint),
+  `tests/job-nlp-job-type-normalization.test.ts` (positive, alias,
+  senior/staff strip, abstention on `Engineer`, mixed-role and
+  cross-family abstention, JSON-stable payload), and
+  `tests/job-nlp-snapshot-job-type.test.ts` (frozen key set across hit
+  / miss / empty inputs, hash shape, relationship enum coverage,
+  JSON round-trip).
+- **No installer rebuilt, no version bump, no push.** The slice is
+  source-only; every gate is green
+  (`npm run verify` 172 files / 1605 tests PASS,
+  `npm run privacy:check` 11/11 PASS,
+  `npm run nlp:security-audit` 3/3 PASS,
+  `npm run format:check` / `npm run lint` / `npm run typecheck` all
+  PASS). Committed locally; **release-boundary, version-bump, or
+  EXPLANATION-1 promotion is NOT bundled in this commit** and requires
+  a separate authorization and a release task.

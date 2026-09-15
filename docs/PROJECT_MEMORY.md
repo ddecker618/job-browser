@@ -12,17 +12,18 @@ records.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P36 are complete. P36 is committed and pushed
-  to `origin/main` (`dbd0fdb` implementation, `b4e6256` docs, `f05bee9` 1.1.4
-  release boundary). Latest recorded full source
-  verification: **169 files / 1,573 tests, fully green (`npm run verify`,
-  2026-09-14)**. The 2026-09-14 Package A/B/C lifecycle checkpoint and the
-  1.1.4 release boundary are committed and pushed to `origin/main`
-  (HEAD == origin/main at `f05bee9`).
+- NLP Stages 0–29 and P0–P37 are complete. P36 + the 1.1.4 release commit
+  (`f05bee9`) are pushed to `origin/main` (HEAD == origin/main at
+  `f05bee9`). P37 shadow is committed locally (`39e84c0` planning + the
+  P37 implementation commit). P35 is committed as `fd63a2a`.
+  Latest recorded full source verification: **172 files / 1,605 tests,
+  fully green (`npm run verify`, 2026-09-14)** after the P37 shadow
+  implementation.
 - Current package version and latest validated installer: **1.1.4**, shipped
   at the P36 release boundary (2026-09-14). That artifact includes the prior
-  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, and
-  P36 coverage abstention hygiene.
+  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work,
+  and P36 coverage abstention hygiene. P37 is a SHADOW `Level 0` source-
+  only ship and is not in any released artifact.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is

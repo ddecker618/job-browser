@@ -72,14 +72,50 @@ for details. All three commits were pushed to `origin/main`
 
 ### Recommended next task
 
-No pending source or packaging work remains. The 1.1.4 release commit
-(`f05bee9`) is **pushed to `origin/main`** (HEAD == origin/main at
-`f05bee9`). P37 planning is recorded in `docs/Intelligence_Roadmap.md`
-but is not implemented; no source or test edits are bundled. On a future
-source change, rerun `npm run verify`, `npm run desktop:lifecycle-harness`,
-and the packaged/installed smokes before any new release boundary. Manual
-packaged Windows acceptance items above are the only outstanding
-verification.
+The 1.1.4 release boundary (`f05bee9`) remains the latest shipped
+artifact (pushed to `origin/main`). A new bounded **P37 shadow
+occupation / job-type taxonomy** source-only slice was committed locally
+on top of 1.1.4 (SHADOW `Level 0`; no installer rebuild, no version
+bump, no push).
+
+### P37 shadow implementation (SHADOW Level 0; local-only)
+
+- New: `src/intelligence/nlp/jobTypeTaxonomy.ts` — curated occupation
+  catalog (11 families) + `JOB_TYPE_TAXONOMY_VERSION='job-type-taxonomy-v1'`
+  + SHA-256 content hash for stale detection.
+- New: `src/intelligence/nlp/jobTypeNormalization.ts` — deterministic
+  classifier, `JOB_TYPE_NORMALIZATION_VERSION='job-type-normalization-v1'`,
+  `method='deterministic-fallback'`, enum
+  `EXACT` | `CANONICAL_ALIAS` | `UNRELATED` | `UNKNOWN`, populated
+  abstention reason + explanation; role-prefix / employment-type /
+  generic strip words before whole-alias comparison.
+- 3 new tests:
+  `tests/job-nlp-job-type-taxonomy.test.ts`,
+  `tests/job-nlp-job-type-normalization.test.ts`,
+  `tests/job-nlp-snapshot-job-type.test.ts`.
+- Verification: `npm run verify` **172 files / 1,605 tests** PASS;
+  `npm run privacy:check` 11/11 PASS; `npm run nlp:security-audit`
+  3/3 PASS; format, lint, typecheck all green.
+- **Production isolation:** repo-wide grep confirms no production
+  decide path imports the new modules; no installer rebuild, no
+  version bump, no push; EXPLANATION-1 preview deliberately out of
+  scope.
+
+### Suggested follow-ups (each requires explicit user approval before start)
+
+- A **release-boundary task** that bumps to 1.1.5 and ships the P37
+  shadow as bytes in the installed asar without any UI surface.
+- An **EXPLANATION-1 authorization** for an occupation / job-type panel
+  in the existing Job Intelligence preview, naming the field,
+  evidence cohort, threshold profile, rollout, rollback trigger, and
+  release boundary.
+- A **Direction B** planning slice (transferable-skill matching)
+  building on the P37 catalog and the existing
+  `skillNormalization` reviewed-relationship table.
+- A **Direction C** planning slice (offline semantic-role benchmark)
+  per the existing `docs/NLP_SEMANTIC_DESIGN.md` measurement gate.
+- **Push approval** for the two local-only P37 commits (planning +
+  shadow implementation).
 
 ---
 

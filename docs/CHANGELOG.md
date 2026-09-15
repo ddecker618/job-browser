@@ -1,5 +1,49 @@
 # Changelog
 
+## [Unreleased] - 2026-09-14
+
+### Job Intelligence — P37 occupation / job-type taxonomy shadow module
+
+- **Direction A planning + SHADOW `Level 0` implementation.** New curated
+  occupation / job-type taxonomy
+  (`src/intelligence/nlp/jobTypeTaxonomy.ts`) plus a deterministic title
+  classifier (`src/intelligence/nlp/jobTypeNormalization.ts`) covering
+  software engineering, data science/analytics, cybersecurity, DevOps/SRE,
+  network engineering, systems administration, database administration,
+  QA/test engineering, project/program management, product management, and
+  MLOps engineering. Both modules are SHADOW only (`productionEffect:
+'none'`); no production score, eligibility, ranking, filtering,
+  lifecycle, status, archive, or removal behavior changes.
+- **Versioned + content-hashed catalog.**
+  `JOB_TYPE_TAXONOMY_VERSION = 'job-type-taxonomy-v1'` plus a SHA-256
+  content hash (`jobTypeTaxonomyContentHash()`) for stale-safe invalidation.
+  Classifier carries
+  `JOB_TYPE_NORMALIZATION_VERSION = 'job-type-normalization-v1'` with
+  `method: 'deterministic-fallback'` and a frozen enum
+  (`EXACT` | `CANONICAL_ALIAS` | `UNRELATED` | `UNKNOWN`). Generic
+  titles, adversarial mixed-role titles, and titles that strip to nothing
+  fall through to `UNRELATED` / `UNKNOWN` with an explicit
+  `abstentionReason` and a populated `explanation`. No new npm
+  dependencies, no embedding runtime, no hosted AI, no automatic model
+  download, no telemetry.
+- **Tests.** Three new test files:
+  `tests/job-nlp-job-type-taxonomy.test.ts`,
+  `tests/job-nlp-job-type-normalization.test.ts`, and
+  `tests/job-nlp-snapshot-job-type.test.ts` (taxonomy lookup, alias
+  index, hash determinism + drift detection, EXACT / CANONICAL_ALIAS /
+  abstention paths, frozen payload shape, JSON round-trip). Full
+  `npm run verify` **172 files / 1,605 tests** PASS; `npm run
+privacy:check` 11/11; `npm run nlp:security-audit` 3/3; format, lint,
+  and typecheck green.
+- **No installer rebuilt, no version bump, no push, no EXPLANATION-1
+  panel.** The slice is source-only. EXPLANATION-1 promotion of the
+  P37 shadow requires a separate authorization record (capability,
+  field, evidence cohort, threshold profile, rollout cohort, rollback
+  trigger, release boundary) and a release-boundary task. Direction B
+  (transferable-skill matching), Direction C (semantic-role
+  benchmark), Direction D (additional extractors), and Direction E
+  (employer / platform provenance) remain separate decisions.
+
 ## [1.1.4] - 2026-09-14
 
 ### Job Intelligence — P36 coverage abstention hygiene

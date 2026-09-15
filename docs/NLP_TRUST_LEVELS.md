@@ -88,16 +88,17 @@ hard-gate`. No skipping.
 
 P35 current-source defaults apply to the P27 field-specific promotion levels:
 
-| Capability                                 | Current level           | Consumer flag/default                    | Effect                                                  |
-| ------------------------------------------ | ----------------------- | ---------------------------------------- | ------------------------------------------------------- |
-| Extraction, reconciliation, comparison     | SHADOW (0)              | Background local processing              | Additive rows and diagnostics only                      |
-| Job Intelligence facts and resume coverage | EXPLANATION (1)         | jobIntelligenceExplanation: on (default) | Evidence-labelled display only                          |
-| Reconciled role-family suggestion          | EXPLANATION (1)         | roleFamilySuggestion: on (default)       | Suggestion only; deterministic family wins              |
-| Search-profile vocabulary feedback         | EXPLANATION (1)         | searchProfileFeedback: on (default)      | Read-only feedback                                      |
-| Valid target-role supporting evidence      | EXPLANATION (1)         | No separate promotion flag               | Explains deterministic membership only                  |
-| Search relevance tie-break                 | ENRICHMENT (2)          | searchTieBreak: off                      | Secondary ordering only inside exact deterministic ties |
-| Experimental recommendation contribution   | SHADOW (0), design only | No runtime consumer                      | Zero production effect                                  |
-| Scoring and hard gates                     | Not promoted            | Unreachable                              | Deterministic only                                      |
+| Capability                                            | Current level           | Consumer flag/default                    | Effect                                                   |
+| ----------------------------------------------------- | ----------------------- | ---------------------------------------- | -------------------------------------------------------- |
+| Extraction, reconciliation, comparison                | SHADOW (0)              | Background local processing              | Additive rows and diagnostics only                       |
+| Job Intelligence facts and resume coverage            | EXPLANATION (1)         | jobIntelligenceExplanation: on (default) | Evidence-labelled display only                           |
+| Reconciled role-family suggestion                     | EXPLANATION (1)         | roleFamilySuggestion: on (default)       | Suggestion only; deterministic family wins               |
+| Search-profile vocabulary feedback                    | EXPLANATION (1)         | searchProfileFeedback: on (default)      | Read-only feedback                                       |
+| Valid target-role supporting evidence                 | EXPLANATION (1)         | No separate promotion flag               | Explains deterministic membership only                   |
+| Search relevance tie-break                            | ENRICHMENT (2)          | searchTieBreak: off                      | Secondary ordering only inside exact deterministic ties  |
+| Experimental recommendation contribution              | SHADOW (0), design only | No runtime consumer                      | Zero production effect                                   |
+| Scoring and hard gates                                | Not promoted            | Unreachable                              | Deterministic only                                       |
+| Local occupation / job-type taxonomy classifier (P37) | SHADOW (0)              | No runtime consumer, no projection       | Additive shadow rows only; no production-field influence |
 
 All flags are read locally at decision time. `jobIntelligenceExplanation` —
 the EXPLANATION-level display capability — is enabled by default (its prior
@@ -110,3 +111,14 @@ fail-closed. Settings exposes the flags read-only. The acceptance,
 comparison, rollback, real-data, performance, privacy, packaging, and smoke
 evidence through P27 is recorded in the roadmap. SPRINT_MAXIMUM_LEVEL =
 'enrichment' still applies; nothing reached SCORING or HARD_GATE.
+
+The P37 occupation / job-type taxonomy module
+(`src/intelligence/nlp/jobTypeTaxonomy.ts` +
+`src/intelligence/nlp/jobTypeNormalization.ts`,
+`JOB_TYPE_TAXONOMY_VERSION='job-type-taxonomy-v1'`,
+`JOB_TYPE_NORMALIZATION_VERSION='job-type-normalization-v1'`,
+`method='deterministic-fallback'`) is a SHADOW (`Level 0`) module only.
+Its payload is read-only and not consumed by any score, eligibility,
+ranking, filter, lifecycle, status, archive, or removal path. An
+EXPLANATION-1 preview of occupation / job-type requires a separate
+authorization and is **not** granted by this entry.
