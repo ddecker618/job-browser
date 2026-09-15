@@ -14,16 +14,18 @@ records.
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P37 are complete. P36 + the 1.1.4 release commit
   (`f05bee9`) are pushed to `origin/main` (HEAD == origin/main at
-  `f05bee9`). P37 shadow is committed locally (`39e84c0` planning + the
-  P37 implementation commit). P35 is committed as `fd63a2a`.
-  Latest recorded full source verification: **172 files / 1,605 tests,
-  fully green (`npm run verify`, 2026-09-14)** after the P37 shadow
-  implementation.
-- Current package version and latest validated installer: **1.1.4**, shipped
-  at the P36 release boundary (2026-09-14). That artifact includes the prior
-  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work,
-  and P36 coverage abstention hygiene. P37 is a SHADOW `Level 0` source-
-  only ship and is not in any released artifact.
+  `f05bee9`). P37 SHADOW `Level 0` is shipped in the 1.1.5 release
+  boundary (2026-09-14); the 1.1.5 release commit is local and not
+  pushed. P35 is committed as `fd63a2a`. Latest recorded full source
+  verification: **172 files / 1,605 tests, fully green (`npm run
+verify`, 2026-09-14)**.
+- Current package version and latest validated installer: **1.1.5**, shipped
+  at the P37 release boundary (2026-09-14). That artifact includes the prior
+  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, the
+  1.1.4 P36 coverage abstention hygiene, and the P37 SHADOW `Level 0`
+  occupation / job-type taxonomy + classifier. SHADOW only — no
+  scoring / eligibility / ranking / filtering / lifecycle / status /
+  archive / removal / hard-gate change.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is
@@ -653,6 +655,25 @@ validated state is committed.
   `parsingError`, `job-intelligence-abstention-note`); notification-silencing
   permission handlers confirmed in the packaged asar. Production DB untouched
   (SHA-256 unchanged); no orphan processes and port 6783 free after validation.
+- **RELEASED AS 1.1.5 (2026-09-14, P37 SHADOW):** `release\Job-Browser-Setup-1.1.5.exe`
+  253,617,071 B, SHA-256
+  `14A41C4D53BA930A8574123E383E6FAF9613DD678A59AC36E0FDEEE697131D3A`;
+  packaged and installed app.asar identical 74,147,400 B / SHA-256
+  `8205D3D69655D48E3C7E061B2FD9C1D9690FECF19BF862CFB4BA10C001F79A75`;
+  installed exe ProductVersion 1.1.5.0 / FileVersion 1.1.5. Silent upgrade
+  from the 1.1.4 install exit 0. Packaged smoke, packaged seeded-upgrade
+  smoke, installed smoke, installed seeded-upgrade smoke all PASS;
+  privacy:check 11/11; nlp:security-audit 3/3; `npm run verify`
+  172 files / 1,605 tests. P37 runtime markers confirmed in the packaged
+  asar (`job-type-taxonomy-v1`, `job-type-normalization-v1`,
+  `JOB_TYPE_TAXONOMY_VERSION`, `JOB_TYPE_NORMALIZATION_VERSION`,
+  `deterministic-fallback`, `software-engineering`, `devops-platform`,
+  `cybersecurity`); P36 markers and notification-silencing permission
+  handlers confirmed still present. SHADOW `Level 0` only — no scoring,
+  eligibility, ranking, filtering, lifecycle, status, archive, removal,
+  or hard-gate change. Production DB untouched (SHA-256 unchanged); no
+  orphan processes and port 6783 free after validation. Release commit
+  local, **not pushed**.
 - **REMAINING (manual, packaged build):** real Windows shutdown/logoff
   delivery of `query-session-end`; tray icon/menu/focus rendering; whether the
   5 s shutdown budget fits real logoff latency. No push, no installer rebuild,

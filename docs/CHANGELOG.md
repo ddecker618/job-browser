@@ -1,6 +1,69 @@
 # Changelog
 
-## [Unreleased] - 2026-09-14
+## [1.1.5] - 2026-09-14
+
+### Job Intelligence — P37 occupation / job-type taxonomy shadow (SHIPPED)
+
+- **P37 SHADOW `Level 0` occupation / job-type taxonomy shipped in the
+  installed app.** New curated occupation catalog
+  (`src/intelligence/nlp/jobTypeTaxonomy.ts`, 11 families:
+  `software-engineering`, `data-science-analytics`, `cybersecurity`,
+  `devops-platform`, `network-engineering`, `systems-administration`,
+  `database-administration`, `qa-test-engineering`,
+  `project-program-management`, `product-management`,
+  `mlops-engineering`) and a deterministic title classifier
+  (`src/intelligence/nlp/jobTypeNormalization.ts`) are present in the
+  packaged `app.asar` (markers verified in the shipped artifact).
+  Both modules are SHADOW only (`productionEffect: 'none'`); no
+  production score, eligibility, ranking, filter, lifecycle, status,
+  archive, or removal behavior is changed by this release.
+- **Versioned + content-hashed catalog.**
+  `JOB_TYPE_TAXONOMY_VERSION = 'job-type-taxonomy-v1'` plus a SHA-256
+  catalog content hash (`jobTypeTaxonomyContentHash()`) for stale-safe
+  invalidation; classifier carries
+  `JOB_TYPE_NORMALIZATION_VERSION = 'job-type-normalization-v1'` with
+  `method: 'deterministic-fallback'`, frozen enum
+  `EXACT` | `CANONICAL_ALIAS` | `UNRELATED` | `UNKNOWN`, populated
+  abstention reason and explanation, and a JSON-stable payload
+  shape. Role-prefix / employment-type / generic strip-words are
+  applied before whole-alias comparison; weak multi-token overlap
+  and ambiguous mixed-role titles fall through to `UNRELATED` /
+  `UNKNOWN`. No npm dependency added, no embedding runtime, no hosted
+  AI, no automatic model download, no telemetry.
+- **EXPLANATION-1 preview deliberately out of scope.** A user-visible
+  occupation / job-type panel in the existing Job Intelligence
+  preview still requires a separate authorization record (capability,
+  field, evidence cohort, threshold profile, rollout, rollback
+  trigger, release boundary) and is **not** granted by this release.
+- **P36 stability preserved.** `resume-snapshot-evidence-v2`,
+  `coverageContext`, `captureState`, and `parsingError` continue to
+  ship in the packaged `app.asar`. Notifications remain disabled;
+  `installSilentNotificationPolicy`, `setPermissionRequestHandler`,
+  and `setPermissionCheckHandler` are confirmed inside the packaged
+  `app.asar`.
+- Rebuilt and validated the versioned installer:
+  `release\Job-Browser-Setup-1.1.5.exe`, 253,617,071 bytes,
+  SHA-256 `14A41C4D53BA930A8574123E383E6FAF9613DD678A59AC36E0FDEEE697131D3A`.
+  Packaged and installed `app.asar` are identical (74,147,400 bytes,
+  SHA-256 `8205D3D69655D48E3C7E061B2FD9C1D9690FECF19BF862CFB4BA10C001F79A75`).
+  Installed executable reports ProductVersion `1.1.5.0` and
+  FileVersion `1.1.5` (silent upgrade from the 1.1.4 install, exit 0).
+- Validated against packaged and installed artifacts: packaged smoke,
+  packaged seeded-upgrade smoke, installed smoke, and installed
+  seeded-upgrade smoke all PASS. P37 runtime markers
+  (`job-type-taxonomy-v1`, `job-type-normalization-v1`,
+  `JOB_TYPE_TAXONOMY_VERSION`, `JOB_TYPE_NORMALIZATION_VERSION`,
+  `deterministic-fallback`, and the catalog keys `software-engineering`,
+  `devops-platform`, `cybersecurity`) confirmed in the packaged
+  `app.asar`; P36 markers and notification-silencing code remain
+  present. `npm run verify` **172 files / 1,605 tests** PASS,
+  `npm run privacy:check` 11/11, `npm run nlp:security-audit` 3/3,
+  format / lint / typecheck green. No orphan processes and port 6783
+  free after validation; production data untouched (prod DB SHA-256
+  unchanged at `2E4BC539FFACBD88473FF2CB36FCAAAD9E968AAF7AAA88568ED0DE225E197B07`,
+  size 493,121,536 bytes).
+
+## [Unreleased] - 2026-09-14 (landed source changes; **superseded by [1.1.5] above**)
 
 ### Job Intelligence — P37 occupation / job-type taxonomy shadow module
 
@@ -35,11 +98,10 @@
   `npm run verify` **172 files / 1,605 tests** PASS; `npm run
 privacy:check` 11/11; `npm run nlp:security-audit` 3/3; format, lint,
   and typecheck green.
-- **No installer rebuilt, no version bump, no push, no EXPLANATION-1
-  panel.** The slice is source-only. EXPLANATION-1 promotion of the
-  P37 shadow requires a separate authorization record (capability,
-  field, evidence cohort, threshold profile, rollout cohort, rollback
-  trigger, release boundary) and a release-boundary task. Direction B
+- **Shipped in [1.1.5] (above).** The slice is source-only at this
+  step. EXPLANATION-1 promotion of the P37 shadow requires a separate
+  authorization record (capability, field, evidence cohort, threshold
+  profile, rollout cohort, rollback trigger, release boundary). Direction B
   (transferable-skill matching), Direction C (semantic-role
   benchmark), Direction D (additional extractors), and Direction E
   (employer / platform provenance) remain separate decisions.

@@ -1,56 +1,66 @@
 # Session Handoff
 
-## Current status — 1.1.4 release-boundary closeout (2026-09-14)
+## Current status — 1.1.5 release-boundary closeout (2026-09-14)
 
-The 1.1.4 release boundary is **complete**. This is the active checkpoint.
+The 1.1.5 release boundary is **complete** and is the active checkpoint.
 Older sections below are historical context; do not start additional work
 from them.
 
 ### Release boundary state
 
-- **Version:** `1.1.4` in `package.json` and `package-lock.json`.
+- **Version:** `1.1.5` in `package.json` and `package-lock.json` (root +
+  workspace entry); third-party dependency versions untouched.
 - **Installer rebuilt and validated:**
-  `release\Job-Browser-Setup-1.1.4.exe` (253,613,965 bytes, SHA-256
-  `C61A58FDEDFFE253E7E59B9BE28A88E4ACC03F58AD9687DF0BDBC639DF6DADF1`).
-  Packaged and installed `app.asar` are identical (74,133,415 bytes,
-  SHA-256 `0504650BBE543BD3D4A50B6E987F5246475F1C096ADCDEC3DE83A5D766E4B2CE`).
-  Installed executable reports ProductVersion `1.1.4.0` / FileVersion
-  `1.1.4` (silent upgrade from the 1.1.3 install, exit 0).
+  `release\Job-Browser-Setup-1.1.5.exe` (253,617,071 bytes, SHA-256
+  `14A41C4D53BA930A8574123E383E6FAF9613DD678A59AC36E0FDEEE697131D3A`).
+  Packaged and installed `app.asar` are identical (74,147,400 bytes,
+  SHA-256 `8205D3D69655D48E3C7E061B2FD9C1D9690FECF19BF862CFB4BA10C001F79A75`).
+  Installed executable reports ProductVersion `1.1.5.0` /
+  FileVersion `1.1.5` (silent upgrade from the 1.1.4 install, exit 0).
 - **Smokes passed:** packaged smoke, packaged seeded-upgrade smoke,
   installed smoke, and installed seeded-upgrade smoke — all PASS.
-- **Full verification:** `npm run verify` — 169 files / 1,573 tests, all
-  pass.
+- **Full verification:** `npm run verify` — 172 files / 1,605 tests,
+  all pass.
 - **Privacy/security gates:** `npm run privacy:check` 11/11 and
   `npm run nlp:security-audit` 3/3 pass.
-- **P36 confirmed in the packaged asar:** `resume-snapshot-evidence-v2`,
-  `coverageContext`, `captureState`, `parsingError`, and the
-  `job-intelligence-abstention-note` client marker are all present in the
-  packaged app.asar.
-- **Notifications remain disabled:** `NotificationManager.tsx` returns
-  `null`; `main.ts` denies `notifications` permission checks/requests
-  before the BrowserWindow is created (verified inside the packaged asar:
-  `installSilentNotificationPolicy`, `setPermissionRequestHandler`, and
-  `setPermissionCheckHandler` are present).
-- **Production DB untouched** (prod DB SHA-256 and size unchanged across
-  the release).
-- **No orphan processes:** no Job Browser/Electron processes and port 6783
-  is free after validation.
+- **P37 + P36 confirmed in the packaged asar:**
+  `job-type-taxonomy-v1`, `job-type-normalization-v1`,
+  `JOB_TYPE_TAXONOMY_VERSION`, `JOB_TYPE_NORMALIZATION_VERSION`,
+  `deterministic-fallback`, and the catalog keys
+  `software-engineering`, `devops-platform`, `cybersecurity` are
+  present in the shipped bytes (P37 shadow as `Level 0`);
+  `resume-snapshot-evidence-v2`, `coverageContext`, `captureState`,
+  `parsingError` (P36) remain present.
+- **Notifications remain disabled:** `NotificationManager.tsx`
+  returns `null`; `main.ts` denies `notifications` permission
+  checks/requests before the BrowserWindow is created (verified
+  inside the packaged asar: `installSilentNotificationPolicy`,
+  `setPermissionRequestHandler`, and `setPermissionCheckHandler`
+  are present).
+- **Production DB untouched** (prod DB SHA-256
+  `2E4BC539FFACBD88473FF2CB36FCAAAD9E968AAF7AAA88568ED0DE225E197B07`
+  and size 493,121,536 bytes unchanged across the release).
+- **No orphan processes:** no Job Browser/Electron processes and
+  port 6783 is free after validation.
 
-### What shipped at this boundary (P36, commits `dbd0fdb` + `b4e6256` + `f05bee9`)
+### What shipped at this boundary (P37, local commits `b453ae0` + 1.1.5 release commit)
 
-P36 coverage abstention hygiene on top of the 1.1.3 baseline:
-`snapshotEvidence.ts` emits consistent UNKNOWN coverage for all five
-evidence kinds when a resume snapshot failed to parse (never `MISSING`,
-adapter bumped to `resume-snapshot-evidence-v2`); `/api/jobs/:id/intelligence`
-returns a read-only `coverageContext` (`captureState`:
-`no_application` | `no_snapshot` | `parsed` | `failed`, plus
-`parsingError`); and the Job Intelligence preview renders capture-state
-absence notes and a failed-parse abstention note. P36 stays EXPLANATION/
-shadow-only — no scoring, eligibility, ranking, filtering, lifecycle,
-status, archive, removal, or hard-gate changes; no job-type expansion;
-no new NLP modules; no schema migration. See `docs/CHANGELOG.md` (1.1.4)
-for details. All three commits were pushed to `origin/main`
-(HEAD == origin/main at `f05bee9` after push).
+P37 SHADOW `Level 0` occupation / job-type taxonomy on top of the 1.1.4
+baseline:
+`src/intelligence/nlp/jobTypeTaxonomy.ts` (curated 11-family catalog,
+`JOB_TYPE_TAXONOMY_VERSION='job-type-taxonomy-v1'`, SHA-256 content
+hash, alias index, strict disjoint-alias collision handling) and
+`src/intelligence/nlp/jobTypeNormalization.ts` (deterministic title
+classifier, `JOB_TYPE_NORMALIZATION_VERSION='job-type-normalization-v1'`,
+method `deterministic-fallback`, enum `EXACT` | `CANONICAL_ALIAS` |
+`UNRELATED` | `UNKNOWN`, populated abstention reason + explanation,
+role-prefix / employment-type / generic strip-words). P37 stays
+SHADOW only — no scoring, eligibility, ranking, filtering, lifecycle,
+status, archive, removal, or hard-gate integration; no new npm
+dependency; no embedding runtime / hosted AI / automatic model
+download / telemetry. EXPLANATION-1 preview of occupation / job-type
+is **not** bundled in this release (requires a separate authorization).
+See `docs/CHANGELOG.md` (1.1.5) for details.
 
 ### Remaining manual Windows acceptance items
 

@@ -27,30 +27,32 @@ roles:
 
 ## Current project status
 
-Reconciled against source checkpoint `b4e6256` (P36) and the 1.1.4 release
-record. Git/source evidence takes precedence over historical completion records.
+Reconciled against source checkpoint `b453ae0` (P37 shadow) + the 1.1.5
+release record and origin/main at `f05bee9` (1.1.4 release). Git/source
+evidence takes precedence over historical completion records.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
   9.6 seed manifest import is complete. These are not open implementation tasks.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
-  Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P37 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P37 are complete. P37 shadow is committed locally
-  (no push). P36 was shipped in the 1.1.4 release boundary (2026-09-14)
-  and all three commits (`dbd0fdb`, `b4e6256`,
-  `f05bee9`) are pushed to `origin/main` (HEAD == origin/main at `f05bee9`).
-  P35 was committed as `fd63a2a`. Latest recorded
-  full source verification: **172 files / 1,605 tests, fully green
-  (`npm run verify`, 2026-09-14)** after the P37 shadow implementation.
-- Current package version and latest validated installer: **1.1.4**, released
-  at the P36 release boundary (2026-09-14). That artifact includes the prior
-  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, and
-  P36 coverage abstention hygiene.
+- NLP Stages 0–29 and P0–P37 are complete. P37 shadow is shipped in the
+  1.1.5 release boundary (2026-09-14); the 1.1.5 release commit is local
+  (not yet pushed). P36 was shipped in 1.1.4 (`f05bee9` is on `origin/main`).
+  P35 was committed as `fd63a2a`. Latest recorded full source verification:
+  **172 files / 1,605 tests, fully green (`npm run verify`, 2026-09-14)**.
+- Current package version and latest validated installer: **1.1.5**, shipped
+  at the P37 release boundary (2026-09-14). That artifact includes the prior
+  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, the
+  1.1.4 P36 coverage abstention hygiene, and the P37 SHADOW `Level 0`
+  occupation / job-type taxonomy / classifier.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is
   gated. SCORING and HARD_GATE remain unimplemented and unauthorized.
+- P37 SHADOW is non-promoted. EXPLANATION-1 for occupation / job-type
+  requires a separate authorization and release boundary.
 - Explicit availability/current-history separation is complete. Two complete
   snapshot misses establish source disappearance; trusted closing evidence
   establishes expiry. Posting age is not proof. Any active source keeps the
@@ -81,35 +83,35 @@ preserve local data, source provenance, and current deterministic authority.
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P37 shadow job-type taxonomy implemented (Direction A);
-                     committed locally; no push, no installer rebuild,
-                     no version bump
-CURRENT_TASK:        none pending; P37 shadow implementation committed; the
-                     implemented flow resumes after the next step (Direction A
-                     release-boundary authorization, EXPLANATION-1 promotion,
-                     Direction B / C / D / E, or a separate task) is approved
-LAST_COMPLETED:      P37 shadow: local deterministic occupation / job-type
-                     taxonomy (catalog + classifier) + 32 new tests;
-                     npm run verify 172 files / 1605 tests; privacy 11/11;
-                     security 3/3; build/format/lint/typecheck PASS;
-                     zero production-path imports confirmed
-NEXT_ACTION:         nothing pending in source; acceptable next work is a
-                     release-boundary task (version bump + installer rebuild
-                     + 4 smokes + privacy + NLP security), a Direction B / C
-                     / D / E planning/implementation slice, a separate
-                     EXPLANATION-1 authorization for the P37 shadow, or push
-                     approval for the local commit
-FILES_IN_PROGRESS:   none on disk; P37 planning commit + P37 shadow
-                     implementation commit are local
+CURRENT_STAGE:       P37 shadow released as 1.1.5; release commit local;
+                     no push, 1.1.4 (P36) still on origin/main
+CURRENT_TASK:        none pending; 1.1.5 installer validated (4 smokes,
+                     asar match, P37 + P36 + notifications confirmed in
+                     asar); ready to push 1.1.5 on approval or next
+                     development task
+LAST_COMPLETED:      1.1.5 release boundary: P37 SHADOW `Level 0` job-type
+                     taxonomy + classifier packaged as
+                     release\Job-Browser-Setup-1.1.5.exe;
+                     packaged/installed/upgrade smokes PASS; verify
+                     172 files / 1605 tests; privacy 11/11; security 3/3;
+                     P37 markers + P36 markers + notifications confirmed
+                     in the asar; release commit local (not pushed)
+NEXT_ACTION:         nothing pending in source; acceptable next work is
+                     push of the 1.1.5 release commit, an EXPLANATION-1
+                     authorization for the P37 shadow, the next product
+                     feature branch, or manual packaged Windows acceptance
+FILES_IN_PROGRESS:   none on disk; P37 commits (`39e84c0` planning,
+                     `b453ae0` shadow impl) + 1.1.5 release commit are
+                     local; P36 + 1.1.4 release commit `f05bee9` are on
+                     origin/main
 TESTS_TO_RUN:        none new required; on any future source change rerun
                      npm run verify + npm run desktop:lifecycle-harness +
                      packaged/installed smokes
 KNOWN_FAILURES:      none in source
-LATEST_CHECKPOINT:   P37 shadow job-type taxonomy implementation (local
-                     commit); the 1.1.4 release boundary f05bee9 is
-                     pushed to origin/main; P35 NLP defaults committed
-                     as fd63a2a; see git log HEAD + docs/CHANGELOG for
-                     context
+LATEST_CHECKPOINT:   1.1.5 release boundary (version bump + installer)
+                     on top of P36 + 1.1.4 release f05bee9 on origin/main;
+                     P35 NLP defaults committed as fd63a2a; see git log
+                     HEAD + docs/CHANGELOG for context
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
@@ -150,21 +152,25 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   P37 shadow implementation committed locally atop the
-                     1.1.4 release boundary. P36 + 1.1.4 are pushed to
-                     origin/main at f05bee9 (installer 253,613,965 B,
-                     SHA-256 C61A58FD...DF6DADF1; asar 74,133,415 B,
-                     0504650B...66E4B2CE; 4 smokes PASS; verify
-                     169/1573; privacy 11/11; security 3/3). P37 source
-                     (jobTypeTaxonomy.ts, jobTypeNormalization.ts) + 3
-                     new tests stay local; verify on the local branch
-                     is 172 files / 1605 tests. Do not restart
-                     completed P0-P37 or Package A/B/C work; the
-                     remaining choices are a release-boundary task for
-                     P37 (version bump + installer rebuild), a
-                     separate EXPLANATION-1 authorization for the P37
-                     shadow, a Direction B / C / D / E slice, or push
-                     approval for the local commits
+SAFE_RESUME_POINT:   1.1.5 release boundary complete locally atop the 1.1.4
+                     release. The 1.1.4 release boundary is on
+                     origin/main at `f05bee9` (installer
+                     253,613,965 B, SHA-256 `C61A58FD...DF6DADF1`; asar
+                     74,133,415 B, `0504650B...66E4B2CE`; 4 smokes
+                     PASS; verify 169/1573). The 1.1.5 release boundary
+                     wraps the P37 SHADOW into
+                     `release\Job-Browser-Setup-1.1.5.exe` (253,617,071
+                     B, SHA-256 `14A41C4D...131D3A`; asar 74,147,400 B,
+                     `8205D3D6...F79A75`), 4 smokes PASS, P37 + P36 +
+                     notifications confirmed in the asar, prod DB
+                     untouched, port 6783 free. Local commits (not
+                     yet pushed): P37 planning `39e84c0`, P37 shadow
+                     `b453ae0`, 1.1.5 release commit. Do not restart
+                     P0-P37 or Package A/B/C work. Remaining choices:
+                     push approval (publishing the 3 local commits),
+                     an EXPLANATION-1 authorization for the P37
+                     shadow, Direction B/C/D/E work, or manual
+                     packaged Windows acceptance.
 ```
 
 ---
@@ -1460,6 +1466,7 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 | 2026-09-14 | P36 coverage abstention hygiene | snapshot parse failure now yields consistent UNKNOWN evidence for all five kinds (never MISSING); `coverageContext` capture-state payload (`no_application`/`no_snapshot`/`parsed`/`failed` + `parsingError`); client abstention notes; adapter bumped to `resume-snapshot-evidence-v2`; `npm run verify` **169 files / 1573 tests** PASS; privacy 11/11; security 3/3; build PASS; **released as 1.1.4** (installer 253,613,965 B / SHA-256 `C61A58FD…DF6DADF1`; asar 74,133,415 B / `0504650B…66E4B2CE`), 4 smokes PASS, P36 + notifications confirmed in asar, port 6783 free, prod DB untouched; release commit `f05bee9` pushed to `origin/main` |
 | 2026-09-14 | P37 occupation / job-type taxonomy planning | planning-only checkpoint (no source/tests touched); compared five candidate directions and recommended Direction A (local, deterministic, versioned occupation taxonomy + classifier mirror of `skillNormalization`); recommended slice stays `Level 0` SHADOW with an additive diagnostic projection; EXPLANATION-1 preview deliberately excluded and would require a later authorization + release boundary; `npm run format:check` PASS; committed locally; no push, no installer rebuild, no source feature code |
 | 2026-09-14 | P37 occupation / job-type taxonomy shadow module | Direction A implementation as SHADOW Level 0 only: `jobTypeTaxonomy.ts` (catalog + `JOB_TYPE_TAXONOMY_VERSION='job-type-taxonomy-v1'` + SHA-256 content hash) and `jobTypeNormalization.ts` (deterministic classifier, `JOB_TYPE_NORMALIZATION_VERSION='job-type-normalization-v1'`, method `deterministic-fallback`, enum `EXACT` \| `CANONICAL_ALIAS` \| `UNRELATED` \| `UNKNOWN`, populated abstention); 3 new tests (`tests/job-nlp-job-type-{taxonomy,normalization,snapshot-job-type}.test.ts`); repo-wide grep confirms zero production-path imports; **`npm run verify` 172 files / 1605 tests** PASS; privacy 11/11; security 3/3; build/format/lint/typecheck PASS; **no installer rebuild, no version bump, no push**; EXPLANATION-1 promotion and release boundary are explicitly out of scope |
+| 2026-09-14 | P37 release boundary (1.1.5) | version bump 1.1.4 → 1.1.5 shipping P37 SHADOW `Level 0` job-type taxonomy + classifier as in-asar bytes; NSIS build; packaged/installed/seeded-upgrade smokes; asar match; **P37 markers confirmed** (`job-type-taxonomy-v1`, `job-type-normalization-v1`, `JOB_TYPE_TAXONOMY_VERSION`, `JOB_TYPE_NORMALIZATION_VERSION`, `deterministic-fallback`, `software-engineering`, `devops-platform`, `cybersecurity`); **P36 markers still present** (`resume-snapshot-evidence-v2`, `coverageContext`, `captureState`, `parsingError`); **notification silencing still present** (`installSilentNotificationPolicy`, `setPermissionRequestHandler`, `setPermissionCheckHandler`); privacy + security gates | installer `release\Job-Browser-Setup-1.1.5.exe` 253,617,071 B / SHA-256 `14A41C4D53BA930A8574123E383E6FAF9613DD678A59AC36E0FDEEE697131D3A`; packaged + installed app.asar identical (74,147,400 B / `8205D3D69655D48E3C7E061B2FD9C1D9690FECF19BF862CFB4BA10C001F79A75`); installed exe ProductVersion 1.1.5.0 / FileVersion 1.1.5 (silent upgrade from 1.1.4, exit 0); packaged smoke + packaged seeded-upgrade smoke + installed smoke + installed seeded-upgrade smoke all PASS; `npm run verify` 172 files / 1,605 tests; privacy 11/11; security 3/3; no orphan processes, port 6783 free; prod DB untouched (SHA-256 unchanged); committed locally, **not pushed** |
 
 ## Package A/B/C desktop lifecycle — verified (2026-09-14)
 
