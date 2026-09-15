@@ -12,10 +12,13 @@ records.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P36 are complete. P36 is committed locally
-  (`dbd0fdb` implementation, `b4e6256` docs). Latest recorded full source
+- NLP Stages 0–29 and P0–P36 are complete. P36 is committed and pushed
+  to `origin/main` (`dbd0fdb` implementation, `b4e6256` docs, `f05bee9` 1.1.4
+  release boundary). Latest recorded full source
   verification: **169 files / 1,573 tests, fully green (`npm run verify`,
-  2026-09-14)**. The 1.1.4 release boundary is committed locally; no push.
+  2026-09-14)**. The 2026-09-14 Package A/B/C lifecycle checkpoint and the
+  1.1.4 release boundary are committed and pushed to `origin/main`
+  (HEAD == origin/main at `f05bee9`).
 - Current package version and latest validated installer: **1.1.4**, shipped
   at the P36 release boundary (2026-09-14). That artifact includes the prior
   P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, and

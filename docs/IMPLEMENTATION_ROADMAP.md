@@ -7,24 +7,27 @@
 
 ## Current project status
 
-Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
-Git/source evidence takes precedence over historical completion records.
+Reconciled against source checkpoint `f05bee9` (1.1.4 / P36) and the 1.1.4
+release record. Git/source evidence takes precedence over historical
+completion records.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
   9.6 seed manifest import is complete. These are not open implementation tasks.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
-  Original product phases, beta phases, NLP Stages 0–29, and P0–P35 checkpoints
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as `fd63a2a`.
-  Latest recorded full source verification: **169 files / 1,564 tests, fully
+- NLP Stages 0–29 and P0–P36 are complete. P36 and the 1.1.4 release commit
+  (`f05bee9`) are pushed to `origin/main`. P35 is committed as `fd63a2a`.
+  Latest recorded full source verification: **169 files / 1,573 tests, fully
   green (`npm run verify`, 2026-09-14)**. The 2026-09-14 Package A/B/C
-  lifecycle checkpoint and the 1.1.3 release boundary are committed locally;
-  no push.
-- Current package version and latest validated installer: **1.1.3**, released
-  at the Package A/B/C release boundary (2026-09-14). That artifact includes
-  the prior P31/P32/P34/P35 source plus Package A/B/C desktop lifecycle work.
-  No later rebuild or installation is established by this record.
+  lifecycle checkpoint and the 1.1.4 release boundary are committed and
+  pushed to `origin/main` (HEAD == origin/main at `f05bee9`).
+- Current package version and latest validated installer: **1.1.4**, shipped
+  at the P36 release boundary (2026-09-14). That artifact includes the prior
+  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work,
+  and P36 coverage abstention hygiene. No later rebuild or installation is
+  established by this record.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is

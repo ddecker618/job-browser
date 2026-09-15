@@ -1,8 +1,20 @@
 # NLP Intelligence Final Handoff
 
-Date: 2026-09-11
+> Original historical handoff authored 2026-09-11. The promotion matrix,
+> trust-level ladder, hard-gate boundary, and 43-point report below describe
+> the P28-era shadow baseline that authorized EXPLANATION (Level 1) and
+> ENRICHMENT (Level 2) for the listed capabilities. Subsequent versions
+> (P29-P36) are recorded separately in `docs/Intelligence_Roadmap.md`,
+> `docs/PROJECT_MEMORY.md`, and `docs/CHANGELOG.md`. **Nothing here has been
+> promoted above `SPRINT_MAXIMUM_LEVEL = 'enrichment'` (`Level 2`);
+> SCORING (Level 3) and HARD_GATE (Level 4) remain not authorized.**
 
-## Current project status
+## Current project status (historical snapshot, superseded by `docs/Intelligence_Roadmap.md`)
+
+The status block from the original handoff is preserved below for context
+only — it has been superseded by `docs/Intelligence_Roadmap.md`,
+`docs/PROJECT_MEMORY.md`, and `docs/BETA_IMPLEMENTATION_TRACKER.md`. Do not
+treat it as live source-of-truth.
 
 Reconciled against source checkpoint `fd63a2a` (P35) and the P33 release record.
 Git/source evidence takes precedence over historical completion records.
@@ -22,6 +34,11 @@ Git/source evidence takes precedence over historical completion records.
   at the Package A/B/C release boundary (2026-09-14). That artifact includes
   the prior P31/P32/P34/P35 source plus Package A/B/C desktop lifecycle work.
   No later rebuild or installation is established by this record.
+- (Current source — superceding this snapshot — has P36 + 1.1.4 shipped and
+  pushed. The 1.1.4 release commit `f05bee9` is on `origin/main`; verification
+  at the boundary recorded 169 files / 1,573 tests; the 1.1.4 installer is
+  `release\Job-Browser-Setup-1.1.4.exe`, 253,613,965 B, SHA-256
+  `C61A58FDEDFFE253E7E59B9BE28A88E4ACC03F58AD9687DF0BDBC639DF6DADF1`.)
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is

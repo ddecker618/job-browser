@@ -36,7 +36,7 @@ from them.
 - **No orphan processes:** no Job Browser/Electron processes and port 6783
   is free after validation.
 
-### What shipped at this boundary (P36, local commits `dbd0fdb` + `b4e6256` + 1.1.4 release commit)
+### What shipped at this boundary (P36, commits `dbd0fdb` + `b4e6256` + `f05bee9`)
 
 P36 coverage abstention hygiene on top of the 1.1.3 baseline:
 `snapshotEvidence.ts` emits consistent UNKNOWN coverage for all five
@@ -49,7 +49,8 @@ absence notes and a failed-parse abstention note. P36 stays EXPLANATION/
 shadow-only — no scoring, eligibility, ranking, filtering, lifecycle,
 status, archive, removal, or hard-gate changes; no job-type expansion;
 no new NLP modules; no schema migration. See `docs/CHANGELOG.md` (1.1.4)
-for details.
+for details. All three commits were pushed to `origin/main`
+(HEAD == origin/main at `f05bee9` after push).
 
 ### Remaining manual Windows acceptance items
 
@@ -71,10 +72,12 @@ for details.
 
 ### Recommended next task
 
-No pending source or packaging work remains. The 1.1.4 release commit is
-local and **ready to push** pending user approval. On a future source
-change, rerun `npm run verify`, `npm run desktop:lifecycle-harness`, and
-the packaged/installed smokes before any new release boundary. Manual
+No pending source or packaging work remains. The 1.1.4 release commit
+(`f05bee9`) is **pushed to `origin/main`** (HEAD == origin/main at
+`f05bee9`). P37 planning is recorded in `docs/Intelligence_Roadmap.md`
+but is not implemented; no source or test edits are bundled. On a future
+source change, rerun `npm run verify`, `npm run desktop:lifecycle-harness`,
+and the packaged/installed smokes before any new release boundary. Manual
 packaged Windows acceptance items above are the only outstanding
 verification.
 

@@ -36,9 +36,10 @@ record. Git/source evidence takes precedence over historical completion records.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P36 are complete. P36 is committed locally and
-  shipped in the 1.1.4 release boundary (2026-09-14); the 1.1.4 release commit
-  is local and not pushed. P35 was committed as `fd63a2a`. Latest recorded
+- NLP Stages 0–29 and P0–P36 are complete. P36 shipped in the 1.1.4 release
+  boundary (2026-09-14) and all three commits (`dbd0fdb`, `b4e6256`,
+  `f05bee9`) are pushed to `origin/main` (HEAD == origin/main at `f05bee9`).
+  P35 was committed as `fd63a2a`. Latest recorded
   full source verification: **169 files / 1,573 tests, fully green
   (`npm run verify`, 2026-09-14)**.
 - Current package version and latest validated installer: **1.1.4**, released
@@ -80,28 +81,32 @@ preserve local data, source provenance, and current deterministic authority.
 
 ```
 CURRENT_STAGE:       P36 coverage abstention hygiene released as 1.1.4;
-                     release commit local; no push
-CURRENT_TASK:        none pending; 1.1.4 installer validated (4 smokes,
-                     asar match, P36 + notifications confirmed in asar);
-                     ready to push on approval or next development task
+                     release commit pushed to origin/main at f05bee9;
+                     P37 planning recorded; no source/tests touched
+CURRENT_TASK:        none pending in source; P37 plan in this file
+                     awaiting explicit implementation go-ahead; the
+                     implemented flow resumes after the P37 implementation
+                     prompt is approved
 LAST_COMPLETED:      1.1.4 release boundary: P36 (consistent UNKNOWN
                      abstention for failed resume snapshots, coverageContext
                      capture-state payload, client abstention rendering)
                      packaged as release\Job-Browser-Setup-1.1.4.exe;
                      packaged/installed/upgrade smokes PASS; verify
-                     169 files / 1573 tests; privacy 11/11; security 3/3
-NEXT_ACTION:         nothing pending in source; acceptable next work is push
-                     of the 1.1.4 release commit, the next product feature
-                     branch, or manual packaged Windows acceptance
-FILES_IN_PROGRESS:   none; P36 commits (dbd0fdb, b4e6256) + 1.1.4 release
-                     commit local
+                     169 files / 1573 tests; privacy 11/11; security 3/3;
+                     release commit f05bee9 pushed to origin/main
+NEXT_ACTION:         P37 implementation per the planning section below
+                     (a deterministic, versioned, local shadow occupation
+                     taxonomy module); no further source action until the
+                     implementation prompt is approved
+FILES_IN_PROGRESS:   none on disk; P36 commits (dbd0fdb, b4e6256) +
+                     1.1.4 release commit f05bee9 are pushed
 TESTS_TO_RUN:        none new required; on any future source change rerun
                      npm run verify + npm run desktop:lifecycle-harness +
                      packaged/installed smokes
 KNOWN_FAILURES:      none in source
-LATEST_CHECKPOINT:   1.1.4 release boundary (version bump + installer) on
-                     dbd0fdb (P36 impl) + b4e6256 (P36 docs); P35 NLP
-                     defaults committed as fd63a2a; see git log HEAD +
+LATEST_CHECKPOINT:   1.1.4 release boundary (version bump + installer)
+                     f05bee9 pushed to origin/main; P35 NLP defaults
+                     committed as fd63a2a; see git log HEAD +
                      docs/CHANGELOG for context
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
@@ -143,16 +148,19 @@ DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                           segment helper must use the real
                       NlpSegment shape (index/text/normalized/kind/sourceField/
                       charStart/charEnd), not base/meta
-SAFE_RESUME_POINT:   1.1.4 release boundary complete and committed
-                     locally: P36 packaged in release\Job-Browser-Setup-1.1.4
-                     .exe (253,613,965 B, SHA-256 C61A58FD...DF6DADF1; asar
-                     74,133,415 B, SHA-256 0504650B...66E4B2CE), 4 smokes
-                     PASS, verify 169/1573, privacy 11/11, security 3/3,
-                     P36 + notifications confirmed in the asar, prod DB
-                     untouched, port 6783 free. Commits: dbd0fdb (P36 impl)
-                     + b4e6256 (P36 docs) + 1.1.4 release commit. Do not
-                     restart completed P0-P36 or Package A/B/C work; the
-                     1.1.4 release commit push remains pending user approval
+SAFE_RESUME_POINT:   1.1.4 release boundary complete and pushed to
+                     origin/main at f05bee9: P36 packaged in
+                     release\Job-Browser-Setup-1.1.4.exe (253,613,965 B,
+                     SHA-256 C61A58FD...DF6DADF1; asar 74,133,415 B,
+                     SHA-256 0504650B...66E4B2CE), 4 smokes PASS, verify
+                     169/1573, privacy 11/11, security 3/3, P36 +
+                     notifications confirmed in the asar, prod DB
+                     untouched, port 6783 free. Commits (all pushed):
+                     dbd0fdb (P36 impl) + b4e6256 (P36 docs) + f05bee9
+                     (1.1.4 release). Do not restart completed P0-P36
+                     or Package A/B/C work; the next direction (P37)
+                     is planned in this file and awaits implementation
+                     go-ahead
 ```
 
 ---
@@ -1445,7 +1453,8 @@ jobs.id ASC` ordering only when `nlpSearchRelevance` is enabled in options — t
 
 | 2026-09-14 | Package A/B/C lifecycle checkpoint | cross-cutting desktop lifecycle work completed and validated: scope query/routes/saved filters (A), preference resolution via `profilePreferencesPath` (B), close-to-tray + tray manager + `LifecycleController` + session-end + fixture harness (C); `npm run desktop:lifecycle-harness` **11/11**; shutdown race closed (`backend.stop()` always awaited); `set_close_to_tray` IPC harness op; `__flags-check.ts` privacy leak removed; `npm run verify` **169 files / 1564 tests, fully green**; typecheck/lint/format:check green; branch local, no push, no installer rebuild |
 
-| 2026-09-14 | P36 coverage abstention hygiene | snapshot parse failure now yields consistent UNKNOWN evidence for all five kinds (never MISSING); `coverageContext` capture-state payload (`no_application`/`no_snapshot`/`parsed`/`failed` + `parsingError`); client abstention notes; adapter bumped to `resume-snapshot-evidence-v2`; `npm run verify` **169 files / 1573 tests** PASS; privacy 11/11; security 3/3; build PASS; **released as 1.1.4** (installer 253,613,965 B / SHA-256 `C61A58FD…DF6DADF1`; asar 74,133,415 B / `0504650B…66E4B2CE`), 4 smokes PASS, P36 + notifications confirmed in asar, port 6783 free, prod DB untouched; release commit local, not pushed |
+| 2026-09-14 | P36 coverage abstention hygiene | snapshot parse failure now yields consistent UNKNOWN evidence for all five kinds (never MISSING); `coverageContext` capture-state payload (`no_application`/`no_snapshot`/`parsed`/`failed` + `parsingError`); client abstention notes; adapter bumped to `resume-snapshot-evidence-v2`; `npm run verify` **169 files / 1573 tests** PASS; privacy 11/11; security 3/3; build PASS; **released as 1.1.4** (installer 253,613,965 B / SHA-256 `C61A58FD…DF6DADF1`; asar 74,133,415 B / `0504650B…66E4B2CE`), 4 smokes PASS, P36 + notifications confirmed in asar, port 6783 free, prod DB untouched; release commit `f05bee9` pushed to `origin/main` |
+| 2026-09-14 | P37 occupation / job-type taxonomy planning | planning-only checkpoint (no source/tests touched); compared five candidate directions and recommended Direction A (local, deterministic, versioned occupation taxonomy + classifier mirror of `skillNormalization`); recommended slice stays `Level 0` SHADOW with an additive diagnostic projection; EXPLANATION-1 preview deliberately excluded and would require a later authorization + release boundary; `npm run format:check` PASS; committed locally; no push, no installer rebuild, no source feature code |
 
 ## Package A/B/C desktop lifecycle — verified (2026-09-14)
 
@@ -1545,5 +1554,218 @@ lifecycle remain authoritative (`productionEffect: 'none'`). Verified:
   `coverageContext`, `captureState`, `parsingError`,
   `job-intelligence-abstention-note`) and notification-silencing permission
   handlers confirmed in the packaged asar, port 6783 free, no orphan
-  processes, prod DB untouched. The 1.1.4 release commit is local and not
-  pushed.
+  processes, prod DB untouched. The 1.1.4 release commit was
+  `f05bee9` and is pushed to `origin/main`.
+
+---
+
+## P37 — NLP / Job-Type Expansion Planning
+
+- **Status:** [ ]
+- **Objective:** compare candidate next directions, agree on a single
+  bounded first implementation slice, and define its contract, files,
+  tests, debug output, rollback behavior, explicit non-goals, and
+  release-boundary requirements. **No source or test changes are made
+  in this checkpoint** — only this plan.
+- **Authorization boundary (unchanged):** `SPRINT_MAXIMUM_LEVEL =
+'enrichment'` (`Level 2`); SCORING (`Level 3`) and HARD_GATE (`Level 4`)
+  remain not authorized. Hard eligibility gates (geography, clearance,
+  credentials, federal constraints) remain deterministic-authoritative.
+  NLP must remain additive, evidence-labelled, versioned, local, and
+  reversible; no hosted AI, no network NLP, no automatic model download,
+  no telemetry. Notifications remain disabled.
+- **Checkpoint completion record:** planning-only. Five candidate next
+  directions are compared below. **Recommendation:** a local,
+  deterministic, versioned occupation / job-type taxonomy module plus a
+  deterministic title-families classifier (Direction A), implemented as
+  SHADOW (`Level 0`) with an additive shadow persistence row and
+  read-only diagnostic output. The EXPLANATION (`Level 1`) preview is
+  **not** part of this slice; if added later it will require a new
+  authorization plus a release boundary.
+
+### Candidate directions compared
+
+| Dir. | Direction                                                                         | Locality              | Determinism                       | Volume of change                                                       | Risk to scoring/eligibility                         | Reuses existing patterns                                            |
+| ---- | --------------------------------------------------------------------------------- | --------------------- | --------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
+| A    | Occupation / job-type taxonomy expansion (recommended first slice)                | Local + curated       | Deterministic taxonomy + alias    | New catalog + new shadow persistence + new module; ~6-10 files + tests | None — purely additive shadow + diagnostic          | Mirrors `skillNormalization`, `roleMatching`, `requirementCoverage` |
+| B    | Transferable-skill matching (resumes ↔ canonical skills)                          | Local + curated       | Deterministic alias / reviewed    | Depends on A; broader scope; cross-namespace consistency tests         | None — but bigger blast radius if scoped wrong      | Builds on existing `skillNormalization` catalog + reviewed pairs    |
+| C    | Semantic role-title matching benchmark                                            | Offline eval only     | Offline metric; no runtime        | Eval harness + report; no production code                              | None — eval only                                    | Reuses `roleMatching` test fixtures + representative corpus         |
+| D    | Additional deterministic NLP extractors (e.g. benefits, contract, shift)          | Local + curated       | Deterministic + evidence spans    | Small additions per extractor; many separate authorization gates       | None per extractor; cumulative surface area grows   | Mirrors existing extractors (`compensation`, `education`, etc.)     |
+| E    | Employer / platform provenance improvements (claiming, dedup, ATS distinguishing) | Local + deterministic | Deterministic identifiers + dedup | Touches Employer / source registry; not strictly NLP                   | None — orthogonal to NLP but broader product impact | Reuses existing Employer ID + source-attention layers               |
+
+### Why Direction A is the recommended first slice
+
+- **Smallest blast radius, largest reuse.** It mirrors the already-shipped
+  `skillNormalization` (Stage 21), `roleMatching` (Stage 20), and
+  `requirementCoverage` modules. The catalog is curated locally; the
+  classifier is deterministic; persistence is additive and follows the
+  established `job_nlp_enrichments`-style shadow pattern.
+- **Explicitly satisfies the prompt's "prefer a local, deterministic,
+  versioned NLP module or taxonomy layer over a model/runtime
+  dependency."** No embedding runtime, no model artifact, no network
+  access, no auto-download. Falls back to `UNRELATED`/`UNKNOWN` per the
+  existing shadow pattern on any ambiguity.
+- **Foundational for Direction B.** Once a deterministic occupation /
+  job-type taxonomy exists with versioned canonical keys and evidence
+  spans, transferable-skill matching becomes a reviewed-relationship
+  problem analogous to `skillNormalization`'s `ReviewedSkillRelationship`
+  table — without a taxonomy it is a much harder free-form similarity
+  problem (the Direction C-style semantic path that the design doc
+  defers).
+- **No production-field writes.** The shadow module contributes to a
+  read-only diagnostic projection (Phase-1 EXPLANATION-1 already exists
+  for `coverageContext`-style read-only output). Promotion to any user-
+  visible EXPLANATION panel is a separate, later authorization.
+
+### Direction A — recommended first implementation slice
+
+#### User-visible behavior (this slice)
+
+- The slice is **shadow-only** (`Level 0`). There is no new UI
+  surface in this slice; the read-only diagnostic projection emits its
+  payload for the existing inspector and the existing
+  `POST /api/jobs/:id/intelligence` response — but at SHADOW level so
+  no UI panel reads it. Shipping a visible EXPLANATION-1 panel for
+  occupation is intentionally out of scope.
+- The output is deterministic and stable for the same source text and
+  taxonomy version. The module emits explicit `UNRELATED` or `UNKNOWN`
+  states; it never invents a canonical occupation.
+
+#### Files likely to change
+
+- **New:** `src/intelligence/nlp/jobTypeTaxonomy.ts` — catalog
+  metadata (display name, key, parent family, reviewed aliases),
+  deterministic version constant `JOB_TYPE_TAXONOMY_VERSION = 'job-type-taxonomy-v1'`,
+  lookup helpers.
+- **New:** `src/intelligence/nlp/jobTypeNormalization.ts` — the
+  classifier (mirror of `skillNormalization`): takes a normalized job
+  title + optional context, returns `{ key, label, alias, relationship,
+score, version, method: 'deterministic-fallback', explanation }`.
+  Reuses `normalizeText`.
+- **New:** `src/intelligence/nlp/jobTypeProjection.ts` (only if needed)
+  — read-only projection that fuses the classified result with
+  coverage and reconciliation contexts. Acts like
+  `requirementCoverageProjection.ts`.
+- **New:** `tests/job-nlp-job-type-taxonomy.test.ts` —
+  taxonomy lookup, alias resolution, fallback to `UNRELATED`/`UNKNOWN`.
+- **New:** `tests/job-nlp-job-type-normalization.test.ts` — classifier
+  with hand-picked positive and adversarial cases drawn from the
+  existing `evaluationCorpus.ts` / `representativeCorpus.ts` plus
+  curated occupational negatives.
+- **New:** `tests/job-nlp-snapshot-job-type.test.ts` (if shadow
+  persistence is added) — adapter-version bump test mirroring
+  `tests/job-nlp-snapshot-evidence.test.ts`.
+- Possibly touched:
+  `src/intelligence/nlp/document.ts` (to call the new extractor),
+  `src/intelligence/nlp/projection.ts` (to surface in the inspector),
+  `src/server/app.ts` (to include in the
+  `/api/jobs/:id/intelligence` debug payload under a guarded feature
+  path), `package.json` taxonomy fixture file.
+
+#### Data / versioning contract
+
+- The shadow row adds `job_type_classifications` (or appended payload on
+  existing `job_nlp_enrichments`) keyed by `job_id` with:
+  `{ jobId, normalizedTitle, familyKey, label, relationship, score,
+matchedAlias, method, taxonomyVersion, extractionVersion,
+snapshotHash, createdAt }`. No new SQL migration is required if the
+  existing additive job_nlp_enrichments envelope can carry the new
+  fields (mirroring how P36 added `parsingError` to
+  `ResumeSnapshotEvidenceSource`). Migration is additive, no destructive
+  change.
+- `JOB_TYPE_TAXONOMY_VERSION = 'job-type-taxonomy-v1'` plus the
+  deterministic content hash of the catalog file are recorded in every
+  result. Any catalog change without a version bump + key translation
+  fails closed (rows flagged stale and excluded from projections).
+- `SNAPSHOT_JOB_TYPE_ADAPTER_VERSION` bump mirroring P36's
+  `resume-snapshot-evidence-v2`. Persisted rows from prior versions
+  continue to be readable but are not used to drive user-visible
+  output unless re-extracted against the current taxonomy.
+
+#### Tests required
+
+- Taxonomy lookup tests (exact, alias, case-folding, whitespace,
+  punctuation, mixed language: only the curated entries are tested).
+- Classifier tests with positive examples drawn from observed real
+  local job titles (already captured in `representativeCorpus.ts`)
+  and adversarial negatives drawn from `evaluationCorpus.ts`.
+- Fallback tests: every ambiguous input must emit `UNRELATED` or
+  `UNKNOWN` with an explanation string, never an inferred key.
+- Projection tests: diagnostic payload shape is stable; no field is
+  nullable that the projection contract says is present; shadow-only
+  fields are clearly namespaced (e.g. `debug.jobTypeTaxonomy`) so
+  production endpoints can ignore them.
+- Staleness test: changing the taxonomy constant without bumping the
+  version triggers a fail-closed invariant violation, not a silent
+  change.
+- Integration test: feeding the existing classifier through the
+  intelligence endpoint returns the SHADOW diagnostic only when
+  requested under a guarded path; the default response shape for
+  `/api/jobs/:id/intelligence` is unchanged for existing consumers.
+
+#### Debug / diagnostic output
+
+- An inspector section in the `POST /api/jobs/:id/intelligence`
+  debug payload (analogous to the existing job-intelligence preview)
+  surfaces:
+  `job.type.classifiedTitle`, `job.type.normalizedTitle`,
+  `job.type.canonicalKey`, `job.type.label`, `job.type.relationship`
+  (`EXACT`/`CANONICAL_ALIAS`/`RELATED`/`UNRELATED`/`UNKNOWN`),
+  `job.type.score`, `job.type.taxonomyVersion`, `job.type.explanation`.
+- A read-only file under `tests/fixtures/job-type/` (or similar)
+  containing curated taxonomy entries is included in the inspector
+  output only at debug level; production-read responses do not embed
+  the catalog.
+
+#### Rollback behavior
+
+- A repo-wide shadow-payload flag is checked at every read of the new
+  projection; flipping it to off reverts the projection to its
+  pre-P37 behavior with zero changes to existing endpoints.
+- Persisted shadow rows are stale-flagged and simply ignored on read;
+  no migration is required to remove them.
+- The classifier is a pure function of (normalized title, taxonomy
+  catalog). Deleting the new shadow rows is safe and reversible.
+
+#### Explicit non-goals (this slice)
+
+- No EXPLANATION-level UI panel for occupation types.
+- No scoring, eligibility, ranking, filtering, lifecycle, status,
+  archive, removal, or hard-gate integration. The slice is
+  additive shadow + diagnostic only.
+- No semantic / embedding runtime, no model artifact, no hosted API,
+  no automatic model download, no network NLP fetch.
+- No migration of existing jobs to non-canonical occupation keys.
+- No expansion of source coverage, browser behavior, or job types
+  (e.g. "Gigs" / shift / benefits) — those are separate decisions.
+- No change to existing capability flags
+  (`jobIntelligenceExplanation`, `roleFamilySuggestion`,
+  `searchProfileFeedback`, `searchTieBreak`).
+- No change to the NLP_TRUST_LEVELS ladder or promotion matrix. The
+  recommended SHADOW level adds rows but does not promote anything.
+- No notifications re-enablement, no `NotificationManager` changes.
+
+#### Release-boundary requirements
+
+- Shipping the **shadow-only slice** to installed users requires a
+  release boundary (version bump + NSIS build + 4 smokes + asar
+  match + `npm run verify` + privacy + NLP security) because the
+  shipped binary will include the new module's bytes; the inspector
+  payload will be reachable from the packaged asar. **No push, no
+  installer rebuild, and no release in this P37 planning checkpoint.**
+- Shipping an EXPLANATION-1 preview panel adds: a separate
+  authorization record naming the capability, the field, the evidence
+  cohort, the threshold profile, the rollout cohort, the rollback
+  trigger, and the release boundary. None of that is bundled here.
+
+### Explicit reminders before any implementation
+
+- Implement only after the user has approved the recommended Direction A
+  scope in writing, including acceptance of the non-goal list and the
+  release-boundary requirement.
+- Do not add npm dependencies for this slice — the only new source-
+  level artifacts are TypeScript modules and a curated JSON/text
+  catalog file.
+- Do not modify any deterministic scoring, eligibility, ranking, or
+  lifecycle path, even if "small". All reads of the new shadow rows
+  must go through a guarded path.
