@@ -1,3 +1,22 @@
+## Status
+
+- **Done** — accepted by the Codex reviewer on **2026-09-24**.
+- **Accepted commits:** `877c31f` (`feat: add onboarding foundation
+through progress persistence`) and `c00c224` (`fix: preserve
+onboarding resume failure states`).
+- **Independent reviewer validation:** TypeScript PASS; 4-file
+  onboarding focused suite (`tests/onboarding-contract.test.ts` +
+  `tests/onboarding-preferences.test.tsx` +
+  `tests/onboarding-review.test.tsx` +
+  `tests/onboarding-progress-storage.test.ts`) — **122/122 PASS**; the
+  discriminated `OnboardingResumeResult` / `OnboardingResumeQuestion`
+  contract preserves valid / missing / malformed / unsupported-version /
+  storage-failure states correctly.
+- **Claimed files released** back to the unclaimed bucket; onboarding
+  remains **Not shipped**; MR1-05 is the next authorized task; MR1-06
+  remains not started; no push, version bump, installer build, or
+  production-data access occurred.
+
 # MR1-04 — Save and restore onboarding progress
 
 **Current status/owner:** See [`docs/JOB_BROWSER_DELIVERY_BOARD.md`](../../JOB_BROWSER_DELIVERY_BOARD.md).
