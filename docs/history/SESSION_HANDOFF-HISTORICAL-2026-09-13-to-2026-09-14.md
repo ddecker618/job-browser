@@ -1,0 +1,413 @@
+# SESSION_HANDOFF historical sections (archived 2026-09-18)
+
+This document preserves the superseded SESSION_HANDOFF narrative
+sections from 2026-09-13 through 2026-09-14. They are recorded here
+verbatim for traceability; they are **historical**, not current
+instructions. Do not start additional work from them.
+
+The current resume point lives in `SESSION_HANDOFF.md` at the
+repository root, and the active task queue lives at
+[`docs/JOB_BROWSER_DELIVERY_BOARD.md`](../JOB_BROWSER_DELIVERY_BOARD.md).
+
+For active constraints and unresolved manual checks that the current
+handoff still surfaces (notification policy, production data safety,
+manual Windows acceptance items), see the "Important constraints" and
+"Remaining manual checks" sections of the current SESSION_HANDOFF.md.
+
+---
+
+## Historical — Lifecycle-continuation checkpoint (2026-09-14, pre-release)
+
+This section is **historical**. It records the fixtures-and-shutdown-race
+continuation that produced commit `a7c4356` before the 1.1.3 boundary; the
+release itself is recorded in the current status above. Do not treat the
+"next tasks" here as the current queue.
+
+### What this checkpoint actually fixes
+
+Eight concrete defects were identified in the Package C implementation
+delivered under the previous continuation. Source-level evidence and the
+fixes shipped today:
+
+1. **Close-to-tray disabled did not exit.** `src/desktop/main.ts` only
+   called `app.quit()` from `window-all-closed` when `quitRequested`
+   was already true, so an ordinary close with `closeToTray=false`
+   left the backend alive. Fixed: the `window-all-closed` handler now
+   also exits when close-to-tray is off (or when the tray is not
+   available), routed through `lifecycle.requestQuit()`.
+2. **No-tray fallback could hide the only window.** `closeAction()`
+   only checked `closeToTray` and `quitRequested`. Fixed: it now
+   also checks `trayAvailable`. When the tray was never created
+   (e.g. a startup failure left the desktop running with no Exit
+   path), the window must actually close so the user is not trapped
+   behind a hidden window.
+3. **Initial tray menu was not installed.** `TrayManager.create()`
+   called `refreshMenu()` before assigning `this.tray`, and a
+   `Menu.buildFromTemplate()` throw left the underlying `Tray`
+   leaked. Fixed: assign `this.tray = tray` before `refreshMenu()`,
+   wrap the menu build in try/catch and `destroy()` on throw.
+4. **Quit paths were inconsistent.** `BackendManager.stop()`
+   cleared its handle before awaiting shutdown, so a second quit
+   call would see `handle === null` and skip the cleanup. Fixed:
+   added `currentShutdown` (shared in-flight promise); a second
+   `stop()` now awaits the same shutdown. Also: `desktop:safe-exit`
+   and `app.quit()` paths route through `lifecycle.requestQuit()`,
+   so any quit path sets the quit flag and destroys the tray.
+5. **Pause/resume changed a separate preference.**
+   `toggleSchedulerFromBackend()` PUT to `/api/discovery/settings`
+   with both `schedulerEnabled` and `employerDiscoveryEnabled`
+   flipped together, silently overwriting the user's opt-out.
+   Fixed: new `PUT /api/scheduler-control` route that only flips
+   `schedulerEnabled`; the tray now uses that route.
+6. **Settings rollback and unavailable backend.**
+   `desktop:set-close-to-tray` reverted to `!value` (a flipped
+   boolean) instead of the actual previous state, and claimed
+   success even when the backend was down. Fixed:
+   `LifecycleController.persistCloseToTray()` restores the
+   previously-stored value on any failure and returns
+   `persisted: false` so the UI can surface an error.
+7. **Tray state could become stale.** `TrayManager.refresh()`
+   was unguarded: an in-flight `getSummary()` could resolve after
+   `destroy()`, calling into a destroyed tray. Fixed: refresh now
+   short-circuits if `destroying` is true, and the tray's `isCreated`
+   getter returns false once `destroy()` is in progress.
+8. **Windows shutdown documentation and handling were wrong.**
+   The previous handoff claimed `before-quit` covered Windows
+   shutdown/logoff. Electron's documentation explicitly states
+   `before-quit` is **not** emitted on Windows shutdown/restart or
+   user logout. Fixed: `WindowManager.create()` now accepts
+   optional `querySessionEnd` and `sessionEnd` handlers; the main
+   process wires both on the main BrowserWindow. `query-session-end`
+   `preventDefault()`s so bounded cleanup has a chance to flush;
+   `session-end` is a last-chance no-op-preventable hook. The
+   controller's `onWindowsSessionEnd()` runs bounded best-effort
+   cleanup with a configurable timeout (default 5 s) and never
+   claims the cleanup is guaranteed to complete before Windows
+   terminates the process.
+
+### Architecture
+
+- New `src/desktop/lifecycleController.ts` — `LifecycleController`
+  owns the quit flag, the close-to-tray setting, repeated-exit
+  coordination, and the persisted/in-memory state machine for
+  `closeToTray`. All Electron-touching code (tray, window,
+  `app.quit`) is reached through injected dependencies so the
+  coordination itself is exercised in a Node test environment
+  without spinning up Electron.
+- New `PUT /api/scheduler-control` in `src/server/app.ts` —
+  toggles `schedulerEnabled` only; preserves the
+  `employerDiscoveryEnabled` opt-out.
+- `src/desktop/backendManager.ts` — added `currentShutdown` getter
+  and a shared-promise slot so repeated `stop()` calls await the
+  same shutdown instead of skipping cleanup.
+- `src/desktop/windowManager.ts` — accepts optional
+  `querySessionEnd` / `sessionEnd` handlers and registers them on
+  the main BrowserWindow.
+- `src/desktop/main.ts` — wires `LifecycleController` into every
+  IPC handler and lifecycle hook; uses the controller for
+  `closeAction`, `setCloseToTray` PUT, `requestQuit`, and
+  Windows session-end cleanup. The
+  `set-close-to-tray` IPC now throws when persistence fails (the
+  UI is expected to surface the error).
+- `src/desktop/trayManager.ts` — assigns the Electron `Tray`
+  before installing the menu, cleans up partially-created state
+  on menu construction failure, and guards `refresh()` against
+  resolving after `destroy()`.
+
+### Verification (recorded by this continuation)
+
+- `npx vitest run tests/desktop-lifecycle-controller.test.ts` —
+  17 tests pass: closeAction matrix (quit wins, hide only when
+  tray is available, close fallback when not, close when
+  close-to-tray is off), `requestQuit` idempotency,
+  `shutdown` serialization and bounded timeout, `persistCloseToTray`
+  round-trip / rejection rollback / backend-unavailable
+  restoration, `loadCloseToTrayFromBackend` success and
+  network-blip fallback, `onWindowsSessionEnd` bounded cleanup.
+- `npx vitest run tests/desktop-tray-manager.test.ts` — 2
+  tests pass: refresh-after-destroy is a no-op; partial-create
+  failure during menu construction triggers `destroy()`.
+- `npx vitest run tests/desktop-backend-manager-shutdown.test.ts`
+  — 4 tests pass: `currentShutdown` is non-null only during an
+  in-flight shutdown, a second `stop()` awaits the same promise,
+  the handle is cleared before awaiting so other code sees "no
+  backend" during cleanup, and the in-flight slot is cleared on
+  a failed first attempt.
+- `npx vitest run tests/desktop-scheduler-control-api.test.ts`
+  — 3 tests pass: PUT flips `schedulerEnabled` without touching
+  `employerDiscoveryEnabled`, rejects missing `schedulerEnabled`
+  with 400, rejects extra fields with 400 (strict body).
+- `npm run typecheck` — green.
+- `npm run lint` — green.
+- `npm run format:check` — green.
+- `npm run verify` — green: 168 test files / 1,547 tests.
+  Baseline before this continuation was 164 / 1,521. New
+  files: 4 test files + 1 lifecycle controller. New tests: 26.
+
+### Files changed by this continuation
+
+- `src/desktop/backendManager.ts` — shared shutdown promise,
+  `currentShutdown` getter.
+- `src/desktop/desktopLifecycle.ts` — `closeAction` accepts
+  `trayAvailable`.
+- `src/desktop/lifecycleController.ts` (new) — controller with
+  injected dependencies.
+- `src/desktop/main.ts` — wired through the controller;
+  `set-close-to-tray` PUT rollback; tray pause via
+  `/api/scheduler-control`; `window-all-closed` exits on
+  close-to-tray off; Windows session-end handlers.
+- `src/desktop/trayManager.ts` — install menu after assignment;
+  guard refresh-after-destroy; cleanup on partial-create
+  failure.
+- `src/desktop/windowManager.ts` — optional
+  `querySessionEnd` / `sessionEnd` handlers.
+- `src/server/app.ts` — `PUT /api/scheduler-control`.
+- `tests/desktop-backend-manager-shutdown.test.ts` (new).
+- `tests/desktop-lifecycle-controller.test.ts` (new).
+- `tests/desktop-scheduler-control-api.test.ts` (new).
+- `tests/desktop-tray-manager.test.ts` (new).
+- `tests/desktop-lifecycle.test.ts` — updated `closeAction`
+  tests for the new `trayAvailable` parameter.
+- `docs/OCCUPATION_EXPANSION_PROPOSAL.md` — Package C status
+  notes, native acceptance checklist updated.
+- `SESSION_HANDOFF.md` — this rewrite.
+
+### What still requires native Windows verification
+
+These cannot be exercised from the local Windows shell by a code
+change; they require a packaged or installed build and a real
+session:
+
+- **Tray icon presence and tooltip text.** The construction is
+  unit-tested with `vi.doMock('electron')`; the OS-level icon and
+  tooltip must be confirmed on a packaged build.
+- **Right-click menu contents.** The menu items and labels are
+  unit-tested; their rendering on Windows requires a packaged
+  build.
+- **Pause/Resume Discovery round-trip through the tray.** The
+  PUT and label flip are unit-tested; the click → IPC → PUT →
+  label refresh sequence must be confirmed on a packaged build.
+- **Open Job Browser from the tray.** The IPC and window focus
+  are unit-tested; OS focus behavior must be confirmed.
+- **Exit Job Browser from the tray (clean shutdown).** The
+  `requestQuit` flow is unit-tested; the actual
+  `app.quit() → before-quit → backend.stop → DB close` sequence
+  must be observed on a packaged build.
+- **Close with close-to-tray on (window hides, tray remains).**
+  Unit-tested; OS-level behavior must be observed.
+- **Close with close-to-tray off (graceful exit).** Unit-tested;
+  OS-level behavior must be observed.
+- **Second launch while running (single-instance, focus).**
+  Existing `app.requestSingleInstanceLock()` + `second-instance`
+  handler; not changed by this continuation.
+- **Windows shutdown/logoff handling.** `query-session-end`
+  registration is in place with bounded best-effort cleanup
+  (5 s timeout). Whether Windows actually delivers
+  `query-session-end` before terminating is a Windows behavior
+  that must be confirmed on a packaged build. The implementation
+  does **not** claim the cleanup completes before Windows
+  terminates the process.
+- **Startup failure (tray still available for Exit).** Unit-tested
+  via the closeAction tray-availability fallback. The actual
+  rendered failure page must be observed on a packaged build.
+
+### Why the desktop smoke harness does not prove tray behavior
+
+`scripts/desktop-smoke.ts` renders the seeded Employers page and
+asserts text; it does **not** assert tray icon presence, menu
+contents, pause/resume round-trips, or Exit Job Browser. A
+generic packaged smoke pass (`npm run desktop:smoke:packaged` or
+`npm run desktop:smoke:installed`) exercises backend, routes, and
+shutdown but does not establish any of the tray / close-to-tray /
+Windows-shutdown guarantees from §10.6. Any recommendation of those
+scripts as evidence for Package C completion is invalid.
+
+### Recommended next task
+
+Write a focused, **fixture-based** desktop lifecycle harness that
+boots an isolated Electron app against a temporary user data
+directory and asserts, in this order:
+
+1. Tray icon is present after `window-created`.
+2. Tray right-click menu contains `Open Job Browser`,
+   `Pause Discovery` (or `Resume Discovery`), and
+   `Exit Job Browser`.
+3. Toggling Pause/Resume flips the global scheduler
+   (`schedulerEnabled` in `/api/tray-summary`).
+4. Close with close-to-tray on hides the window (Electron
+   `BrowserWindow.isVisible()` false) and the tray remains.
+5. Close with close-to-tray off quits the app cleanly (no
+   leftover processes).
+6. Startup failure (forced by an invalid DB path) leaves a
+   tray Exit path available.
+
+Do not require live discovery. Do not run from a packaged build
+until steps 1–6 pass on `electron .` against the temp user data
+directory.
+
+Stop before packaging or implementing additional features.
+
+---
+
+## Historical — Recovery checkpoint Package A (2026-09-13)
+
+This section is **historical**. Package A implementation was recovered
+from an interrupted OpenCode session. The work is present,
+uncommitted, and at a source checkpoint. Do not restart Package A.
+The verification numbers recorded here (160 / 1,491) are the
+baseline before the Package B+C continuation below.
+
+- Package A implementation is present, uncommitted, and at a
+  source checkpoint; do not restart it.
+- Source includes the scope query, remembered-view endpoints,
+  scoped saved filters, All jobs toggle, personal-score freshness
+  badges and UI/API/repository tests.
+- Recovery fixed the interaction between asynchronously loaded
+  remembered scope and locally saved filters, serialized scope
+  preference writes, refreshed the scope cache after saving, and
+  made each search capture its score version once.
+- 160 test files / 1,491 tests passed at recovery.
+
+## Historical — Continuation checkpoint Package B + Package C (2026-09-13)
+
+This section is **historical and partially incorrect**. The recorded
+"Package C" claims in this section were not actually established by
+the source; this continuation is the first checkpoint that exercises
+the lifecycle in a Node test environment. In particular:
+
+- The claim that Windows shutdown is handled by `before-quit` is
+  **false** per Electron's documented behavior. See the
+  `query-session-end` / `session-end` registration in the current
+  status above.
+- The claim that the desktop lifecycle is "fully verified" is
+  **false**. Pure helper tests are insufficient to prove
+  coordination; see the new integration tests added in this
+  continuation.
+- The claim that `npm run desktop:smoke` proves tray behavior is
+  **false** — the harness does not assert tray or close-to-tray
+  behavior.
+
+Package B (consistent preference resolution) remains in place from
+the earlier continuation:
+
+- `src/server/backend.ts` — the post-discovery `analyze` callback
+  and the startup `reconcile-stale-intelligence` step now pass
+  `options.profilePreferencesPath` to `loadCandidateProfile` and
+  `loadScoringConfig`.
+- `src/preferences/cliProfilePreferences.ts` — new helper that
+  resolves `--profile-preferences=<path>` or
+  `PROFILE_PREFERENCES_PATH`. The three auxiliary CLIs
+  (`analyze`, `verified-matches`, `role-details:backfill`) call
+  it; without the flag/env they fall back to legacy
+  `config/candidate-profile.json` and `config/scoring-config.json`.
+- `tests/cli-profile-preferences.test.ts` (7 tests) and
+  `tests/backend-preference-resolution.test.ts` (3 tests) prove
+  the resolution and the integration.
+
+---
+
+## Current project status (historical, pre-Package-B/C)
+
+Reconciled against source checkpoint `fd63a2a` (P35) and the P33
+release record. Git/source evidence takes precedence over historical
+completion records.
+
+- Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was
+  Architect-approved on 2026-08-12. Employer Discovery 9.1–9.5 is
+  complete and approved; 9.6 seed manifest import is complete.
+- The 18-phase beta-readiness sprint is complete: READY FOR
+  EXTERNAL BETA. Original product phases, beta phases, NLP Stages
+  0–29, and P0–P35 checkpoints are separate numbering sequences.
+- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as
+  `fd63a2a`. Latest recorded full source verification: 159
+  files / 1,472 tests.
+- Current package version and latest validated installer:
+  **1.1.2**, released at P33 (`c83949b`). P34 source-health code
+  and P35 defaults are later source changes and are not included
+  in that recorded installer.
+- Current source defaults: `jobIntelligenceExplanation`,
+  `roleFamilySuggestion`, and `searchProfileFeedback` are on;
+  `searchTieBreak` is off. Stored opt-outs remain authoritative.
+
+## Release evidence (historical)
+
+- Installer: `release/Job-Browser-Setup-1.1.2.exe`, 253,597,831 bytes.
+- Installer SHA-256: `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`.
+- P33 recorded packaged, installed, and seeded-upgrade smoke
+  passes, installed Job Intelligence validation, 158 files /
+  1,460 tests, privacy 11/11, security 3/3.
+
+## Resume and maintenance (historical)
+
+Read `docs/PROJECT_MEMORY.md`, `docs/BETA_IMPLEMENTATION_TRACKER.md`,
+and `docs/Intelligence_Roadmap.md` alongside current Git status.
+Use `docs/IMPLEMENTATION_ROADMAP.md` for completed product scope and
+dependencies. Historical evidence remains in Git history, the
+changelog, and tracker ledgers; old next-step instructions are not
+the current queue.
+
+Do not push without user authorization. Do not rebuild/install or
+rerun live sources as part of documentation cleanup. Preserve
+production data; use verified backups for any separately authorized
+live data changes.
+
+## Requested follow-up: background discovery and tray controls (historical)
+
+The original user requirement recorded here asked for close-to-tray
+behavior, tray controls, pause/resume, and exit coordination. The
+implementation and verification now live in the current status
+above; this section is preserved for traceability only.
+
+---
+
+## Historical — Recommended next task (recorded after P36 / before 1.1.5 release)
+
+This block was the recommended next task written into
+SESSION_HANDOFF.md during the P37-shadow planning stage. It became
+stale once the 1.1.5 release boundary was completed; preserved here
+verbatim so the planning narrative is not lost.
+
+> The 1.1.4 release boundary (`f05bee9`) remains the latest shipped
+> artifact (pushed to `origin/main`). A new bounded **P37 shadow
+> occupation / job-type taxonomy** source-only slice was committed locally
+> on top of 1.1.4 (SHADOW `Level 0`; no installer rebuild, no version
+> bump, no push).
+>
+> ### P37 shadow implementation (SHADOW Level 0; local-only)
+>
+> - New: `src/intelligence/nlp/jobTypeTaxonomy.ts` — curated occupation
+>   catalog (11 families) + `JOB_TYPE_TAXONOMY_VERSION='job-type-taxonomy-v1'`
+>   - SHA-256 content hash for stale detection.
+> - New: `src/intelligence/nlp/jobTypeNormalization.ts` — deterministic
+>   classifier, `JOB_TYPE_NORMALIZATION_VERSION='job-type-normalization-v1'`,
+>   `method='deterministic-fallback'`, enum
+>   `EXACT` | `CANONICAL_ALIAS` | `UNRELATED` | `UNKNOWN`, populated
+>   abstention reason + explanation; role-prefix / employment-type /
+>   generic strip words before whole-alias comparison.
+> - 3 new tests:
+>   `tests/job-nlp-job-type-taxonomy.test.ts`,
+>   `tests/job-nlp-job-type-normalization.test.ts`,
+>   `tests/job-nlp-snapshot-job-type.test.ts`.
+> - Verification: `npm run verify` **172 files / 1,605 tests** PASS;
+>   `npm run privacy:check` 11/11 PASS; `npm run nlp:security-audit`
+>   3/3 PASS; format, lint, typecheck all green.
+> - **Production isolation:** repo-wide grep confirms no production
+>   decide path imports the new modules; no installer rebuild, no
+>   version bump, no push; EXPLANATION-1 preview deliberately out of
+>   scope.
+>
+> ### Suggested follow-ups (each requires explicit user approval before start)
+>
+> - A **release-boundary task** that bumps to 1.1.5 and ships the P37
+>   shadow as bytes in the installed asar without any UI surface.
+> - An **EXPLANATION-1 authorization** for an occupation / job-type panel
+>   in the existing Job Intelligence preview, naming the field,
+>   evidence cohort, threshold profile, rollout, rollback trigger, and
+>   release boundary.
+> - A **Direction B** planning slice (transferable-skill matching)
+>   building on the P37 catalog and the existing
+>   `skillNormalization` reviewed-relationship table.
+> - A **Direction C** planning slice (offline semantic-role benchmark)
+>   per the existing `docs/NLP_SEMANTIC_DESIGN.md` measurement gate.
+> - **Push approval** for the two local-only P37 commits (planning +
+>   shadow implementation).

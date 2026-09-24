@@ -2,9 +2,14 @@
 
 ## Current project status
 
-Reconciled against source checkpoint `b4e6256` (P36) and the P33/1.1.3 + 1.1.4
-release records. Git/source evidence takes precedence over historical completion
-records.
+Reconciled against source checkpoint `8281609` (1.1.5 / P37 SHADOW) and
+the P33/1.1.3 + 1.1.4 release records. Git/source evidence takes precedence
+over historical completion records.
+
+**Active task queue:** [`docs/JOB_BROWSER_DELIVERY_BOARD.md`](JOB_BROWSER_DELIVERY_BOARD.md)
+is the single task-status authority as of 2026-09-18. Status/owner/claimed
+files for any in-flight work live on that board; do not duplicate the
+queue here.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
@@ -13,10 +18,12 @@ records.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P37 are complete. P36 + the 1.1.4 release commit
-  (`f05bee9`) are pushed to `origin/main` (HEAD == origin/main at
-  `f05bee9`). P37 SHADOW `Level 0` is shipped in the 1.1.5 release
-  boundary (2026-09-14); the 1.1.5 release commit is local and not
-  pushed. P35 is committed as `fd63a2a`. Latest recorded full source
+  (`f05bee9`) are present in the locally recorded `origin/main`
+  reference (the local ref points at `f05bee9`). P37 SHADOW `Level 0`
+  is shipped in the 1.1.5 release boundary (2026-09-14); the 1.1.5
+  release commit is absent from the locally recorded `origin/main`
+  reference — current remote-server state was not checked. P35 is
+  committed as `fd63a2a`. Latest recorded full source
   verification: **172 files / 1,605 tests, fully green (`npm run
 verify`, 2026-09-14)**.
 - Current package version and latest validated installer: **1.1.5**, shipped
@@ -110,8 +117,11 @@ Phase 8 Milestones 8.1 through 8.8 are complete and Architect-approved. Phase 8
 is complete as of 2026-08-12. The independent Employer Discovery 9.1 through
 9.5 workstream is also complete and Architect-approved. The versioned Employer
 Seed Manifest Import (1.0.21) is complete. Migration head is
-`034_nlp_comparisons.sql`; current package version is 1.1.4. See the current
-status above for the source-versus-installer boundary.
+`034_nlp_comparisons.sql`; current package version is 1.1.5 (P36 was the
+last release that touched `034_nlp_comparisons.sql`; no migrations were
+added for the P37 SHADOW `Level 0` occupation / job-type taxonomy
+shipped in 1.1.5). See the current status above for the
+source-versus-installer boundary.
 
 The current implementation additionally provides explicit non-destructive Job
 availability lifecycle. Two complete source-snapshot misses remain required for

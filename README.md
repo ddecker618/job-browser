@@ -28,7 +28,7 @@ Screenshots use clearly fictional fixture data.
 Behavior that looks odd is often deliberate. See [Known Quirks](docs/KNOWN_QUIRKS.md)
 for the index of intentional behaviors and their workarounds.
 
-Release status: **1.1.2 — READY FOR EXTERNAL BETA** (latest validated P33 installer; current source is through P35). See the
+Release status: **1.1.5 — P37 SHADOW `Level 0` occupation / job-type taxonomy shipped** (latest locally validated installer at `release\Job-Browser-Setup-1.1.5.exe`, 253,617,071 bytes, SHA-256 `14A41C4D53BA930A8574123E383E6FAF9613DD678A59AC36E0FDEEE697131D3A`; current source is through P37, with the 1.1.5 release commit `8281609` absent from the locally recorded `origin/main` reference — current remote-server state was not checked). Historical releases remain in the changelog and the [beta-readiness report](docs/BETA_READINESS_REPORT.md); that report still describes the 1.1.0 / 1.1.2 release boundary as its evidence base. See the
 [beta-readiness report](docs/BETA_READINESS_REPORT.md) (verdict + full
 evidence), the [beta plan](docs/BETA_PLAN.md), and the
 [beta-testing guide](docs/BETA_TESTING.md).
@@ -61,7 +61,7 @@ The default database is `data/job-browser.sqlite`. Set `JOB_BROWSER_DB_PATH` to 
 
 ## Windows Desktop Application
 
-The latest validated release installer is `release/Job-Browser-Setup-1.1.2.exe` (253,597,831 bytes; SHA-256 `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`). P33 includes P31 startup fixes and P32 Job Intelligence enablement; packaged, installed, and seeded-upgrade validation passed. P34 source-health fixes and P35 explanation defaults are later source changes and require a new validated release to reach the installer. The current-user NSIS installer creates Desktop and Start Menu shortcuts and preserves application data during uninstall.
+The latest locally validated release installer is `release/Job-Browser-Setup-1.1.5.exe` (253,617,071 bytes; SHA-256 `14A41C4D53BA930A8574123E383E6FAF9613DD678A59AC36E0FDEEE697131D3A`). The earlier installer record `release/Job-Browser-Setup-1.1.2.exe` (253,597,831 bytes; SHA-256 `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`) is preserved as historical evidence of the P33 release boundary and remains in the beta-readiness report above. P33 included P31 startup fixes and P32 Job Intelligence enablement; packaged, installed, and seeded-upgrade validation passed. The 1.1.5 release boundary added P36 coverage abstention hygiene plus P37 SHADOW `Level 0` occupation / job-type taxonomy as in-asar bytes; the 1.1.5 release commit `8281609` is absent from the locally recorded `origin/main` reference (current remote-server state was not checked). P34 source-health fixes and P35 explanation defaults already shipped in 1.1.4. The current-user NSIS installer creates Desktop and Start Menu shortcuts and preserves application data during uninstall.
 
 The desktop application:
 

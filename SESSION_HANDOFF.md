@@ -1,472 +1,321 @@
 # Session Handoff
 
-## Current status — 1.1.5 release-boundary closeout (2026-09-14)
+> Current resume point. Concise on purpose. Older session narratives
+> are preserved in [`docs/history/`](docs/history/) and identified
+> as historical, not current instructions.
 
-The 1.1.5 release boundary is **complete** and is the active checkpoint.
-Older sections below are historical context; do not start additional work
-from them.
+## Current verified baseline (recorded evidence — 2026-09-14)
 
-### Release boundary state
-
-- **Version:** `1.1.5` in `package.json` and `package-lock.json` (root +
-  workspace entry); third-party dependency versions untouched.
-- **Installer rebuilt and validated:**
-  `release\Job-Browser-Setup-1.1.5.exe` (253,617,071 bytes, SHA-256
+- **HEAD:** `8281609` (`release: 1.1.5 ship P37 shadow job-type taxonomy`).
+- **Working tree (as of this handoff, 2026-09-18):** NOT clean.
+  MR0-01 made documentation-only changes that were accepted by the
+  Codex reviewer on 2026-09-18 but are still left uncommitted for
+  the user to review and commit:
+  - modified (tracked): `README.md`, `SESSION_HANDOFF.md`,
+    `docs/PROJECT_MEMORY.md`;
+  - added (untracked): `docs/history/SESSION_HANDOFF-HISTORICAL-2026-09-13-to-2026-09-14.md`,
+    `docs/delivery/tasks/MR0-01-release-baseline.md`;
+  - updated (untracked planning docs):
+    `docs/JOB_BROWSER_DELIVERY_BOARD.md`,
+    `docs/JOB_BROWSER_TASK_TEMPLATE.md`,
+    `docs/JOB_BROWSER_BUILD_BLUEPRINT.md`.
+  All of the above are documentation-only changes from the accepted
+  MR0-01 task.
+- **MR1-01 work (Done per the delivery board, still uncommitted):**
+  accepted by the Codex reviewer on 2026-09-18; claimed files released.
+  New onboarding contract files added (untracked):
+  `src/models/onboarding.ts`, `src/schemas/onboarding.ts`,
+  `src/client/fixtures/onboarding.fixture.ts`,
+  `tests/onboarding-contract.test.ts`,
+  `docs/delivery/decisions/MR1-01-onboarding-contract.md`,
+  `docs/delivery/tasks/MR1-01-onboarding-contract.md`, plus review/status
+  updates to `docs/DUSTIN_FIRST_CODING_TASK.md`,
+  `docs/JOB_BROWSER_BUILD_BLUEPRINT.md`, this handoff, and the delivery
+  board. See the Active Task section below.
+- **MR1-02 work (Done per the delivery board, still uncommitted):**
+  accepted by the Codex reviewer on 2026-09-19; claimed files released.
+  New files added (untracked):
+  `src/client/components/onboarding/PreferencesStep.tsx`,
+  `src/client/styles/onboarding.css`,
+  `tests/onboarding-preferences.test.tsx`,
+  `docs/delivery/tasks/MR1-02-preferences-step.md`, plus status updates
+  to this handoff and the delivery board. See the Active Task section
+  below.
+- **MR1-03 work (Done on the delivery board, still
+  uncommitted):** transferred from OpenCode to GitHub Copilot on
+  2026-09-20 and accepted by the Codex reviewer on 2026-09-20.
+  Implemented files are present in the worktree and released back to the
+  unclaimed bucket:
+  `src/client/components/onboarding/ReviewStep.tsx`,
+  `tests/onboarding-review.test.tsx`,
+  `docs/delivery/tasks/MR1-03-review-step.md`, plus shared-file updates
+  to this task's scope (`src/client/styles/onboarding.css`,
+  `src/client/fixtures/onboarding.fixture.ts`) and status updates to
+  this handoff and the delivery board. Release status remains **Not
+  shipped**. See the Active Task section below.
+- **MR1-04 work (In Review on the delivery board, still uncommitted,
+  review-corrections pass applied 2026-09-20):** transferred from
+  OpenCode to GitHub Copilot on 2026-09-20; implementation complete and
+  awaiting Codex acceptance. New files present in the worktree:
+  `src/repositories/onboarding-repository.ts`,
+  `src/onboarding/onboarding-service.ts`,
+  `tests/onboarding-progress-storage.test.ts`, updates to
+  `src/schemas/onboarding.ts` (v1/v2 snapshot schemas) and
+  `src/models/onboarding.ts` (`OnboardingProgressSnapshot` discriminated
+  union), the MR1-04 task card, status updates to this handoff and the
+  delivery board, plus narrow `.gitignore` entries and
+  doc-hygiene/correction-pass edits across the delivery documents.
+  Release status remains **Not shipped**; MR1-05 and MR1-06 still not
+  started. See the Active Task section below.
+- **Recoverable local checkpoint commit (planned, 2026-09-20, no
+  push):** once the MR1-04 correction-pass gates are green, the
+  accepted MR0-01, MR1-01, MR1-02, MR1-03 and corrected MR1-04 work
+  are staged together as one local commit
+  `feat: add onboarding foundation through progress persistence` so the
+  onboarding foundation has a recoverable checkpoint in the local
+  branch history. The release status remains **Not shipped**. No push
+  is performed.
+- **Source version:** `1.1.5` in `package.json` and `package-lock.json`
+  (root + workspace entry; third-party dependency versions untouched).
+- **Locally built / validated installer:** `release\Job-Browser-Setup-1.1.5.exe`
+  (253,617,071 bytes, SHA-256
   `14A41C4D53BA930A8574123E383E6FAF9613DD678A59AC36E0FDEEE697131D3A`).
-  Packaged and installed `app.asar` are identical (74,147,400 bytes,
-  SHA-256 `8205D3D69655D48E3C7E061B2FD9C1D9690FECF19BF862CFB4BA10C001F79A75`).
-  Installed executable reports ProductVersion `1.1.5.0` /
-  FileVersion `1.1.5` (silent upgrade from the 1.1.4 install, exit 0).
-- **Smokes passed:** packaged smoke, packaged seeded-upgrade smoke,
-  installed smoke, and installed seeded-upgrade smoke — all PASS.
-- **Full verification:** `npm run verify` — 172 files / 1,605 tests,
-  all pass.
-- **Privacy/security gates:** `npm run privacy:check` 11/11 and
-  `npm run nlp:security-audit` 3/3 pass.
-- **P37 + P36 confirmed in the packaged asar:**
+- **Installed version (recorded as part of the 1.1.5 boundary
+  validation):** ProductVersion `1.1.5.0` / FileVersion `1.1.5`
+  (silent upgrade from the 1.1.4 install, exit 0).
+- **Packaged + installed `app.asar`:** identical (74,147,400 bytes,
+  SHA-256
+  `8205D3D69655D48E3C7E061B2FD9C1D9690FECF19BF862CFB4BA10C001F79A75`).
+- **P37 + P36 runtime markers confirmed in the packaged asar** during
+  the 1.1.5 boundary validation:
   `job-type-taxonomy-v1`, `job-type-normalization-v1`,
   `JOB_TYPE_TAXONOMY_VERSION`, `JOB_TYPE_NORMALIZATION_VERSION`,
-  `deterministic-fallback`, and the catalog keys
-  `software-engineering`, `devops-platform`, `cybersecurity` are
-  present in the shipped bytes (P37 shadow as `Level 0`);
-  `resume-snapshot-evidence-v2`, `coverageContext`, `captureState`,
-  `parsingError` (P36) remain present.
-- **Notifications remain disabled:** `NotificationManager.tsx`
-  returns `null`; `main.ts` denies `notifications` permission
-  checks/requests before the BrowserWindow is created (verified
-  inside the packaged asar: `installSilentNotificationPolicy`,
-  `setPermissionRequestHandler`, and `setPermissionCheckHandler`
-  are present).
-- **Production DB untouched** (prod DB SHA-256
+  `deterministic-fallback`, and catalog keys
+  `software-engineering`, `devops-platform`, `cybersecurity` (P37,
+  `Level 0` shadow); `resume-snapshot-evidence-v2`,
+  `coverageContext`, `captureState`, `parsingError`,
+  `job-intelligence-abstention-note` (P36).
+- **Published / pushed state (rechecked locally for MR0-01):** the
+  local branch `main` is **ahead of** the local remote-tracking ref
+  `origin/main` by **3 commits** — `39e84c0` (P37 planning),
+  `b453ae0` (P37 shadow implementation), `8281609` (1.1.5 release) —
+  and **behind by 0**. These commits are absent from the locally
+  recorded `origin/main` reference. Current remote-server state was
+  not checked. The locally recorded `origin/main` reference is the
+  1.1.4 release commit `f05bee9` (whose parent history includes the
+  P36 commits `dbd0fdb` and `b4e6256`). This handoff **cannot
+  independently verify** the GitHub server state — the count above
+  comes from local remote-tracking references only.
+- **1.1.5 release-boundary validation — HISTORICAL EVIDENCE
+  (recorded 2026-09-14, not re-executed by MR0-01):**
+  `npm run verify` 172 files / 1,605 tests PASS,
+  `npm run privacy:check` 11/11, `npm run nlp:security-audit` 3/3,
+  format / lint / typecheck green. Four smokes passed:
+  packaged, packaged seeded-upgrade, installed, installed
+  seeded-upgrade. Production DB SHA-256
   `2E4BC539FFACBD88473FF2CB36FCAAAD9E968AAF7AAA88568ED0DE225E197B07`
-  and size 493,121,536 bytes unchanged across the release).
-- **No orphan processes:** no Job Browser/Electron processes and
-  port 6783 is free after validation.
+  / size 493,121,536 bytes recorded unchanged across that
+  validation. No orphan Job Browser/Electron processes, port 6783
+  free. These results describe the 1.1.5 boundary only; they were
+  **not** reproduced during MR0-01. In particular, MR0-01 did not
+  re-hash the database, so the historical hash does not prove the
+  DB stayed unchanged during this documentation task — MR0-01's DB
+  claim is only that it never opened, modified, or queried the
+  production database (documentation-only scope).
 
-### What shipped at this boundary (P37, local commits `b453ae0` + 1.1.5 release commit)
+## Active task
 
-P37 SHADOW `Level 0` occupation / job-type taxonomy on top of the 1.1.4
-baseline:
-`src/intelligence/nlp/jobTypeTaxonomy.ts` (curated 11-family catalog,
-`JOB_TYPE_TAXONOMY_VERSION='job-type-taxonomy-v1'`, SHA-256 content
-hash, alias index, strict disjoint-alias collision handling) and
-`src/intelligence/nlp/jobTypeNormalization.ts` (deterministic title
-classifier, `JOB_TYPE_NORMALIZATION_VERSION='job-type-normalization-v1'`,
-method `deterministic-fallback`, enum `EXACT` | `CANONICAL_ALIAS` |
-`UNRELATED` | `UNKNOWN`, populated abstention reason + explanation,
-role-prefix / employment-type / generic strip-words). P37 stays
-SHADOW only — no scoring, eligibility, ranking, filtering, lifecycle,
-status, archive, removal, or hard-gate integration; no new npm
-dependency; no embedding runtime / hosted AI / automatic model
-download / telemetry. EXPLANATION-1 preview of occupation / job-type
-is **not** bundled in this release (requires a separate authorization).
-See `docs/CHANGELOG.md` (1.1.5) for details.
+- **MR0-01 — Reconcile release baseline and current documentation**
+  (OpenCode, claimed 2026-09-18). **Done** as of 2026-09-18 —
+  accepted by the Codex reviewer; docs-only completion; no
+  commits/push yet (the user reviews and commits). Status / owner /
+  claimed files live on the delivery board:
+  [`docs/JOB_BROWSER_DELIVERY_BOARD.md`](docs/JOB_BROWSER_DELIVERY_BOARD.md).
+- Task card: [`docs/delivery/tasks/MR0-01-release-baseline.md`](docs/delivery/tasks/MR0-01-release-baseline.md).
+- **MR1-01 — Freeze first onboarding contract, fixtures and
+  ownership** (OpenCode, claimed 2026-09-18). **Done** as of 2026-09-18
+  — **accepted by the Codex reviewer**; three review passes applied:
+  answer states + guided sequence + strict parsing + snapshot; then the
+  question-navigation contract (`currentQuestion` + callbacks), salary
+  deferral (L1) with null-safe merge, restore intent (L4), and
+  contributor roles (D11: OpenCode implements, Codex reviews, and an
+  optional bounded contribution is allowed but does not gate any board
+  row). Claimed files released on acceptance. Validated locally
+  (typecheck clean; contract tests 65/65; related
+  preference/profile/scoring tests 24/24; eslint + prettier clean).
+  Decision record:
+  [`docs/delivery/decisions/MR1-01-onboarding-contract.md`](docs/delivery/decisions/MR1-01-onboarding-contract.md);
+  task card:
+  [`docs/delivery/tasks/MR1-01-onboarding-contract.md`](docs/delivery/tasks/MR1-01-onboarding-contract.md).
+  No UI, storage, routes, APIs, or migrations were added. Release
+  status remains **Not shipped**.
+- **MR1-02 — Build preference form and focused interaction tests**
+  (OpenCode, claimed 2026-09-19). **Done** as of 2026-09-19 —
+  **accepted by the Codex reviewer** (passed code + interaction
+  review); claimed files released back to the unclaimed bucket. The
+  guided `PreferencesStep` walks the five enabled questions one at a
+  time (progress "Question N of 5") using the frozen MR1-01 contract
+  unchanged (no salary question until L1); scoped `onboarding.css`;
+  a test-only controlled parent over fictional fixtures covers 22
+  interaction scenarios (22/22 PASS; 101/101 combined with the
+  `onboarding-contract.test.ts` and existing UI suites;
+  typecheck/eslint/prettier clean). A review-corrections round
+  (2026-09-19) applied exact employment-type semantics (truthful
+  `'unknown'` label stored literally, no implied "any arrangement",
+  occupation-neutral full-time guidance), editable blank rows when
+  roles/locations are empty, all controls disabled during a pending
+  save, first-invalid focus for parents that defer errors until
+  Continue, and copy without implementation detail. Task card:
+  [`docs/delivery/tasks/MR1-02-preferences-step.md`](docs/delivery/tasks/MR1-02-preferences-step.md).
+  The component is **not connected** to any route, first-start flow,
+  or real saving (later tasks MR1-04/MR1-06 own that). The outstanding
+  visual, narrow-window and 200% zoom checks were **not** performed by
+  this task and are preserved as explicit acceptance items for
+  **MR1-06** and **MR1-07** — they are **not** described as passed.
+  Release status remains **Not shipped**.
+- The next task is chosen from the board. `Ready` rows in the board
+  (per the board's own definitions) can be picked up; picking up a
+  `Backlog` row requires the user to advance it first. **MR1-03 (Build
+  review/confirmation screen and tests)** was **accepted by Codex on
+  2026-09-20** and moved to **Done** on the board; it implements the
+  already-frozen `OnboardingReviewStepProps`/`OnboardingReviewItem`
+  contracts and is **not connected** to routes, saving, or resume
+  parsing (later tasks MR1-04/MR1-06 own that). The outstanding
+  browser, narrow-window and 200% zoom checks remain explicit
+  acceptance items for **MR1-06/MR1-07** and are **not** marked as
+  passed. Release status remains **Not shipped**.
 
-### Remaining manual Windows acceptance items
+- **MR1-04 — Persist and restore onboarding progress through existing
+  profile services** was transferred from OpenCode to GitHub Copilot on
+  2026-09-20 and is **In Review** for Codex (correction pass applied
+  2026-09-20; **task remains in Review — not self-approved as Done**).
+  The canonical repository and service use the existing SQLite
+  `app_settings` and unified profile-preferences authorities:
+  profile-scoped snapshots, v1/v2 compatibility, review restoration,
+  invalid-version reset, disabled-salary recovery, profile application,
+  failure ordering and retry idempotence are covered by the new
+  persistence tests, including a real-adapter end-to-end test, v1
+  readability, independent read/write/reset failure tests, retry
+  idempotence with the explicit `profileId: string` now carried by
+  `CompleteOnboardingOptions`, and a conservative profile-application
+  test (suggestions/unknown ignored, confirmed blanks ignored, existing
+  fields preserved). Generated `vitest-report.json` and
+  `vitest-review.json` artifacts were removed and narrowly ignored;
+  stale absolute repository paths in the blueprint and the optional
+  contributor guide now point to the repository root and acknowledge
+  the OneDrive move. Validated: `npm run verify` **1721/1721 PASS**
+  across 176 files; `npm run privacy:check` **11/11 PASS** (the D11
+  contributor role is preserved while the personal name is no longer
+  present in tracked files); `npm run nlp:security-audit` **3/3 PASS**;
+  `git diff --check` clean (CRLF-only notices). Task card:
+  [`docs/delivery/tasks/MR1-04-progress-storage.md`](docs/delivery/tasks/MR1-04-progress-storage.md).
+  Browser, narrow-window and 200% zoom checks remain explicit
+  acceptance items for **MR1-06/MR1-07** and are **not** marked as
+  passed. Release status remains **Not shipped**; no commits, no push;
+  MR1-05 and MR1-06 were not started.
 
-- Real Windows shutdown / logoff / restart must deliver
-  `query-session-end` on the main BrowserWindow; the controller's
-  bounded `onWindowsSessionEnd()` cleanup runs, then `app.exit()` is
-  issued. This is a Windows-behaviour verification that cannot be
-  reproduced from a normal shell.
-- Actual `Tray` icon visibility, right-click menu rendering, and
-  focus behaviour require a desktop session and cannot be asserted
-  programmatically. The harness verifies the in-band IPC and backend
-  coordination that drive those OS-level behaviours.
-- Whether the brief `shutdown` timeout (default 5 s) is acceptable
-  for real Windows shutdown latency requires a real logoff timing on
-  a packaged build.
-- `src/client/components/NotificationManager.tsx` must remain **silent**
-  (no browser/Windows notification sounds or OS notifications). Do not
-  re-enable notifications during any future work.
+## Important constraints (active)
 
-### Recommended next task
+- **Notifications must remain disabled.**
+  `src/client/components/NotificationManager.tsx` must return
+  `null`. `src/desktop/main.ts` must continue to deny the
+  `notifications` permission checks/requests before the
+  BrowserWindow is created. Re-enabling either path is a
+  user-visible behaviour change requiring explicit approval.
+- **NLP authority boundary (unchanged).** SHADOW (`Level 0`),
+  EXPLANATION (`Level 1`), ENRICHMENT (`Level 2`) only. SCORING
+  (`Level 3`) and HARD_GATE (`Level 4`) are not authorized in
+  this program. Deterministic scoring, eligibility, ranking,
+  filtering, lifecycle, status, archive, and removal paths remain
+  authoritative. See `docs/NLP_TRUST_LEVELS.md` and
+  `docs/NLP_PROMOTION_DESIGN.md`.
+- **Production DB is real data.** No task that touches
+  `%APPDATA%\Job Browser\data\jobs.sqlite` may run without a
+  verified backup on file. The MR0-01 task explicitly did not
+  touch production data; if a future task needs to do so, it must
+  include the backup in its acceptance criteria.
+- **No push without explicit user approval.** Local commits only;
+  push is a separate authorization.
+- **Notifications / NLP authority restrictions must survive every
+  release boundary** (the 1.1.5 boundary evidence is the most
+  recent demonstration).
 
-The 1.1.4 release boundary (`f05bee9`) remains the latest shipped
-artifact (pushed to `origin/main`). A new bounded **P37 shadow
-occupation / job-type taxonomy** source-only slice was committed locally
-on top of 1.1.4 (SHADOW `Level 0`; no installer rebuild, no version
-bump, no push).
+## Remaining manual checks and blockers
 
-### P37 shadow implementation (SHADOW Level 0; local-only)
+These cannot be exercised from a normal local shell; they need a
+real packaged Windows session:
 
-- New: `src/intelligence/nlp/jobTypeTaxonomy.ts` — curated occupation
-  catalog (11 families) + `JOB_TYPE_TAXONOMY_VERSION='job-type-taxonomy-v1'`
-  + SHA-256 content hash for stale detection.
-- New: `src/intelligence/nlp/jobTypeNormalization.ts` — deterministic
-  classifier, `JOB_TYPE_NORMALIZATION_VERSION='job-type-normalization-v1'`,
-  `method='deterministic-fallback'`, enum
-  `EXACT` | `CANONICAL_ALIAS` | `UNRELATED` | `UNKNOWN`, populated
-  abstention reason + explanation; role-prefix / employment-type /
-  generic strip words before whole-alias comparison.
-- 3 new tests:
-  `tests/job-nlp-job-type-taxonomy.test.ts`,
-  `tests/job-nlp-job-type-normalization.test.ts`,
-  `tests/job-nlp-snapshot-job-type.test.ts`.
-- Verification: `npm run verify` **172 files / 1,605 tests** PASS;
-  `npm run privacy:check` 11/11 PASS; `npm run nlp:security-audit`
-  3/3 PASS; format, lint, typecheck all green.
-- **Production isolation:** repo-wide grep confirms no production
-  decide path imports the new modules; no installer rebuild, no
-  version bump, no push; EXPLANATION-1 preview deliberately out of
-  scope.
-
-### Suggested follow-ups (each requires explicit user approval before start)
-
-- A **release-boundary task** that bumps to 1.1.5 and ships the P37
-  shadow as bytes in the installed asar without any UI surface.
-- An **EXPLANATION-1 authorization** for an occupation / job-type panel
-  in the existing Job Intelligence preview, naming the field,
-  evidence cohort, threshold profile, rollout, rollback trigger, and
-  release boundary.
-- A **Direction B** planning slice (transferable-skill matching)
-  building on the P37 catalog and the existing
-  `skillNormalization` reviewed-relationship table.
-- A **Direction C** planning slice (offline semantic-role benchmark)
-  per the existing `docs/NLP_SEMANTIC_DESIGN.md` measurement gate.
-- **Push approval** for the two local-only P37 commits (planning +
-  shadow implementation).
-
----
-
-## Historical — Lifecycle-continuation checkpoint (2026-09-14, pre-release)
-
-This section is **historical**. It records the fixtures-and-shutdown-race
-continuation that produced commit `a7c4356` before the 1.1.3 boundary; the
-release itself is recorded in the current status above. Do not treat the
-"next tasks" here as the current queue.
-
-### What this checkpoint actually fixes
-
-Eight concrete defects were identified in the Package C implementation
-delivered under the previous continuation. Source-level evidence and the
-fixes shipped today:
-
-1. **Close-to-tray disabled did not exit.** `src/desktop/main.ts` only
-   called `app.quit()` from `window-all-closed` when `quitRequested`
-   was already true, so an ordinary close with `closeToTray=false`
-   left the backend alive. Fixed: the `window-all-closed` handler now
-   also exits when close-to-tray is off (or when the tray is not
-   available), routed through `lifecycle.requestQuit()`.
-2. **No-tray fallback could hide the only window.** `closeAction()`
-   only checked `closeToTray` and `quitRequested`. Fixed: it now
-   also checks `trayAvailable`. When the tray was never created
-   (e.g. a startup failure left the desktop running with no Exit
-   path), the window must actually close so the user is not trapped
-   behind a hidden window.
-3. **Initial tray menu was not installed.** `TrayManager.create()`
-   called `refreshMenu()` before assigning `this.tray`, and a
-   `Menu.buildFromTemplate()` throw left the underlying `Tray`
-   leaked. Fixed: assign `this.tray = tray` before `refreshMenu()`,
-   wrap the menu build in try/catch and `destroy()` on throw.
-4. **Quit paths were inconsistent.** `BackendManager.stop()`
-   cleared its handle before awaiting shutdown, so a second quit
-   call would see `handle === null` and skip the cleanup. Fixed:
-   added `currentShutdown` (shared in-flight promise); a second
-   `stop()` now awaits the same shutdown. Also: `desktop:safe-exit`
-   and `app.quit()` paths route through `lifecycle.requestQuit()`,
-   so any quit path sets the quit flag and destroys the tray.
-5. **Pause/resume changed a separate preference.**
-   `toggleSchedulerFromBackend()` PUT to `/api/discovery/settings`
-   with both `schedulerEnabled` and `employerDiscoveryEnabled`
-   flipped together, silently overwriting the user's opt-out.
-   Fixed: new `PUT /api/scheduler-control` route that only flips
-   `schedulerEnabled`; the tray now uses that route.
-6. **Settings rollback and unavailable backend.**
-   `desktop:set-close-to-tray` reverted to `!value` (a flipped
-   boolean) instead of the actual previous state, and claimed
-   success even when the backend was down. Fixed:
-   `LifecycleController.persistCloseToTray()` restores the
-   previously-stored value on any failure and returns
-   `persisted: false` so the UI can surface an error.
-7. **Tray state could become stale.** `TrayManager.refresh()`
-   was unguarded: an in-flight `getSummary()` could resolve after
-   `destroy()`, calling into a destroyed tray. Fixed: refresh now
-   short-circuits if `destroying` is true, and the tray's `isCreated`
-   getter returns false once `destroy()` is in progress.
-8. **Windows shutdown documentation and handling were wrong.**
-   The previous handoff claimed `before-quit` covered Windows
-   shutdown/logoff. Electron's documentation explicitly states
-   `before-quit` is **not** emitted on Windows shutdown/restart or
-   user logout. Fixed: `WindowManager.create()` now accepts
-   optional `querySessionEnd` and `sessionEnd` handlers; the main
-   process wires both on the main BrowserWindow. `querySession-end`
-   `preventDefault()`s so bounded cleanup has a chance to flush;
-   `session-end` is a last-chance no-op-preventable hook. The
-   controller's `onWindowsSessionEnd()` runs bounded best-effort
-   cleanup with a configurable timeout (default 5 s) and never
-   claims the cleanup is guaranteed to complete before Windows
-   terminates the process.
-
-### Architecture
-
-- New `src/desktop/lifecycleController.ts` — `LifecycleController`
-  owns the quit flag, the close-to-tray setting, repeated-exit
-  coordination, and the persisted/in-memory state machine for
-  `closeToTray`. All Electron-touching code (tray, window,
-  `app.quit`) is reached through injected dependencies so the
-  coordination itself is exercised in a Node test environment
-  without spinning up Electron.
-- New `PUT /api/scheduler-control` in `src/server/app.ts` —
-  toggles `schedulerEnabled` only; preserves the
-  `employerDiscoveryEnabled` opt-out.
-- `src/desktop/backendManager.ts` — added `currentShutdown` getter
-  and a shared-promise slot so repeated `stop()` calls await the
-  same shutdown instead of skipping cleanup.
-- `src/desktop/windowManager.ts` — accepts optional
-  `querySessionEnd` / `sessionEnd` handlers and registers them on
-  the main BrowserWindow.
-- `src/desktop/main.ts` — wires `LifecycleController` into every
-  IPC handler and lifecycle hook; uses the controller for
-  `closeAction`, `setCloseToTray` PUT, `requestQuit`, and
-  Windows session-end cleanup. The
-  `set-close-to-tray` IPC now throws when persistence fails (the
-  UI is expected to surface the error).
-- `src/desktop/trayManager.ts` — assigns the Electron `Tray`
-  before installing the menu, cleans up partially-created state
-  on menu construction failure, and guards `refresh()` against
-  resolving after `destroy()`.
-
-### Verification (recorded by this continuation)
-
-- `npx vitest run tests/desktop-lifecycle-controller.test.ts` —
-  17 tests pass: closeAction matrix (quit wins, hide only when
-  tray is available, close fallback when not, close when
-  close-to-tray is off), `requestQuit` idempotency,
-  `shutdown` serialization and bounded timeout, `persistCloseToTray`
-  round-trip / rejection rollback / backend-unavailable
-  restoration, `loadCloseToTrayFromBackend` success and
-  network-blip fallback, `onWindowsSessionEnd` bounded cleanup.
-- `npx vitest run tests/desktop-tray-manager.test.ts` — 2
-  tests pass: refresh-after-destroy is a no-op; partial-create
-  failure during menu construction triggers `destroy()`.
-- `npx vitest run tests/desktop-backend-manager-shutdown.test.ts`
-  — 4 tests pass: `currentShutdown` is non-null only during an
-  in-flight shutdown, a second `stop()` awaits the same promise,
-  the handle is cleared before awaiting so other code sees "no
-  backend" during cleanup, and the in-flight slot is cleared on
-  a failed first attempt.
-- `npx vitest run tests/desktop-scheduler-control-api.test.ts`
-  — 3 tests pass: PUT flips `schedulerEnabled` without touching
-  `employerDiscoveryEnabled`, rejects missing `schedulerEnabled`
-  with 400, rejects extra fields with 400 (strict body).
-- `npm run typecheck` — green.
-- `npm run lint` — green.
-- `npm run format:check` — green.
-- `npm run verify` — green: 168 test files / 1,547 tests.
-  Baseline before this continuation was 164 / 1,521. New
-  files: 4 test files + 1 lifecycle controller. New tests: 26.
-
-### Files changed by this continuation
-
-- `src/desktop/backendManager.ts` — shared shutdown promise,
-  `currentShutdown` getter.
-- `src/desktop/desktopLifecycle.ts` — `closeAction` accepts
-  `trayAvailable`.
-- `src/desktop/lifecycleController.ts` (new) — controller with
-  injected dependencies.
-- `src/desktop/main.ts` — wired through the controller;
-  `set-close-to-tray` PUT rollback; tray pause via
-  `/api/scheduler-control`; `window-all-closed` exits on
-  close-to-tray off; Windows session-end handlers.
-- `src/desktop/trayManager.ts` — install menu after assignment;
-  guard refresh-after-destroy; cleanup on partial-create
-  failure.
-- `src/desktop/windowManager.ts` — optional
-  `querySessionEnd` / `sessionEnd` handlers.
-- `src/server/app.ts` — `PUT /api/scheduler-control`.
-- `tests/desktop-backend-manager-shutdown.test.ts` (new).
-- `tests/desktop-lifecycle-controller.test.ts` (new).
-- `tests/desktop-scheduler-control-api.test.ts` (new).
-- `tests/desktop-tray-manager.test.ts` (new).
-- `tests/desktop-lifecycle.test.ts` — updated `closeAction`
-  tests for the new `trayAvailable` parameter.
-- `docs/OCCUPATION_EXPANSION_PROPOSAL.md` — Package C status
-  notes, native acceptance checklist updated.
-- `SESSION_HANDOFF.md` — this rewrite.
-
-### What still requires native Windows verification
-
-These cannot be exercised from the local Windows shell by a code
-change; they require a packaged or installed build and a real
-session:
-
-- **Tray icon presence and tooltip text.** The construction is
-  unit-tested with `vi.doMock('electron')`; the OS-level icon and
-  tooltip must be confirmed on a packaged build.
-- **Right-click menu contents.** The menu items and labels are
-  unit-tested; their rendering on Windows requires a packaged
+- **Windows shutdown / logoff / restart delivery of
+  `query-session-end`** on the main BrowserWindow. The controller's
+  bounded `onWindowsSessionEnd()` cleanup runs, then `app.exit()`
+  is issued. Verify on a packaged build whether Windows actually
+  delivers the event before terminating.
+- **Tray icon visibility, right-click menu rendering, focus
+  behaviour** — fixture tests verify IPC and backend
+  coordination; OS-level rendering must be observed on a packaged
   build.
-- **Pause/Resume Discovery round-trip through the tray.** The
-  PUT and label flip are unit-tested; the click → IPC → PUT →
-  label refresh sequence must be confirmed on a packaged build.
-- **Open Job Browser from the tray.** The IPC and window focus
-  are unit-tested; OS focus behavior must be confirmed.
-- **Exit Job Browser from the tray (clean shutdown).** The
-  `requestQuit` flow is unit-tested; the actual
-  `app.quit() → before-quit → backend.stop → DB close` sequence
-  must be observed on a packaged build.
-- **Close with close-to-tray on (window hides, tray remains).**
-  Unit-tested; OS-level behavior must be observed.
-- **Close with close-to-tray off (graceful exit).** Unit-tested;
-  OS-level behavior must be observed.
-- **Second launch while running (single-instance, focus).**
-  Existing `app.requestSingleInstanceLock()` + `second-instance`
-  handler; not changed by this continuation.
-- **Windows shutdown/logoff handling.** `query-session-end`
-  registration is in place with bounded best-effort cleanup
-  (5 s timeout). Whether Windows actually delivers
-  `query-session-end` before terminating is a Windows behavior
-  that must be confirmed on a packaged build. The implementation
-  does **not** claim the cleanup completes before Windows
-  terminates the process.
-- **Startup failure (tray still available for Exit).** Unit-tested
-  via the closeAction tray-availability fallback. The actual
-  rendered failure page must be observed on a packaged build.
+- **5-second shutdown budget** vs real Windows logoff latency —
+  requires a real logoff timing on a packaged build.
 
-### Why the desktop smoke harness does not prove tray behavior
+No code changes required to investigate any of the above.
+Investigations are out of scope for MR0-01 (which is docs-only).
 
-`scripts/desktop-smoke.ts` renders the seeded Employers page and
-asserts text; it does **not** assert tray icon presence, menu
-contents, pause/resume round-trips, or Exit Job Browser. A
-generic packaged smoke pass (`npm run desktop:smoke:packaged` or
-`npm run desktop:smoke:installed`) exercises backend, routes, and
-shutdown but does not establish any of the tray / close-to-tray /
-Windows-shutdown guarantees from §10.6. Any recommendation of those
-scripts as evidence for Package C completion is invalid.
+## Next action
 
-### Recommended next task
+1. **MR1-03 is Done.** The review/confirmation screen and interaction
+   tests were accepted by the Codex reviewer on 2026-09-20 and moved to
+   **Done** on the delivery board. The claimed files were released. The
+   release status remains **Not shipped** until a separately validated
+   release gate. Browser, narrow-window and 200% zoom checks remain
+   explicit requirements for **MR1-06/MR1-07** and are not marked as
+   passed.
+2. **MR1-04 is in Review after the 2026-09-20 correction pass — Codex
+   must review before it can move to Done.** Do not start MR1-05 or
+   MR1-06 yet; MR1-05 and MR1-06 remain not started. Release status
+   remains **Not shipped**. Browser, narrow-window and 200% zoom checks
+   remain explicit acceptance items for MR1-06/MR1-07 and were **not**
+   performed or claimed here.
+3. **Recoverable local checkpoint commit (no push).** The accepted
+   MR0-01, MR1-01, MR1-02, MR1-03 and the corrected MR1-04 work are
+   staged together in a single local commit
+   `feat: add onboarding foundation through progress persistence` so
+   the onboarding foundation has a recoverable checkpoint in the local
+   branch history. No push is performed; the 1.1.5 release status on
+   the board stays **Not shipped**.
 
-Write a focused, **fixture-based** desktop lifecycle harness that
-boots an isolated Electron app against a temporary user data
-directory and asserts, in this order:
+## Links to historical evidence
 
-1. Tray icon is present after `window-created`.
-2. Tray right-click menu contains `Open Job Browser`,
-   `Pause Discovery` (or `Resume Discovery`), and
-   `Exit Job Browser`.
-3. Toggling Pause/Resume flips the global scheduler
-   (`schedulerEnabled` in `/api/tray-summary`).
-4. Close with close-to-tray on hides the window (Electron
-   `BrowserWindow.isVisible()` false) and the tray remains.
-5. Close with close-to-tray off quits the app cleanly (no
-   leftover processes).
-6. Startup failure (forced by an invalid DB path) leaves a
-   tray Exit path available.
-
-Do not require live discovery. Do not run from a packaged build
-until steps 1–6 pass on `electron .` against the temp user data
-directory.
-
-Stop before packaging or implementing additional features.
+- Past handoff narratives (2026-09-13 / 2026-09-14):
+  [`docs/history/SESSION_HANDOFF-HISTORICAL-2026-09-13-to-2026-09-14.md`](docs/history/SESSION_HANDOFF-HISTORICAL-2026-09-13-to-2026-09-14.md)
+- Past NLP / intelligence scope:
+  `docs/Intelligence_Roadmap.md`,
+  `docs/NLP_TRUST_LEVELS.md`,
+  `docs/NLP_PROMOTION_DESIGN.md`,
+  `docs/NLP_FINAL_HANDOFF.md`,
+  `docs/NLP_INTELLIGENCE_UX_PROTOTYPE.md`.
+- Past product scope:
+  `docs/IMPLEMENTATION_ROADMAP.md`,
+  `docs/BETA_READINESS_REPORT.md`,
+  `docs/OCCUPATION_EXPANSION_PROPOSAL.md`.
+- Past release evidence (P33 / P34 / P35 / 1.1.3 / 1.1.4 /
+  1.1.5):
+  `docs/CHANGELOG.md`,
+  `docs/BETA_IMPLEMENTATION_TRACKER.md`,
+  `docs/PROJECT_MEMORY.md`.
+- Market-readiness collaboration design (proposed, not yet
+  installed): `docs/JOB_BROWSER_BUILD_BLUEPRINT.md`.
+- The original market-readiness plan file
+  `docs/JOB_BROWSER_MARKET_READINESS_PLAN.md` is **absent** from
+  this repository as of MR0-01. Its contents were not invented;
+  the related MR-2 through MR-7 packages appear only as a
+  roadmap list in §9 of the blueprint. If the plan file later
+  appears, treat it as a separate authoritative source for
+  market-readiness scope.
 
 ---
 
-## Historical — Recovery checkpoint Package A (2026-09-13)
+## Do not start additional work from this section
 
-This section is **historical**. Package A implementation was recovered
-from an interrupted OpenCode session. The work is present,
-uncommitted, and at a source checkpoint. Do not restart Package A.
-The verification numbers recorded here (160 / 1,491) are the
-baseline before the Package B+C continuation below.
-
-- Package A implementation is present, uncommitted, and at a
-  source checkpoint; do not restart it.
-- Source includes the scope query, remembered-view endpoints,
-  scoped saved filters, All jobs toggle, personal-score freshness
-  badges and UI/API/repository tests.
-- Recovery fixed the interaction between asynchronously loaded
-  remembered scope and locally saved filters, serialized scope
-  preference writes, refreshed the scope cache after saving, and
-  made each search capture its score version once.
-- 160 test files / 1,491 tests passed at recovery.
-
-## Historical — Continuation checkpoint Package B + Package C (2026-09-13)
-
-This section is **historical and partially incorrect**. The recorded
-"Package C" claims in this section were not actually established by
-the source; this continuation is the first checkpoint that exercises
-the lifecycle in a Node test environment. In particular:
-
-- The claim that Windows shutdown is handled by `before-quit` is
-  **false** per Electron's documented behavior. See the
-  `query-session-end` / `session-end` registration in the current
-  status above.
-- The claim that the desktop lifecycle is "fully verified" is
-  **false**. Pure helper tests are insufficient to prove
-  coordination; see the new integration tests added in this
-  continuation.
-- The claim that `npm run desktop:smoke` proves tray behavior is
-  **false** — the harness does not assert tray or close-to-tray
-  behavior.
-
-Package B (consistent preference resolution) remains in place from
-the earlier continuation:
-
-- `src/server/backend.ts` — the post-discovery `analyze` callback
-  and the startup `reconcile-stale-intelligence` step now pass
-  `options.profilePreferencesPath` to `loadCandidateProfile` and
-  `loadScoringConfig`.
-- `src/preferences/cliProfilePreferences.ts` — new helper that
-  resolves `--profile-preferences=<path>` or
-  `PROFILE_PREFERENCES_PATH`. The three auxiliary CLIs
-  (`analyze`, `verified-matches`, `role-details:backfill`) call
-  it; without the flag/env they fall back to legacy
-  `config/candidate-profile.json` and `config/scoring-config.json`.
-- `tests/cli-profile-preferences.test.ts` (7 tests) and
-  `tests/backend-preference-resolution.test.ts` (3 tests) prove
-  the resolution and the integration.
-
----
-
-## Current project status (historical, pre-Package-B/C)
-
-Reconciled against source checkpoint `fd63a2a` (P35) and the P33
-release record. Git/source evidence takes precedence over historical
-completion records.
-
-- Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was
-  Architect-approved on 2026-08-12. Employer Discovery 9.1–9.5 is
-  complete and approved; 9.6 seed manifest import is complete.
-- The 18-phase beta-readiness sprint is complete: READY FOR
-  EXTERNAL BETA. Original product phases, beta phases, NLP Stages
-  0–29, and P0–P35 checkpoints are separate numbering sequences.
-- NLP Stages 0–29 and P0–P35 are complete. P35 is committed as
-  `fd63a2a`. Latest recorded full source verification: 159
-  files / 1,472 tests.
-- Current package version and latest validated installer:
-  **1.1.2**, released at P33 (`c83949b`). P34 source-health code
-  and P35 defaults are later source changes and are not included
-  in that recorded installer.
-- Current source defaults: `jobIntelligenceExplanation`,
-  `roleFamilySuggestion`, and `searchProfileFeedback` are on;
-  `searchTieBreak` is off. Stored opt-outs remain authoritative.
-
-## Release evidence (historical)
-
-- Installer: `release/Job-Browser-Setup-1.1.2.exe`, 253,597,831 bytes.
-- Installer SHA-256: `A77B1F745BB2474E61CED4148450BF2A7DC654A60853ED94CF265D155AFE28F2`.
-- P33 recorded packaged, installed, and seeded-upgrade smoke
-  passes, installed Job Intelligence validation, 158 files /
-  1,460 tests, privacy 11/11, security 3/3.
-
-## Resume and maintenance
-
-Read `docs/PROJECT_MEMORY.md`, `docs/BETA_IMPLEMENTATION_TRACKER.md`,
-and `docs/Intelligence_Roadmap.md` alongside current Git status.
-Use `docs/IMPLEMENTATION_ROADMAP.md` for completed product scope and
-dependencies. Historical evidence remains in Git history, the
-changelog, and tracker ledgers; old next-step instructions are not
-the current queue.
-
-Do not push without user authorization. Do not rebuild/install or
-rerun live sources as part of documentation cleanup. Preserve
-production data; use verified backups for any separately authorized
-live data changes.
-
-## Requested follow-up: background discovery and tray controls (historical)
-
-The original user requirement recorded here asked for close-to-tray
-behavior, tray controls, pause/resume, and exit coordination. The
-implementation and verification now live in the current status
-above; this section is preserved for traceability only.
+It records the latest release boundary state, the active task,
+constraints, manual checks, and links to historical evidence only.
+It is intentionally short.

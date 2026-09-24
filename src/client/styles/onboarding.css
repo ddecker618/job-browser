@@ -1,0 +1,204 @@
+/* MR1-02: feature-scoped styles for the guided onboarding preferences
+ * step. Imported by PreferencesStep.tsx itself so the component renders
+ * correctly without depending on a future page importing it.
+ * Class names are prefixed with `onboarding-` to stay out of the shared
+ * `styles.css` namespace. Reuses the existing design tokens. */
+
+.onboarding-preferences {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.onboarding-card {
+  display: grid;
+  gap: 1rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.onboarding-progress {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.onboarding-question-title {
+  margin: 0.1rem 0 0;
+  font-size: 1.3rem;
+}
+
+.onboarding-question-title:focus-visible {
+  outline: none;
+}
+
+.onboarding-question-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.onboarding-example {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.onboarding-fieldset {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem 0.95rem 1rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.onboarding-fieldset legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.onboarding-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.onboarding-field > span {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.onboarding-role-row,
+.onboarding-location-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.onboarding-location-row .onboarding-field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.onboarding-row-remove {
+  flex: 0 0 auto;
+  margin-top: 1.45rem;
+}
+
+.onboarding-add-row {
+  margin-top: 0.4rem;
+}
+
+.onboarding-field-error {
+  margin: 0.15rem 0 0;
+  color: var(--red);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.onboarding-hint {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.onboarding-option {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-option:has(input:checked) {
+  border-color: var(--green);
+}
+
+.onboarding-option input[type='radio'],
+.onboarding-option input[type='checkbox'] {
+  width: auto;
+  margin-top: 0.2rem;
+  accent-color: var(--green);
+}
+
+.onboarding-option-text {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.onboarding-option-text strong {
+  font-size: 0.9rem;
+}
+
+.onboarding-option-text span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.onboarding-actions-left {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.onboarding-footnote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.onboarding-save-status {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.onboarding-save-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .onboarding-card {
+    padding: 1rem;
+  }
+  .onboarding-role-row,
+  .onboarding-location-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .onboarding-row-remove {
+    margin-top: 0;
+  }
+  .onboarding-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .onboarding-actions-left {
+    justify-content: stretch;
+  }
+  .onboarding-actions-left .button {
+    flex: 1 1 auto;
+  }
+}

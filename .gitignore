@@ -50,5 +50,9 @@ data/employer-seeds/
 data/seed-lists/
 *.sqlite.copy
 
+# Vitest JSON reporter artifacts produced by ad-hoc `--reporter=json` runs
+vitest-report.json
+vitest-review.json
+
 .DS_Store
 Thumbs.db
