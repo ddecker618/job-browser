@@ -202,3 +202,145 @@
     flex: 1 1 auto;
   }
 }
+
+/* MR1-05: feature-scoped styles for the onboarding search/source-plan
+ * preview component. Imported by SearchPlanStep.tsx itself so the
+ * component renders correctly without depending on a future page
+ * importing it. Reuses the existing design tokens. */
+
+.onboarding-search-plan {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.onboarding-search-plan-section-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.onboarding-search-plan-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.35rem 0 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.onboarding-search-plan-list-item {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 0.6rem;
+  align-items: baseline;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.onboarding-search-plan-role {
+  grid-column: 1 / -1;
+  font-weight: 600;
+}
+
+.onboarding-search-plan-source-name {
+  font-weight: 600;
+}
+
+.onboarding-search-plan-source-employer {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.onboarding-search-plan-source-reason {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.onboarding-search-plan-source-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.onboarding-search-plan-source-badge[data-state='ready'] {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.onboarding-search-plan-source-badge[data-state='needs-attention'] {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.onboarding-search-plan-source-badge[data-state='excluded'] {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.onboarding-search-plan-source-group {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.onboarding-search-plan-group-heading {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.onboarding-search-plan-empty {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.onboarding-search-plan-constraints-list,
+.onboarding-search-plan-bounds-list {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) 1fr;
+  gap: 0.3rem 0.8rem;
+  margin: 0.4rem 0 0;
+}
+
+.onboarding-search-plan-constraint,
+.onboarding-search-plan-bound {
+  display: contents;
+}
+
+.onboarding-search-plan-constraint dt,
+.onboarding-search-plan-bound dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.onboarding-search-plan-constraint dd,
+.onboarding-search-plan-bound dd {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.onboarding-search-plan-warning {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+@media (max-width: 560px) {
+  .onboarding-search-plan-list-item {
+    grid-template-columns: 1fr;
+  }
+  .onboarding-search-plan-source-employer,
+  .onboarding-search-plan-source-reason {
+    grid-column: 1 / -1;
+  }
+}

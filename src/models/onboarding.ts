@@ -157,3 +157,61 @@ export type OnboardingProgressSnapshot =
 export type PreferencesConversionResult =
   | { ok: true; value: OnboardingValidatedPreferences }
   | { ok: false; errors: OnboardingFieldErrors };
+
+/**
+ * MR1-05 — versioned, deterministic onboarding search/source plan
+ * preview contract. See `docs/delivery/tasks/MR1-05-search-plan.md`.
+ *
+ * The plan is built by the pure `buildOnboardingSearchPlan` service
+ * from `OnboardingValidatedPreferences`, user-confirmed desired job
+ * titles, the bounded `SearchProfile`, the configured sources, and
+ * the provider descriptors. It never executes discovery and never
+ * mutates inputs.
+ */
+export const ONBOARDING_SEARCH_PLAN_VERSION = 1 as const;
+
+export type OnboardingSearchPlanSourceState =
+  | 'ready'
+  | 'needs-attention'
+  | 'excluded';
+
+export interface OnboardingSearchPlanSourceEntry {
+  /** Stable source identity (ConfiguredSource.id). */
+  readonly id: string;
+  /** Stable display label (ConfiguredSource.displayName ?? employer). */
+  readonly displayName: string;
+  /** ConfiguredSource.employer. */
+  readonly employer: string;
+  /** ConfiguredSource.providerId (may be null). */
+  readonly providerId: string | null;
+  readonly state: OnboardingSearchPlanSourceState;
+  /**
+   * Bounded user-facing reason for non-ready entries. `null` when the
+   * source is `ready`. No credentials, raw exceptions, secret-bearing
+   * URLs, or stack traces are exposed here.
+   */
+  readonly reason: string | null;
+}
+
+export interface OnboardingSearchPlan {
+  readonly version: typeof ONBOARDING_SEARCH_PLAN_VERSION;
+  /** User-supplied desired job titles, trimmed and non-empty, in user order. */
+  readonly confirmedTitles: readonly string[];
+  /** Bounded query list (≤ SearchProfile.maxQueriesPerRun). */
+  readonly appliedQueries: readonly string[];
+  /** Confirmed titles that did not fit the bound (informational). */
+  readonly omittedTitles: readonly string[];
+  readonly preferredLocations: OnboardingValidatedPreferences['preferredLocations'];
+  readonly remotePreference: OnboardingValidatedPreferences['remotePreference'];
+  readonly primaryRadiusMiles: number;
+  readonly secondaryRadiusMiles: number;
+  readonly sources: readonly OnboardingSearchPlanSourceEntry[];
+  readonly totalSourceCount: number;
+  readonly readySourceCount: number;
+  readonly needsAttentionSourceCount: number;
+  readonly excludedSourceCount: number;
+  /** Bounded user-facing warnings (e.g. omitted titles, credentials). */
+  readonly warnings: readonly string[];
+  /** False when `appliedQueries` is empty or `readySourceCount === 0`. */
+  readonly confirmationAllowed: boolean;
+}
