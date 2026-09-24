@@ -4,77 +4,81 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
-## Current verified baseline (recorded evidence — 2026-09-14)
+## Current verified baseline (recorded evidence — 2026-09-24)
 
-- **HEAD:** `8281609` (`release: 1.1.5 ship P37 shadow job-type taxonomy`).
-- **Working tree (as of this handoff, 2026-09-18):** NOT clean.
-  MR0-01 made documentation-only changes that were accepted by the
-  Codex reviewer on 2026-09-18 but are still left uncommitted for
-  the user to review and commit:
-  - modified (tracked): `README.md`, `SESSION_HANDOFF.md`,
-    `docs/PROJECT_MEMORY.md`;
-  - added (untracked): `docs/history/SESSION_HANDOFF-HISTORICAL-2026-09-13-to-2026-09-14.md`,
-    `docs/delivery/tasks/MR0-01-release-baseline.md`;
-  - updated (untracked planning docs):
-    `docs/JOB_BROWSER_DELIVERY_BOARD.md`,
-    `docs/JOB_BROWSER_TASK_TEMPLATE.md`,
-    `docs/JOB_BROWSER_BUILD_BLUEPRINT.md`.
-  All of the above are documentation-only changes from the accepted
-  MR0-01 task.
-- **MR1-01 work (Done per the delivery board, still uncommitted):**
-  accepted by the Codex reviewer on 2026-09-18; claimed files released.
-  New onboarding contract files added (untracked):
-  `src/models/onboarding.ts`, `src/schemas/onboarding.ts`,
-  `src/client/fixtures/onboarding.fixture.ts`,
-  `tests/onboarding-contract.test.ts`,
-  `docs/delivery/decisions/MR1-01-onboarding-contract.md`,
-  `docs/delivery/tasks/MR1-01-onboarding-contract.md`, plus review/status
+- **HEAD:** `877c31f` (`feat: add onboarding foundation through progress
+  persistence`). This is the local recoverable checkpoint that
+  contains the accepted MR0-01 through MR1-04 onboarding foundation.
+- **Working tree (as of 2026-09-24):** clean at the checkpoint.
+  Subsequent correction work (e.g. the MR1-04 resume-contract fix)
+  produces a new local commit on top of `877c31f`; no further push,
+  version bump, installer rebuild, or release claim is involved.
+- **Local main is ahead of the locally recorded `origin/main` by 4
+  commits** — `39e84c0` (P37 planning), `b453ae0` (P37 shadow
+  implementation), `8281609` (1.1.5 release), and `877c31f` (onboarding
+  foundation) — and **behind by 0**. The first three commits are
+  absent from the locally recorded `origin/main` reference; the
+  onboarding commit is local-only. Current remote-server state was not
+  checked. The locally recorded `origin/main` reference is the 1.1.4
+  release commit `f05bee9` (whose parent history includes the P36
+  commits `dbd0fdb` and `b4e6256`). This handoff **cannot independently
+  verify** the GitHub server state — the count above comes from local
+  remote-tracking references only.
+- **MR0-01 work (Done per the delivery board, committed at `877c31f`):**
+  accepted by the Codex reviewer on 2026-09-18. Documentation-only
+  changes — modified (tracked): `README.md`, `SESSION_HANDOFF.md`,
+  `docs/PROJECT_MEMORY.md`; added: `docs/history/SESSION_HANDOFF-HISTORICAL-2026-09-13-to-2026-09-14.md`,
+  `docs/delivery/tasks/MR0-01-release-baseline.md`; updated planning
+  docs: `docs/JOB_BROWSER_DELIVERY_BOARD.md`,
+  `docs/JOB_BROWSER_TASK_TEMPLATE.md`,
+  `docs/JOB_BROWSER_BUILD_BLUEPRINT.md`. See the Active Task section
+  below.
+- **MR1-01 work (Done per the delivery board, committed at `877c31f`):**
+  accepted by the Codex reviewer on 2026-09-18 after three review
+  passes. Contract types in `src/models/onboarding.ts`, pure validation
+  in `src/schemas/onboarding.ts`, fictional fixtures in
+  `src/client/fixtures/onboarding.fixture.ts`, contract tests in
+  `tests/onboarding-contract.test.ts`, the decision record
+  `docs/delivery/decisions/MR1-01-onboarding-contract.md`, the task card
+  `docs/delivery/tasks/MR1-01-onboarding-contract.md`, and review/status
   updates to `docs/DUSTIN_FIRST_CODING_TASK.md`,
-  `docs/JOB_BROWSER_BUILD_BLUEPRINT.md`, this handoff, and the delivery
-  board. See the Active Task section below.
-- **MR1-02 work (Done per the delivery board, still uncommitted):**
-  accepted by the Codex reviewer on 2026-09-19; claimed files released.
-  New files added (untracked):
-  `src/client/components/onboarding/PreferencesStep.tsx`,
+  `docs/JOB_BROWSER_BUILD_BLUEPRINT.md`, this handoff, and the
+  delivery board. See the Active Task section below.
+- **MR1-02 work (Done per the delivery board, committed at `877c31f`):**
+  accepted by the Codex reviewer on 2026-09-19 after the review
+  corrections round. `src/client/components/onboarding/PreferencesStep.tsx`,
   `src/client/styles/onboarding.css`,
   `tests/onboarding-preferences.test.tsx`,
   `docs/delivery/tasks/MR1-02-preferences-step.md`, plus status updates
   to this handoff and the delivery board. See the Active Task section
   below.
-- **MR1-03 work (Done on the delivery board, still
-  uncommitted):** transferred from OpenCode to GitHub Copilot on
-  2026-09-20 and accepted by the Codex reviewer on 2026-09-20.
-  Implemented files are present in the worktree and released back to the
-  unclaimed bucket:
+- **MR1-03 work (Done per the delivery board, committed at `877c31f`):**
+  transferred from OpenCode to GitHub Copilot on 2026-09-20 and
+  accepted by the Codex reviewer on 2026-09-20.
   `src/client/components/onboarding/ReviewStep.tsx`,
   `tests/onboarding-review.test.tsx`,
   `docs/delivery/tasks/MR1-03-review-step.md`, plus shared-file updates
-  to this task's scope (`src/client/styles/onboarding.css`,
+  (`src/client/styles/onboarding.css`,
   `src/client/fixtures/onboarding.fixture.ts`) and status updates to
   this handoff and the delivery board. Release status remains **Not
   shipped**. See the Active Task section below.
-- **MR1-04 work (In Review on the delivery board, still uncommitted,
-  review-corrections pass applied 2026-09-20):** transferred from
-  OpenCode to GitHub Copilot on 2026-09-20; implementation complete and
-  awaiting Codex acceptance. New files present in the worktree:
+- **MR1-04 work (In Review on the delivery board; foundation committed at
+  `877c31f`; resume-contract correction pass applied 2026-09-24):**
+  transferred from OpenCode to GitHub Copilot on 2026-09-20.
   `src/repositories/onboarding-repository.ts`,
   `src/onboarding/onboarding-service.ts`,
   `tests/onboarding-progress-storage.test.ts`, updates to
   `src/schemas/onboarding.ts` (v1/v2 snapshot schemas) and
   `src/models/onboarding.ts` (`OnboardingProgressSnapshot` discriminated
   union), the MR1-04 task card, status updates to this handoff and the
-  delivery board, plus narrow `.gitignore` entries and
-  doc-hygiene/correction-pass edits across the delivery documents.
-  Release status remains **Not shipped**; MR1-05 and MR1-06 still not
-  started. See the Active Task section below.
-- **Recoverable local checkpoint commit (planned, 2026-09-20, no
-  push):** once the MR1-04 correction-pass gates are green, the
-  accepted MR0-01, MR1-01, MR1-02, MR1-03 and corrected MR1-04 work
-  are staged together as one local commit
-  `feat: add onboarding foundation through progress persistence` so the
-  onboarding foundation has a recoverable checkpoint in the local
-  branch history. The release status remains **Not shipped**. No push
-  is performed.
+  delivery board, narrow `.gitignore` entries, doc-hygiene and
+  correction-pass edits, and a discriminated `OnboardingResumeResult`
+  / `OnboardingResumeQuestion` contract so malformed / unsupported /
+  storage-failure states cannot be presented as a fresh first-run
+  onboarding session. MR1-04 is **not** self-approved as Done; Codex
+  remains the reviewer. Release status remains **Not shipped**;
+  MR1-05 and MR1-06 still not started. See the Active Task section
+  below.
 - **Source version:** `1.1.5` in `package.json` and `package-lock.json`
   (root + workspace entry; third-party dependency versions untouched).
 - **Locally built / validated installer:** `release\Job-Browser-Setup-1.1.5.exe`
@@ -95,17 +99,11 @@
   `Level 0` shadow); `resume-snapshot-evidence-v2`,
   `coverageContext`, `captureState`, `parsingError`,
   `job-intelligence-abstention-note` (P36).
-- **Published / pushed state (rechecked locally for MR0-01):** the
-  local branch `main` is **ahead of** the local remote-tracking ref
-  `origin/main` by **3 commits** — `39e84c0` (P37 planning),
-  `b453ae0` (P37 shadow implementation), `8281609` (1.1.5 release) —
-  and **behind by 0**. These commits are absent from the locally
-  recorded `origin/main` reference. Current remote-server state was
-  not checked. The locally recorded `origin/main` reference is the
-  1.1.4 release commit `f05bee9` (whose parent history includes the
-  P36 commits `dbd0fdb` and `b4e6256`). This handoff **cannot
-  independently verify** the GitHub server state — the count above
-  comes from local remote-tracking references only.
+- **Onboarding code is not present in the 1.1.5 installer.** The
+  onboarding foundation lives only in commit `877c31f` (and any later
+  local correction commits), and the release status remains **Not
+  shipped** until a separately validated release gate re-bundles the
+  app.
 - **1.1.5 release-boundary validation — HISTORICAL EVIDENCE
   (recorded 2026-09-14, not re-executed by MR0-01):**
   `npm run verify` 172 files / 1,605 tests PASS,
@@ -127,9 +125,9 @@
 
 - **MR0-01 — Reconcile release baseline and current documentation**
   (OpenCode, claimed 2026-09-18). **Done** as of 2026-09-18 —
-  accepted by the Codex reviewer; docs-only completion; no
-  commits/push yet (the user reviews and commits). Status / owner /
-  claimed files live on the delivery board:
+  accepted by the Codex reviewer; docs-only completion; committed at
+  `877c31f`. Status / owner / claimed files live on the delivery
+  board:
   [`docs/JOB_BROWSER_DELIVERY_BOARD.md`](docs/JOB_BROWSER_DELIVERY_BOARD.md).
 - Task card: [`docs/delivery/tasks/MR0-01-release-baseline.md`](docs/delivery/tasks/MR0-01-release-baseline.md).
 - **MR1-01 — Freeze first onboarding contract, fixtures and
@@ -140,10 +138,9 @@
   deferral (L1) with null-safe merge, restore intent (L4), and
   contributor roles (D11: OpenCode implements, Codex reviews, and an
   optional bounded contribution is allowed but does not gate any board
-  row). Claimed files released on acceptance. Validated locally
-  (typecheck clean; contract tests 65/65; related
-  preference/profile/scoring tests 24/24; eslint + prettier clean).
-  Decision record:
+  row). Committed at `877c31f`. Validated locally (typecheck clean;
+  contract tests 65/65; related preference/profile/scoring tests 24/24;
+  eslint + prettier clean). Decision record:
   [`docs/delivery/decisions/MR1-01-onboarding-contract.md`](docs/delivery/decisions/MR1-01-onboarding-contract.md);
   task card:
   [`docs/delivery/tasks/MR1-01-onboarding-contract.md`](docs/delivery/tasks/MR1-01-onboarding-contract.md).
@@ -152,15 +149,14 @@
 - **MR1-02 — Build preference form and focused interaction tests**
   (OpenCode, claimed 2026-09-19). **Done** as of 2026-09-19 —
   **accepted by the Codex reviewer** (passed code + interaction
-  review); claimed files released back to the unclaimed bucket. The
-  guided `PreferencesStep` walks the five enabled questions one at a
-  time (progress "Question N of 5") using the frozen MR1-01 contract
-  unchanged (no salary question until L1); scoped `onboarding.css`;
-  a test-only controlled parent over fictional fixtures covers 22
-  interaction scenarios (22/22 PASS; 101/101 combined with the
-  `onboarding-contract.test.ts` and existing UI suites;
-  typecheck/eslint/prettier clean). A review-corrections round
-  (2026-09-19) applied exact employment-type semantics (truthful
+  review). Committed at `877c31f`. The guided `PreferencesStep` walks
+  the five enabled questions one at a time (progress "Question N of 5")
+  using the frozen MR1-01 contract unchanged (no salary question until
+  L1); scoped `onboarding.css`; a test-only controlled parent over
+  fictional fixtures covers 22 interaction scenarios (22/22 PASS;
+  101/101 combined with the `onboarding-contract.test.ts` and existing
+  UI suites; typecheck/eslint/prettier clean). A review-corrections
+  round (2026-09-19) applied exact employment-type semantics (truthful
   `'unknown'` label stored literally, no implied "any arrangement",
   occupation-neutral full-time guidance), editable blank rows when
   roles/locations are empty, all controls disabled during a pending
@@ -173,46 +169,57 @@
   this task and are preserved as explicit acceptance items for
   **MR1-06** and **MR1-07** — they are **not** described as passed.
   Release status remains **Not shipped**.
-- The next task is chosen from the board. `Ready` rows in the board
-  (per the board's own definitions) can be picked up; picking up a
-  `Backlog` row requires the user to advance it first. **MR1-03 (Build
-  review/confirmation screen and tests)** was **accepted by Codex on
-  2026-09-20** and moved to **Done** on the board; it implements the
-  already-frozen `OnboardingReviewStepProps`/`OnboardingReviewItem`
-  contracts and is **not connected** to routes, saving, or resume
-  parsing (later tasks MR1-04/MR1-06 own that). The outstanding
+- **MR1-03 (Build review/confirmation screen and tests)** was
+  **accepted by Codex on 2026-09-20** and moved to **Done** on the
+  board; it implements the already-frozen
+  `OnboardingReviewStepProps`/`OnboardingReviewItem` contracts and is
+  **not connected** to routes, saving, or resume parsing (later tasks
+  MR1-04/MR1-06 own that). Committed at `877c31f`. The outstanding
   browser, narrow-window and 200% zoom checks remain explicit
   acceptance items for **MR1-06/MR1-07** and are **not** marked as
   passed. Release status remains **Not shipped**.
 
 - **MR1-04 — Persist and restore onboarding progress through existing
   profile services** was transferred from OpenCode to GitHub Copilot on
-  2026-09-20 and is **In Review** for Codex (correction pass applied
-  2026-09-20; **task remains in Review — not self-approved as Done**).
-  The canonical repository and service use the existing SQLite
-  `app_settings` and unified profile-preferences authorities:
-  profile-scoped snapshots, v1/v2 compatibility, review restoration,
-  invalid-version reset, disabled-salary recovery, profile application,
-  failure ordering and retry idempotence are covered by the new
-  persistence tests, including a real-adapter end-to-end test, v1
-  readability, independent read/write/reset failure tests, retry
-  idempotence with the explicit `profileId: string` now carried by
+  2026-09-20 and is **In Review** for Codex (foundation committed at
+  `877c31f`; first review-corrections pass applied 2026-09-20;
+  **resume-contract correction pass applied 2026-09-24** — task remains
+  in Review, **not self-approved as Done**). The canonical repository
+  and service use the existing SQLite `app_settings` and unified
+  profile-preferences authorities: profile-scoped snapshots, v1/v2
+  compatibility, review restoration, invalid-version reset,
+  disabled-salary recovery, profile application, failure ordering and
+  retry idempotence are covered by the new persistence tests,
+  including a real-adapter end-to-end test, v1 readability,
+  independent read/write/reset failure tests, retry idempotence with
+  the explicit `profileId: string` now carried by
   `CompleteOnboardingOptions`, and a conservative profile-application
   test (suggestions/unknown ignored, confirmed blanks ignored, existing
-  fields preserved). Generated `vitest-report.json` and
-  `vitest-review.json` artifacts were removed and narrowly ignored;
+  fields preserved). The 2026-09-24 resume-contract correction pass
+  replaces the previous `resumeOnboardingProgress` implementation
+  with a discriminated `OnboardingResumeResult` /
+  `OnboardingResumeQuestion` so `malformed`, `unsupported-version`,
+  and `storage-failure` load results can no longer be presented as a
+  fresh first-run onboarding session; only a `missing` load mints a
+  new version-2 snapshot (`source: 'fresh'`), `valid` loads return
+  the stored snapshot verbatim (`source: 'stored'`), and the three
+  blocked variants carry the original `error` / `version` details so
+  the integration layer can switch exhaustively. Six new resume-contract
+  tests (one per load kind plus an exhaustive-switching test) keep the
+  existing 13 persistence tests green. Generated `vitest-report.json`
+  and `vitest-review.json` artifacts were removed and narrowly ignored;
   stale absolute repository paths in the blueprint and the optional
   contributor guide now point to the repository root and acknowledge
-  the OneDrive move. Validated: `npm run verify` **1721/1721 PASS**
-  across 176 files; `npm run privacy:check` **11/11 PASS** (the D11
-  contributor role is preserved while the personal name is no longer
-  present in tracked files); `npm run nlp:security-audit` **3/3 PASS**;
-  `git diff --check` clean (CRLF-only notices). Task card:
+  the OneDrive move. Validated: `npm run verify` green;
+  `npm run privacy:check` green (the D11 contributor role is preserved
+  while the personal name is no longer present in tracked files);
+  `npm run nlp:security-audit` green; `git diff --check` clean
+  (CRLF-only notices). Task card:
   [`docs/delivery/tasks/MR1-04-progress-storage.md`](docs/delivery/tasks/MR1-04-progress-storage.md).
   Browser, narrow-window and 200% zoom checks remain explicit
   acceptance items for **MR1-06/MR1-07** and are **not** marked as
-  passed. Release status remains **Not shipped**; no commits, no push;
-  MR1-05 and MR1-06 were not started.
+  passed. Release status remains **Not shipped**; no version bump, no
+  installer rebuild, no push; MR1-05 and MR1-06 were not started.
 
 ## Important constraints (active)
 
@@ -262,26 +269,21 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. **MR1-03 is Done.** The review/confirmation screen and interaction
-   tests were accepted by the Codex reviewer on 2026-09-20 and moved to
-   **Done** on the delivery board. The claimed files were released. The
-   release status remains **Not shipped** until a separately validated
-   release gate. Browser, narrow-window and 200% zoom checks remain
-   explicit requirements for **MR1-06/MR1-07** and are not marked as
-   passed.
-2. **MR1-04 is in Review after the 2026-09-20 correction pass — Codex
-   must review before it can move to Done.** Do not start MR1-05 or
-   MR1-06 yet; MR1-05 and MR1-06 remain not started. Release status
-   remains **Not shipped**. Browser, narrow-window and 200% zoom checks
-   remain explicit acceptance items for MR1-06/MR1-07 and were **not**
-   performed or claimed here.
-3. **Recoverable local checkpoint commit (no push).** The accepted
-   MR0-01, MR1-01, MR1-02, MR1-03 and the corrected MR1-04 work are
-   staged together in a single local commit
-   `feat: add onboarding foundation through progress persistence` so
-   the onboarding foundation has a recoverable checkpoint in the local
-   branch history. No push is performed; the 1.1.5 release status on
-   the board stays **Not shipped**.
+1. **MR1-04 is in Review after the 2026-09-24 resume-contract
+   correction pass — Codex must review before it can move to Done.**
+   The resume contract is now discriminated so malformed, unsupported,
+   and storage-failure states are surfaced to the integration layer
+   instead of being collapsed into a fresh first-run snapshot. Do not
+   start MR1-05 or MR1-06 yet; MR1-05 and MR1-06 remain not started.
+   Release status remains **Not shipped**. Browser, narrow-window and
+   200% zoom checks remain explicit acceptance items for MR1-06/MR1-07
+   and were **not** performed or claimed here.
+2. **Local correction commit (no push).** The accepted MR0-01 → MR1-04
+   onboarding foundation is recorded at local commit `877c31f`
+   (`feat: add onboarding foundation through progress persistence`),
+   and the 2026-09-24 resume-contract correction pass produces a
+   second local commit on top of it. No push is performed; the 1.1.5
+   release status on the board stays **Not shipped**.
 
 ## Links to historical evidence
 

@@ -9,8 +9,15 @@ import { createTestDatabase } from './helpers/test-database.js';
 import { DEFAULT_SEARCH_PROFILE } from '../src/config/search-profile.js';
 import { scoringConfigSchema } from '../src/schemas/scoring-config.js';
 import { candidateProfileSchema } from '../src/schemas/candidate-profile.js';
-import { createEmptyPreferencesDraft } from '../src/schemas/onboarding.js';
-import type { OnboardingReviewItem } from '../src/models/onboarding.js';
+import {
+  createEmptyPreferencesDraft,
+  firstUnresolvedQuestion,
+} from '../src/schemas/onboarding.js';
+import type {
+  OnboardingProgressSnapshot,
+  OnboardingQuestion,
+  OnboardingReviewItem,
+} from '../src/models/onboarding.js';
 import {
   createDatabaseOnboardingProgressStore,
   loadOnboardingProgress,
@@ -18,9 +25,11 @@ import {
   resetOnboardingProgress,
   saveOnboardingProgress,
 } from '../src/repositories/onboarding-repository.js';
+import type { OnboardingProgressLoadResult } from '../src/repositories/onboarding-repository.js';
 import {
   applyConfirmedReviewItems,
   completeOnboarding,
+  currentOnboardingQuestion,
   resumeOnboardingProgress,
   reviewItemsFromProgress,
 } from '../src/onboarding/onboarding-service.js';
@@ -187,8 +196,12 @@ describe('onboarding progress persistence', () => {
         result,
         createEmptyPreferencesDraft(),
       );
+      expect(resumed.kind).toBe('ready');
+      if (resumed.kind !== 'ready') throw new Error('expected ready');
+      expect(resumed.source).toBe('stored');
       expect(resumed.question).toBe('desired-work');
-      expect(result.snapshot.version).toBe(2);
+      expect(resumed.snapshot.version).toBe(2);
+      expect(resumed.snapshot).toEqual(result.snapshot);
       if (result.snapshot.version === 2)
         expect(result.snapshot.reviewItems).toEqual(reviewItems);
     }
@@ -693,5 +706,320 @@ describe('onboarding progress persistence — review corrections', () => {
     const candidateId = before.id;
     expect(store.getSetting(onboardingProgressKey(candidateId))).toBeNull();
     database.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MR1-04 resume-contract coverage (Codex review blocker resolution)
+// ---------------------------------------------------------------------------
+
+describe('onboarding progress persistence — resume contract', () => {
+  function narrowReady(
+    result: ReturnType<typeof resumeOnboardingProgress>,
+    context: string,
+  ): {
+    kind: 'ready';
+    source: 'stored' | 'fresh';
+    snapshot: OnboardingProgressSnapshot;
+    question: OnboardingQuestion | null;
+  } {
+    if (result.kind !== 'ready') {
+      throw new Error(
+        `expected ready result but got ${result.kind} (${context})`,
+      );
+    }
+    return result;
+  }
+  function classifyResume(
+    result: ReturnType<typeof resumeOnboardingProgress>,
+  ): string {
+    switch (result.kind) {
+      case 'ready':
+        return result.source;
+      case 'blocked-malformed':
+        return 'malformed';
+      case 'blocked-unsupported-version':
+        return 'unsupported-version';
+      case 'blocked-storage-failure':
+        return 'storage-failure';
+    }
+  }
+
+  function classifyQuestion(
+    result: ReturnType<typeof currentOnboardingQuestion>,
+  ): string {
+    switch (result.kind) {
+      case 'ready':
+        return result.source;
+      case 'blocked-malformed':
+        return 'malformed';
+      case 'blocked-unsupported-version':
+        return 'unsupported-version';
+      case 'blocked-storage-failure':
+        return 'storage-failure';
+    }
+  }
+
+  it('resumes a valid stored snapshot with source="stored" and recovers a disabled salary position', () => {
+    const database = createTestDatabase();
+    const store = createDatabaseOnboardingProgressStore(database);
+    const stored = {
+      version: 2 as const,
+      onboardingStep: 'review' as const,
+      currentQuestion: 'salary' as const,
+      answers: createEmptyPreferencesDraft(),
+      reviewItems,
+    };
+    saveOnboardingProgress(store, 'candidate-one', stored);
+
+    const loaded = loadOnboardingProgress(store, 'candidate-one');
+    expect(loaded.kind).toBe('valid');
+    const draft = createEmptyPreferencesDraft();
+    const resumed = resumeOnboardingProgress(loaded, draft);
+
+    const ready = narrowReady(resumed, 'valid');
+    expect(ready.source).toBe('stored');
+    expect(ready.snapshot).toEqual(stored);
+    expect(ready.snapshot.version).toBe(2);
+    expect(ready.question).toBe('desired-work');
+
+    // currentOnboardingQuestion must surface ready state, never collapse.
+    const question = currentOnboardingQuestion(loaded, draft);
+    expect(question.kind).toBe('ready');
+    if (question.kind !== 'ready') throw new Error('expected ready');
+    expect(question.source).toBe('stored');
+    expect(question.question).toBe('desired-work');
+    expect(question.question).not.toBeNull();
+
+    // The stored row was not rewritten by merely resuming it.
+    const rawAfter = store.getSetting(onboardingProgressKey('candidate-one'));
+    expect(JSON.parse(rawAfter!)).toEqual(stored);
+    database.close();
+  });
+
+  it('mints a fresh version-2 snapshot only from a missing load and never for valid loads', () => {
+    const database = createTestDatabase();
+    const store = createDatabaseOnboardingProgressStore(database);
+    const draft = createEmptyPreferencesDraft();
+
+    // missing → fresh v2 snapshot
+    const missing = loadOnboardingProgress(store, 'fresh-candidate');
+    expect(missing.kind).toBe('missing');
+    const missingResumed = resumeOnboardingProgress(missing, draft);
+    const missingReady = narrowReady(missingResumed, 'missing');
+    expect(missingReady.source).toBe('fresh');
+    expect(missingReady.snapshot.version).toBe(2);
+    if (missingReady.snapshot.version !== 2)
+      throw new Error('fresh snapshot should be v2');
+    expect(missingReady.snapshot.onboardingStep).toBe('preferences');
+    expect(missingReady.snapshot.currentQuestion).toBe(
+      firstUnresolvedQuestion(draft),
+    );
+    expect(missingReady.snapshot.answers).toEqual(draft);
+    expect(missingReady.snapshot.reviewItems).toEqual([]);
+
+    const missingQuestion = currentOnboardingQuestion(missing, draft);
+    expect(missingQuestion.kind).toBe('ready');
+    if (missingQuestion.kind !== 'ready') throw new Error('expected ready');
+    expect(missingQuestion.source).toBe('fresh');
+    expect(missingQuestion.question).toBe(firstUnresolvedQuestion(draft));
+
+    // valid → NOT a fresh snapshot
+    saveOnboardingProgress(store, 'fresh-candidate', makeVersionTwoSnapshot());
+    const valid = loadOnboardingProgress(store, 'fresh-candidate');
+    expect(valid.kind).toBe('valid');
+    if (valid.kind !== 'valid') throw new Error('expected valid');
+    const validResumed = resumeOnboardingProgress(valid, draft);
+    const validReady = narrowReady(validResumed, 'valid-after-missing');
+    expect(validReady.source).toBe('stored');
+    expect(validReady.snapshot.version).toBe(2);
+    expect(validReady.snapshot).toEqual(makeVersionTwoSnapshot());
+
+    // Resume must not have rewritten the stored row.
+    const rawValid = store.getSetting(onboardingProgressKey('fresh-candidate'));
+    expect(JSON.parse(rawValid!)).toEqual(makeVersionTwoSnapshot());
+    database.close();
+  });
+
+  it('returns blocked-malformed with the original Error and exposes no snapshot', () => {
+    const original = new SyntaxError('boom json');
+    const loadResult = {
+      kind: 'malformed' as const,
+      error: original,
+    };
+
+    const resumed = resumeOnboardingProgress(
+      loadResult,
+      createEmptyPreferencesDraft(),
+    );
+    expect(resumed.kind).toBe('blocked-malformed');
+    if (resumed.kind !== 'blocked-malformed')
+      throw new Error('expected malformed');
+    expect(resumed.error).toBe(original);
+    expect(resumed.error.message).toBe('boom json');
+    // No fabricated snapshot or question field on this branch.
+    expect('snapshot' in resumed).toBe(false);
+    expect('question' in resumed).toBe(false);
+
+    const question = currentOnboardingQuestion(
+      loadResult,
+      createEmptyPreferencesDraft(),
+    );
+    expect(question.kind).toBe('blocked-malformed');
+    if (question.kind !== 'blocked-malformed')
+      throw new Error('expected malformed');
+    expect(question.error).toBe(original);
+    // Plain null is reserved for ready/completed; blocked must NOT collapse.
+    expect(question).not.toBeNull();
+    expect('question' in question).toBe(false);
+
+    expect(classifyResume(resumed)).toBe('malformed');
+    expect(classifyQuestion(question)).toBe('malformed');
+  });
+
+  it('returns blocked-unsupported-version with the original version number and exposes no snapshot', () => {
+    const loadResult = { kind: 'unsupported-version' as const, version: 9 };
+
+    const resumed = resumeOnboardingProgress(
+      loadResult,
+      createEmptyPreferencesDraft(),
+    );
+    expect(resumed.kind).toBe('blocked-unsupported-version');
+    if (resumed.kind !== 'blocked-unsupported-version')
+      throw new Error('expected unsupported-version');
+    expect(resumed.version).toBe(9);
+    expect('snapshot' in resumed).toBe(false);
+    expect('question' in resumed).toBe(false);
+
+    const question = currentOnboardingQuestion(
+      loadResult,
+      createEmptyPreferencesDraft(),
+    );
+    expect(question.kind).toBe('blocked-unsupported-version');
+    if (question.kind !== 'blocked-unsupported-version')
+      throw new Error('expected unsupported-version');
+    expect(question.version).toBe(9);
+    expect('question' in question).toBe(false);
+
+    expect(classifyResume(resumed)).toBe('unsupported-version');
+    expect(classifyQuestion(question)).toBe('unsupported-version');
+  });
+
+  it('returns blocked-storage-failure with the original Error and never describes it as missing', () => {
+    const original = new Error('disk on fire');
+    const loadResult = {
+      kind: 'storage-failure' as const,
+      error: original,
+    };
+
+    const resumed = resumeOnboardingProgress(
+      loadResult,
+      createEmptyPreferencesDraft(),
+    );
+    expect(resumed.kind).toBe('blocked-storage-failure');
+    if (resumed.kind !== 'blocked-storage-failure')
+      throw new Error('expected storage-failure');
+    expect(resumed.error).toBe(original);
+    expect(resumed.error.message).toBe('disk on fire');
+    expect('snapshot' in resumed).toBe(false);
+    expect('question' in resumed).toBe(false);
+
+    const question = currentOnboardingQuestion(
+      loadResult,
+      createEmptyPreferencesDraft(),
+    );
+    expect(question.kind).toBe('blocked-storage-failure');
+    if (question.kind !== 'blocked-storage-failure')
+      throw new Error('expected storage-failure');
+    expect(question.error).toBe(original);
+    expect('question' in question).toBe(false);
+    expect(question).not.toBeNull();
+
+    // Storage failure must NOT collapse to missing/ready.
+    expect(resumed.kind).not.toBe('ready');
+    expect(question.kind).not.toBe('ready');
+    expect(classifyResume(resumed)).toBe('storage-failure');
+    expect(classifyQuestion(question)).toBe('storage-failure');
+  });
+
+  it('allows exhaustive switching without unsafe casts across every load kind', () => {
+    const draft = createEmptyPreferencesDraft();
+    const cases: {
+      label:
+        | 'valid'
+        | 'missing'
+        | 'malformed'
+        | 'unsupported-version'
+        | 'storage-failure';
+      load: OnboardingProgressLoadResult;
+    }[] = [
+      {
+        label: 'valid',
+        load: { kind: 'valid', snapshot: makeVersionTwoSnapshot() },
+      },
+      { label: 'missing', load: { kind: 'missing' } },
+      {
+        label: 'malformed',
+        load: { kind: 'malformed', error: new Error('bad json') },
+      },
+      {
+        label: 'unsupported-version',
+        load: { kind: 'unsupported-version', version: 7 },
+      },
+      {
+        label: 'storage-failure',
+        load: { kind: 'storage-failure', error: new Error('io error') },
+      },
+    ];
+
+    for (const { label, load } of cases) {
+      const resumed = resumeOnboardingProgress(load, draft);
+      const question = currentOnboardingQuestion(load, draft);
+      // Exhaustively classify both results without an `as` cast.
+      const classifiedResume = classifyResume(resumed);
+      const classifiedQuestion = classifyQuestion(question);
+      switch (resumed.kind) {
+        case 'ready': {
+          // The discriminated block must not appear on the ready branch.
+          expect(resumed.source).toMatch(/^(stored|fresh)$/);
+          if (label !== 'valid' && label !== 'missing') {
+            throw new Error('ready should only arise from valid or missing');
+          }
+          break;
+        }
+        case 'blocked-malformed':
+          expect(label).toBe('malformed');
+          expect(resumed.error).toBeInstanceOf(Error);
+          expect('snapshot' in resumed).toBe(false);
+          break;
+        case 'blocked-unsupported-version':
+          expect(label).toBe('unsupported-version');
+          expect(typeof resumed.version).toBe('number');
+          expect('snapshot' in resumed).toBe(false);
+          break;
+        case 'blocked-storage-failure':
+          expect(label).toBe('storage-failure');
+          expect(resumed.error).toBeInstanceOf(Error);
+          expect('snapshot' in resumed).toBe(false);
+          break;
+      }
+      switch (question.kind) {
+        case 'ready':
+          expect(question.source).toMatch(/^(stored|fresh)$/);
+          break;
+        case 'blocked-malformed':
+        case 'blocked-unsupported-version':
+        case 'blocked-storage-failure':
+          // question result must never collapse to plain null.
+          expect(question).not.toBeNull();
+          break;
+      }
+      expect(classifiedResume).toBe(
+        label === 'valid' ? 'stored' : label === 'missing' ? 'fresh' : label,
+      );
+      expect(classifiedQuestion).toBe(
+        label === 'valid' ? 'stored' : label === 'missing' ? 'fresh' : label,
+      );
+    }
   });
 });

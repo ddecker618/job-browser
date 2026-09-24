@@ -26,33 +26,108 @@ export function restoreOnboardingProgress(
   return loadOnboardingProgress(store, profileId);
 }
 
+/**
+ * Blocked/error resume states returned to the integration layer.
+ * These carry the original error or version information so the
+ * integration layer can surface, report, or reset the stored progress
+ * rather than treating it as a missing first-run record.
+ */
+export type OnboardingResumeBlock =
+  | { kind: 'blocked-malformed'; error: Error }
+  | { kind: 'blocked-unsupported-version'; version: number }
+  | { kind: 'blocked-storage-failure'; error: Error };
+
+export interface OnboardingReadyResume {
+  readonly kind: 'ready';
+  /** Whether the snapshot came from storage or was freshly minted. */
+  readonly source: 'stored' | 'fresh';
+  readonly snapshot: OnboardingProgressSnapshot;
+  readonly question: OnboardingQuestion | null;
+}
+
+/**
+ * Discriminated resume result returned to the integration layer.
+ *
+ * - `ready` (source `'stored'`) preserves the stored snapshot version
+ *   and recovers a stored disabled `salary` position to the first
+ *   enabled unresolved question without rewriting storage.
+ * - `ready` (source `'fresh'`) is **only** produced from a `missing`
+ *   load result and mints a new version-2 snapshot from the supplied
+ *   draft.
+ * - The three `blocked-*` variants preserve the original
+ *   `error`/`version` so the integration layer can distinguish
+ *   corruption, incompatibility, and storage failure from a normal
+ *   first-run session.
+ */
+export type OnboardingResumeResult =
+  | OnboardingReadyResume
+  | OnboardingResumeBlock;
+
+export interface OnboardingReadyResumeQuestion {
+  readonly kind: 'ready';
+  readonly source: 'stored' | 'fresh';
+  readonly question: OnboardingQuestion | null;
+}
+
+/**
+ * Question-only discriminated resume result. `null` only appears on the
+ * `ready` branch (a legitimate completed-step value); the `blocked-*`
+ * branches never collapse to `null`.
+ */
+export type OnboardingResumeQuestion =
+  | OnboardingReadyResumeQuestion
+  | OnboardingResumeBlock;
+
+/**
+ * Resume an onboarding session from a `load` result.
+ *
+ * Only a `missing` load is allowed to mint a fresh version-2 snapshot
+ * from the supplied draft. `valid` resumes the stored snapshot and
+ * recovers a stored disabled `salary` position without mutating the
+ * stored row. `malformed`, `unsupported-version`, and `storage-failure`
+ * are returned as blocked states with the original error/version
+ * preserved — they must never be presented as a normal first-run
+ * session.
+ */
 export function resumeOnboardingProgress(
   result: OnboardingProgressLoadResult,
   draft: OnboardingPreferencesDraft,
-): {
-  snapshot: OnboardingProgressSnapshot;
-  question: OnboardingQuestion | null;
-} {
+): OnboardingResumeResult {
   if (result.kind === 'valid') {
-    const question = result.snapshot.currentQuestion;
+    const stored = result.snapshot;
+    const recoveredQuestion: OnboardingQuestion | null =
+      stored.currentQuestion === 'salary'
+        ? firstUnresolvedQuestion(stored.answers)
+        : stored.currentQuestion;
     return {
-      snapshot: result.snapshot,
-      question:
-        question === 'salary'
-          ? firstUnresolvedQuestion(result.snapshot.answers)
-          : question,
+      kind: 'ready',
+      source: 'stored',
+      snapshot: stored,
+      question: recoveredQuestion,
     };
   }
-  return {
-    snapshot: {
-      version: 2,
-      onboardingStep: 'preferences',
-      currentQuestion: firstUnresolvedQuestion(draft),
-      answers: draft,
-      reviewItems: [],
-    },
-    question: firstUnresolvedQuestion(draft),
-  };
+  if (result.kind === 'missing') {
+    const question = firstUnresolvedQuestion(draft);
+    return {
+      kind: 'ready',
+      source: 'fresh',
+      snapshot: {
+        version: 2,
+        onboardingStep: 'preferences',
+        currentQuestion: question,
+        answers: draft,
+        reviewItems: [],
+      },
+      question,
+    };
+  }
+  if (result.kind === 'malformed') {
+    return { kind: 'blocked-malformed', error: result.error };
+  }
+  if (result.kind === 'unsupported-version') {
+    return { kind: 'blocked-unsupported-version', version: result.version };
+  }
+  return { kind: 'blocked-storage-failure', error: result.error };
 }
 
 export function reviewItemsFromProgress(
@@ -110,9 +185,23 @@ export function completeOnboarding(
   return nextProfile;
 }
 
+/**
+ * Question-only resume helper. Returns a discriminated result so the
+ * integration layer can switch exhaustively on `kind`. Blocked/error
+ * states are surfaced verbatim and never collapsed to `null` (a
+ * legitimate completed-step value).
+ */
 export function currentOnboardingQuestion(
   result: OnboardingProgressLoadResult,
   draft: OnboardingPreferencesDraft,
-): OnboardingQuestion | null {
-  return resumeOnboardingProgress(result, draft).question;
+): OnboardingResumeQuestion {
+  const resumed = resumeOnboardingProgress(result, draft);
+  if (resumed.kind === 'ready') {
+    return {
+      kind: 'ready',
+      source: resumed.source,
+      question: resumed.question,
+    };
+  }
+  return resumed;
 }
