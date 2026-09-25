@@ -6,31 +6,38 @@
 
 ## Current verified baseline (recorded evidence — 2026-09-24)
 
-- **HEAD:** `f3a1ec2` (`feat: add onboarding search plan preview`)
-  on top of the accepted foundation commits `877c31f` (`feat: add
-  onboarding foundation through progress persistence`), `c00c224`
-  (`fix: preserve onboarding resume failure states`), and `0120b4f`
-  (`docs: accept MR1-04 onboarding persistence`). MR1-04 was
-  **accepted by the Codex reviewer on 2026-09-24** and moved to
-  **Done**; MR1-05 is the next authorized task and is **In Review**
-  (claimed by OpenCode 2026-09-24; implementation and a correction
-  pass are complete; awaiting Codex re-review).
+- **HEAD:** `2656795` (`fix: make onboarding search plan preview
+  explicit and safe`) on top of the accepted foundation commits
+  `877c31f` (`feat: add onboarding foundation through progress
+  persistence`), `c00c224` (`fix: preserve onboarding resume failure
+  states`), `0120b4f` (`docs: accept MR1-04 onboarding persistence`),
+  and the MR1-05 implementation commit `f3a1ec2` (`feat: add
+  onboarding search plan preview`). MR1-04 was **accepted by the
+  Codex reviewer on 2026-09-24** and moved to **Done**; MR1-05 was
+  **accepted by the Codex reviewer on 2026-09-24** (independent
+  reviewer validation: TypeScript PASS, 5-file onboarding focused
+  suite **164/164 PASS**, explicit applied/omitted query separation,
+  safe generic failed-source reason, detached `preferredLocations`
+  snapshot, truthful plan-specific copy) and moved to **Done**. MR1-06
+  is the next authorized task and is **In progress** (claimed by
+  OpenCode 2026-09-24; implementation pending).
 - **Working tree (as of 2026-09-24):** clean at the MR1-05
   implementation commit `f3a1ec2`. A Codex review correction pass is
   being applied on top of `f3a1ec2`; it will produce one additional
   local recoverable commit; no push, version bump, installer rebuild,
   or release claim is involved.
-- **Local main is ahead of the locally recorded `origin/main` by 7
+- **Local main is ahead of the locally recorded `origin/main` by 8
   commits** — `39e84c0` (P37 planning), `b453ae0` (P37 shadow
   implementation), `8281609` (1.1.5 release), `877c31f` (onboarding
   foundation), `c00c224` (resume-contract fix), `0120b4f` (MR1-04
-  acceptance docs), and `f3a1ec2` (MR1-05 implementation) — and
-  **behind by 0**. The first three commits are absent from the locally
-  recorded `origin/main` reference; the onboarding commits are
-  local-only. Current remote-server state was not checked. The locally
-  recorded `origin/main` reference is the 1.1.4 release commit
-  `f05bee9` (whose parent history includes the P36 commits `dbd0fdb`
-  and `b4e6256`). This handoff **cannot independently verify** the
+  acceptance docs), `f3a1ec2` (MR1-05 implementation), and `2656795`
+  (MR1-05 Codex review correction pass) — and **behind by 0**. The
+  first three commits are absent from the locally recorded
+  `origin/main` reference; the onboarding commits are local-only.
+  Current remote-server state was not checked. The locally recorded
+  `origin/main` reference is the 1.1.4 release commit `f05bee9`
+  (whose parent history includes the P36 commits `dbd0fdb` and
+  `b4e6256`). This handoff **cannot independently verify** the
   GitHub server state — the count above comes from local
   remote-tracking references only.
 - **MR0-01 work (Done per the delivery board, committed at `877c31f`):**
@@ -204,13 +211,10 @@
   started.
 - **MR1-05 — Preview bounded search/source plan** was authorized by
   the user on 2026-09-24 (after Codex accepted MR1-04) and is now
-  **In Review for Codex** (claimed by OpenCode 2026-09-24;
-  implementation complete; not self-approved as Done). A Codex
-  review correction pass is in progress on top of commit `f3a1ec2`.
-  The slice is preview-only and never executes discovery: a pure
-  deterministic `buildOnboardingSearchPlan` service builds a versioned
-  `OnboardingSearchPlan` (`ONBOARDING_SEARCH_PLAN_VERSION = 1`) from
-  `OnboardingValidatedPreferences`, the user-confirmed desired job
+  **Done**. The slice is preview-only and never executes discovery: a
+  pure deterministic `buildOnboardingSearchPlan` service builds a
+  versioned `OnboardingSearchPlan` (`ONBOARDING_SEARCH_PLAN_VERSION = 1`)
+  from `OnboardingValidatedPreferences`, the user-confirmed desired job
   titles, `SearchProfile.maxQueriesPerRun`, the existing
   `ConfiguredSource[]`, and the existing `ProviderDescriptor[]`; the
   plan never touches SQLite, the filesystem, providers, credentials,
@@ -237,15 +241,19 @@
   confirmation error is shown as `role="alert"` without erasing the
   plan. The UI copy is plan-specific and does not describe profile
   qualification review. Validated: typecheck clean;
-  `tests/onboarding-search-plan.test.tsx` PASS; combined onboarding
-  suite PASS; `npm run verify` PASS; `npm run privacy:check` PASS;
-  `npm run nlp:security-audit` PASS; `git diff --check` clean. Task
-  card:
+  `tests/onboarding-search-plan.test.tsx` 42/42 PASS (was 35; +7
+  covering the correction pass); combined onboarding suite 164/164
+  PASS (was 157); `npm run verify` 1769/1769 PASS across 177 files
+  (was 1762/1762 across 176); `npm run privacy:check` 11/11 PASS;
+  `npm run nlp:security-audit` 3/3 PASS; `git diff --check` clean.
+  Accepted by the Codex reviewer 2026-09-24 with independent
+  TypeScript validation and the 164/164 onboarding focused suite.
+  Task card:
   [`docs/delivery/tasks/MR1-05-search-plan.md`](docs/delivery/tasks/MR1-05-search-plan.md).
   Browser, narrow-window and 200% zoom checks remain explicit
   acceptance items for **MR1-06/MR1-07** and are **not** marked as
-  passed. Release status remains **Not shipped**; MR1-06 still not
-  started.
+  passed. Release status remains **Not shipped**; MR1-06 is now the
+  next authorized task.
 
 ## Important constraints (active)
 
@@ -295,28 +303,33 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. **MR1-05 is in Review for Codex (claimed by OpenCode 2026-09-24
-   after Codex accepted MR1-04).** A Codex review correction pass is
-   being applied on top of commit `f3a1ec2` to make the preview
-   explicit and safe: `appliedQueries` and `omittedTitles` are
-   rendered as separate lists, failed-health sources use a safe
-   generic reason instead of raw diagnostics, UI copy is truthful and
-   plan-specific, `preferredLocations` is returned as a detached
-   snapshot, and documentation is reconciled. Do not start MR1-06 yet;
-   MR1-06 remains not started. Release status remains **Not shipped**.
+1. **MR1-06 — Connect the onboarding wizard to saved preferences and
+   real discovery** is the next authorized task (claimed by OpenCode
+   2026-09-24 after Codex accepted MR1-05). MR1-06 must connect the
+   accepted `PreferencesStep`, `ReviewStep`, and `SearchPlanStep`
+   components into one working flow that prepares and starts a real
+   Job Browser search through the existing `DiscoveryCoordinator`,
+   reuse the existing profile-preferences document and `app_settings`
+   storage, persist `sourceQueryRoles` as exactly the confirmed
+   `plan.appliedQueries`, cascade source query roles through the
+   existing `SourceRepository` behavior, expose safe client errors
+   without raw diagnostics, prevent duplicate discovery runs, and
+   preserve retry/reset/cancel behavior for persistence and discovery
+   failures. Do not start MR1-07 yet; MR1-07 remains not started.
+   Release status remains **Not shipped**; MR1-07 still not started.
    Browser, narrow-window and 200% zoom checks remain explicit
    acceptance items for MR1-06/MR1-07 and were **not** performed or
    claimed here.
-2. **Local commits (no push).** The accepted MR0-01 → MR1-04 onboarding
-   foundation is recorded at local commits `877c31f` (`feat: add
-   onboarding foundation through progress persistence`), `c00c224`
-   (`fix: preserve onboarding resume failure states`), and the MR1-04
-   acceptance documentation at `0120b4f` (`docs: accept MR1-04
-   onboarding persistence`); the MR1-05 implementation is recorded at
-   `f3a1ec2` (`feat: add onboarding search plan preview`). The
-   correction pass will produce one further local recoverable commit
-   on top of `f3a1ec2`. No push is performed; the 1.1.5 release status
-   on the board stays **Not shipped**.
+2. **Local commits (no push).** The accepted MR0-01 → MR1-05 onboarding
+   work is recorded at local commits `877c31f` (`feat: add onboarding
+   foundation through progress persistence`), `c00c224` (`fix:
+   preserve onboarding resume failure states`), `0120b4f` (`docs:
+   accept MR1-04 onboarding persistence`), `f3a1ec2` (`feat: add
+   onboarding search plan preview`), and `2656795` (`fix: make
+   onboarding search plan preview explicit and safe`). MR1-06 will
+   produce one or more further local recoverable commits on top of
+   `2656795`. No push is performed; the 1.1.5 release status on the
+   board stays **Not shipped**.
 
 ## Links to historical evidence
 

@@ -10,8 +10,15 @@
 
 - **Implementation complete** — claimed by OpenCode 2026-09-24
   (after Codex accepted MR1-04).
-- **In Review** awaiting Codex acceptance; **not** self-approved as
-  Done.
+- **Accepted by the Codex reviewer on 2026-09-24** — independent
+  TypeScript validation PASS, 5-file onboarding focused suite
+  **164/164 PASS** (`tests/onboarding-contract.test.ts` + preferences
+  - review + progress-storage + search-plan), explicit
+    applied/omitted query separation, safe generic failed-source reason,
+    detached `preferredLocations` snapshot, truthful plan-specific
+    copy.
+- **Done** as of 2026-09-24; claimed files released back to the
+  unclaimed bucket.
 
 ## Outcome
 
