@@ -104,6 +104,24 @@ export function apiRequestErrorReason(error: unknown): string | null {
   return typeof reason === 'string' && reason !== '' ? reason : null;
 }
 
+export interface OnboardingDiscoveryOutcome {
+  readonly state:
+    | 'not-started'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'unavailable';
+  readonly message: string | null;
+  readonly summariesCount: number;
+  readonly completedAt: string | null;
+  readonly attemptId: string | null;
+}
+
+export interface OnboardingEditSession {
+  readonly editing: boolean;
+  readonly startedAt: string | null;
+}
+
 export interface OnboardingStatusResponse {
   readonly state: 'not-started' | 'in-progress' | 'completed' | 'blocked';
   readonly profileId: string;
@@ -111,7 +129,8 @@ export interface OnboardingStatusResponse {
     | 'experience'
     | 'preferences'
     | 'review'
-    | 'search-plan';
+    | 'search-plan'
+    | undefined;
   readonly question?:
     | 'desired-work'
     | 'location'
@@ -119,29 +138,45 @@ export interface OnboardingStatusResponse {
     | 'remote-work'
     | 'employment-types'
     | 'salary'
-    | null;
-  readonly resumeKind?: 'stored' | 'fresh';
-  readonly snapshot?: unknown;
-  readonly plan?: unknown;
-  readonly blockKind?: 'malformed' | 'unsupported-version' | 'storage-failure';
-  readonly blockMessage?: string;
+    | null
+    | undefined;
+  readonly resumeKind?: 'stored' | 'fresh' | undefined;
+  readonly snapshot?: Record<string, unknown> | undefined;
+  readonly planToken?: string | undefined;
+  readonly prefilledDraft?: Record<string, unknown> | undefined;
+  readonly discoveryOutcome: OnboardingDiscoveryOutcome;
+  readonly editSession: OnboardingEditSession;
   readonly completion: {
     readonly completed: boolean;
     readonly completedAt: string | null;
   };
+  readonly blockKind?:
+    | 'malformed'
+    | 'unsupported-version'
+    | 'storage-failure'
+    | undefined;
+  readonly blockMessage?: string | undefined;
+}
+
+export interface OnboardingPreviewResponse {
+  readonly plan: unknown;
+  readonly planToken: string;
+  readonly confirmationAllowed: boolean;
+}
+
+export interface OnboardingDraftFromProfileResponse {
+  readonly draft: unknown;
+  readonly planToken: string;
+  readonly confirmationAllowed: boolean;
 }
 
 export interface OnboardingCompleteResponse {
   readonly ok: boolean;
-  readonly discoveryStarted?: boolean;
-  readonly summaries?: unknown[];
-  readonly discoveryError?: string;
+  readonly idempotent: boolean;
+  readonly attemptId: string;
+  readonly discoveryOutcome: OnboardingDiscoveryOutcome;
   readonly cascadeError?: string;
   readonly saveError?: string;
-  readonly completion?: {
-    readonly completed: boolean;
-    readonly completedAt: string;
-  };
 }
 
 export function isDefinitiveApiCommandError(
@@ -482,23 +517,44 @@ export const api = {
     }),
   onboardingStatus: () =>
     request<OnboardingStatusResponse>('/api/onboarding/status'),
+  onboardingPreview: (body: {
+    preferences: unknown;
+    confirmedTitles: readonly string[];
+  }) =>
+    request<OnboardingPreviewResponse>(
+      '/api/onboarding/preview',
+      json('POST', body),
+    ),
+  onboardingDraftFromProfile: () =>
+    request<OnboardingDraftFromProfileResponse>(
+      '/api/onboarding/draft-from-profile',
+      { method: 'POST' },
+    ),
   saveOnboardingProgress: (snapshot: unknown) =>
     request<{ ok: true }>('/api/onboarding/save', json('POST', { snapshot })),
   resetOnboardingProgress: () =>
     request<{ ok: true }>('/api/onboarding/reset', { method: 'POST' }),
+  startOnboardingEdit: () =>
+    request<{ ok: true }>('/api/onboarding/edit/start', { method: 'POST' }),
+  endOnboardingEdit: (keepProgress: boolean) =>
+    request<{ ok: true }>(
+      '/api/onboarding/edit/end',
+      json('POST', { keepProgress }),
+    ),
   completeOnboarding: (body: {
     preferences: unknown;
-    reviewItems: unknown[];
+    reviewItems: readonly unknown[];
+    planToken: string;
+    attemptId: string;
   }) =>
     request<OnboardingCompleteResponse>(
       '/api/onboarding/complete',
       json('POST', body),
     ),
   retryOnboardingDiscovery: () =>
-    request<{ ok: true; summaries?: unknown[] } | { ok: false; error: string }>(
-      '/api/onboarding/discovery/retry',
-      { method: 'POST' },
-    ),
+    request<OnboardingCompleteResponse>('/api/onboarding/discovery/retry', {
+      method: 'POST',
+    }),
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

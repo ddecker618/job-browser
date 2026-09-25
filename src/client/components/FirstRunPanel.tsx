@@ -11,7 +11,10 @@ export function FirstRunPanel({ hasSources }: { hasSources: boolean }) {
           schedule, and review the strongest matches in one place.
         </p>
         <div className="first-run-actions">
-          <Link className="button primary" to="/sources">
+          <Link className="button primary" to="/onboarding">
+            {hasSources ? 'Review search setup' : 'Start onboarding'}
+          </Link>
+          <Link className="button" to="/sources">
             {hasSources ? 'Manage sources' : 'Add your first source'}
           </Link>
           {hasSources ? (

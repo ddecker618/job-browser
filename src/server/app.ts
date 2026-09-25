@@ -233,6 +233,7 @@ export function createApp(
     '/api/onboarding',
     createOnboardingRouter({
       database,
+      sourceRepository,
       ...(coordinator === undefined ? {} : { coordinator }),
       ...(options.credentialResolver === undefined
         ? {}

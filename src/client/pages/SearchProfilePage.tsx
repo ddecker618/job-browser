@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router';
 import { api } from '../api.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { ErrorState, LoadingState } from '../components/States.js';
@@ -92,6 +93,11 @@ export function SearchProfilePage() {
         eyebrow="Discovery configuration"
         title="Search Profile"
         description={`${String(totalEnabled)} job titles across ${String(profile?.families.filter((f) => f.enabled).length ?? 0)} enabled role families.`}
+        actions={
+          <Link className="button secondary" to="/onboarding">
+            Review search setup
+          </Link>
+        }
       />
       <div className="search-profile-page">
         <div className="profile-summary">
