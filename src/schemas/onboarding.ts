@@ -82,7 +82,7 @@ const onboardingQuestionSchema = z
   ])
   .nullable();
 
-const onboardingReviewItemSchema = z.strictObject({
+export const onboardingReviewItemSchema = z.strictObject({
   id: z.string().min(1),
   field: z.enum(['skills', 'certifications']),
   value: z.string(),

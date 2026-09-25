@@ -29,6 +29,11 @@ const ApplicationDetailPage = lazy(() =>
     default: module.ApplicationDetailPage,
   })),
 );
+const OnboardingPage = lazy(() =>
+  import('./pages/OnboardingPage.js').then((module) => ({
+    default: module.OnboardingPage,
+  })),
+);
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage.js').then((module) => ({
     default: module.ProfilePage,
@@ -73,6 +78,7 @@ export function App() {
             element={<ApplicationDetailPage />}
           />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="resumes" element={<ResumesPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="sources" element={<SourcesPage />} />

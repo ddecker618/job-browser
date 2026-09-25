@@ -104,6 +104,46 @@ export function apiRequestErrorReason(error: unknown): string | null {
   return typeof reason === 'string' && reason !== '' ? reason : null;
 }
 
+export interface OnboardingStatusResponse {
+  readonly state: 'not-started' | 'in-progress' | 'completed' | 'blocked';
+  readonly profileId: string;
+  readonly onboardingStep?:
+    | 'experience'
+    | 'preferences'
+    | 'review'
+    | 'search-plan';
+  readonly question?:
+    | 'desired-work'
+    | 'location'
+    | 'travel-distance'
+    | 'remote-work'
+    | 'employment-types'
+    | 'salary'
+    | null;
+  readonly resumeKind?: 'stored' | 'fresh';
+  readonly snapshot?: unknown;
+  readonly plan?: unknown;
+  readonly blockKind?: 'malformed' | 'unsupported-version' | 'storage-failure';
+  readonly blockMessage?: string;
+  readonly completion: {
+    readonly completed: boolean;
+    readonly completedAt: string | null;
+  };
+}
+
+export interface OnboardingCompleteResponse {
+  readonly ok: boolean;
+  readonly discoveryStarted?: boolean;
+  readonly summaries?: unknown[];
+  readonly discoveryError?: string;
+  readonly cascadeError?: string;
+  readonly saveError?: string;
+  readonly completion?: {
+    readonly completed: boolean;
+    readonly completedAt: string;
+  };
+}
+
 export function isDefinitiveApiCommandError(
   error: unknown,
 ): error is ApiRequestError {
@@ -440,6 +480,25 @@ export const api = {
     request<{ status: string }>('/api/discovery/alerts/evaluate', {
       method: 'POST',
     }),
+  onboardingStatus: () =>
+    request<OnboardingStatusResponse>('/api/onboarding/status'),
+  saveOnboardingProgress: (snapshot: unknown) =>
+    request<{ ok: true }>('/api/onboarding/save', json('POST', { snapshot })),
+  resetOnboardingProgress: () =>
+    request<{ ok: true }>('/api/onboarding/reset', { method: 'POST' }),
+  completeOnboarding: (body: {
+    preferences: unknown;
+    reviewItems: unknown[];
+  }) =>
+    request<OnboardingCompleteResponse>(
+      '/api/onboarding/complete',
+      json('POST', body),
+    ),
+  retryOnboardingDiscovery: () =>
+    request<{ ok: true; summaries?: unknown[] } | { ok: false; error: string }>(
+      '/api/onboarding/discovery/retry',
+      { method: 'POST' },
+    ),
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -105,6 +105,7 @@ import {
 import { jobSearchQuerySchema } from '../schemas/job-search.js';
 import { parseEmployerManifest } from '../schemas/employer-manifest.js';
 import { enforceLoopbackRequest } from './loopbackSecurity.js';
+import { createOnboardingRouter } from './onboardingRoutes.js';
 
 export interface AppOptions {
   candidateProfilePath?: string;
@@ -227,6 +228,23 @@ export function createApp(
     response.setHeader('Cache-Control', 'no-store, max-age=0');
     next();
   });
+
+  app.use(
+    '/api/onboarding',
+    createOnboardingRouter({
+      database,
+      ...(coordinator === undefined ? {} : { coordinator }),
+      ...(options.credentialResolver === undefined
+        ? {}
+        : { credentialResolver: options.credentialResolver }),
+      ...(profilePath === undefined
+        ? {}
+        : { candidateProfilePath: profilePath }),
+      ...(profilePreferencesPath === undefined
+        ? {}
+        : { profilePreferencesPath }),
+    }),
+  );
 
   app.get('/api/health', (_request, response) =>
     response.json({ status: 'ok' }),
