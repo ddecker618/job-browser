@@ -11,6 +11,21 @@ is the single task-status authority as of 2026-09-18. Status/owner/claimed
 files for any in-flight work live on that board; do not duplicate the
 queue here.
 
+**Onboarding workstream (2026-09-18 → 2026-09-24):** MR0-01
+documentation baseline, MR1-01 frozen onboarding contract, MR1-02
+guided preferences step, MR1-03 review/confirmation screen,
+MR1-04 persist-and-resume progress through existing profile services,
+and MR1-05 bounded search/source-plan preview are all **Done**
+(accepted by Codex). MR1-06 (connect the wizard to saved preferences
+and real discovery) is **In Review**; MR1-07 (validate the installed
+onboarding and first-user experience) remains not started.
+Onboarding remains **Not shipped**; the 1.1.5 package version and
+installer are unchanged. See
+[`docs/delivery/tasks/MR1-05-search-plan.md`](delivery/tasks/MR1-05-search-plan.md)
+and
+[`docs/delivery/tasks/MR1-06-wizard-integration.md`](delivery/tasks/MR1-06-wizard-integration.md)
+for the accepted contracts.
+
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
   9.6 seed manifest import is complete. These are not open implementation tasks.

@@ -1,5 +1,51 @@
 # Changelog
 
+## [Unreleased]
+
+### Onboarding wizard connection — MR1-06 (In Review, NOT SHIPPED)
+
+- New narrow versioned onboarding API mounted at `/api/onboarding`:
+  `GET /status` returns a discriminated status (not-started,
+  in-progress, completed, blocked) with a safe, always-bounded
+  message; `POST /save` writes a `v1`/`v2` progress snapshot through
+  the existing profile-scoped `OnboardingProgressStore`; `POST /reset`
+  is an explicit reset (clears both the progress key and the
+  completion marker); `POST /complete` enforces confirmation ordering
+  (rebuild plan → persist profile → cascade `sourceQueryRoles =
+plan.appliedQueries` → write `app_settings.onboardingCompletion:<profileId>`
+  → clear progress → invoke `coordinator.runAll()` once); and
+  `POST /discovery/retry` is the idempotent search-only retry used
+  after a discovery failure. Strict request validation through the
+  existing `onboardingProgressSnapshotSchema`,
+  `onboardingValidatedPreferencesSchema`, and the newly exported
+  `onboardingReviewItemSchema`. Safe client errors only — no raw
+  `Error.message`, stack traces, filesystem paths, secret-bearing
+  URLs, credentials, or database details are ever serialized.
+- New `src/client/pages/OnboardingPage.tsx` parent wizard wires the
+  accepted `PreferencesStep`, `ReviewStep`, and `SearchPlanStep`
+  with a new `/onboarding` route in `src/client/App.tsx`. No forced
+  redirect; distinct blocked screens for malformed,
+  unsupported-version, and storage-failure; explicit reset;
+  `Cancel and leave` saves valid progress and clears the completion
+  marker. The page reuses the existing `DiscoveryCoordinator`,
+  `SourceRepository.cascadeTargetRoles`, and unified
+  profile-preferences document; no second profile store, source
+  registry, discovery engine, scheduler, or search configuration
+  authority was introduced.
+- New tests: `tests/onboarding-api.test.ts` (10/10 PASS) exercises
+  the server endpoints with a temporary database and a mock
+  coordinator; `tests/onboarding-flow.test.tsx` (11/11 PASS)
+  exercises the client wizard with a controlled API mock.
+  Combined onboarding focused suite: **185/185 PASS** (was 164;
+  +21). `npm run verify` **1790/1790 PASS across 179 files** (was
+  1769/1769 across 177); `npm run privacy:check` 11/11 PASS;
+  `npm run nlp:security-audit` 3/3 PASS; `git diff --check` clean.
+- Onboarding remains **Not shipped**. No push, no version bump, no
+  installer build, no production-data access. Browser, narrow-window,
+  and 200% zoom checks remain explicit acceptance items for
+  **MR1-07** and are not described as passed. Package version
+  remains **1.1.5**.
+
 ## [1.1.5] - 2026-09-14
 
 ### Job Intelligence — P37 occupation / job-type taxonomy shadow (SHIPPED)

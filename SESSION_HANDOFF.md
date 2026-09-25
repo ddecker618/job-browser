@@ -19,8 +19,9 @@
   suite **164/164 PASS**, explicit applied/omitted query separation,
   safe generic failed-source reason, detached `preferredLocations`
   snapshot, truthful plan-specific copy) and moved to **Done**. MR1-06
-  is the next authorized task and is **In progress** (claimed by
-  OpenCode 2026-09-24; implementation pending).
+  is the next authorized task and is **In Review** (claimed by
+  OpenCode 2026-09-24; implementation complete; awaiting Codex
+  re-review).
 - **Working tree (as of 2026-09-24):** clean at the MR1-05
   implementation commit `f3a1ec2`. A Codex review correction pass is
   being applied on top of `f3a1ec2`; it will produce one additional
@@ -209,6 +210,43 @@
   acceptance items for **MR1-06/MR1-07** and are **not** marked as
   passed. Release status remains **Not shipped**; MR1-06 still not
   started.
+- **MR1-06 — Connect the onboarding wizard to saved preferences and
+   real discovery** is the next authorized task (claimed by OpenCode
+   2026-09-24 after Codex accepted MR1-05; implementation complete
+   and moved to **Review**). The slice wires the accepted
+   `PreferencesStep`, `ReviewStep`, and `SearchPlanStep` components
+   into one working flow that prepares and starts a real Job Browser
+   search through the existing `DiscoveryCoordinator`. A narrow
+   versioned API is mounted at `/api/onboarding` (`GET /status`,
+   `POST /save`, `POST /reset`, `POST /complete`,
+   `POST /discovery/retry`); strict request validation through
+   `onboardingProgressSnapshotSchema`,
+   `onboardingValidatedPreferencesSchema`, and
+   `onboardingReviewItemSchema`; safe client errors without raw
+   diagnostics; completion-marker persistence in
+   `app_settings.onboardingCompletion:<profileId>`. Confirmation
+   ordering: rebuild plan → persist profile → cascade
+   `sourceQueryRoles = plan.appliedQueries` → write completion marker
+   → clear progress → invoke `coordinator.runAll()` once. Persistence
+   failure never runs discovery, keeps draft and review state, and
+   surfaces a retryable error. Discovery failure keeps completion and
+   progress clearing, surfaces a bounded `discoveryError`, and
+   supports search-only retry through `/api/onboarding/discovery/retry`.
+   The new `src/client/pages/OnboardingPage.tsx` parent wizard wires
+   the accepted child components with a `/onboarding` route in
+   `App.tsx`; no forced redirect; distinct blocked screens for
+   malformed / unsupported-version / storage-failure; explicit reset;
+   `Cancel and leave` saves progress and clears the completion
+   marker. Validated: typecheck clean; `tests/onboarding-api.test.ts`
+   10/10 PASS; `tests/onboarding-flow.test.tsx` 11/11 PASS; combined
+   onboarding focused suite 185/185 PASS (was 164; +21);
+   `npm run verify` 1790/1790 PASS across 179 files (was 1769/1769
+   across 177); `npm run privacy:check` 11/11 PASS;
+   `npm run nlp:security-audit` 3/3 PASS; `git diff --check` clean.
+   Browser, narrow-window and 200% zoom checks remain explicit
+   acceptance items for **MR1-07** and were **not** performed or
+   claimed here. Release status remains **Not shipped**; MR1-07 still
+   not started.
 - **MR1-05 — Preview bounded search/source plan** was authorized by
   the user on 2026-09-24 (after Codex accepted MR1-04) and is now
   **Done**. The slice is preview-only and never executes discovery: a
@@ -303,23 +341,12 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. **MR1-06 — Connect the onboarding wizard to saved preferences and
-   real discovery** is the next authorized task (claimed by OpenCode
-   2026-09-24 after Codex accepted MR1-05). MR1-06 must connect the
-   accepted `PreferencesStep`, `ReviewStep`, and `SearchPlanStep`
-   components into one working flow that prepares and starts a real
-   Job Browser search through the existing `DiscoveryCoordinator`,
-   reuse the existing profile-preferences document and `app_settings`
-   storage, persist `sourceQueryRoles` as exactly the confirmed
-   `plan.appliedQueries`, cascade source query roles through the
-   existing `SourceRepository` behavior, expose safe client errors
-   without raw diagnostics, prevent duplicate discovery runs, and
-   preserve retry/reset/cancel behavior for persistence and discovery
-   failures. Do not start MR1-07 yet; MR1-07 remains not started.
-   Release status remains **Not shipped**; MR1-07 still not started.
-   Browser, narrow-window and 200% zoom checks remain explicit
-   acceptance items for MR1-06/MR1-07 and were **not** performed or
-   claimed here.
+1. **MR1-06 is in Review for Codex** (claimed by OpenCode 2026-09-24
+   after Codex accepted MR1-05; implementation complete; awaiting
+   Codex re-review). Do not start MR1-07 yet; MR1-07 remains not
+   started. Release status remains **Not shipped**. Browser,
+   narrow-window and 200% zoom checks remain explicit acceptance items
+   for MR1-07 and were **not** performed or claimed here.
 2. **Local commits (no push).** The accepted MR0-01 → MR1-05 onboarding
    work is recorded at local commits `877c31f` (`feat: add onboarding
    foundation through progress persistence`), `c00c224` (`fix:
