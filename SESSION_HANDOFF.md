@@ -20,8 +20,10 @@
   Codex reviewer on 2026-09-24** (independent reviewer validation:
   TypeScript PASS, 5-file onboarding focused suite **164/164 PASS**)
   and moved to **Done**. MR1-06 is the next authorized task and is
-  **In Review** (claimed by OpenCode 2026-09-24; implementation
-  complete; a Codex review correction pass is in progress).
+  **In Review**; a second correction pass is being applied to address
+  the deeper Codex review findings (editable completed onboarding,
+  save-and-leave navigation, staged attempt retry semantics, real
+  failure seams, durable discovery outcome).
 - **Working tree (as of 2026-09-24):** clean at the MR1-05
   implementation commit `f3a1ec2`. A Codex review correction pass is
   being applied on top of `f3a1ec2`; it will produce one additional
