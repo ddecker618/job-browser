@@ -18,7 +18,8 @@
 After confirming onboarding preferences and review facts, the user can
 inspect a clear preview showing:
 
-- which confirmed job titles will be searched;
+- which queries will run;
+- which confirmed titles are omitted by the per-run query limit;
 - the relevant location / remote / distance constraints;
 - which existing configured sources are ready;
 - which sources need attention or are excluded, and why;
@@ -63,7 +64,7 @@ export interface OnboardingSearchPlanSourceEntry {
   readonly employer: string;
   /** ConfiguredSource.providerId (may be null). */
   readonly providerId: string | null;
-  readonly state: 'ready' | 'needs-attention' | 'excluded';
+  readonly   state: 'ready' \| 'needs-attention' \| 'excluded';
   /** Bounded user-facing reason for non-ready entries. null when ready. */
   readonly reason: string | null;
 }
@@ -76,7 +77,7 @@ export interface OnboardingSearchPlan {
   readonly appliedQueries: readonly string[];
   /** Confirmed titles that did not fit the bound (informational). */
   readonly omittedTitles: readonly string[];
-  readonly preferredLocations: readonly OnboardingValidatedPreferences['preferredLocations'];
+  readonly preferredLocations: OnboardingValidatedPreferences['preferredLocations'];
   readonly remotePreference: OnboardingValidatedPreferences['remotePreference'];
   readonly primaryRadiusMiles: number;
   readonly secondaryRadiusMiles: number;
@@ -136,9 +137,10 @@ The plan service classifies each `ConfiguredSource` as:
 
 - **needs-attention** when the source is enabled and has a valid
   configuration but cannot run yet (e.g. credentials required and not
-  available; last run failed with a user-actionable message). The
-  reason is the bounded `ConfiguredSource.healthMessage` (truncated to
-  ≤ 240 chars), or a bounded synthetic phrase when the field is empty.
+  available; last source check failed). The reason is a bounded,
+  user-facing phrase. Raw `healthMessage`, `lastFailure`, `careersUrl`,
+  credentials, exception details, stack traces, local paths, and
+  secret-bearing URLs are never exposed through the onboarding plan.
 
 - **excluded** when:
   - `archivedAt` is set (`reason: 'Source is archived'`),
@@ -248,12 +250,17 @@ export interface SearchPlanStepProps {
 
 The component must:
 
-- show the confirmed roles;
+- show `appliedQueries` as the executable query list;
+- show `omittedTitles` as a separate, clearly labeled list explaining
+  that those confirmed titles exceeded the configured per-run query
+  limit;
 - show location, distance and remote constraints in plain language;
 - list ready sources separately from needs-attention and excluded
   sources, with each non-ready entry's `reason` displayed verbatim;
 - show query and source bounds (counts and the omission warning);
 - state clearly that no search has run;
+- explain that Back returns to job preferences and that sources needing
+  attention must be fixed from the Sources workspace;
 - provide `Back` and `Confirm plan` callbacks (`type="button"` /
   native form submit);
 - prevent duplicate confirmation while pending (saving state disables
@@ -263,7 +270,7 @@ The component must:
 - show an accessible confirmation error (`role="alert"`) without
   erasing the plan;
 - use semantic headings, lists, labels, status / alert roles, and
-  keyboard-operable buttons (`type="button"`, visible focus).
+  keyboard-operable buttons (`type="button"`, visible focus);
 
 The component must **not**:
 
@@ -325,13 +332,20 @@ Service tests in `tests/onboarding-search-plan.test.tsx` must cover:
 - [ ] Invalid configuration → `state: 'excluded'`.
 - [ ] Credentials-required with no available credentials →
       `state: 'needs-attention'`, reason mentions credentials.
-- [ ] Failed health → `state: 'needs-attention'`, reason is the bounded
-      `healthMessage`.
+- [ ] Failed health → `state: 'needs-attention'`, reason is the safe
+      generic phrase
+      (`'The last source check failed. Review this source before searching.'`).
+- [ ] Hostile `healthMessage` content (URLs with tokens, passwords,
+      paths, emails, exceptions) does not appear anywhere in
+      `JSON.stringify(plan)`, while the safe generic reason does.
 - [ ] Healthy / never-run health with valid configuration →
       `state: 'ready'`.
 - [ ] Source ordering is deterministic across reorderings of the
       `sources` input array.
 - [ ] Inputs are not mutated (object + array deep-freeze proof).
+- [ ] `preferredLocations` is returned as a detached snapshot: new array
+      and copied location objects, so mutating the returned plan cannot
+      mutate the original preferences.
 - [ ] Plan JSON round-trips to the same JSON (`JSON.parse(JSON.stringify(plan))`
       is `===` on every field).
 - [ ] The plan service performs no provider, coordinator, database,
@@ -341,11 +355,17 @@ Service tests in `tests/onboarding-search-plan.test.tsx` must cover:
 Component tests in `tests/onboarding-search-plan.test.tsx` must
 cover:
 
-- [ ] Confirmed roles render.
+- [ ] `appliedQueries` render as the executable query list.
+- [ ] `omittedTitles` render as a separate list and never appear in the
+      executable query list.
+- [ ] Empty `appliedQueries` disable confirmation and show an empty-query
+      explanation.
 - [ ] Location / remote / distance constraints render.
 - [ ] Ready sources render in a separate group; needs-attention and
       excluded sources render with their `reason` text.
 - [ ] The "no search has run" statement is visible.
+- [ ] The copy is plan-specific (e.g. "Review your search plan") and does
+      not describe profile qualification review.
 - [ ] `Back` fires the `onBack` callback once.
 - [ ] `Confirm plan` fires the `onConfirm` callback once.
 - [ ] `Confirm plan` is disabled when `confirmationAllowed` is

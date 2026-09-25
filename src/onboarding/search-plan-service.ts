@@ -26,10 +26,10 @@ const REASON_PROVIDER_UNAVAILABLE = 'Provider is not available';
 const REASON_CONFIG_UNVALIDATED = 'Configuration not validated';
 const REASON_CONFIG_INVALID = 'Configuration is invalid';
 const REASON_CREDENTIALS_REQUIRED = 'Credentials required';
-const REASON_LAST_RUN_FAILED = 'Last run failed';
+const REASON_LAST_RUN_FAILED =
+  'The last source check failed. Review this source before searching.';
 
 const MAX_REASON_LENGTH = 240;
-const MAX_HEALTH_REASON_LENGTH = 240;
 const MAX_WARNING_LENGTH = 240;
 
 export interface BuildOnboardingSearchPlanInput {
@@ -208,15 +208,10 @@ function classify(
     };
   }
 
-  // needs-attention: failed health (bounded reason from healthMessage)
+  // needs-attention: failed health (safe generic reason — raw diagnostics
+  // such as healthMessage, lastFailure, careersUrl, secrets, paths, or
+  // stack traces are never exposed through the onboarding plan).
   if (source.healthStatus === 'failed') {
-    const reason =
-      source.healthMessage !== null && source.healthMessage !== ''
-        ? clampReason(
-            `${REASON_LAST_RUN_FAILED}: ${source.healthMessage}`,
-            MAX_HEALTH_REASON_LENGTH,
-          )
-        : clampReason(REASON_LAST_RUN_FAILED, MAX_REASON_LENGTH);
     return {
       entry: {
         id: source.id,
@@ -224,7 +219,7 @@ function classify(
         employer: source.employer,
         providerId,
         state: 'needs-attention',
-        reason,
+        reason: clampReason(REASON_LAST_RUN_FAILED, MAX_REASON_LENGTH),
       },
     };
   }
@@ -282,6 +277,15 @@ function dedupeTitlesCaseInsensitive(titles: readonly string[]): string[] {
     result.push(trimmed);
   }
   return result;
+}
+
+function copyPreferredLocations(
+  locations: OnboardingValidatedPreferences['preferredLocations'],
+): OnboardingValidatedPreferences['preferredLocations'] {
+  return locations.map((location) => ({
+    city: location.city,
+    state: location.state,
+  }));
 }
 
 function boundQueryList(
@@ -345,7 +349,9 @@ export function buildOnboardingSearchPlan(
     confirmedTitles: cleanedTitles,
     appliedQueries: applied,
     omittedTitles: omitted,
-    preferredLocations: input.preferences.preferredLocations,
+    preferredLocations: copyPreferredLocations(
+      input.preferences.preferredLocations,
+    ),
     remotePreference: input.preferences.remotePreference,
     primaryRadiusMiles: input.preferences.searchRadiusMiles,
     secondaryRadiusMiles: input.preferences.secondarySearchRadiusMiles,

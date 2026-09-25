@@ -83,7 +83,7 @@ export function SearchPlanStep({
     onBack();
   }
 
-  const confirmLabel = saving ? 'Saving…' : 'Confirm plan';
+  const confirmLabel = saving ? 'Confirming…' : 'Confirm plan';
   const confirmDisabled = saving || !plan.confirmationAllowed;
 
   return (
@@ -97,12 +97,11 @@ export function SearchPlanStep({
       <section className="onboarding-card" aria-labelledby={headingId}>
         <p className="onboarding-progress">Search plan preview</p>
         <h2 id={headingId} tabIndex={-1} className="onboarding-question-title">
-          Let's check your information.
+          Review your search plan
         </h2>
         <p className="onboarding-question-copy">
-          Confirm what looks right and correct anything we misunderstood.
-          Reviewing an item confirms its accuracy for your profile — it does not
-          verify a qualification with a third party.
+          These are the queries and configured sources Job Browser is prepared
+          to use.
         </p>
         <p className="onboarding-footnote" role="status">
           No search has run yet. Searching begins only after you confirm this
@@ -110,35 +109,67 @@ export function SearchPlanStep({
         </p>
 
         <section
-          className="onboarding-search-plan-roles"
-          aria-labelledby={`${headingId}-roles`}
+          className="onboarding-search-plan-queries"
+          aria-labelledby={`${headingId}-queries`}
         >
           <h3
-            id={`${headingId}-roles`}
+            id={`${headingId}-queries`}
             className="onboarding-search-plan-section-title"
           >
-            Confirmed roles
+            Queries included in this search
           </h3>
-          {plan.confirmedTitles.length === 0 ? (
+          {plan.appliedQueries.length === 0 ? (
             <p
               className="onboarding-search-plan-empty"
-              data-testid="onboarding-search-plan-empty-roles"
+              data-testid="onboarding-search-plan-empty-included-queries"
             >
-              You did not confirm any roles. The search plan cannot run queries
-              until you add at least one role.
+              No queries are included. Add at least one confirmed role before
+              searching.
             </p>
           ) : (
             <ul
               className="onboarding-search-plan-list"
-              data-testid="onboarding-search-plan-roles-list"
+              data-testid="onboarding-search-plan-included-queries-list"
             >
-              {plan.confirmedTitles.map((title) => (
-                <li key={title} className="onboarding-search-plan-list-item">
-                  <span className="onboarding-search-plan-role">{title}</span>
+              {plan.appliedQueries.map((query) => (
+                <li
+                  key={query}
+                  className="onboarding-search-plan-list-item"
+                  data-testid={`onboarding-search-plan-included-query-${query}`}
+                >
+                  <span className="onboarding-search-plan-query">{query}</span>
                 </li>
               ))}
             </ul>
           )}
+
+          {plan.omittedTitles.length > 0 ? (
+            <div className="onboarding-search-plan-omitted">
+              <h4 className="onboarding-search-plan-section-subtitle">
+                Confirmed titles not included
+              </h4>
+              <p className="onboarding-search-plan-omitted-explanation">
+                These confirmed titles exceeded the configured per-run query
+                limit.
+              </p>
+              <ul
+                className="onboarding-search-plan-list"
+                data-testid="onboarding-search-plan-omitted-titles-list"
+              >
+                {plan.omittedTitles.map((title) => (
+                  <li
+                    key={title}
+                    className="onboarding-search-plan-list-item"
+                    data-testid={`onboarding-search-plan-omitted-title-${title}`}
+                  >
+                    <span className="onboarding-search-plan-omitted-title">
+                      {title}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : undefined}
         </section>
 
         <section
@@ -331,8 +362,8 @@ export function SearchPlanStep({
 
       <div className="onboarding-actions">
         <p className="onboarding-footnote">
-          Reviewing confirms the plan above for your profile. The existing
-          search-profile and scoring rules are unchanged.
+          Use Back to change your job preferences. Sources needing attention
+          must be fixed from the Sources workspace.
         </p>
         <div className="onboarding-actions-left">
           {saving ? (
@@ -341,7 +372,7 @@ export function SearchPlanStep({
               role="status"
               data-testid="onboarding-search-plan-saving-status"
             >
-              Saving your search plan…
+              Confirming your search plan…
             </span>
           ) : undefined}
           {saveError !== null ? (

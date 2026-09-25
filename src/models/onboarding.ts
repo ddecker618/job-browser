@@ -166,7 +166,8 @@ export type PreferencesConversionResult =
  * from `OnboardingValidatedPreferences`, user-confirmed desired job
  * titles, the bounded `SearchProfile`, the configured sources, and
  * the provider descriptors. It never executes discovery and never
- * mutates inputs.
+ * mutates inputs. Nested values (e.g. preferredLocations) are
+ * snapshot copies so the returned plan is a standalone object.
  */
 export const ONBOARDING_SEARCH_PLAN_VERSION = 1 as const;
 

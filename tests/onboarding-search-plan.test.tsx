@@ -52,6 +52,17 @@ function planFrom(plan: OnboardingSearchPlan): {
   return { plan, sources: plan.sources };
 }
 
+function buildFailedHealthSource(
+  healthMessage: string,
+): ConfiguredSourceWithHealth {
+  return {
+    ...fictionalSearchSourceNeedsFailedHealth,
+    healthMessage,
+  };
+}
+
+type ConfiguredSourceWithHealth = typeof fictionalSearchSourceNeedsFailedHealth;
+
 describe('buildOnboardingSearchPlan — pure service', () => {
   it('is deterministic for equal inputs (JSON-stable)', () => {
     const input: BuildOnboardingSearchPlanInput = {
@@ -347,7 +358,7 @@ describe('buildOnboardingSearchPlan — pure service', () => {
     expect(plan.confirmationAllowed).toBe(false);
   });
 
-  it('surfaces failed health messages with bounded reason', () => {
+  it('uses a safe generic reason for failed health, not the raw healthMessage', () => {
     const plan = buildOnboardingSearchPlan({
       preferences: clone(fictionalSearchPreferences),
       confirmedTitles: ['Network Engineer'],
@@ -357,24 +368,62 @@ describe('buildOnboardingSearchPlan — pure service', () => {
     });
     const entry = plan.sources[0]!;
     expect(entry.state).toBe('needs-attention');
-    expect(entry.reason).toMatch(/^Last run failed:/);
-    expect(entry.reason).toMatch(/Timeout/);
-    expect(entry.reason!.length).toBeLessThanOrEqual(240);
+    expect(entry.reason).toBe(
+      'The last source check failed. Review this source before searching.',
+    );
   });
 
-  it('never exposes credentials, careersUrl, or configuration JSON in reasons', () => {
-    const plan = buildOnboardingSearchPlan({
-      preferences: clone(fictionalSearchPreferences),
-      confirmedTitles: ['Network Engineer'],
-      searchProfile: fictionalSearchProfileMax40,
-      sources: [fictionalSearchSourceNeedsFailedHealth],
-      providerDescriptors: [fictionalSearchProviderBuiltIn],
-    });
-    for (const entry of plan.sources) {
-      expect(entry.reason).not.toMatch(/example\.com/);
-      expect(entry.reason).not.toMatch(/password|token|secret|credential_/i);
-    }
-  });
+  it.each([
+    {
+      label: 'URL with token',
+      healthMessage:
+        'Request failed: https://api.example.com/jobs?token=secret-token-123',
+      leakPatterns: ['token=secret-token-123', 'api.example.com'],
+    },
+    {
+      label: 'password/token/secret text',
+      healthMessage:
+        'Auth failed: password=SuperSecret!, token=abc123, secret_key=xyz',
+      leakPatterns: ['SuperSecret!', 'abc123', 'secret_key=xyz'],
+    },
+    {
+      label: 'Windows path',
+      healthMessage:
+        'Could not read C:\\Users\\candidate\\AppData\\Local\\Job Browser\\data\\jobs.sqlite',
+      leakPatterns: ['C:\\Users\\candidate', 'jobs.sqlite'],
+    },
+    {
+      label: 'email / account identifier',
+      healthMessage:
+        'Account lookup failed for candidate@example.com (id: acct-987654)',
+      leakPatterns: ['candidate@example.com', 'acct-987654'],
+    },
+    {
+      label: 'long raw exception',
+      healthMessage:
+        'Error: connect ECONNREFUSED 192.168.1.50:443\n    at TCPConnectWrap.afterConnect [as oncomplete] (net.js:1141:16)\n    at Socket.emit (events.js:315:20)\n    at internal/errors.js:123:45',
+      leakPatterns: ['ECONNREFUSED', '192.168.1.50', 'net.js'],
+    },
+  ])(
+    'does not leak hostile $label diagnostics into the serialized plan',
+    ({ healthMessage, leakPatterns }) => {
+      const plan = buildOnboardingSearchPlan({
+        preferences: clone(fictionalSearchPreferences),
+        confirmedTitles: ['Network Engineer'],
+        searchProfile: fictionalSearchProfileMax40,
+        sources: [buildFailedHealthSource(healthMessage)],
+        providerDescriptors: [fictionalSearchProviderBuiltIn],
+      });
+
+      const serialized = JSON.stringify(plan);
+      for (const pattern of leakPatterns) {
+        expect(serialized).not.toContain(pattern);
+      }
+      expect(serialized).toContain(
+        'The last source check failed. Review this source before searching.',
+      );
+    },
+  );
 
   it('sorts sources by displayName then id for stable output', () => {
     const sourceA = {
@@ -420,6 +469,41 @@ describe('buildOnboardingSearchPlan — pure service', () => {
       'src-c',
       'src-a',
     ]);
+  });
+
+  it('returns a detached preferredLocations snapshot', () => {
+    const preferences = clone(fictionalSearchPreferences);
+    const plan = buildOnboardingSearchPlan({
+      preferences,
+      confirmedTitles: ['Network Engineer'],
+      searchProfile: fictionalSearchProfileMax40,
+      sources: [fictionalSearchSourceReadyBuiltIn],
+      providerDescriptors: [fictionalSearchProviderBuiltIn],
+    });
+
+    expect(plan.preferredLocations).not.toBe(preferences.preferredLocations);
+    expect(plan.preferredLocations).toEqual(preferences.preferredLocations);
+    expect(plan.preferredLocations.length).toBeGreaterThan(0);
+
+    for (let i = 0; i < plan.preferredLocations.length; i += 1) {
+      expect(plan.preferredLocations[i]).not.toBe(
+        preferences.preferredLocations[i],
+      );
+    }
+
+    // Mutating the returned snapshot must not change the original preferences.
+    const originalLocation = preferences.preferredLocations[0]!;
+    const planLocation = plan.preferredLocations[0]!;
+    const mutableCopy = [...plan.preferredLocations];
+    mutableCopy[0] = { city: 'Mutated City', state: 'MC' };
+    expect(originalLocation).toEqual({
+      city: originalLocation.city,
+      state: originalLocation.state,
+    });
+    expect(planLocation).not.toEqual({
+      city: 'Mutated City',
+      state: 'MC',
+    });
   });
 
   it('preserves preferences fields exactly and never modifies them', () => {
@@ -494,7 +578,7 @@ describe('buildOnboardingSearchPlan — pure service', () => {
 });
 
 describe('SearchPlanStep — component behaviour', () => {
-  it('renders roles, constraints, source groups, and a no-search-yet statement', () => {
+  it('renders included queries, constraints, source groups, and a no-search-yet statement', () => {
     render(
       <SearchPlanStep
         plan={fictionalSearchPlanMixed}
@@ -506,10 +590,10 @@ describe('SearchPlanStep — component behaviour', () => {
     );
 
     expect(
-      screen.getByRole('heading', { name: /check your information/i }),
+      screen.getByRole('heading', { name: /Review your search plan/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('onboarding-search-plan-roles-list'),
+      screen.getByTestId('onboarding-search-plan-included-queries-list'),
     ).toBeInTheDocument();
     expect(
       screen.getByTestId('onboarding-search-plan-ready-list'),
@@ -522,11 +606,19 @@ describe('SearchPlanStep — component behaviour', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/No search has run yet/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/does not verify a qualification/i),
+      screen.getByText(
+        /Use Back to change your job preferences\. Sources needing attention must be fixed from the Sources workspace/i,
+      ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/correct anything we misunderstood/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/does not verify a qualification/i),
+    ).not.toBeInTheDocument();
   });
 
-  it('renders the empty-state copy when no roles are confirmed', () => {
+  it('renders the empty-state copy when no queries are included', () => {
     render(
       <SearchPlanStep
         plan={fictionalSearchPlanNoConfirmedRoles}
@@ -537,8 +629,85 @@ describe('SearchPlanStep — component behaviour', () => {
       />,
     );
     expect(
-      screen.getByTestId('onboarding-search-plan-empty-roles'),
+      screen.getByTestId('onboarding-search-plan-empty-included-queries'),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('onboarding-search-plan-included-queries-list'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders applied queries and omitted titles as separate lists', () => {
+    render(
+      <SearchPlanStep
+        plan={fictionalSearchPlanBounded}
+        saving={false}
+        saveError={null}
+        onBack={() => undefined}
+        onConfirm={() => undefined}
+      />,
+    );
+
+    const includedList = screen.getByTestId(
+      'onboarding-search-plan-included-queries-list',
+    );
+    const omittedList = screen.getByTestId(
+      'onboarding-search-plan-omitted-titles-list',
+    );
+
+    for (const query of fictionalSearchPlanBounded.appliedQueries) {
+      expect(
+        screen.getByTestId(`onboarding-search-plan-included-query-${query}`),
+      ).toBeInTheDocument();
+      expect(includedList).toHaveTextContent(query);
+    }
+
+    for (const title of fictionalSearchPlanBounded.omittedTitles) {
+      expect(
+        screen.getByTestId(`onboarding-search-plan-omitted-title-${title}`),
+      ).toBeInTheDocument();
+      expect(omittedList).toHaveTextContent(title);
+    }
+
+    // An omitted title must never appear in the included-query list.
+    for (const omitted of fictionalSearchPlanBounded.omittedTitles) {
+      expect(
+        screen.queryByTestId(
+          `onboarding-search-plan-included-query-${omitted}`,
+        ),
+      ).not.toBeInTheDocument();
+      expect(includedList).not.toHaveTextContent(omitted);
+    }
+
+    expect(
+      screen.getByText(
+        /These confirmed titles exceeded the configured per-run query limit/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('onboarding-search-plan-applied-count'),
+    ).toHaveTextContent(
+      String(fictionalSearchPlanBounded.appliedQueries.length),
+    );
+    expect(
+      screen.getByTestId('onboarding-search-plan-omitted-count'),
+    ).toHaveTextContent(
+      String(fictionalSearchPlanBounded.omittedTitles.length),
+    );
+  });
+
+  it('disables Confirm when no queries are included', () => {
+    render(
+      <SearchPlanStep
+        plan={fictionalSearchPlanNoConfirmedRoles}
+        saving={false}
+        saveError={null}
+        onBack={() => undefined}
+        onConfirm={() => undefined}
+      />,
+    );
+    const confirm = screen.getByTestId('onboarding-search-plan-confirm');
+    expect(confirm).toBeDisabled();
+    expect(confirm).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('renders bounded source counts and the bounded warning when queries are capped', () => {
@@ -632,7 +801,7 @@ describe('SearchPlanStep — component behaviour', () => {
     expect(confirm).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('blocks duplicate confirmation while saving and shows saving status', () => {
+  it('blocks duplicate confirmation while saving and shows confirming status', () => {
     render(
       <SearchPlanStep
         plan={fictionalSearchPlanReady}
@@ -644,10 +813,10 @@ describe('SearchPlanStep — component behaviour', () => {
     );
     const confirm = screen.getByTestId('onboarding-search-plan-confirm');
     expect(confirm).toBeDisabled();
-    expect(confirm).toHaveTextContent('Saving…');
+    expect(confirm).toHaveTextContent('Confirming…');
     expect(
       screen.getByTestId('onboarding-search-plan-saving-status'),
-    ).toHaveTextContent(/Saving your search plan/i);
+    ).toHaveTextContent(/Confirming your search plan/i);
     expect(screen.getByTestId('onboarding-search-plan-back')).toBeDisabled();
   });
 
@@ -695,10 +864,10 @@ describe('SearchPlanStep — component behaviour', () => {
       screen.getByTestId('onboarding-search-plan-save-error'),
     ).toHaveTextContent(/Could not save the search plan/i);
     expect(
-      screen.getByTestId('onboarding-search-plan-roles-list'),
+      screen.getByTestId('onboarding-search-plan-included-queries-list'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: /check your information/i }),
+      screen.getByRole('heading', { name: /Review your search plan/i }),
     ).toBeInTheDocument();
   });
 

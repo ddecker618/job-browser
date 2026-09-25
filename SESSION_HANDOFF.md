@@ -6,30 +6,31 @@
 
 ## Current verified baseline (recorded evidence — 2026-09-24)
 
-- **HEAD:** `0120b4f` (`docs: accept MR1-04 onboarding persistence`)
+- **HEAD:** `f3a1ec2` (`feat: add onboarding search plan preview`)
   on top of the accepted foundation commits `877c31f` (`feat: add
-  onboarding foundation through progress persistence`) and `c00c224`
-  (`fix: preserve onboarding resume failure states`). MR1-04 was
+  onboarding foundation through progress persistence`), `c00c224`
+  (`fix: preserve onboarding resume failure states`), and `0120b4f`
+  (`docs: accept MR1-04 onboarding persistence`). MR1-04 was
   **accepted by the Codex reviewer on 2026-09-24** and moved to
-  **Done**; MR1-05 is the next authorized task and is **In progress**
-  (claimed by OpenCode 2026-09-24, implementation complete, awaiting
-  Codex review).
-- **Working tree (as of 2026-09-24):** clean at the checkpoint
-  immediately after the MR1-04 acceptance docs commit. MR1-05
-  implementation work follows on top of `c00c224` and produces one
-  additional local commit; no further push, version bump, installer
-  rebuild, or release claim is involved.
-- **Local main is ahead of the locally recorded `origin/main` by 6
+  **Done**; MR1-05 is the next authorized task and is **In Review**
+  (claimed by OpenCode 2026-09-24; implementation and a correction
+  pass are complete; awaiting Codex re-review).
+- **Working tree (as of 2026-09-24):** clean at the MR1-05
+  implementation commit `f3a1ec2`. A Codex review correction pass is
+  being applied on top of `f3a1ec2`; it will produce one additional
+  local recoverable commit; no push, version bump, installer rebuild,
+  or release claim is involved.
+- **Local main is ahead of the locally recorded `origin/main` by 7
   commits** — `39e84c0` (P37 planning), `b453ae0` (P37 shadow
   implementation), `8281609` (1.1.5 release), `877c31f` (onboarding
-  foundation), `c00c224` (resume-contract fix), and `0120b4f`
-  (MR1-04 acceptance docs) — and **behind by 0**. The first three
-  commits are absent from the locally recorded `origin/main`
-  reference; the onboarding commits are local-only. Current
-  remote-server state was not checked. The locally recorded
-  `origin/main` reference is the 1.1.4 release commit `f05bee9`
-  (whose parent history includes the P36 commits `dbd0fdb` and
-  `b4e6256`). This handoff **cannot independently verify** the
+  foundation), `c00c224` (resume-contract fix), `0120b4f` (MR1-04
+  acceptance docs), and `f3a1ec2` (MR1-05 implementation) — and
+  **behind by 0**. The first three commits are absent from the locally
+  recorded `origin/main` reference; the onboarding commits are
+  local-only. Current remote-server state was not checked. The locally
+  recorded `origin/main` reference is the 1.1.4 release commit
+  `f05bee9` (whose parent history includes the P36 commits `dbd0fdb`
+  and `b4e6256`). This handoff **cannot independently verify** the
   GitHub server state — the count above comes from local
   remote-tracking references only.
 - **MR0-01 work (Done per the delivery board, committed at `877c31f`):**
@@ -204,36 +205,42 @@
 - **MR1-05 — Preview bounded search/source plan** was authorized by
   the user on 2026-09-24 (after Codex accepted MR1-04) and is now
   **In Review for Codex** (claimed by OpenCode 2026-09-24;
-  implementation complete; not self-approved as Done). The slice
-  is preview-only and never executes discovery: a pure deterministic
-  `buildOnboardingSearchPlan` service builds a versioned
+  implementation complete; not self-approved as Done). A Codex
+  review correction pass is in progress on top of commit `f3a1ec2`.
+  The slice is preview-only and never executes discovery: a pure
+  deterministic `buildOnboardingSearchPlan` service builds a versioned
   `OnboardingSearchPlan` (`ONBOARDING_SEARCH_PLAN_VERSION = 1`) from
   `OnboardingValidatedPreferences`, the user-confirmed desired job
   titles, `SearchProfile.maxQueriesPerRun`, the existing
   `ConfiguredSource[]`, and the existing `ProviderDescriptor[]`; the
-  plan never touches SQLite, the filesystem, providers,
-  credentials, or the network. Each source is classified as
-  `ready | needs-attention | excluded` with bounded user-facing
-  reasons (no credentials, no `careersUrl` secrets, no stack traces);
-  unknown provider references cannot be ready; archived,
-  disabled, missing-provider, unvalidated, and invalid-configuration
-  sources are excluded; credential-required and failed-health
-  sources are needs-attention. The query list is trimmed,
-  case-insensitively deduped (first spelling wins), preserved in
-  user order, and bounded by `SearchProfile.maxQueriesPerRun`;
-  overflow titles are recorded in `omittedTitles` with a bounded
-  warning. `confirmationAllowed` is `false` when there are no usable
-  queries or no ready sources. The parent-controlled `SearchPlanStep`
-  component renders roles, location/remote/distance, bounded
-  counts, source groups with reasons, no-search-yet status, accessible
-  Back + Confirm buttons; Confirm is disabled when saving or not
-  confirmable; duplicate confirmation is blocked; a confirmation
-  error is shown as `role="alert"` without erasing the plan. Validated:
-  typecheck clean; `tests/onboarding-search-plan.test.tsx` 35/35 PASS;
-  combined onboarding suite 157/157 PASS; `npm run verify`
-  1762/1762 PASS across 176 files; `npm run privacy:check` 11/11
-  PASS; `npm run nlp:security-audit` 3/3 PASS; `git diff --check`
-  clean. Task card:
+  plan never touches SQLite, the filesystem, providers, credentials,
+  or the network. Each source is classified as
+  `'ready' \| 'needs-attention' \| 'excluded'` with bounded
+  user-facing reasons (no credentials, no `careersUrl` secrets, no
+  stack traces); unknown provider references cannot be ready;
+  archived, disabled, missing-provider, unvalidated, and
+  invalid-configuration sources are excluded; credential-required
+  sources are needs-attention; failed-health sources are
+  needs-attention with a safe generic reason (`The last source check
+  failed. Review this source before searching.`), never the raw
+  `healthMessage`. The query list is trimmed, case-insensitively
+  deduped (first spelling wins), preserved in user order, and bounded
+  by `SearchProfile.maxQueriesPerRun`; overflow titles are recorded in
+  `omittedTitles` with a bounded warning. `confirmationAllowed` is
+  `false` when there are no usable queries or no ready sources. The
+  parent-controlled `SearchPlanStep` component renders
+  `appliedQueries` as the executable query list and `omittedTitles` as
+  a separate list, location/remote/distance constraints, bounded
+  counts, source groups with reasons, no-search-yet status, and
+  accessible Back + Confirm buttons; Confirm is disabled when saving
+  or not confirmable; duplicate confirmation is blocked; a
+  confirmation error is shown as `role="alert"` without erasing the
+  plan. The UI copy is plan-specific and does not describe profile
+  qualification review. Validated: typecheck clean;
+  `tests/onboarding-search-plan.test.tsx` PASS; combined onboarding
+  suite PASS; `npm run verify` PASS; `npm run privacy:check` PASS;
+  `npm run nlp:security-audit` PASS; `git diff --check` clean. Task
+  card:
   [`docs/delivery/tasks/MR1-05-search-plan.md`](docs/delivery/tasks/MR1-05-search-plan.md).
   Browser, narrow-window and 200% zoom checks remain explicit
   acceptance items for **MR1-06/MR1-07** and are **not** marked as
@@ -289,20 +296,27 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 ## Next action
 
 1. **MR1-05 is in Review for Codex (claimed by OpenCode 2026-09-24
-   after Codex accepted MR1-04).** MR1-05 implements the bounded
-   search/source-plan preview. The slice is preview-only and never
-   executes discovery. Do not start MR1-06 yet; MR1-06 remains not
-   started. Release status remains **Not shipped**. Browser,
-   narrow-window and 200% zoom checks remain explicit acceptance items
-   for MR1-06/MR1-07 and were **not** performed or claimed here.
+   after Codex accepted MR1-04).** A Codex review correction pass is
+   being applied on top of commit `f3a1ec2` to make the preview
+   explicit and safe: `appliedQueries` and `omittedTitles` are
+   rendered as separate lists, failed-health sources use a safe
+   generic reason instead of raw diagnostics, UI copy is truthful and
+   plan-specific, `preferredLocations` is returned as a detached
+   snapshot, and documentation is reconciled. Do not start MR1-06 yet;
+   MR1-06 remains not started. Release status remains **Not shipped**.
+   Browser, narrow-window and 200% zoom checks remain explicit
+   acceptance items for MR1-06/MR1-07 and were **not** performed or
+   claimed here.
 2. **Local commits (no push).** The accepted MR0-01 → MR1-04 onboarding
    foundation is recorded at local commits `877c31f` (`feat: add
    onboarding foundation through progress persistence`), `c00c224`
    (`fix: preserve onboarding resume failure states`), and the MR1-04
    acceptance documentation at `0120b4f` (`docs: accept MR1-04
-   onboarding persistence`); the MR1-05 implementation is recorded
-   as one further local commit on top. No push is performed; the
-   1.1.5 release status on the board stays **Not shipped**.
+   onboarding persistence`); the MR1-05 implementation is recorded at
+   `f3a1ec2` (`feat: add onboarding search plan preview`). The
+   correction pass will produce one further local recoverable commit
+   on top of `f3a1ec2`. No push is performed; the 1.1.5 release status
+   on the board stays **Not shipped**.
 
 ## Links to historical evidence
 
