@@ -140,7 +140,7 @@ export interface OnboardingStatusResponse {
     | 'salary'
     | null
     | undefined;
-  readonly resumeKind?: 'stored' | 'fresh' | undefined;
+  readonly resumeKind?: 'stored' | 'fresh' | 'editing-existing' | undefined;
   readonly snapshot?: Record<string, unknown> | undefined;
   readonly planToken?: string | undefined;
   readonly prefilledDraft?: Record<string, unknown> | undefined;

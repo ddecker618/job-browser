@@ -106,6 +106,7 @@ import { jobSearchQuerySchema } from '../schemas/job-search.js';
 import { parseEmployerManifest } from '../schemas/employer-manifest.js';
 import { enforceLoopbackRequest } from './loopbackSecurity.js';
 import { createOnboardingRouter } from './onboardingRoutes.js';
+import type { OnboardingProgressStore } from '../repositories/onboarding-repository.js';
 
 export interface AppOptions {
   candidateProfilePath?: string;
@@ -132,6 +133,24 @@ export interface AppOptions {
   ) => Promise<AtsDetectionResult>;
   availabilityFetcher?: import('../intelligence/jobAvailability.js').AvailabilityFetcher;
   nlpBackgroundWorker?: { status: () => NlpWorkerStatus };
+  /**
+   * Test seam: override the onboarding progress store. Production
+   * uses `createDatabaseOnboardingProgressStore(database)`.
+   */
+  onboardingProgressStore?: OnboardingProgressStore;
+  /**
+   * Test seam: override profile-preference persistence. Production
+   * uses `saveUnifiedProfilePreferences`.
+   */
+  saveProfilePreferences?: (
+    path: string | undefined,
+    prefs: LegacyPreferences,
+  ) => void;
+  /**
+   * Test seam: override source query role cascading. Production uses
+   * `sourceRepository.cascadeTargetRoles`.
+   */
+  cascadeTargetRoles?: (roles: readonly string[]) => void;
 }
 
 const asyncRoute =
@@ -244,6 +263,15 @@ export function createApp(
       ...(profilePreferencesPath === undefined
         ? {}
         : { profilePreferencesPath }),
+      ...(options.onboardingProgressStore === undefined
+        ? {}
+        : { progressStore: options.onboardingProgressStore }),
+      ...(options.saveProfilePreferences === undefined
+        ? {}
+        : { saveProfilePreferences: options.saveProfilePreferences }),
+      ...(options.cascadeTargetRoles === undefined
+        ? {}
+        : { cascadeTargetRoles: options.cascadeTargetRoles }),
     }),
   );
 

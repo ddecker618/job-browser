@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import {
   api,
@@ -89,16 +89,15 @@ function safeCompletionMessage(error: unknown): string {
     message.startsWith('Onboarding could not be saved') ||
     message.startsWith('Onboarding could not be completed') ||
     message.startsWith('The search plan changed since you reviewed it') ||
-    message.startsWith('The search plan cannot be confirmed')
+    message.startsWith('The search plan cannot be confirmed') ||
+    message.startsWith('A completion attempt with this id is already running')
   ) {
     return message;
   }
   return 'Onboarding could not be completed.';
 }
 
-function isV2Snapshot(value: unknown): value is OnboardingProgressSnapshot & {
-  readonly reviewItems: readonly OnboardingReviewItem[];
-} {
+function isV2Snapshot(value: unknown): value is OnboardingProgressSnapshot {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as { version?: unknown; reviewItems?: unknown };
   return candidate.version === 2 && Array.isArray(candidate.reviewItems);
@@ -124,6 +123,8 @@ export function OnboardingPage() {
     readonly message: string | null;
   } | null>(null);
   const [retryBusy, setRetryBusy] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     setLoadError(null);
@@ -141,6 +142,23 @@ export function OnboardingPage() {
 
   useEffect(() => {
     void loadStatus();
+  }, [loadStatus]);
+
+  const handleStartEdit = useCallback(async () => {
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      await api.startOnboardingEdit();
+      await loadStatus();
+    } catch (error) {
+      setEditError(
+        error instanceof Error
+          ? error.message
+          : 'Could not start editing your saved search setup.',
+      );
+    } finally {
+      setEditBusy(false);
+    }
   }, [loadStatus]);
 
   if (loadError !== null) {
@@ -163,12 +181,25 @@ export function OnboardingPage() {
       </section>
     );
   }
+  // Active editing of an already-completed configuration takes
+  // precedence: render the wizard, not the completed view.
+  if (status.editSession.editing) {
+    return (
+      <Wizard
+        status={status}
+        onRefreshStatus={loadStatus}
+        editingExistingCompletion={status.completion.completed}
+      />
+    );
+  }
   if (status.completion.completed) {
     return (
       <CompletedView
         status={status}
         outcome={retryOutcome}
         busy={retryBusy}
+        editBusy={editBusy}
+        editError={editError}
         onRetry={async () => {
           setRetryBusy(true);
           try {
@@ -185,6 +216,7 @@ export function OnboardingPage() {
             setRetryBusy(false);
           }
         }}
+        onEdit={handleStartEdit}
       />
     );
   }
@@ -282,7 +314,10 @@ function CompletedView({
   status,
   outcome,
   busy,
+  editBusy,
+  editError,
   onRetry,
+  onEdit,
 }: {
   readonly status: OnboardingStatusResponse;
   readonly outcome: {
@@ -290,7 +325,10 @@ function CompletedView({
     readonly message: string | null;
   } | null;
   readonly busy: boolean;
+  readonly editBusy: boolean;
+  readonly editError: string | null;
   readonly onRetry: () => Promise<void>;
+  readonly onEdit: () => Promise<void>;
 }) {
   const discovery = status.discoveryOutcome;
   const heading = (() => {
@@ -341,8 +379,22 @@ function CompletedView({
           {outcome.message}
         </p>
       ) : undefined}
+      {editError !== null ? (
+        <p className="onboarding-save-error" role="alert">
+          {editError}
+        </p>
+      ) : undefined}
       <div className="onboarding-actions">
         <div className="onboarding-actions-left">
+          <button
+            type="button"
+            className="button primary"
+            disabled={editBusy}
+            onClick={() => void onEdit()}
+            data-testid="onboarding-completed-edit"
+          >
+            {editBusy ? 'Starting edit…' : 'Edit search setup'}
+          </button>
           {allowRetry ? (
             <button
               type="button"
@@ -368,9 +420,16 @@ function CompletedView({
 interface WizardProps {
   readonly status: OnboardingStatusResponse;
   readonly onRefreshStatus: () => Promise<void>;
+  readonly editingExistingCompletion?: boolean;
 }
 
-function Wizard({ status, onRefreshStatus }: WizardProps) {
+function Wizard({
+  status,
+  onRefreshStatus,
+  editingExistingCompletion = false,
+}: WizardProps) {
+  const navigate = useNavigate();
+
   const initialDraft = useMemo<OnboardingPreferencesDraft>(() => {
     if (isV2Snapshot(status.snapshot)) return status.snapshot.answers;
     if (status.prefilledDraft !== undefined) {
@@ -380,7 +439,9 @@ function Wizard({ status, onRefreshStatus }: WizardProps) {
   }, [status]);
 
   const initialReviewItems = useMemo<readonly OnboardingReviewItem[]>(() => {
-    if (isV2Snapshot(status.snapshot)) return status.snapshot.reviewItems;
+    if (isV2Snapshot(status.snapshot)) {
+      return status.snapshot.reviewItems as readonly OnboardingReviewItem[];
+    }
     return [];
   }, [status]);
 
@@ -413,6 +474,7 @@ function Wizard({ status, onRefreshStatus }: WizardProps) {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [completionResult, setCompletionResult] =
     useState<CompletionResult | null>(null);
+  const [saveLeaveBusy, setSaveLeaveBusy] = useState(false);
   const inFlightRef = useRef(false);
 
   const snapshot = useMemo<OnboardingProgressSnapshot>(
@@ -441,8 +503,9 @@ function Wizard({ status, onRefreshStatus }: WizardProps) {
         await api.saveOnboardingProgress(destination);
         return { ok: true, value: true };
       } catch (error) {
-        setSaveError(safeSaveMessage(error));
-        return { ok: false, error: safeSaveMessage(error) };
+        const message = safeSaveMessage(error);
+        setSaveError(message);
+        return { ok: false, error: message };
       } finally {
         setSaving(false);
       }
@@ -597,22 +660,62 @@ function Wizard({ status, onRefreshStatus }: WizardProps) {
     }
   }, [normalizedPlan, onRefreshStatus, reviewItems, validatedPreferences]);
 
-  const handleCancel = useCallback(() => {
+  /**
+   * Save and leave — persists the current snapshot then navigates
+   * away. On a save failure the user stays on the wizard with all
+   * values preserved; no edit-end is called and no navigation occurs.
+   */
+  const handleSaveAndLeave = useCallback(() => {
     void (async () => {
-      await saveDestination(snapshot);
-      // Preserve progress for resume; do NOT call destructive reset.
-      await api.endOnboardingEdit(true);
-      await onRefreshStatus();
+      if (saveLeaveBusy) return;
+      setSaveLeaveBusy(true);
+      try {
+        const saved = await saveDestination(snapshot);
+        if (!saved.ok) {
+          // Stay on the wizard; saveError is already set.
+          return;
+        }
+        // Preserve progress and end the editing session so a later
+        // visit resumes the saved state.
+        try {
+          await api.endOnboardingEdit(true);
+        } catch {
+          // best effort; navigation still leaves the wizard intact.
+        }
+        await onRefreshStatus();
+        // navigate is synchronous in react-router v6; the void operator
+        // signals that the return value (if any) is intentionally
+        // discarded.
+        void navigate('/jobs', { replace: true });
+      } finally {
+        setSaveLeaveBusy(false);
+      }
     })();
-  }, [saveDestination, snapshot, onRefreshStatus]);
+  }, [navigate, onRefreshStatus, saveDestination, saveLeaveBusy, snapshot]);
 
-  const handleReset = useCallback(() => {
+  /**
+   * Discard current edit — clears only the resumable edit progress,
+   * keeps the completion marker, and refreshes status. No save is
+   * performed first; the destructive reset endpoint is never called
+   * from the ordinary wizard footer.
+   */
+  const handleDiscardEdit = useCallback(() => {
     void (async () => {
-      await saveDestination(snapshot);
-      await api.resetOnboardingProgress();
+      // Calling endOnboardingEdit with keepProgress=false clears the
+      // snapshot but preserves the completion marker.
+      try {
+        await api.endOnboardingEdit(false);
+      } catch (error) {
+        setSaveError(
+          error instanceof Error
+            ? error.message
+            : 'Could not discard the current edit.',
+        );
+        return;
+      }
       await onRefreshStatus();
     })();
-  }, [saveDestination, snapshot, onRefreshStatus]);
+  }, [onRefreshStatus]);
 
   const plan = normalizedPlan?.plan;
 
@@ -629,6 +732,13 @@ function Wizard({ status, onRefreshStatus }: WizardProps) {
           </li>
         </ol>
       </nav>
+
+      {editingExistingCompletion ? (
+        <p className="onboarding-footnote" role="status">
+          Editing your saved search setup. Confirming replaces the saved search
+          scope with the new values.
+        </p>
+      ) : undefined}
 
       {step === 'preferences' ? (
         <PreferencesStep
@@ -726,22 +836,24 @@ function Wizard({ status, onRefreshStatus }: WizardProps) {
           <button
             type="button"
             className="button secondary"
-            disabled={saving || confirming}
+            disabled={saving || confirming || saveLeaveBusy}
             onClick={() => {
-              handleCancel();
+              handleSaveAndLeave();
             }}
+            data-testid="onboarding-save-and-leave"
           >
-            Save and leave
+            {saveLeaveBusy ? 'Saving…' : 'Save and leave'}
           </button>
           <button
             type="button"
             className="button secondary"
-            disabled={saving || confirming}
+            disabled={saving || confirming || saveLeaveBusy}
             onClick={() => {
-              handleReset();
+              handleDiscardEdit();
             }}
+            data-testid="onboarding-discard-edit"
           >
-            Reset onboarding
+            Discard current edit
           </button>
         </div>
       </div>

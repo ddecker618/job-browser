@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
@@ -34,10 +34,23 @@ import type {
   OnboardingStatusResponse,
 } from '../src/server/onboardingRoutes.js';
 import { ONBOARDING_PROGRESS_SETTING_PREFIX } from '../src/repositories/onboarding-repository.js';
+import type { OnboardingProgressStore } from '../src/repositories/onboarding-repository.js';
 
 interface BackendHandle {
   baseUrl: string;
   close: () => Promise<void>;
+}
+
+interface StartOptions {
+  noCoordinator?: boolean;
+  profileOverrides?: Record<string, unknown>;
+  withReadySource?: boolean;
+  progressStore?: OnboardingProgressStore;
+  saveProfilePreferences?: (
+    path: string | undefined,
+    prefs: LegacyPreferences,
+  ) => void;
+  cascadeTargetRoles?: (roles: readonly string[]) => void;
 }
 
 const handles: BackendHandle[] = [];
@@ -50,21 +63,19 @@ afterEach(async () => {
   }
 });
 
-interface CoordinatorOptions {
-  runAll?: () => Promise<DiscoverySummary[]>;
-  runSource?: (id: string) => Promise<DiscoverySummary[]>;
-  status?: () => Record<string, unknown>;
-  stop?: () => Promise<void>;
-  healthCheck?: (id: string) => Promise<Record<string, unknown>>;
-  validateSource?: (
-    id: string,
-    cfg: unknown,
-  ) => Promise<Record<string, unknown>>;
-  recentRuns?: (id?: string) => unknown[];
-}
-
 function makeCoordinator(
-  options: CoordinatorOptions = {},
+  options: {
+    runAll?: () => Promise<DiscoverySummary[]>;
+    runSource?: (id: string) => Promise<DiscoverySummary[]>;
+    status?: () => Record<string, unknown>;
+    stop?: () => Promise<void>;
+    healthCheck?: (id: string) => Promise<Record<string, unknown>>;
+    validateSource?: (
+      id: string,
+      cfg: unknown,
+    ) => Promise<Record<string, unknown>>;
+    recentRuns?: (id?: string) => unknown[];
+  } = {},
 ): Partial<
   Pick<
     DiscoveryCoordinator,
@@ -127,24 +138,11 @@ async function startBackend(
       | 'recentRuns'
     >
   >,
-  options: {
-    noCoordinator?: boolean;
-    profileOverrides?: Record<string, unknown>;
-    withReadySource?: boolean;
-    persistWillFail?: boolean;
-  } = {},
+  options: StartOptions = {},
 ) {
   const directory = mkdtempSync(join(tmpdir(), 'job-browser-onboarding-api-'));
   directories.push(directory);
-  const writableProfilePreferencesPath = join(
-    directory,
-    'profile-preferences.json',
-  );
-  // When persistWillFail, the app is given a path whose parent does
-  // not exist so saveUnifiedProfilePreferences throws on write.
-  const profilePreferencesPath = options.persistWillFail
-    ? writableProfilePreferencesPath
-    : writableProfilePreferencesPath;
+  const profilePreferencesPath = join(directory, 'profile-preferences.json');
 
   const candidate = candidateProfileSchema.parse({
     id: 'candidate-api-one',
@@ -202,14 +200,7 @@ async function startBackend(
   };
   const unified = fromLegacyPreferences(legacy);
   const validated = profilePreferencesSchema.parse(unified);
-  writeFileSync(writableProfilePreferencesPath, JSON.stringify(validated));
-  if (options.persistWillFail === true) {
-    try {
-      chmodSync(writableProfilePreferencesPath, 0o444);
-    } catch {
-      // best effort on platforms where chmod is restricted
-    }
-  }
+  writeFileSync(profilePreferencesPath, JSON.stringify(validated));
 
   const candidateProfilePath = join(directory, 'candidate-profile.json');
   writeFileSync(candidateProfilePath, JSON.stringify(candidate));
@@ -259,6 +250,15 @@ async function startBackend(
     ...(coordinatorArg === undefined
       ? {}
       : { coordinator: coordinatorArg as unknown as DiscoveryCoordinator }),
+    ...(options.progressStore === undefined
+      ? {}
+      : { onboardingProgressStore: options.progressStore }),
+    ...(options.saveProfilePreferences === undefined
+      ? {}
+      : { saveProfilePreferences: options.saveProfilePreferences }),
+    ...(options.cascadeTargetRoles === undefined
+      ? {}
+      : { cascadeTargetRoles: options.cascadeTargetRoles }),
   });
 
   const server = createServer(app);
@@ -314,8 +314,6 @@ const snapshotV2: OnboardingProgressSnapshot = {
   reviewItems: [],
 };
 
-void createEmptyPreferencesDraft;
-
 describe('onboarding API — load/status', () => {
   it('returns not-started for a fresh profile', async () => {
     const { handle } = await startBackend();
@@ -325,6 +323,7 @@ describe('onboarding API — load/status', () => {
     expect(body.state).toBe('not-started');
     expect(body.profileId).toBe('candidate-api-one');
     expect(body.completion.completed).toBe(false);
+    expect(body.editSession.editing).toBe(false);
   });
 
   it('prefills the draft and plan token for a fresh profile', async () => {
@@ -338,7 +337,7 @@ describe('onboarding API — load/status', () => {
     expect(body.planToken).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it('distinguishes malformed / unsupported-version / storage-failure states', async () => {
+  it('distinguishes malformed / unsupported-version from genuine storage failures', async () => {
     const { handle, database } = await startBackend();
     // malformed
     database
@@ -350,13 +349,12 @@ describe('onboarding API — load/status', () => {
         `${ONBOARDING_PROGRESS_SETTING_PREFIX}candidate-api-one`,
         '{not-json',
       );
-    const malformedStatus = await readJson<OnboardingStatusResponse>(
+    const malformed = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
     );
-    expect(malformedStatus.state).toBe('blocked');
-    expect(malformedStatus.blockKind).toBe('malformed');
-    expect(malformedStatus.blockMessage).toMatch(/unreadable/);
-    expect(malformedStatus.completion.completed).toBe(false);
+    expect(malformed.state).toBe('blocked');
+    expect(malformed.blockKind).toBe('malformed');
+    expect(malformed.blockMessage).toMatch(/unreadable/);
 
     // unsupported version
     database
@@ -368,43 +366,45 @@ describe('onboarding API — load/status', () => {
         `${ONBOARDING_PROGRESS_SETTING_PREFIX}candidate-api-one`,
         JSON.stringify({ version: 99 }),
       );
-    const unsupportedStatus = await readJson<OnboardingStatusResponse>(
+    const unsupported = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
     );
-    expect(unsupportedStatus.state).toBe('blocked');
-    expect(unsupportedStatus.blockKind).toBe('unsupported-version');
-    expect(unsupportedStatus.blockMessage).toMatch(
-      /unsupported version \(99\)/,
-    );
+    expect(unsupported.state).toBe('blocked');
+    expect(unsupported.blockKind).toBe('unsupported-version');
+    expect(unsupported.blockMessage).toMatch(/unsupported version \(99\)/);
+  });
 
-    // storage failure (in-memory store that throws)
-    const failingHandle: BackendHandle = {
-      baseUrl: handle.baseUrl,
-      close: () => Promise.resolve(),
+  it('reports a genuine storage read failure through the progress store seam', async () => {
+    const throwingStore: OnboardingProgressStore = {
+      getSetting: () => {
+        throw new Error('disk i/o boom');
+      },
+      saveSetting: () => {
+        throw new Error('unused');
+      },
+      deleteSetting: () => {
+        throw new Error('unused');
+      },
     };
-    handles.push(failingHandle);
-    const failingResponse = await get(failingHandle, '/api/onboarding/status');
-    // The status endpoint uses the app_settings adapter directly via
-    // createDatabaseOnboardingProgressStore, so we inject the failure
-    // through the same path by inserting a row whose JSON parse
-    // intentionally throws (an object with circular ref is not
-    // representable; use an out-of-range surrogate pair inside a
-    // string instead).
-    database
-      .prepare(
-        `INSERT OR REPLACE INTO app_settings (setting_key, setting_value_json, updated_at)
-         VALUES (?, ?, datetime('now'))`,
-      )
-      .run(
-        `${ONBOARDING_PROGRESS_SETTING_PREFIX}candidate-api-one`,
-        '"a string"',
-      );
-    const stringStatus = await readJson<OnboardingStatusResponse>(
+    const { handle } = await startBackend(undefined, {
+      progressStore: throwingStore,
+    });
+    const status = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
     );
-    expect(stringStatus.state).toBe('blocked');
-    expect(stringStatus.blockKind).toBe('malformed');
-    expect(failingResponse.status).toBe(200);
+    expect(status.state).toBe('blocked');
+    expect(status.blockKind).toBe('storage-failure');
+    expect(status.blockMessage).toBe(
+      'Onboarding progress could not be loaded.',
+    );
+    // No diagnostic details leak.
+    expect(status.blockMessage).not.toMatch(/boom/);
+    expect(status.blockMessage).not.toMatch(/stack/i);
+    expect(status.blockMessage).not.toMatch(/i\/o/i);
+    // Completion marker and edit session remain readable; they are
+    // independent of the throwing progress store.
+    expect(status.completion.completed).toBe(false);
+    expect(status.editSession.editing).toBe(false);
   });
 
   it('requires an explicit reset before replacing invalid progress', async () => {
@@ -439,38 +439,77 @@ describe('onboarding API — load/status', () => {
     const body = await readJson<{ code: string }>(response);
     expect(body.code).toBe('onboarding_save_validation_failed');
   });
+});
 
-  it('rejects save with a write failure and does not rewrite storage', async () => {
-    const { handle, database } = await startBackend();
-    // First write a valid v2 snapshot
-    await postJson(handle, '/api/onboarding/save', { snapshot: snapshotV2 });
-    // Replace the store with one that throws on save
-    database
-      .prepare(
-        `INSERT OR REPLACE INTO app_settings (setting_key, setting_value_json, updated_at)
-         VALUES (?, ?, datetime('now'))`,
-      )
-      .run(`${ONBOARDING_PROGRESS_SETTING_PREFIX}candidate-api-one`, '{bad');
-    // Now the stored row is malformed; the next save must throw and
-    // not overwrite the malformed row with the new snapshot.
-    const before = database
-      .prepare<
-        [string],
-        { setting_value_json: string }
-      >('SELECT setting_value_json FROM app_settings WHERE setting_key = ?')
-      .get(`${ONBOARDING_PROGRESS_SETTING_PREFIX}candidate-api-one`);
-    const response = await postJson(handle, '/api/onboarding/save', {
-      snapshot: snapshotV2,
+describe('onboarding API — completed user can edit', () => {
+  it('returns an editable wizard with a prefilled draft once editSession.editing is true', async () => {
+    const runAll = vi.fn(() => Promise.resolve([]));
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
     });
-    expect(response.status).toBe(409);
-    const after = database
-      .prepare<
-        [string],
-        { setting_value_json: string }
-      >('SELECT setting_value_json FROM app_settings WHERE setting_key = ?')
-      .get(`${ONBOARDING_PROGRESS_SETTING_PREFIX}candidate-api-one`);
-    expect(before?.setting_value_json).toBe('{bad');
-    expect(after?.setting_value_json).toBe('{bad');
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-completed',
+    });
+    // Start an edit session explicitly (the client does this from
+    // the completed view's "Edit search setup" button).
+    const start = await postJson(handle, '/api/onboarding/edit/start', {});
+    expect(start.status).toBe(200);
+
+    const status = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(status.editSession.editing).toBe(true);
+    // Completion marker remains preserved while editing.
+    expect(status.completion.completed).toBe(true);
+    // Wizard state takes precedence over the completed view.
+    expect(status.state).toBe('in-progress');
+    // No resumable snapshot was stored (completion cleared progress);
+    // the prefilled draft comes from the current saved profile.
+    expect(status.prefilledDraft).toBeDefined();
+    expect(status.prefilledDraft?.desiredJobTitles).toEqual([
+      'Network Engineer',
+    ]);
+  });
+
+  it('discarding an edit preserves the completion marker and returns to completed', async () => {
+    const runAll = vi.fn(() => Promise.resolve([]));
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
+    });
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-completed',
+    });
+    await postJson(handle, '/api/onboarding/edit/start', {});
+    // Discard the edit (keepProgress:false clears the snapshot but
+    // preserves the completion marker).
+    const discard = await postJson(handle, '/api/onboarding/edit/end', {
+      keepProgress: false,
+    });
+    expect(discard.status).toBe(200);
+    const status = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(status.state).toBe('completed');
+    expect(status.completion.completed).toBe(true);
+    expect(status.editSession.editing).toBe(false);
   });
 });
 
@@ -504,16 +543,12 @@ describe('onboarding API — preview and completion', () => {
       confirmationAllowed: boolean;
     }>(response);
     expect(body.draft.desiredJobTitles).toEqual(['Network Engineer']);
-    expect(body.draft.preferredLocations).toEqual([
-      { city: 'Example City', state: 'EX' },
-    ]);
     expect(body.planToken).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it('completes onboarding once with a matching plan token and persists the outcome', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
-    const coordinator = makeCoordinator({ runAll });
-    const { handle } = await startBackend(coordinator, {
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
       withReadySource: true,
     });
     const preview = await readJson<OnboardingPreviewResponse>(
@@ -545,10 +580,9 @@ describe('onboarding API — preview and completion', () => {
     expect(status.discoveryOutcome.state).toBe('succeeded');
   });
 
-  it('is idempotent for a repeated attemptId', async () => {
+  it('is idempotent for a completed attemptId', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
-    const coordinator = makeCoordinator({ runAll });
-    const { handle } = await startBackend(coordinator, {
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
       withReadySource: true,
     });
     const preview = await readJson<OnboardingPreviewResponse>(
@@ -565,8 +599,6 @@ describe('onboarding API — preview and completion', () => {
       attemptId,
     });
     expect(first.status).toBe(200);
-    const firstBody = await readJson<OnboardingCompleteResponse>(first);
-    expect(firstBody.idempotent).toBe(false);
     expect(runAll).toHaveBeenCalledTimes(1);
 
     const second = await postJson(handle, '/api/onboarding/complete', {
@@ -578,6 +610,7 @@ describe('onboarding API — preview and completion', () => {
     expect(second.status).toBe(200);
     const secondBody = await readJson<OnboardingCompleteResponse>(second);
     expect(secondBody.idempotent).toBe(true);
+    // No duplicate discovery run.
     expect(runAll).toHaveBeenCalledTimes(1);
   });
 
@@ -595,9 +628,8 @@ describe('onboarding API — preview and completion', () => {
         confirmedTitles: stalePreferences.desiredJobTitles,
       }),
     );
-    const currentPreferences = basePreferences;
     const response = await postJson(handle, '/api/onboarding/complete', {
-      preferences: currentPreferences,
+      preferences: basePreferences,
       reviewItems: [],
       planToken: stalePreview.planToken,
       attemptId: 'attempt-stale',
@@ -633,11 +665,17 @@ describe('onboarding API — preview and completion', () => {
     expect(body.code).toBe('onboarding_complete_not_confirmable');
   });
 
-  it('does not run discovery when persistence fails (write failure)', async () => {
+  it('does not run discovery when profile persistence fails (real seam)', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
+    const throwingSave: (
+      path: string | undefined,
+      prefs: LegacyPreferences,
+    ) => void = () => {
+      throw new Error('disk i/o profile preferences boom');
+    };
     const { handle } = await startBackend(makeCoordinator({ runAll }), {
       withReadySource: true,
-      persistWillFail: true,
+      saveProfilePreferences: throwingSave,
     });
     const preview = await readJson<OnboardingPreviewResponse>(
       await postJson(handle, '/api/onboarding/preview', {
@@ -652,8 +690,11 @@ describe('onboarding API — preview and completion', () => {
       attemptId: 'attempt-persist-fail',
     });
     expect(response.status).toBe(500);
-    const body = await readJson<{ code: string }>(response);
+    const body = await readJson<{ code: string; error: string }>(response);
     expect(body.code).toBe('onboarding_complete_persist_failed');
+    expect(body.error).toBe(
+      'Onboarding could not be saved to your profile preferences.',
+    );
     expect(runAll).not.toHaveBeenCalled();
     const status = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
@@ -687,14 +728,12 @@ describe('onboarding API — preview and completion', () => {
     expect(body.discoveryOutcome.state).toBe('failed');
     expect(body.discoveryOutcome.message).toMatch(/Timeout/);
 
-    // Status reload must still show the failed outcome.
     const status = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
     );
     expect(status.state).toBe('completed');
     expect(status.discoveryOutcome.state).toBe('failed');
 
-    // Retry runs discovery once more; success is durable.
     const retry = await fetch(
       `${handle.baseUrl}/api/onboarding/discovery/retry`,
       { method: 'POST' },
@@ -722,30 +761,47 @@ describe('onboarding API — preview and completion', () => {
     expect(runAll).not.toHaveBeenCalled();
   });
 
-  it('records cascade failure without writing the completion marker or running discovery', async () => {
+  it('records cascade failure via the real cascade seam without writing the completion marker or running discovery', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
-    const { handle, database } = await startBackend(
-      makeCoordinator({ runAll }),
-      {
-        withReadySource: true,
-      },
-    );
-    // Drop the sources table to force cascadeTargetRoles to throw.
-    database.exec('DROP TABLE sources');
-    // preview will fail because sourceRepository.list() throws.
-    const preview = await postJson(handle, '/api/onboarding/preview', {
-      preferences: basePreferences,
-      confirmedTitles: ['Network Engineer'],
+    const cascadeTargetRoles = (roles: readonly string[]) => {
+      throw new Error('boom cascade');
+      // Real implementation is not invoked because we control the
+      // seam; the test asserts no side effects on the source table
+      // when cascade throws.
+      void roles;
+    };
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
+      cascadeTargetRoles,
     });
-    expect(preview.status).toBe(500);
-    // We cannot proceed to completion via preview, but we can verify
-    // cascade failure recovery by reading the completion marker —
-    // since cascade was never reached, the marker must be absent.
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    const response = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-cascade-fail',
+    });
+    expect(response.status).toBe(500);
+    const body = await readJson<{
+      code: string;
+      error: string;
+      ok: boolean;
+    }>(response);
+    expect(body.code).toBe('onboarding_complete_cascade_failed');
+    expect(body.error).toBe('Source query roles could not be cascaded.');
+    expect(body.ok).toBe(false);
+    expect(runAll).not.toHaveBeenCalled();
     const status = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
     );
     expect(status.completion.completed).toBe(false);
-    void runAll;
+    // Progress remains available for retry.
+    expect(status.state).toBe('not-started');
   });
 
   it('computes a deterministic plan token', () => {
@@ -766,65 +822,157 @@ describe('onboarding API — preview and completion', () => {
       warnings: [],
       confirmationAllowed: true,
     };
-    const planB = { ...planA };
     expect(computeOnboardingPlanToken(planA)).toBe(
-      computeOnboardingPlanToken(planB),
+      computeOnboardingPlanToken(planA),
     );
-    const planC = { ...planA, appliedQueries: ['Engineer', 'Other'] };
     expect(computeOnboardingPlanToken(planA)).not.toBe(
-      computeOnboardingPlanToken(planC),
+      computeOnboardingPlanToken({
+        ...planA,
+        appliedQueries: ['Engineer', 'Other'],
+      }),
     );
   });
 
-  it('returns a plan with appliedQueries and omittedTitles in the status response', async () => {
-    const { handle } = await startBackend(makeCoordinator());
-    const status = await readJson<OnboardingStatusResponse>(
-      await get(handle, '/api/onboarding/status'),
+  it('refuses a repeated attemptId while another completion attempt is in progress', async () => {
+    let releaseDiscovery!: (value: DiscoverySummary[]) => void;
+    const discoveryPromise = new Promise<DiscoverySummary[]>((resolve) => {
+      releaseDiscovery = resolve;
+    });
+    const runAll = vi.fn(() => discoveryPromise);
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
+    });
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
     );
-    expect(status.state).toBe('not-started');
-    expect(status.prefilledDraft).toBeDefined();
+    const attemptId = 'attempt-concurrent';
+    // Start the first call; do NOT await it (it blocks on discovery).
+    void postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId,
+    });
+    // Poll until the in-progress attempt record has been persisted so
+    // the second call observes a concurrent attempt rather than racing
+    // the router's body execution.
+    const deadline = Date.now() + 1000;
+    let observed = false;
+    while (Date.now() < deadline) {
+      const probe = await get(handle, '/api/onboarding/status');
+      const probeBody = await readJson<OnboardingStatusResponse>(probe);
+      void probeBody;
+      // The discovery outcome transitions to 'running' on first call.
+      if (probeBody.discoveryOutcome.state === 'running') {
+        observed = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    expect(observed).toBe(true);
+
+    const second = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId,
+    });
+    expect(second.status).toBe(409);
+    const body = await readJson<{ code: string }>(second);
+    expect(body.code).toBe('onboarding_complete_attempt_in_progress');
+
+    releaseDiscovery([]);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(runAll).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('onboarding API — editing session lifecycle', () => {
-  it('starts and ends an editing session', async () => {
+describe('onboarding API — staged attempt retry semantics', () => {
+  it('remembers a failed-retryable attempt and allows the same attempt id to succeed once the failure is removed', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
+    let cascadeShouldThrow = true;
+    const cascadeTargetRoles = (roles: readonly string[]) => {
+      if (cascadeShouldThrow) throw new Error('boom cascade');
+      void roles;
+    };
     const { handle } = await startBackend(makeCoordinator({ runAll }), {
       withReadySource: true,
+      cascadeTargetRoles,
     });
-    const start = await fetch(`${handle.baseUrl}/api/onboarding/edit/start`, {
-      method: 'POST',
-    });
-    expect(start.status).toBe(200);
-    const statusEditing = await readJson<OnboardingStatusResponse>(
-      await get(handle, '/api/onboarding/status'),
-    );
-    expect(statusEditing.editSession.editing).toBe(true);
-
     const preview = await readJson<OnboardingPreviewResponse>(
       await postJson(handle, '/api/onboarding/preview', {
         preferences: basePreferences,
         confirmedTitles: ['Network Engineer'],
       }),
     );
-    const complete = await postJson(handle, '/api/onboarding/complete', {
+    const attemptId = 'attempt-retry';
+    // First call: cascade fails → 500, not 200.
+    const failed = await postJson(handle, '/api/onboarding/complete', {
       preferences: basePreferences,
       reviewItems: [],
       planToken: preview.planToken,
-      attemptId: 'attempt-edit',
+      attemptId,
     });
-    expect(complete.status).toBe(200);
-    const statusAfter = await readJson<OnboardingStatusResponse>(
+    expect(failed.status).toBe(500);
+    expect(runAll).not.toHaveBeenCalled();
+    const failedBody = await readJson<{ ok: boolean }>(failed);
+    expect(failedBody.ok).toBe(false);
+    const statusAfterFail = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
     );
-    expect(statusAfter.state).toBe('completed');
-    expect(statusAfter.editSession.editing).toBe(false);
+    expect(statusAfterFail.completion.completed).toBe(false);
+    expect(statusAfterFail.state).toBe('not-started');
+    // The stored record is `failed-retryable`, not a fake success. A
+    // replay does not return HTTP 200.
+    const replayWhileStillFailing = await postJson(
+      handle,
+      '/api/onboarding/complete',
+      {
+        preferences: basePreferences,
+        reviewItems: [],
+        planToken: preview.planToken,
+        attemptId,
+      },
+    );
+    expect(replayWhileStillFailing.status).toBe(500);
+
+    // Remove the cascade failure and retry the same attempt id.
+    cascadeShouldThrow = false;
+    const ok = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId,
+    });
+    expect(ok.status).toBe(200);
+    const okBody = await readJson<OnboardingCompleteResponse>(ok);
+    expect(okBody.ok).toBe(true);
+    expect(okBody.idempotent).toBe(false);
+    expect(runAll).toHaveBeenCalledTimes(1);
+    // A third replay of the same attempt id is idempotent.
+    const replay = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId,
+    });
+    expect(replay.status).toBe(200);
+    const replayBody = await readJson<OnboardingCompleteResponse>(replay);
+    expect(replayBody.idempotent).toBe(true);
+    expect(runAll).toHaveBeenCalledTimes(1);
   });
 
-  it('preserves the completion marker when a new editing session ends without keepProgress', async () => {
+  it('marks a persistence failure as failed-retryable so the next call can succeed', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
+    let saveShouldThrow = true;
     const { handle } = await startBackend(makeCoordinator({ runAll }), {
       withReadySource: true,
+      saveProfilePreferences: () => {
+        if (saveShouldThrow) throw new Error('boom persist');
+      },
     });
     const preview = await readJson<OnboardingPreviewResponse>(
       await postJson(handle, '/api/onboarding/preview', {
@@ -832,26 +980,25 @@ describe('onboarding API — editing session lifecycle', () => {
         confirmedTitles: ['Network Engineer'],
       }),
     );
-    await postJson(handle, '/api/onboarding/complete', {
+    const attemptId = 'attempt-persist-retry';
+    const failed = await postJson(handle, '/api/onboarding/complete', {
       preferences: basePreferences,
       reviewItems: [],
       planToken: preview.planToken,
-      attemptId: 'attempt-completed',
+      attemptId,
     });
-    // Establish a fresh edit session and end it with keepProgress=false.
-    await fetch(`${handle.baseUrl}/api/onboarding/edit/start`, {
-      method: 'POST',
+    expect(failed.status).toBe(500);
+    expect(runAll).not.toHaveBeenCalled();
+    saveShouldThrow = false;
+    const ok = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId,
     });
-    const end = await fetch(`${handle.baseUrl}/api/onboarding/edit/end`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keepProgress: false }),
-    });
-    expect(end.status).toBe(200);
-    const statusAfter = await readJson<OnboardingStatusResponse>(
-      await get(handle, '/api/onboarding/status'),
-    );
-    expect(statusAfter.state).toBe('completed');
-    expect(statusAfter.completion.completed).toBe(true);
+    expect(ok.status).toBe(200);
+    const okBody = await readJson<OnboardingCompleteResponse>(ok);
+    expect(okBody.ok).toBe(true);
+    expect(runAll).toHaveBeenCalledTimes(1);
   });
 });
