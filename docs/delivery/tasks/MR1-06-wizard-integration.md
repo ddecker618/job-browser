@@ -10,15 +10,19 @@
 
 - **Implementation complete** — claimed by OpenCode 2026-09-24
   (after Codex accepted MR1-05).
-- **In Review** awaiting Codex acceptance; **not** self-approved as
-  Done.
-- Validated: typecheck clean; `tests/onboarding-api.test.ts` 10/10
-  PASS; `tests/onboarding-flow.test.tsx` 11/11 PASS; combined
-  onboarding focused suite 185/185 PASS (was 164 before MR1-06;
-  +21 new tests); `npm run verify` 1790/1790 PASS across 179 files
-  (was 1769/1769 across 177); `npm run privacy:check` 11/11 PASS;
-  `npm run nlp:security-audit` 3/3 PASS; `git diff --check` clean;
-  `npm run format:check` clean; `npm run lint` clean.
+- **Correction pass complete** on 2026-09-24 — OpenCode applied the
+  Codex review findings before re-review.
+- **In Review** awaiting Codex re-acceptance; **not** self-approved
+  as Done.
+- Validated: typecheck clean; `tests/onboarding-api.test.ts` 20/20
+  PASS; `tests/onboarding-flow.test.tsx` 13/13 PASS; combined
+  onboarding focused suite **197/197 PASS** across 7 files (was 164
+  before MR1-06; **+33** new tests); `npm run verify`
+  **1802/1802 PASS** across 179 files (was 1769/1769 across 177
+  before MR1-06; **+33** tests, same file count); `npm run
+privacy:check` 11/11 PASS; `npm run nlp:security-audit` 3/3 PASS;
+  `git diff --check` clean; `npm run format:check` clean;
+  `npm run lint` clean.
 
 ## Outcome
 

@@ -17,10 +17,11 @@ guided preferences step, MR1-03 review/confirmation screen,
 MR1-04 persist-and-resume progress through existing profile services,
 and MR1-05 bounded search/source-plan preview are all **Done**
 (accepted by Codex). MR1-06 (connect the wizard to saved preferences
-and real discovery) is **In Review**; MR1-07 (validate the installed
-onboarding and first-user experience) remains not started.
-Onboarding remains **Not shipped**; the 1.1.5 package version and
-installer are unchanged. See
+and real discovery) is **In Review**; the implementation plus a
+Codex review correction pass are complete and waiting for re-review.
+MR1-07 (validate the installed onboarding and first-user
+experience) remains not started. Onboarding remains **Not shipped**;
+the 1.1.5 package version and installer are unchanged. See
 [`docs/delivery/tasks/MR1-05-search-plan.md`](delivery/tasks/MR1-05-search-plan.md)
 and
 [`docs/delivery/tasks/MR1-06-wizard-integration.md`](delivery/tasks/MR1-06-wizard-integration.md)

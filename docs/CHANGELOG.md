@@ -2,6 +2,83 @@
 
 ## [Unreleased]
 
+### Onboarding wizard integration correction pass — MR1-06 (In Review, NOT SHIPPED)
+
+- The plan preview is now rebuilt from the current draft via the
+  authoritative `POST /api/onboarding/preview` endpoint. The server
+  computes a deterministic SHA-256 `planToken` (canonical
+  `appliedQueries`, `omittedTitles`, source classifications,
+  `preferredLocations`, radii, `remotePreference`, counts,
+  `confirmationAllowed`); completion compares the token and returns
+  409 + refreshed plan on mismatch; stale client previews cannot
+  authorize completion. Credentials are resolved through
+  `credentialResolver.status` instead of being fabricated; providers
+  without a reliable status are reported as
+  `{ configured: false, available: false }`. No secrets, raw
+  exceptions, stack traces, local paths, or secret-bearing URLs are
+  ever serialized.
+- Profile-derived `OnboardingPreferencesDraft` via
+  `POST /api/onboarding/draft-from-profile` preserves the existing
+  titles, locations, radii, remote preference, employment types, and
+  desired salary; the deferred salary question remains hidden and
+  null salary preserves an existing stored salary.
+- Transitions persist the exact destination snapshot before
+  advancing (Continue, Back, step changes, intentional exit). A save
+  failure leaves the user on the current screen, preserves all
+  values, and surfaces a safe retryable error.
+- `Cancel and leave` saves valid progress via
+  `endOnboardingEdit(true)` and never calls the destructive reset
+  endpoint; existing completion markers are preserved when a later
+  editing session ends with `keepProgress:false`. Distinct blocked
+  screens for malformed/unsupported-version/storage-failure with
+  Retry+Leave (no destructive reset) for the storage-failure kind.
+- Confirmation ordering is now: validate → rebuild + compare
+  `planToken` → verify `confirmationAllowed` → persist profile
+  preferences and `sourceQueryRoles` → cascade executable queries into
+  source rows → write the completion marker → clear progress + edit
+  session → invoke `coordinator.runAll()` exactly once. Cascade failure
+  returns a retryable `onboarding_complete_cascade_failed` without
+  writing the completion marker or running discovery. Completion
+  finalization failure is reported as `onboarding_complete_finalize_failed`.
+- Completion is idempotent via a client-generated `attemptId`
+  persisted as `onboardingAttempt:<profileId>:<attemptId>`. Repeated
+  calls return the stored outcome without rewriting, cascading, or
+  re-running discovery. Concurrent discovery retry is blocked with
+  409 `onboarding_retry_already_running`.
+- A durable discovery outcome is persisted as
+  `app_settings.onboardingDiscoveryOutcome:<profileId>` with state
+  `not-started` | `running` | `succeeded` | `failed` | `unavailable` and
+  is returned through `/api/onboarding/status`. CompletedView renders
+  truthful wording for each state after refresh.
+- Visible entry points added: `Start onboarding`/`Review search setup`
+  on the Dashboard `FirstRunPanel` and the `SearchProfilePage`
+  header, plus a new `Search Setup` nav entry.
+- Tests genuinely exercise malformed/unsupported-version/
+  storage-failure states, strict request validation, persistence
+  write failure (read-only profile-preferences file),
+  `SourceRepository` cascade failure, completion-state failure,
+  missing provider credentials, zero ready sources, stale plan
+  token, repeated completion with the same `attemptId`, concurrent
+  discovery retry, discovery failure + status reload, completed user
+  starting and canceling an edit, and visible UI entry points.
+- Validated: typecheck clean; `tests/onboarding-api.test.ts` 20/20
+  PASS; `tests/onboarding-flow.test.tsx` 13/13 PASS; combined
+  onboarding focused suite **197/197 PASS** across 7 files (was 164
+  before MR1-06; **+33** new tests); `npm run verify`
+  **1802/1802 PASS** across 179 files (was 1769/1769 across 177
+  before MR1-06); `npm run privacy:check` 11/11 PASS;
+  `npm run nlp:security-audit` 3/3 PASS; `git diff --check` clean;
+  `npm run format:check` clean; `npm run lint` clean.
+- Browser, narrow-window, and 200% zoom checks remain explicit
+  acceptance items for **MR1-07** and are not described as passed.
+- Previous MR1-06 claims that completion was idempotent, Cancel
+  preserved progress, all blocked states were genuinely tested,
+  existing users had a visible entry point, and visual checks passed
+  have been corrected.
+- Onboarding remains **Not shipped**. No push, no version bump, no
+  installer build, no production-data access. Package version remains
+  **1.1.5**.
+
 ### Onboarding wizard connection — MR1-06 (In Review, NOT SHIPPED)
 
 - New narrow versioned onboarding API mounted at `/api/onboarding`:

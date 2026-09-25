@@ -6,41 +6,42 @@
 
 ## Current verified baseline (recorded evidence — 2026-09-24)
 
-- **HEAD:** `2656795` (`fix: make onboarding search plan preview
-  explicit and safe`) on top of the accepted foundation commits
-  `877c31f` (`feat: add onboarding foundation through progress
-  persistence`), `c00c224` (`fix: preserve onboarding resume failure
-  states`), `0120b4f` (`docs: accept MR1-04 onboarding persistence`),
-  and the MR1-05 implementation commit `f3a1ec2` (`feat: add
-  onboarding search plan preview`). MR1-04 was **accepted by the
-  Codex reviewer on 2026-09-24** and moved to **Done**; MR1-05 was
-  **accepted by the Codex reviewer on 2026-09-24** (independent
-  reviewer validation: TypeScript PASS, 5-file onboarding focused
-  suite **164/164 PASS**, explicit applied/omitted query separation,
-  safe generic failed-source reason, detached `preferredLocations`
-  snapshot, truthful plan-specific copy) and moved to **Done**. MR1-06
-  is the next authorized task and is **In Review** (claimed by
-  OpenCode 2026-09-24; implementation complete; awaiting Codex
-  re-review).
+- **HEAD:** `050651d` (`docs: record MR1-06 review boundary`) on top of
+  the accepted foundation commits `877c31f` (`feat: add onboarding
+  foundation through progress persistence`), `c00c224` (`fix:
+  preserve onboarding resume failure states`), `0120b4f` (`docs:
+  accept MR1-04 onboarding persistence`), the MR1-05 implementation
+  commit `f3a1ec2` (`feat: add onboarding search plan preview`), the
+  MR1-05 correction commit `2656795` (`fix: make onboarding search
+  plan preview explicit and safe`), and the MR1-06 implementation
+  commit `22c81e3` (`feat: add onboarding API and completion
+  boundary`). MR1-04 was **accepted by the Codex reviewer on
+  2026-09-24** and moved to **Done**; MR1-05 was **accepted by the
+  Codex reviewer on 2026-09-24** (independent reviewer validation:
+  TypeScript PASS, 5-file onboarding focused suite **164/164 PASS**)
+  and moved to **Done**. MR1-06 is the next authorized task and is
+  **In Review** (claimed by OpenCode 2026-09-24; implementation
+  complete; a Codex review correction pass is in progress).
 - **Working tree (as of 2026-09-24):** clean at the MR1-05
   implementation commit `f3a1ec2`. A Codex review correction pass is
   being applied on top of `f3a1ec2`; it will produce one additional
   local recoverable commit; no push, version bump, installer rebuild,
   or release claim is involved.
-- **Local main is ahead of the locally recorded `origin/main` by 8
+- **Local main is ahead of the locally recorded `origin/main` by 11
   commits** — `39e84c0` (P37 planning), `b453ae0` (P37 shadow
   implementation), `8281609` (1.1.5 release), `877c31f` (onboarding
   foundation), `c00c224` (resume-contract fix), `0120b4f` (MR1-04
-  acceptance docs), `f3a1ec2` (MR1-05 implementation), and `2656795`
-  (MR1-05 Codex review correction pass) — and **behind by 0**. The
-  first three commits are absent from the locally recorded
-  `origin/main` reference; the onboarding commits are local-only.
-  Current remote-server state was not checked. The locally recorded
-  `origin/main` reference is the 1.1.4 release commit `f05bee9`
-  (whose parent history includes the P36 commits `dbd0fdb` and
-  `b4e6256`). This handoff **cannot independently verify** the
-  GitHub server state — the count above comes from local
-  remote-tracking references only.
+  acceptance docs), `f3a1ec2` (MR1-05 implementation), `2656795`
+  (MR1-05 correction pass), `95e0586` (MR1-05 acceptance docs),
+  `22c81e3` (MR1-06 implementation), and `050651d` (MR1-06 docs
+  boundary) — and **behind by 0**. The first three commits are
+  absent from the locally recorded `origin/main` reference; the
+  onboarding commits are local-only. Current remote-server state was
+  not checked. The locally recorded `origin/main` reference is the
+  1.1.4 release commit `f05bee9` (whose parent history includes the
+  P36 commits `dbd0fdb` and `b4e6256`). This handoff **cannot
+  independently verify** the GitHub server state — the count above
+  comes from local remote-tracking references only.
 - **MR0-01 work (Done per the delivery board, committed at `877c31f`):**
   accepted by the Codex reviewer on 2026-09-18. Documentation-only
   changes — modified (tracked): `README.md`, `SESSION_HANDOFF.md`,
@@ -213,35 +214,64 @@
 - **MR1-06 — Connect the onboarding wizard to saved preferences and
    real discovery** is the next authorized task (claimed by OpenCode
    2026-09-24 after Codex accepted MR1-05; implementation complete
-   and moved to **Review**). The slice wires the accepted
+   and moved to **Review**; a Codex review correction pass is in
+   progress on top of `050651d`). The slice wires the accepted
    `PreferencesStep`, `ReviewStep`, and `SearchPlanStep` components
    into one working flow that prepares and starts a real Job Browser
    search through the existing `DiscoveryCoordinator`. A narrow
    versioned API is mounted at `/api/onboarding` (`GET /status`,
-   `POST /save`, `POST /reset`, `POST /complete`,
-   `POST /discovery/retry`); strict request validation through
-   `onboardingProgressSnapshotSchema`,
-   `onboardingValidatedPreferencesSchema`, and
+   `POST /preview`, `POST /draft-from-profile`, `POST /save`,
+   `POST /reset`, `POST /edit/start`, `POST /edit/end`,
+   `POST /complete`, `POST /discovery/retry`); strict request
+   validation through `onboardingProgressSnapshotSchema`,
+   `onboardingValidatedPreferencesSchema`, and the newly exported
    `onboardingReviewItemSchema`; safe client errors without raw
-   diagnostics; completion-marker persistence in
-   `app_settings.onboardingCompletion:<profileId>`. Confirmation
-   ordering: rebuild plan → persist profile → cascade
-   `sourceQueryRoles = plan.appliedQueries` → write completion marker
-   → clear progress → invoke `coordinator.runAll()` once. Persistence
-   failure never runs discovery, keeps draft and review state, and
-   surfaces a retryable error. Discovery failure keeps completion and
-   progress clearing, surfaces a bounded `discoveryError`, and
-   supports search-only retry through `/api/onboarding/discovery/retry`.
+   diagnostics; plan preview is always rebuilt from the current
+   draft via `POST /api/onboarding/preview` and returns a SHA-256
+   `planToken`; completion compares the `planToken` and rejects stale
+   plans with 409 + refreshed plan; credentials are resolved through
+   `credentialResolver.status` instead of being fabricated;
+   profile-derived `OnboardingPreferencesDraft` via
+   `POST /api/onboarding/draft-from-profile`; completion-marker
+   persistence in `app_settings.onboardingCompletion:<profileId>`.
+   Confirmation ordering: validate → rebuild+compare token →
+   confirmationAllowed → persist → cascade → completion marker →
+   clear progress → edit session → invoke `coordinator.runAll()`
+   once. Persistence failure never runs discovery, keeps draft and
+   review state, and surfaces a retryable error. Cascade failure
+   never writes the completion marker and returns a retryable
+   `onboarding_complete_cascade_failed`. Discovery failure keeps
+   completion and progress clearing, persists a bounded translated
+   `discoveryError`, and supports search-only retry through
+   `/api/onboarding/discovery/retry`. Completion is idempotent via a
+   client-generated `attemptId` stored as
+   `onboardingAttempt:<profileId>:<attemptId>` with the stored
+   outcome that a repeated request returns without rewriting,
+   cascading, or re-running discovery. A durable discovery outcome
+   is persisted as
+   `app_settings.onboardingDiscoveryOutcome:<profileId>` with state
+   `not-started` \| `running` \| `succeeded` \| `failed` \| `unavailable`
+   and is returned through `/api/onboarding/status` so the
+   CompletedView renders truthful wording after reload. Concurrent
+   discovery retry is blocked with 409 `onboarding_retry_already_running`.
    The new `src/client/pages/OnboardingPage.tsx` parent wizard wires
    the accepted child components with a `/onboarding` route in
-   `App.tsx`; no forced redirect; distinct blocked screens for
-   malformed / unsupported-version / storage-failure; explicit reset;
-   `Cancel and leave` saves progress and clears the completion
-   marker. Validated: typecheck clean; `tests/onboarding-api.test.ts`
-   10/10 PASS; `tests/onboarding-flow.test.tsx` 11/11 PASS; combined
-   onboarding focused suite 185/185 PASS (was 164; +21);
-   `npm run verify` 1790/1790 PASS across 179 files (was 1769/1769
-   across 177); `npm run privacy:check` 11/11 PASS;
+   `App.tsx`; visible `Start onboarding`/`Review search setup` entry
+   points are exposed through `FirstRunPanel`, `SearchProfilePage`,
+   and a `Search Setup` nav entry; no forced redirect; distinct
+   blocked screens for malformed/unsupported-version/storage-failure
+   with Retry+Leave for storage-failure (no destructive reset);
+   transitions persist the destination snapshot before advancing;
+   `Cancel and leave` saves valid progress via `endOnboardingEdit(true)`
+   and never calls the destructive reset endpoint; existing completion
+   markers are preserved when a later editing session ends with
+   `keepProgress:false`. Validated: typecheck clean;
+   `tests/onboarding-api.test.ts` 20/20 PASS;
+   `tests/onboarding-flow.test.tsx` 13/13 PASS; combined onboarding
+   focused suite **197/197 PASS** across 7 files (was 164 before
+   MR1-06; **+33** new tests); `npm run verify` **1802/1802 PASS**
+   across 179 files (was 1769/1769 across 177 before MR1-06; **+33**
+   tests, same file count); `npm run privacy:check` 11/11 PASS;
    `npm run nlp:security-audit` 3/3 PASS; `git diff --check` clean.
    Browser, narrow-window and 200% zoom checks remain explicit
    acceptance items for **MR1-07** and were **not** performed or
@@ -342,20 +372,33 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 ## Next action
 
 1. **MR1-06 is in Review for Codex** (claimed by OpenCode 2026-09-24
-   after Codex accepted MR1-05; implementation complete; awaiting
-   Codex re-review). Do not start MR1-07 yet; MR1-07 remains not
-   started. Release status remains **Not shipped**. Browser,
-   narrow-window and 200% zoom checks remain explicit acceptance items
-   for MR1-07 and were **not** performed or claimed here.
+   after Codex accepted MR1-05; implementation complete; a Codex
+   review correction pass is being applied on top of `050651d`).
+   The pass makes the plan preview authoritative (rebuilt from the
+   current draft via `POST /api/onboarding/preview` with a SHA-256
+   `planToken` matched by completion), resolves credentials through
+   `credentialResolver.status`, derives the initial draft from the
+   candidate profile via `POST /api/onboarding/draft-from-profile`,
+   persists the destination snapshot before every transition, makes
+   `Cancel and leave` save progress without destructive reset, makes
+   cascade failure non-completion, makes completion idempotent via
+   `attemptId`, persists a durable discovery outcome so CompletedView
+   can render truthful succeeded/failed/unavailable/running wording,
+   exposes visible first-run/dashboard entry points (`FirstRunPanel`,
+   `SearchProfilePage`, and a `Search Setup` nav entry), and shows
+   distinct blocked screens for malformed/unsupported-version/
+   storage-failure with Retry+Leave for storage-failure. Do not start
+   MR1-07 yet; MR1-07 remains not started. Release status remains
+   **Not shipped**. Browser, narrow-window and 200% zoom checks
+   remain explicit acceptance items for MR1-07 and were **not**
+   performed or claimed here.
 2. **Local commits (no push).** The accepted MR0-01 → MR1-05 onboarding
-   work is recorded at local commits `877c31f` (`feat: add onboarding
-   foundation through progress persistence`), `c00c224` (`fix:
-   preserve onboarding resume failure states`), `0120b4f` (`docs:
-   accept MR1-04 onboarding persistence`), `f3a1ec2` (`feat: add
-   onboarding search plan preview`), and `2656795` (`fix: make
-   onboarding search plan preview explicit and safe`). MR1-06 will
-   produce one or more further local recoverable commits on top of
-   `2656795`. No push is performed; the 1.1.5 release status on the
+   work is recorded at local commits `877c31f`, `c00c224`, `0120b4f`,
+   `f3a1ec2`, and `2656795`. MR1-06 is recorded at local commits
+   `22c81e3` (`feat: add onboarding API and completion boundary`) and
+   `050651d` (`docs: record MR1-06 review boundary`). The correction
+   pass will produce one further local recoverable commit on top of
+   `050651d`. No push is performed; the 1.1.5 release status on the
    board stays **Not shipped**.
 
 ## Links to historical evidence
