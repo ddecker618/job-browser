@@ -7,7 +7,7 @@ import {
   rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { scanDirectory, scanText } from './helpers/privacy-markers.js';
@@ -15,13 +15,50 @@ import { scanDirectory, scanText } from './helpers/privacy-markers.js';
 const FORBIDDEN_PERSONAL_FILE_TYPES =
   /\.(sqlite|sqlite-shm|sqlite-wal|db|docx|doc|pdf|xlsx|pptx|p12|pfx|pem)$/i;
 
+const PUBLIC_OWNER_ATTRIBUTION = JSON.parse(
+  readFileSync('package.json', 'utf8'),
+).author as string;
+const OWNER_ATTRIBUTION_FILES = new Set([
+  'EULA.txt',
+  'LICENSE.txt',
+  'README.md',
+  'THIRD_PARTY_NOTICES.md',
+  'package.json',
+]);
+
+function normalizePath(file: string): string {
+  return file.replaceAll('\\', '/').replace(/^\.\//, '');
+}
+
+function contentForPrivacyScan(file: string, content: string): string {
+  const normalized = normalizePath(file);
+  if (normalized === 'THIRD_PARTY_NOTICES.md') return '';
+  if (OWNER_ATTRIBUTION_FILES.has(normalized)) {
+    return content.replaceAll(PUBLIC_OWNER_ATTRIBUTION, '');
+  }
+  return content;
+}
+
 function trackedFiles(): string[] {
-  return execFileSync('git', ['ls-files'], { encoding: 'utf8' })
+  const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' })
     .split(/\r?\n/)
     .filter(Boolean);
+  const legalFiles = [...OWNER_ATTRIBUTION_FILES].filter((file) =>
+    existsSync(file),
+  );
+  return [...new Set([...tracked, ...legalFiles])];
 }
 
 describe('distribution privacy', () => {
+  it('publishes the owner name only in approved legal-attribution files', () => {
+    const filesWithOwnerName = trackedFiles()
+      .filter((file) =>
+        readFileSync(file, 'utf8').includes(PUBLIC_OWNER_ATTRIBUTION),
+      )
+      .map(normalizePath)
+      .sort();
+    expect(filesWithOwnerName).toEqual([...OWNER_ATTRIBUTION_FILES].sort());
+  });
   it('contains no personal-data markers in tracked repository files', () => {
     const hits: string[] = [];
     for (const file of trackedFiles()) {
@@ -32,7 +69,8 @@ describe('distribution privacy', () => {
       } catch {
         continue;
       }
-      for (const marker of scanText(content)) hits.push(`${file}: ${marker}`);
+      for (const marker of scanText(contentForPrivacyScan(file, content)))
+        hits.push(`${file}: ${marker}`);
     }
     expect(hits).toEqual([]);
   });
@@ -40,7 +78,11 @@ describe('distribution privacy', () => {
   it('contains no personal-data markers in compiled output', () => {
     const distRoot = resolve(process.cwd(), 'dist');
     if (!existsSync(distRoot)) return;
-    expect(scanDirectory(distRoot)).toEqual([]);
+    expect(
+      scanDirectory(distRoot, (file, content) =>
+        contentForPrivacyScan(relative(distRoot, file), content),
+      ),
+    ).toEqual([]);
   }, 30_000);
 
   const appAsarPath = resolve(
@@ -58,9 +100,9 @@ describe('distribution privacy', () => {
       const extractDir = mkdtempSync(join(tmpdir(), 'job-browser-asar-'));
       try {
         extractAll(appAsarPath, extractDir);
-        const hits = scanDirectory(extractDir).filter(
-          (hit) => !/[/\\]node_modules[/\\]/.test(hit),
-        );
+        const hits = scanDirectory(extractDir, (file, content) =>
+          contentForPrivacyScan(relative(extractDir, file), content),
+        ).filter((hit) => !/[/\\]node_modules[/\\]/.test(hit));
         expect(hits).toEqual([]);
 
         const forbidden: string[] = [];

@@ -6,6 +6,9 @@ directories:
 files:
   - dist/**/*
   - package.json
+  - LICENSE.txt
+  - EULA.txt
+  - THIRD_PARTY_NOTICES.md
   - '!dist/tests/**'
   - '!dist/scripts/**'
   - '!dist/**/*.map'
@@ -42,6 +45,7 @@ win:
   icon: build/icon.png
   executableName: Job Browser
 nsis:
+  license: EULA.txt
   oneClick: false
   perMachine: false
   allowElevation: false

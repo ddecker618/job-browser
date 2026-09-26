@@ -1,0 +1,42 @@
+JOB BROWSER PROPRIETARY SOFTWARE LICENSE
+
+Copyright (c) 2026 Dustin Decker. All rights reserved.
+
+1. Ownership
+
+Job Browser, including its original source code, executable code, documentation,
+visual design, and other original materials (collectively, the "Software"), is
+owned by Dustin Decker and is protected by applicable copyright and other
+intellectual-property laws.
+
+2. Source Code
+
+No license is granted to copy, modify, distribute, publish, sublicense, sell,
+commercialize, or create derivative works from the Software's proprietary
+source code. Availability of source code in a public repository does not make
+the Software open source and does not waive any rights. Rights supplied solely
+by a repository-hosting service to view or fork a repository do not grant any
+additional right to use or distribute the Software.
+
+3. Executable Application
+
+Use of a distributed executable version of Job Browser is governed by the Job
+Browser End-User License Agreement included with that distribution.
+
+4. Third-Party Components
+
+The Software incorporates third-party components governed by their respective
+licenses. Those components remain the property of their respective owners. The
+restrictions in this license do not replace or limit rights granted under an
+applicable third-party license. See THIRD_PARTY_NOTICES.md.
+
+5. No Warranty
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS IS" AND
+WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY,
+INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+TITLE, AND NON-INFRINGEMENT.
+
+6. Reservation of Rights
+
+All rights not expressly granted in a written agreement signed by the copyright owner are reserved.

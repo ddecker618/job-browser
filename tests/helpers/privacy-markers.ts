@@ -33,12 +33,18 @@ export function walkFiles(root: string): string[] {
   return result;
 }
 
-export function scanDirectory(root: string): string[] {
+export function scanDirectory(
+  root: string,
+  transformContent: (file: string, content: string) => string = (
+    _file,
+    content,
+  ) => content,
+): string[] {
   const hits: string[] = [];
   for (const file of walkFiles(root)) {
     let content: string;
     try {
-      content = readFileSync(file, 'utf8');
+      content = transformContent(file, readFileSync(file, 'utf8'));
     } catch {
       content = '';
     }

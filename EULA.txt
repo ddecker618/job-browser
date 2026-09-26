@@ -1,0 +1,100 @@
+JOB BROWSER END-USER LICENSE AGREEMENT
+
+Effective date: September 26, 2026
+Copyright (c) 2026 Dustin Decker. All rights reserved.
+
+PLEASE READ THIS AGREEMENT BEFORE INSTALLING OR USING JOB BROWSER. BY INSTALLING,
+LAUNCHING, OR USING JOB BROWSER, YOU AGREE TO THIS AGREEMENT. IF YOU DO NOT
+AGREE, DO NOT INSTALL OR USE THE SOFTWARE.
+
+1. License Grant
+
+Subject to this Agreement, Dustin Decker (the "Licensor") grants you a limited,
+revocable, non-exclusive, non-transferable license to install and use Job
+Browser (the "Software") on devices you own or control for your personal or
+internal business job-search, job-discovery, and application-management
+activities.
+
+2. Restrictions
+
+Unless applicable law expressly permits otherwise, you may not:
+
+(a) copy or redistribute the Software except for a reasonable personal backup;
+(b) sell, rent, lease, sublicense, publish, or commercially exploit the Software;
+(c) modify, translate, or create derivative works from proprietary portions of
+    the Software;
+(d) reverse engineer, decompile, or disassemble the Software;
+(e) remove or alter copyright, ownership, or attribution notices;
+(f) use the Software to violate law, third-party terms, robots policies, or
+    access controls; or
+(g) use the Software to bypass CAPTCHAs, authentication, rate limits, security
+    checks, or other technical protections.
+
+3. Third-Party Services and Job Data
+
+The Software can interact with third-party websites and services. Those
+services and their content remain subject to their own terms, privacy policies,
+and availability. This Agreement does not grant rights in job listings,
+company names, logos, or other third-party content. You are responsible for
+using each service lawfully and for completing any required human verification.
+
+4. Ownership
+
+The Software is licensed, not sold. The Licensor retains all right, title, and
+interest in the Software's proprietary components. No ownership right is
+transferred to you under this Agreement.
+
+5. Third-Party Software
+
+The Software includes open-source and other third-party components. Those
+components are governed by their respective licenses, as identified in
+THIRD_PARTY_NOTICES.md. If this Agreement conflicts with a third-party license,
+the third-party license controls for that component.
+
+6. Data and Backups
+
+Job Browser is designed to store application data locally. You are responsible
+for protecting your device, maintaining appropriate backups, and reviewing
+information before relying on it. Uninstalling, upgrading, device failure, or
+third-party service changes may affect locally stored data.
+
+7. Updates and Pre-Release Features
+
+Updates may add, remove, or change features. Features identified as beta,
+preview, experimental, or shadow functionality may be incomplete, may contain
+errors, and may change or be withdrawn without notice.
+
+8. Disclaimer of Warranties
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS IS" AND
+"AS AVAILABLE," WITH ALL FAULTS AND WITHOUT WARRANTIES OF ANY KIND, WHETHER
+EXPRESS, IMPLIED, OR STATUTORY, INCLUDING WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, ACCURACY, AVAILABILITY, TITLE, AND
+NON-INFRINGEMENT. THE LICENSOR DOES NOT GUARANTEE EMPLOYMENT, INTERVIEWS,
+COMPLETE JOB COVERAGE, OR CONTINUED ACCESS TO ANY THIRD-PARTY SERVICE.
+
+9. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE LICENSOR WILL NOT BE LIABLE FOR ANY
+INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES,
+OR FOR LOSS OF DATA, PROFITS, OPPORTUNITIES, OR BUSINESS, ARISING FROM OR
+RELATED TO THE SOFTWARE. WHERE LIABILITY CANNOT BE EXCLUDED, THE LICENSOR'S
+TOTAL LIABILITY WILL NOT EXCEED THE AMOUNT YOU PAID FOR THE SOFTWARE DURING THE
+TWELVE MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM.
+
+Some jurisdictions do not allow particular warranty exclusions or liability
+limitations, so portions of Sections 8 and 9 may not apply to you.
+
+10. Termination
+
+This license terminates automatically if you materially violate this Agreement.
+Upon termination, you must stop using and uninstall the Software. Sections that
+by their nature should survive termination will survive, including ownership,
+disclaimers, liability limitations, and third-party-license obligations.
+
+11. Severability and Entire Agreement
+
+If any provision is unenforceable, it will be enforced to the maximum extent
+permitted and the remaining provisions will remain effective. This Agreement,
+together with applicable third-party licenses and any separately signed written
+agreement, is the entire agreement governing your use of the Software.

@@ -1,5 +1,7 @@
 # Job Browser
 
+**Author and project owner: Dustin Decker**
+
 Job Browser is a local application for discovering, deduplicating, analyzing, and tracking realistic job opportunities. It runs as a Windows desktop application or as a local Node.js/Express dashboard over the same SQLite-backed services.
 
 Discovery supports Greenhouse, Lever, `Ashby`, Workday, USAJOBS, SmartRecruiters, BambooHR, Recruitee, Teamtailor, Workable, iCIMS/Jibe, Built In, LinkedIn Jobs, Dice, Handshake, Indeed, Wellfound, ZipRecruiter, and structured JSON-LD/JSON/RSS/Atom sources. Built In uses bounded public HTTP/HTML and JSON-LD parsing. There is no automatic application submission or AI-generated application answer workflow.
@@ -438,3 +440,14 @@ The code uses Node path APIs and does not assume POSIX separators. Quote explici
 ### Reset the local development database
 
 Stop all processes using the database, remove the local `.sqlite`, `.sqlite-wal`, and `.sqlite-shm` files manually, then run `npm run db:setup`. Never reset a database whose application history must be retained without first making a backup.
+
+## License
+
+Copyright © 2026 Dustin Decker. All rights reserved.
+
+Job Browser is proprietary software. The public availability of its source code
+does not grant permission to copy, modify, redistribute, sublicense, or sell its
+proprietary components. See [LICENSE.txt](LICENSE.txt) for the source-code terms,
+[EULA.txt](EULA.txt) for installed-application terms, and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for separately licensed
+third-party components.
