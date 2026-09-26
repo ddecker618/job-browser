@@ -1,0 +1,130 @@
+# External AI job-search claims: repository coverage and gap register
+
+**Recorded:** 2026-09-26
+
+**External discussion:** <https://gemini.google.com/share/c03311debdcc?skid=c321662b-59ae-4881-8b18-95542ae2313b>
+
+**Status:** Product-input audit. This document records and evaluates the claims; it does not authorize source changes or override the delivery board.
+
+## Why this exists
+
+The linked Gemini discussion described a job-search product that aggregates direct employer and ATS listings, normalizes them, compares them with a verified resume, and uses a hybrid retrieval pipeline to rank opportunities. The discussion also suggested business models and future automation.
+
+Job Browser already implements substantial parts of that concept. This register prevents the remaining useful ideas from being lost, prevents completed work from being proposed again, and distinguishes product opportunities from unsupported marketing claims or unsafe behavior.
+
+Status labels used below:
+
+- **Implemented** — present in the current repository.
+- **Partial** — useful pieces exist, but the full claim is not delivered.
+- **Planned/design only** — documented or benchmark-gated, with no production runtime.
+- **Missing candidate** — a legitimate gap that may be considered in a future approved stage.
+- **Intentional boundary** — excluded by product, security, privacy, or source-policy decisions.
+- **Business hypothesis** — requires customer and market validation rather than a code change.
+
+## 1. Listing acquisition and aggregation claims
+
+| External claim                                                            | Status in Job Browser                | Repository evidence and remaining gap                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Read public Greenhouse, Lever, and Ashby job-board endpoints directly.    | **Implemented**                      | Dedicated providers are registered and documented in `README.md` and `src/providers/`.                                                                                                                                                                                                                                                                                 |
+| Read Workday and other enterprise ATS listings.                           | **Implemented with explicit limits** | Workday CXS is supported, including generic tenants and convenience providers. Taleo, Oracle Recruiting Cloud, SuccessFactors, JazzHR, and Jobvite may be detected but are not falsely advertised as supported when no stable unauthenticated interface exists. See `README.md`.                                                                                       |
+| Aggregate many ATS and job-board formats behind one normalized schema.    | **Implemented**                      | The provider registry covers public ATS APIs, structured JSON-LD/JSON/RSS/Atom, and bounded visible-browser sources. Normalized jobs pass through the common provider and repository contracts.                                                                                                                                                                        |
+| Discover employer identifiers or ATS slugs automatically.                 | **Partial**                          | Employer discovery, aliases, seed import, and ATS fingerprinting exist in `src/discovery/`. Job Browser does not yet perform broad internet-scale company discovery through search engines, SEC filings, Crunchbase, or similar commercial datasets.                                                                                                                   |
+| Handle API rate limits with bounded retries and backoff.                  | **Implemented**                      | The provider HTTP client handles bounded retryable responses, including `Retry-After`, concurrency limits, redirects, response caps, and safe public URL resolution. Some run-level retry metrics may not expose every internal retry and should be audited before claiming complete observability.                                                                    |
+| Use `ETag` and `If-Modified-Since` to avoid downloading unchanged boards. | **Missing candidate: GC-01**         | No general conditional-request cache was found. Add only after measuring provider support and defining cache persistence, invalidation, privacy, and fallback behavior.                                                                                                                                                                                                |
+| Hash content and make ingestion idempotent.                               | **Implemented**                      | Job fingerprints, source associations, raw observations, content hashes, and material-change handling exist in the job repository.                                                                                                                                                                                                                                     |
+| Remove closed or stale listings.                                          | **Implemented conservatively**       | Trusted provider-closed evidence, closing dates, verification, and complete-snapshot misses drive lifecycle changes. Two complete snapshot misses are intentionally required in relevant paths to reduce false closures; immediate deletion after one miss is not accepted as an improvement without evidence.                                                         |
+| Refresh every 6–12 hours.                                                 | **Configuration/product decision**   | Scheduling exists, but one universal cadence is not a correctness requirement. Cadence should remain source-aware, rate-limit-aware, and user-controlled.                                                                                                                                                                                                              |
+| Bypass CAPTCHA, login, anti-bot, or security checks to increase coverage. | **Intentional boundary**             | Job Browser must not solve CAPTCHAs, harvest challenge tokens, forge attestations, impersonate fingerprints, evade rate limits, or bypass authentication/security controls. `MR3-01` instead defines a visible, user-assisted pause and safe resume after the user completes an allowed check. See `docs/delivery/tasks/MR3-01-user-assisted-verification-handoff.md`. |
+
+## 2. Job-description intelligence claims
+
+| External claim                                                 | Status in Job Browser                                               | Repository evidence and remaining gap                                                                                                                                                                                 |
+| -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Extract salary and compensation.                               | **Implemented**                                                     | Provider-native compensation and deterministic text extraction are normalized where available. Unknown compensation remains unknown rather than invented.                                                             |
+| Extract skills and technology stack.                           | **Implemented**                                                     | Deterministic skill extraction, normalization, aliases, and reviewed relationships exist under `src/intelligence/nlp/` and the configured skill catalogs. Coverage remains catalog-dependent.                         |
+| Distinguish real remote eligibility from vague remote wording. | **Implemented**                                                     | Location intelligence records arrangement, nationwide/state-limited scope, excluded states, conflicts, and geographic restrictions. Deterministic eligibility remains authoritative.                                  |
+| Extract experience and seniority.                              | **Implemented for job requirements; partial for resume chronology** | Minimum/preferred years, seniority, and requirement evidence are extracted from jobs. Job Browser does not yet build a complete dated employment timeline and attribute each skill to recent versus historical roles. |
+| Classify occupation or job type.                               | **Implemented in shadow**                                           | P37 added a versioned local taxonomy and deterministic title classifier. It is Level 0 shadow data and does not alter ranking, filtering, scoring, or eligibility.                                                    |
+| Use an external occupation ontology such as O\*NET or ESCO.    | **Missing candidate: GC-02**                                        | Current taxonomies are curated locally. Before adoption, evaluate license/redistribution terms, offline size, update/version strategy, mapping quality, and whether the ontology improves real search outcomes.       |
+
+## 3. Resume understanding and compatibility claims
+
+| External claim                                            | Status in Job Browser                  | Repository evidence and remaining gap                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Parse common resume files.                                | **Implemented with a known limit**     | TXT/Markdown, DOCX, and text-bearing PDF are supported. Scanned-image PDF OCR is not currently supported.                                                                                                                                                                                                                |
+| Keep recommendations grounded in verified resume history. | **Implemented without generative RAG** | Immutable resume snapshots, capture-time interpretation, evidence spans, and versioned comparisons preserve provenance. There is no LLM/RAG runtime; the existing deterministic evidence design already supplies a strong anti-fabrication boundary.                                                                     |
+| Enforce hard gates before semantic ranking.               | **Implemented**                        | Deterministic scoring and eligibility cover location, clearance, schedule, compensation, experience, requested skills/certifications, and related constraints. NLP remains subordinate to those decisions.                                                                                                               |
+| Provide actionable gap analysis.                          | **Partial-to-implemented**             | Requirement coverage identifies direct, related, missing, and unknown evidence and explains absence states. A clearer proactive “use my current resume against this job before I apply” experience remains a high-value candidate if current coverage is only available through an application snapshot path. See GC-03. |
+| Weight skills by how recently they were used.             | **Missing candidate: GC-04**           | Job freshness has recency concepts, but no verified per-skill employment recency model was found. This requires dated resume history, evidence attribution, unknown handling, and tests that prevent old but relevant experience from being erased.                                                                      |
+| Normalize skills with reviewed relationships.             | **Implemented locally**                | Exact aliases plus reviewed strong/weak relationships are versioned and explainable. The system intentionally avoids guessing unseen synonyms.                                                                                                                                                                           |
+
+## 4. Ranking and semantic retrieval claims
+
+| External claim                                                               | Status in Job Browser        | Repository evidence and remaining gap                                                                                                                                                                                   |
+| ---------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use sparse retrieval such as BM25 for literal evidence.                      | **Missing candidate: GC-05** | No BM25 retrieval layer was found. Evaluate offline against the representative and adversarial corpora before adding a runtime or dependency.                                                                           |
+| Use embeddings and cosine similarity for semantic recall.                    | **Planned/design only**      | `docs/NLP_SEMANTIC_DESIGN.md` defines a local, benchmark-gated direction. No embedding runtime, model artifact, network model acquisition, or production semantic claim exists.                                         |
+| Fuse lexical and semantic rankings with reciprocal rank fusion.              | **Missing candidate: GC-06** | No RRF production layer exists. It becomes relevant only if both sparse and semantic candidate sets demonstrably improve measured retrieval.                                                                            |
+| Rerank finalists with a cross-encoder.                                       | **Missing candidate: GC-07** | No cross-encoder exists. Installer size, startup time, memory, CPU latency, model license, offline availability, and privacy must be measured before approval.                                                          |
+| Let NLP influence the production recommendation score.                       | **Not yet authorized**       | Current production authority remains deterministic. Bounded contribution designs and safety invariants exist, but promotion needs an explicit cohort, threshold, rollback rule, measured benefit, and release boundary. |
+| Claim a specific accuracy advantage, such as being ahead of 90% of products. | **Unsupported claim**        | The repository has strong tests and benchmarks but no market-wide comparative study supporting a percentile claim. Do not publish it as fact.                                                                           |
+
+## 5. Application assistance and automation claims
+
+| External claim                                   | Status in Job Browser                                      | Repository evidence and remaining gap                                                                                                                                                                       |
+| ------------------------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tailor resumes and cover letters to a job.       | **Missing candidate with strict truth constraints: GC-08** | Job Browser does not generate application materials. Any future feature must use only user-approved verified evidence, preserve an original, show every change, and never invent experience or credentials. |
+| Generate application answers automatically.      | **Intentional current boundary**                           | `README.md` explicitly states there is no AI-generated application-answer workflow.                                                                                                                         |
+| Auto-submit applications through browser agents. | **Intentional boundary**                                   | Automatic submission and bulk-spam applying are excluded. A future assistant may prepare or navigate only within explicit user review and source-policy constraints.                                        |
+| Help with mock interviews or networking.         | **Missing product candidates: GC-09**                      | These are separate product lines, not extensions that should be silently added to discovery or ranking work.                                                                                                |
+
+## 6. Privacy, security, and architecture claims
+
+| External claim                                           | Status in Job Browser                            | Repository evidence and remaining gap                                                                                                                                                                                                                                |
+| -------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Keep sensitive resume and credential processing local.   | **Largely implemented**                          | Job Browser uses a local desktop architecture, local SQLite, local parsing, OS-protected credential handling, redaction, and no hosted NLP service. Do not claim every stored file is encrypted at rest unless that is separately verified.                          |
+| Defend an LLM from prompt injection in job descriptions. | **Reduced current exposure; future requirement** | No generative LLM consumes job descriptions today. Text inputs are still untrusted and bounded. If a generative or tool-using model is added, formal prompt-injection isolation, output validation, least-privilege tooling, and adversarial tests become mandatory. |
+| Use PostgreSQL/pgvector/Elasticsearch.                   | **Not required by the current architecture**     | Job Browser is a local desktop product using SQLite. Infrastructure should be selected from measured product needs rather than copied from a hosted SaaS reference stack.                                                                                            |
+| Use a multi-agent framework.                             | **Not required**                                 | The product does not need autonomous multi-agent orchestration to deliver its current user outcome. Add orchestration only for a concrete, bounded workflow with human control and measurable value.                                                                 |
+
+## 7. Business-model claims
+
+The linked discussion proposed three broad businesses: a specialized verified job board for candidates, employer-side hiring signals, and a paid jobs-data API. These are **business hypotheses**, not implemented product claims.
+
+Job Browser is currently a local candidate-side desktop application. Before changing that boundary, validate:
+
+1. Who pays and for which recurring outcome.
+2. Whether listing redistribution and derived-data use comply with each source's terms and applicable law.
+3. The operational cost of freshness, support, and source breakage.
+4. Whether multi-user hosting changes privacy, security, licensing, or compliance obligations.
+5. Whether the name, branding, installer license, and commercial terms are ready for public sale.
+
+Do not describe revenue projections, defensibility, customer demand, or market percentile as established facts without evidence.
+
+## 8. Recognized candidate backlog
+
+These items are now explicitly recognized. They are not authorized implementation tasks and must not interrupt an active delivery-board stage.
+
+| ID    | Candidate                                                      | Suggested order                                     | Required evidence before production                                                                              |
+| ----- | -------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| GC-01 | Conditional HTTP requests (`ETag` / `If-Modified-Since`)       | Near term, after onboarding/MR3 recovery boundaries | Provider support matrix, cache semantics, fallback tests, measured bandwidth/time benefit                        |
+| GC-03 | Proactive current-resume compatibility view before application | Highest intelligence/product priority               | Reuse existing snapshots/evidence, absence-state UX, no scoring authority change, user test with real job search |
+| GC-04 | Dated employment and per-skill recency evidence                | After GC-03                                         | Resume chronology schema, attribution confidence, unknown/overlap rules, adversarial tests                       |
+| GC-02 | O\*NET/ESCO mapping evaluation                                 | Research before implementation                      | License, size, update/version plan, corpus lift, false-match analysis                                            |
+| GC-05 | BM25 lexical retrieval benchmark                               | Research slice                                      | Offline benchmark against current deterministic search and representative queries                                |
+| GC-06 | RRF fusion benchmark                                           | Only after two useful retrieval channels exist      | Recall/precision lift, stable explanation, deterministic tie behavior                                            |
+| GC-07 | Local cross-encoder evaluation                                 | Last semantic stage                                 | Model license, redistributability, installer/startup/memory/latency budget, offline benchmark lift               |
+| GC-08 | Truth-preserving resume/cover-letter assistance                | Separate authorization                              | Verified-evidence-only generation, diff/review UX, no fabrication, privacy/security design                       |
+| GC-09 | Interview and networking assistance                            | Separate product decision                           | User demand, privacy boundary, clear separation from discovery and scoring                                       |
+
+## 9. Recommended sequencing from the current repository state
+
+1. Finish and recoverably commit the active onboarding work without mixing this audit into its source changes.
+2. Complete the approved/user-prioritized MR3-01 visible verification handoff. This helps users continue allowed searches without bypassing security controls.
+3. Use Job Browser for a real job search and record concrete failures in source coverage, matching, and explanation.
+4. Prefer GC-03 as the next intelligence product slice because it exposes value from existing extraction and evidence modules before adding model weight or complexity.
+5. Benchmark GC-05 and the existing semantic design offline. Add embeddings, RRF, or a cross-encoder only if measured results justify the installation and privacy costs.
+
+## 10. Non-negotiable interpretation rule
+
+This file recognizes external ideas; it is not permission to implement all of them. Current source-of-truth task state remains the delivery board, implementation roadmap, project memory, and explicit user approval. Security-control bypass, fabricated candidate evidence, silent model downloads, unreviewed scoring authority, bulk auto-apply, and unsupported marketing claims remain prohibited.

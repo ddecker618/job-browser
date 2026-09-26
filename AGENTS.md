@@ -45,6 +45,21 @@ Do not describe a release as licensed, packaged, or ready for distribution if
 any item in this gate is missing. Do not push or publish a release without the
 user's explicit approval.
 
+## External product claims and future ideas
+
+- Before proposing discovery, matching, semantic-ranking, application-
+  assistance, or monetization work, read
+  `docs/AI_PRODUCT_CLAIMS_GAP_ANALYSIS.md`.
+- Treat that file as a claim audit and candidate register, not authorization to
+  start every item. The active delivery board, implementation roadmap, project
+  memory, and the user's explicit direction remain authoritative.
+- Do not propose completed capabilities as missing. Preserve its distinctions
+  among implemented, partial, benchmark/design-only, candidate, business
+  hypothesis, and intentional boundary.
+- Never turn a candidate into production scoring authority, a model/runtime
+  dependency, source-security bypass, automatic application submission, or a
+  public marketing claim without the required evidence and explicit approval.
+
 ## Product name
 
 `Job Browser` remains the working product name. Do not rename it or claim that
