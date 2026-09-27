@@ -8,6 +8,7 @@ export const DESKTOP_SMOKE_ROUTES = [
   '/analytics',
   '/search-profile',
   '/settings',
+  '/onboarding',
 ] as const;
 export type DesktopSmokeRoute = (typeof DESKTOP_SMOKE_ROUTES)[number];
 

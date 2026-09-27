@@ -22,6 +22,10 @@ describe('desktop smoke navigation', () => {
     ).toBe('http://127.0.0.1:43123/applications');
     expect(DESKTOP_SMOKE_ROUTES).toContain('/applications');
     expect(DESKTOP_SMOKE_ROUTES).toContain('/employers');
+    expect(DESKTOP_SMOKE_ROUTES).toContain('/onboarding');
+    expect(
+      resolveDesktopSmokeRoute('http://127.0.0.1:43123/jobs', '/onboarding'),
+    ).toBe('http://127.0.0.1:43123/onboarding');
     expect(
       resolveDesktopSmokeApplicationDetailUrl(
         'http://127.0.0.1:43123/applications',

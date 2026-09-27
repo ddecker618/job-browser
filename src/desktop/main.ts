@@ -8,6 +8,7 @@ import {
   ipcMain,
   session,
   shell,
+  type BrowserWindow,
   type IpcMainInvokeEvent,
   type WebContents,
 } from 'electron';
@@ -44,6 +45,7 @@ import {
 const DESKTOP_SMOKE_RESUME_ID = '00000000-0000-4000-8000-000000008303';
 const DESKTOP_SMOKE_TITLE = 'Desktop Smoke Application Engineer';
 const DESKTOP_SMOKE_JOB_TITLE = 'Desktop Smoke Retained Job';
+let onboardingSmokeDiscoveryCalls = 0;
 
 const UPGRADE_SMOKE_STALE_FINGERPRINT = 'd'.repeat(64);
 const UPGRADE_SMOKE_REMOVED_FINGERPRINT = 'e'.repeat(64);
@@ -54,6 +56,9 @@ if (process.env['JOB_BROWSER_SMOKE_USER_DATA']) {
   app.setPath('userData', process.env['JOB_BROWSER_SMOKE_USER_DATA']);
 }
 const smokeTest = process.env['JOB_BROWSER_SMOKE_TEST'] === '1';
+const onboardingSmokePhase = smokeTest
+  ? process.env['JOB_BROWSER_SMOKE_ONBOARDING_PHASE']
+  : undefined;
 const smokeStatusPath = smokeTest
   ? resolve(app.getPath('userData'), 'smoke-status.txt')
   : null;
@@ -444,6 +449,23 @@ async function runStartup(): Promise<void> {
       development: !app.isPackaged && !process.argv.includes('--built'),
       logger: desktopLogger.log,
       credentialResolver: credentialVault,
+      ...(onboardingSmokePhase === undefined
+        ? {}
+        : {
+            onboardingCoordinator: {
+              runAll: () => {
+                onboardingSmokeDiscoveryCalls += 1;
+                if (onboardingSmokeDiscoveryCalls === 1) {
+                  return Promise.reject(
+                    new Error(
+                      'Disposable synthetic discovery failure C:\\private\\token=smoke-secret',
+                    ),
+                  );
+                }
+                return Promise.resolve([]);
+              },
+            },
+          }),
       onProgress: (stage) => windows.sendProgress(stage),
     });
     windows.sendProgress('Loading dashboard');
@@ -720,6 +742,16 @@ async function runDesktopSmoke(): Promise<void> {
       throw new Error(`Desktop startup did not complete: ${diagnosticText}`);
     }
 
+    if (onboardingSmokePhase !== undefined) {
+      await runOnboardingDesktopSmoke(handle, window, onboardingSmokePhase);
+      recordSmokeStage(`onboarding-${onboardingSmokePhase}-passed`);
+      console.log(
+        `Desktop onboarding smoke phase ${onboardingSmokePhase} passed`,
+      );
+      app.quit();
+      return;
+    }
+
     await assertPageText(window.webContents, 'Opportunity command center');
     if (process.env['JOB_BROWSER_SMOKE_UPGRADE'] === '1') {
       recordSmokeStage('asserting-upgrade-reconciliation');
@@ -888,6 +920,356 @@ async function runDesktopSmoke(): Promise<void> {
     console.error(error);
     app.exit(1);
   }
+}
+
+async function runOnboardingDesktopSmoke(
+  handle: NonNullable<typeof backend.current>,
+  window: BrowserWindow,
+  phase: string,
+): Promise<void> {
+  if (phase !== 'save' && phase !== 'resume') {
+    throw new Error('Unknown onboarding desktop smoke phase');
+  }
+  const onboardingUrl = `${handle.url}/api/onboarding`;
+  const status = await onboardingSmokeJson(`${onboardingUrl}/status`);
+
+  if (phase === 'save') {
+    assertOnboardingSmoke(
+      status['state'] === 'not-started' &&
+        isSmokeRecord(status['completion']) &&
+        status['completion']['completed'] === false,
+      'Fresh isolated install did not report a genuine not-started onboarding state',
+    );
+    await loadDesktopSmokeRoute(window.webContents, '/onboarding');
+    await assertPageText(window.webContents, 'Question 1 of 5');
+    await assertPageText(window.webContents, 'What roles interest you?');
+    const roleEntered: unknown = await window.webContents.executeJavaScript(
+      `(() => {
+        const label = [...document.querySelectorAll('label')].find((item) => item.textContent?.includes('Desired role'));
+        const input = label?.querySelector('input');
+        const setter = input && Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        if (!input || !setter) return false;
+        setter.call(input, 'Desktop Smoke Engineer');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return input.value === 'Desktop Smoke Engineer';
+      })()`,
+      true,
+    );
+    assertOnboardingSmoke(
+      roleEntered === true,
+      'Onboarding smoke could not enter a synthetic desired role',
+    );
+    const continued: unknown = await window.webContents.executeJavaScript(
+      `(() => {
+        const button = document.querySelector('form button[type="submit"]');
+        if (!(button instanceof HTMLButtonElement)) return false;
+        button.click();
+        return true;
+      })()`,
+      true,
+    );
+    assertOnboardingSmoke(
+      continued === true,
+      'Onboarding smoke could not advance from desired-work',
+    );
+    await assertPageText(window.webContents, 'Question 2 of 5');
+    await assertPageText(window.webContents, 'Where would you like to work?');
+    const leftWizard: unknown = await window.webContents.executeJavaScript(
+      `(() => {
+        const button = document.querySelector('[data-testid="onboarding-save-and-leave"]');
+        if (!(button instanceof HTMLButtonElement)) return false;
+        button.click();
+        return true;
+      })()`,
+      true,
+    );
+    assertOnboardingSmoke(
+      leftWizard === true,
+      'Onboarding smoke could not activate Save and leave',
+    );
+    await assertPageText(window.webContents, 'OPPORTUNITY INVENTORY');
+    const saved = await onboardingSmokeJson(`${onboardingUrl}/status`);
+    const savedSnapshot = saved['snapshot'];
+    assertOnboardingSmoke(
+      saved['state'] === 'in-progress' &&
+        isSmokeRecord(savedSnapshot) &&
+        savedSnapshot['onboardingStep'] === 'preferences' &&
+        savedSnapshot['currentQuestion'] === 'location' &&
+        isSmokeRecord(savedSnapshot['answers']) &&
+        Array.isArray(savedSnapshot['answers']['desiredJobTitles']) &&
+        savedSnapshot['answers']['desiredJobTitles'].includes(
+          'Desktop Smoke Engineer',
+        ),
+      'Save and leave did not persist the current question and entered role',
+    );
+    return;
+  }
+
+  const snapshot = status['snapshot'];
+  assertOnboardingSmoke(
+    status['state'] === 'in-progress' &&
+      isSmokeRecord(snapshot) &&
+      snapshot['currentQuestion'] === 'location' &&
+      isSmokeRecord(snapshot['answers']) &&
+      Array.isArray(snapshot['answers']['desiredJobTitles']) &&
+      snapshot['answers']['desiredJobTitles'].includes(
+        'Desktop Smoke Engineer',
+      ) &&
+      isSmokeRecord(status['editSession']) &&
+      status['editSession']['resumable'] === true,
+    'Reopened app did not restore the exact saved onboarding point',
+  );
+  await loadDesktopSmokeRoute(window.webContents, '/onboarding');
+  await assertPageText(window.webContents, 'Question 2 of 5');
+  await assertPageText(window.webContents, 'Where would you like to work?');
+
+  const profileId = status['profileId'];
+  assertOnboardingSmoke(
+    typeof profileId === 'string' && profileId.length > 0,
+    'Onboarding status did not contain a profile id',
+  );
+  const progressKey = `onboardingProgress:${profileId}`;
+  writeSmokeSetting(handle.database, progressKey, {
+    version: 2,
+    invalid: true,
+  });
+  const malformed = await onboardingSmokeJson(`${onboardingUrl}/status`);
+  assertOnboardingSmoke(
+    malformed['state'] === 'blocked' && malformed['blockKind'] === 'malformed',
+    'Malformed progress was not classified as blocked',
+  );
+  await loadDesktopSmokeRoute(window.webContents, '/onboarding');
+  await assertPageText(window.webContents, 'Onboarding progress is unreadable');
+  await assertOnboardingSmokePost(`${onboardingUrl}/reset`, {});
+
+  writeSmokeSetting(handle.database, progressKey, {
+    version: 3,
+    onboardingStep: 'preferences',
+    currentQuestion: 'location',
+    answers: {},
+  });
+  const unsupported = await onboardingSmokeJson(`${onboardingUrl}/status`);
+  assertOnboardingSmoke(
+    unsupported['state'] === 'blocked' &&
+      unsupported['blockKind'] === 'unsupported-version',
+    'Unsupported progress version was not classified as blocked',
+  );
+  await loadDesktopSmokeRoute(window.webContents, '/onboarding');
+  await assertPageText(
+    window.webContents,
+    'Onboarding progress uses an unsupported version',
+  );
+  await assertOnboardingSmokePost(`${onboardingUrl}/reset`, {});
+
+  const preferences = {
+    preferredLocations: [{ city: 'Smoke City', state: 'SC' }],
+    searchRadiusMiles: 25,
+    secondarySearchRadiusMiles: 50,
+    remotePreference: 'accepted',
+    desiredSalary: null,
+    desiredJobTitles: ['Desktop Smoke Engineer'],
+    desiredEmploymentTypes: ['full-time'],
+  };
+  const preview = await onboardingSmokePost(`${onboardingUrl}/preview`, {
+    preferences,
+    confirmedTitles: preferences.desiredJobTitles,
+  });
+  assertOnboardingSmoke(
+    preview['confirmationAllowed'] === true &&
+      typeof preview['planToken'] === 'string',
+    'Synthetic onboarding plan was not confirmable',
+  );
+  const firstAttemptId = 'desktop-smoke-onboarding-first';
+  const completed = await onboardingSmokePost(`${onboardingUrl}/complete`, {
+    preferences,
+    reviewItems: [],
+    planToken: preview['planToken'],
+    attemptId: firstAttemptId,
+  });
+  assertOnboardingSmoke(
+    completed['ok'] === true &&
+      isSmokeRecord(completed['discoveryOutcome']) &&
+      completed['discoveryOutcome']['state'] === 'failed' &&
+      onboardingSmokeCallCount() === 1,
+    'Completion did not start exactly one synthetic discovery attempt',
+  );
+  const failedOutcomeText = JSON.stringify(completed);
+  assertOnboardingSmoke(
+    !failedOutcomeText.includes('C:\\private') &&
+      !failedOutcomeText.includes('smoke-secret'),
+    'Discovery diagnostics leaked into the onboarding response',
+  );
+  const replay = await onboardingSmokePost(`${onboardingUrl}/complete`, {
+    preferences,
+    reviewItems: [],
+    planToken: preview['planToken'],
+    attemptId: firstAttemptId,
+  });
+  assertOnboardingSmoke(
+    replay['idempotent'] === true && onboardingSmokeCallCount() === 1,
+    'Replaying the terminal completion attempt launched discovery again',
+  );
+  const blockedSecondCompletion = await onboardingSmokePost(
+    `${onboardingUrl}/complete`,
+    {
+      preferences,
+      reviewItems: [],
+      planToken: preview['planToken'],
+      attemptId: 'desktop-smoke-onboarding-second',
+    },
+    409,
+  );
+  assertOnboardingSmoke(
+    blockedSecondCompletion['code'] ===
+      'onboarding_complete_already_completed' &&
+      onboardingSmokeCallCount() === 1,
+    'A completed profile accepted another completion without an edit',
+  );
+
+  await loadDesktopSmokeRoute(window.webContents, '/onboarding');
+  await assertPageText(window.webContents, 'Retry search');
+  await assertPageText(
+    window.webContents,
+    'Discovery could not complete. Review Sources and retry.',
+  );
+  const retried: unknown = await window.webContents.executeJavaScript(
+    `(() => {
+      const button = [...document.querySelectorAll('button')].find((item) => item.innerText.includes('Retry search'));
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()`,
+    true,
+  );
+  assertOnboardingSmoke(
+    retried === true,
+    'Retry search action was not available',
+  );
+  await assertPageText(window.webContents, 'Search completed');
+  assertOnboardingSmoke(
+    onboardingSmokeCallCount() === 2,
+    'Search-only retry did not make exactly one new synthetic call',
+  );
+
+  const edited: unknown = await window.webContents.executeJavaScript(
+    `(() => {
+      const button = document.querySelector('[data-testid="onboarding-completed-edit"]');
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()`,
+    true,
+  );
+  assertOnboardingSmoke(
+    edited === true,
+    'Completed setup did not offer explicit edit',
+  );
+  await assertPageText(window.webContents, 'Question 1 of 5');
+  const discarded: unknown = await window.webContents.executeJavaScript(
+    `(() => {
+      const button = document.querySelector('[data-testid="onboarding-discard-edit"]');
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()`,
+    true,
+  );
+  assertOnboardingSmoke(
+    discarded === true,
+    'Explicit edit did not offer discard',
+  );
+  await assertPageText(window.webContents, 'Search completed');
+  const finalStatus = await onboardingSmokeJson(`${onboardingUrl}/status`);
+  assertOnboardingSmoke(
+    isSmokeRecord(finalStatus['completion']) &&
+      finalStatus['completion']['completed'] === true &&
+      isSmokeRecord(finalStatus['editSession']) &&
+      finalStatus['editSession']['editing'] === false &&
+      finalStatus['editSession']['resumable'] === false &&
+      onboardingSmokeCallCount() === 2,
+    'Discarding an edit changed completed setup or reran discovery',
+  );
+}
+
+async function onboardingSmokeJson(
+  url: string,
+): Promise<Record<string, unknown>> {
+  const response = await fetch(url);
+  return onboardingSmokeResponse(response, 200);
+}
+
+async function onboardingSmokePost(
+  url: string,
+  body: unknown,
+  expectedStatus = 200,
+): Promise<Record<string, unknown>> {
+  return onboardingSmokeResponse(
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+    expectedStatus,
+  );
+}
+
+async function assertOnboardingSmokePost(
+  url: string,
+  body: unknown,
+): Promise<void> {
+  const response = await onboardingSmokePost(url, body);
+  assertOnboardingSmoke(
+    response['ok'] === true,
+    'Onboarding smoke POST failed',
+  );
+}
+
+async function onboardingSmokeResponse(
+  response: Response,
+  expectedStatus: number,
+): Promise<Record<string, unknown>> {
+  const value: unknown = await response.json();
+  assertOnboardingSmoke(
+    response.status === expectedStatus,
+    `Onboarding smoke endpoint returned HTTP ${String(response.status)}: ${JSON.stringify(value)}`,
+  );
+  assertOnboardingSmoke(
+    isSmokeRecord(value),
+    'Onboarding smoke endpoint returned a non-object response',
+  );
+  return value;
+}
+
+function isSmokeRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function onboardingSmokeCallCount(): number {
+  return onboardingSmokeDiscoveryCalls;
+}
+
+function assertOnboardingSmoke(
+  condition: unknown,
+  message: string,
+): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+function writeSmokeSetting(
+  database: NonNullable<typeof backend.current>['database'],
+  key: string,
+  value: unknown,
+): void {
+  database
+    .prepare(
+      `INSERT INTO app_settings (setting_key, setting_value_json, updated_at)
+       VALUES (?, ?, datetime('now'))
+       ON CONFLICT(setting_key) DO UPDATE SET
+         setting_value_json = excluded.setting_value_json,
+         updated_at = excluded.updated_at`,
+    )
+    .run(key, JSON.stringify(value));
 }
 
 function insertDesktopSmokeJob(

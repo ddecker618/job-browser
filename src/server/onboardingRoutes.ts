@@ -49,7 +49,7 @@ import type { LegacyPreferences } from '../preferences/profilePreferencesAdapter
 export interface OnboardingRouteOptions {
   database: JobDatabase;
   sourceRepository: SourceRepositoryType;
-  coordinator?: DiscoveryCoordinator;
+  coordinator?: Pick<DiscoveryCoordinator, 'runAll'>;
   credentialResolver?: CredentialResolver;
   candidateProfilePath?: string;
   profilePreferencesPath?: string;

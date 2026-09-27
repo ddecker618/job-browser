@@ -156,6 +156,8 @@ export interface AppOptions {
   cascadeTargetRoles?: (roles: readonly string[]) => void;
   deleteOnboardingProgress?: (profileId: string) => void;
   providerDescriptors?: readonly ProviderDescriptor[];
+  /** Smoke-only discovery adapter for installed onboarding acceptance. */
+  onboardingCoordinator?: Pick<DiscoveryCoordinator, 'runAll'>;
 }
 
 const asyncRoute =
@@ -258,7 +260,9 @@ export function createApp(
     createOnboardingRouter({
       database,
       sourceRepository,
-      ...(coordinator === undefined ? {} : { coordinator }),
+      ...((options.onboardingCoordinator ?? coordinator) === undefined
+        ? {}
+        : { coordinator: options.onboardingCoordinator ?? coordinator }),
       ...(options.credentialResolver === undefined
         ? {}
         : { credentialResolver: options.credentialResolver }),
