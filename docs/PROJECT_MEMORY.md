@@ -17,9 +17,13 @@ documentation baseline and MR1-01 through MR1-05 are **Done**. MR1-06
 accepted by Codex and moved to **Done** on 2026-09-26, including the
 profile-scoped completion guard at `df829b9`. MR1-07 (installed
 onboarding and first-user validation) is **In progress**, authorized
-2026-09-26, and preparing the 1.1.6 release boundary. The package remains
-1.1.5 and the release remains **Not shipped** until all required
-automated and human checks pass. See
+2026-09-26. Source version is 1.1.6; its first installed manual
+acceptance failed on a transient status-load error and an external
+discovery-isolation breach. Corrected source is committed at `20e3e35`, but the
+retired candidate has not yet been rebuilt; full final gates and new manual
+acceptance remain pending. 1.1.5 remains latest shipped and 1.1.6 remains
+**Not shipped**. Do not claim production data was untouched without a
+trustworthy pre-run baseline. See
 [`docs/delivery/tasks/MR1-05-search-plan.md`](delivery/tasks/MR1-05-search-plan.md)
 and
 [`docs/delivery/tasks/MR1-06-wizard-integration.md`](delivery/tasks/MR1-06-wizard-integration.md)
@@ -42,8 +46,9 @@ for active release acceptance.
   committed as `fd63a2a`. Latest recorded full source
   verification: **172 files / 1,605 tests, fully green (`npm run
 verify`, 2026-09-14)**.
-- Current package version and latest validated installer: **1.1.5**, shipped
-  at the P37 release boundary (2026-09-14). That artifact includes the prior
+- Current source package version: **1.1.6** (candidate failed manual acceptance,
+  **not shipped**). Latest validated installer remains **1.1.5**, shipped at
+  the P37 release boundary (2026-09-14). That artifact includes the prior
   P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, the
   1.1.4 P36 coverage abstention hygiene, and the P37 SHADOW `Level 0`
   occupation / job-type taxonomy + classifier. SHADOW only — no

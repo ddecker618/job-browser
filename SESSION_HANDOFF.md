@@ -6,28 +6,52 @@
 
 ## Current verified baseline (2026-09-26)
 
-- **Accepted code checkpoint:** `df829b9` (`fix: serialize onboarding
-  completion per profile`) on top of `778f3d2` (`fix: harden onboarding
-  completion and edit recovery`), `6e7319f` (`fix: type privacy attribution
-  metadata safely`), `b058cac` (AI product claims documentation), and
-  `ce9a7a1` (proprietary licensing and installer EULA).
-- **Working tree at acceptance:** source and tests are committed. The
-  documentation closeout records MR1-06 acceptance together with the
-  separately preserved MR3-01 planning card, delivery-board entry, and
-  project-memory pointer.
-- **Validation at this code checkpoint:** `npm run verify` passed
-  **1826/1826** tests across 180 files; focused onboarding suites
-  **220/220** across 8 files; `npm run privacy:check` **12/12**;
-  `npm run nlp:security-audit` **3/3**; formatting and diff checks clean.
-- **Review result:** MR1-06 is accepted and **Done**. The final review
-  added server-side protection against concurrent completion requests
-  with different attempt IDs and against a second completion without an
-  explicit edit session. MR1-07 is now **In progress**, authorized
-  2026-09-26, and owns installed onboarding acceptance and the 1.1.6
-  release boundary. The package is still 1.1.5 and the release remains
-  Not shipped until all automated and human gates pass.
-- **Release state:** Not shipped. No version bump or installer rebuild
-  belongs to this documentation closeout.
+- **Corrected source checkpoint:** `20e3e35` (`fix: fail closed in manual
+  onboarding acceptance`) on top of the retired candidate source at `f13b44a`.
+  The correction is committed but has not yet been packaged.
+- **Branch:** local `main` is 8 commits ahead of locally recorded
+  `origin/main`, behind by 0. Current remote-server state will be fetched and
+  reconciled before any authorized push.
+- **Retired candidate:** version 1.1.6; the current-source NSIS installer from
+  `f13b44a` was built and
+  installed. Installer: `release\Job-Browser-Setup-1.1.6.exe`, 253,700,613
+  bytes, SHA-256 `D83E8C6BB798D6A23DAB27F697B2FBA5528B89EFE05D9354CCA9A0FA1065863C`.
+  Packaged and installed `app.asar` are identical: 74,757,242 bytes,
+  SHA-256 `EA539574B0E67E4C1936E58D4F2119835DE790849C20907F46BEF4C7A0D816A5`.
+- **Retired-candidate automated validation:** `npm run verify` **1828/1828** across 180 files;
+  focused onboarding **222/222** across 8 files; privacy **12/12**; NLP
+  security **3/3**; lifecycle **11/11**; packaged, installed, and seeded
+  upgrade smokes pass; packaged and installed onboarding save/reopen flows
+  pass; legal notices current; executable ProductVersion `1.1.6.0`, FileVersion
+  `1.1.6`; legal metadata and P36/P37 markers verified in the asar.
+- **Manual acceptance:** **FAILED** on 2026-09-27. The installed app initially
+  showed an unavailable status screen although the subsequent status response
+  contained a valid v2 snapshot at Preferences > Location; Retry immediately
+  restored onboarding. The observed cause is transient status/readiness, not
+  corrupt progress. The previously reported EULA PASS applies only to this
+  retired candidate and must be repeated.
+- **Isolation incident:** the manual run launched the real Built In coordinator
+  (`fixtureOnly: false`), fetched 50 listings, and inserted 22 into the
+  disposable acceptance database. The task card preserves this evidence. The
+  separate earlier default-data launch has no trustworthy pre-run production
+  database hash/baseline; production non-modification cannot be proven. Do not
+  claim “production database untouched.” All prior packaged/installed smoke
+  results used the synthetic coordinator, but they do not validate the failed
+  manual acceptance run.
+- **Correction summary:** the current source now uses only a synthetic
+  coordinator in manual acceptance mode, disables scheduler construction,
+  blocks ProviderHttpClient and Playwright network entry points, fails closed
+  on non-temporary data roots, and retries only bounded transport/readiness
+  failures with a safe diagnostic. A clean-root smoke injects a cancelled
+  initial status request and verifies recovery. Focused tests pass. A new full
+  verification and 1.1.6 installer build remain outstanding.
+- **Production-data audit:** the September 14 database hash is not a reliable
+  baseline for the September 27 default-data process. The database was not read
+  or hashed; production non-modification cannot be proven.
+- **Release state:** MR1-07 remains **In progress**; 1.1.6 remains **Not
+  shipped** and not pushed. Rebuild, repeat automated/artifact checks, then
+  request a fresh manual pass. Recheck EULA presentation; the prior PASS applies
+  only to the retired candidate.
 
 ## Historical verified baseline (recorded evidence — 2026-09-24)
 
@@ -376,7 +400,7 @@ Investigations are out of scope for MR0-01 (which is docs-only).
    `050651d`. No push is performed; the 1.1.5 release status on the
    board stays **Not shipped**.
 
-## Next action
+## Previous next action (before candidate was prepared)
 
 1. Complete MR1-07 using isolated synthetic data. Build and validate a
    current-source 1.1.6 installer, and pause for direct human acceptance
@@ -386,6 +410,21 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 3. Do not describe 1.1.6 as ready, released, or pushed until all version,
    installer, packaged/installed smoke, legal/EULA, privacy, manual
    acceptance, and release-documentation gates pass.
+
+## Next action
+
+1. Run the one final full repository gate on corrected source, rebuild 1.1.6,
+   and repeat every artifact-dependent check. The manual-mode network interlocks
+   and startup-status retry have focused and clean-root smoke coverage.
+2. Prepare a fresh installed candidate and prove the synthetic coordinator,
+   disabled scheduler, zero provider calls, and disposable paths before opening
+   the UI for new human acceptance.
+3. Audit the earlier default-data launch only against a trustworthy pre-run
+   baseline. If none exists, retain the explicit finding that production
+   non-modification cannot be proven.
+4. After every renewed human gate passes, finish release docs, commit locally,
+   fetch and verify origin, then push the reviewed boundary. MR3-01 remains the
+   next future user-prioritized task.
 
 ## Links to historical evidence
 

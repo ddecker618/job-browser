@@ -45,7 +45,8 @@
 - `npm run desktop:lifecycle-harness` passes with no live discovery.
 - `electron-builder.yml` still includes `LICENSE.txt`, `EULA.txt`, and
   `THIRD_PARTY_NOTICES.md`; NSIS remains assisted (`oneClick: false`) and sets
-  `license: EULA.txt`.
+  `license: EULA.txt`. The Finish page must not auto-launch Job Browser;
+  `runAfterFinish` is disabled for the isolated acceptance/install workflow.
 - Notification silence remains proven by `NotificationManager.tsx` and the
   desktop main-process permission handlers.
 
@@ -62,7 +63,8 @@
 - Install the candidate silently into the test installation and require exit
   code 0. Run `npm run desktop:smoke:installed` and
   `npm run desktop:smoke:installed -- --upgrade` against isolated temporary
-  user data.
+  user data. Interactive Finish must leave app startup to the explicit
+  disposable-environment launch, never start the app itself.
 - Confirm installed ProductVersion `1.1.6.0`, FileVersion `1.1.6`, and exact
   byte/hash equality between packaged and installed `app.asar`.
 - Add/run a packaged onboarding integration smoke with synthetic local data
@@ -78,6 +80,76 @@
   installer, or helper process remains; port 6783 is free; the test paths all
   resolve inside the disposable root; and no production database path was
   configured or accessed.
+
+## Retired 1.1.6 candidate checkpoint — manual acceptance failed
+
+Prepared on the committed source checkpoint `f13b44a` (target package 1.1.6):
+
+- Current-source NSIS installer:
+  `release\Job-Browser-Setup-1.1.6.exe`, 253,700,613 bytes,
+  SHA-256 `D83E8C6BB798D6A23DAB27F697B2FBA5528B89EFE05D9354CCA9A0FA1065863C`.
+- Packaged `app.asar`: 74,757,242 bytes, SHA-256
+  `EA539574B0E67E4C1936E58D4F2119835DE790849C20907F46BEF4C7A0D816A5`.
+- Silent upgrade from installed 1.1.5 to 1.1.6 completed with exit code 0;
+  installed ProductVersion `1.1.6.0`, FileVersion `1.1.6`.
+- Installed `app.asar` matches the packaged copy byte-for-byte:
+  74,757,242 bytes, SHA-256
+  `EA539574B0E67E4C1936E58D4F2119835DE790849C20907F46BEF4C7A0D816A5`.
+- Asar inspection confirmed `LICENSE.txt`, `EULA.txt`,
+  `THIRD_PARTY_NOTICES.md`, package author/version/`UNLICENSED`, MR1-06 and
+  `df829b9` completion-guard code, notification-denial code, and required P36/P37
+  markers.
+- `npm run verify`: **1828/1828 tests** across 180 files; focused onboarding
+  suites: **222/222** across 8 files; privacy **12/12**; NLP security **3/3**;
+  `npm run legal:notices` generated notices for 168 production packages;
+  legal notices current; format, lint, and typecheck passed.
+- Packaged smoke, packaged seeded-upgrade, packaged onboarding save/reopen
+  smoke, installed smoke, installed seeded-upgrade, and installed onboarding
+  save/reopen smoke all passed. Lifecycle harness: **11/11 passed** on the final
+  run. No Job Browser/Electron/Playwright/installer process remained and port
+  6783 was free after validation.
+- Assisted-installer EULA presentation/required acceptance: **PASS** for this
+  candidate. All other manual acceptance remains pending, and this candidate is
+  **FAILED** because the initial onboarding status screen showed an unavailable
+  error even though a later `GET /api/onboarding/status` returned the valid
+  stored v2 snapshot at Preferences > Location; Retry recovered immediately.
+- The same run violated isolation: the acceptance log records a real Built In
+  run with `fixtureOnly: false`, 50 jobs found, and 22 inserted into the
+  disposable DB. The run has been stopped. This build is retired for acceptance;
+  do not call it isolated, accepted, ready, released, or push it.
+- The earlier default-data app launch was observed with Electron child
+  `--user-data-dir` under the normal `%APPDATA%\Job Browser` root, but no
+  contemporaneous database path/hash was recorded. The repository's historical
+  2026-09-14 production DB hash (`2E4BC539…E197B07`, 493,121,536 bytes) is not a
+  trustworthy baseline for 2026-09-27. No production DB read/hash was performed
+  after the report, in keeping with the no-access boundary. Production
+  non-modification cannot be proven without a contemporaneous pre-run baseline.
+
+## Corrected source checkpoint — `20e3e35` (not packaged)
+
+- Manual acceptance now fails closed unless the real user-data root is under
+  the OS temporary directory and the database is under that root, including
+  canonical-path/symlink checks. Startup refuses the mode without the explicit
+  synthetic coordinator.
+- Manual mode does not construct the real `DiscoveryCoordinator`, hard-disables
+  scheduler construction, routes completion/retry/general discovery actions
+  through a synthetic coordinator, and exposes a manual-mode status assertion.
+  Provider HTTP and Playwright launch entry points independently block any
+  external access and count blocked attempts.
+- The clean-root unpackaged smoke injects a cancellation of the initial local
+  onboarding-status request. Bounded client retry recovers the saved point; a
+  structured, path-free diagnostic is captured in the desktop log. A separate
+  API regression covers one safe `onboarding_status_not_ready` 503. Malformed,
+  unsupported-version, and storage-failure blocked-state behavior remains
+  distinct and non-destructive.
+- Focused acceptance-mode, provider-network, onboarding, and backend tests pass;
+  the complete unpackaged two-process onboarding smoke passes with zero provider
+  network attempts. `runAfterFinish: false` prevents the installer from
+  launching the app on Finish.
+- This source checkpoint has **not** been packaged or installed. The prior
+  installer and all prior artifact gates describe only the retired candidate.
+  Run the full repository gates, rebuild 1.1.6, and repeat every artifact check
+  and all manual acceptance before any release/push claim.
 
 ## Manual acceptance — must be directly observed
 
@@ -105,13 +177,25 @@ automated tests.
 ## Rollback and failure handling
 
 - **Smoke correction note (2026-09-26):** An initial unpackaged onboarding
-  smoke exposed a missing pass-through for its synthetic coordinator and made
-  one Built In `/jobs` HTTP read before failing its assertion. It used only the
-  disposable smoke user-data/database root; it did not open production data.
-  The coordinator now passes through the desktop backend and disables its
-  scheduler for the dedicated onboarding smoke phase. The subsequent complete
-  two-process onboarding smoke passed without a Built In request log. This
-  incident is recorded and must remain disclosed in release evidence.
+  smoke exposed a missing pass-through for its onboarding synthetic coordinator
+  and made one Built In `/jobs` HTTP read before failing its assertion. It used
+  only the disposable smoke user-data/database root. The follow-up
+  `--onboarding` smoke used a synthetic adapter and passed, but it did not prove
+  that manual mode could not use the general application coordinator; the later
+  manual run exposed that gap. The incident and corrective actions must remain
+  disclosed in release evidence.
+- **Manual acceptance failure (2026-09-27):** The follow-on candidate showed
+  “Onboarding is unavailable — Onboarding progress could not be loaded”; the
+  user's Retry succeeded and restored the valid saved v2 snapshot, indicating
+  a transient initial status/readiness failure rather than corrupt progress.
+  The supplied acceptance log records backend startup at `03:11:27.218Z` and a
+  real Built In discovery run beginning `03:13:30.944Z` (run
+  `7f0ad386-5853-4761-92cc-720f76a9af35`, `fixtureOnly: false`), ending
+  `03:13:42.677Z`: 50 jobs found, 22 inserted, 0 updated, 28 rejected. Query
+  strings are intentionally omitted from distributed documentation. Acceptance
+  was stopped. Fix both paths, rebuild, and repeat every artifact-dependent
+  check and fresh human acceptance; the EULA PASS applies only to the retired
+  candidate and must be rechecked.
 - Preserve the current 1.1.5 installer and source history; never overwrite it
   with an artifact described as 1.1.6.
 - If any source or manual check fails, keep the candidate unpublished, fix only
