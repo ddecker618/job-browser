@@ -29,7 +29,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const SAVE_DELAY_MS = 100;
+// Keep the pending-save window comfortably longer than Testing Library's
+// asynchronous user-event sequence so this interaction is deterministic.
+const SAVE_DELAY_MS = 1_000;
 const FAILURE_MESSAGE = 'Could not save preferences. Please try again.';
 
 function Harness({

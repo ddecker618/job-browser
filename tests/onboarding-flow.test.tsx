@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import {
   MemoryRouter,
@@ -760,9 +766,8 @@ describe('OnboardingPage â€” completion and durable outcome', () => {
     const confirmButton = await screen.findByTestId(
       'onboarding-search-plan-confirm',
     );
-    const user = userEvent.setup();
-    await user.click(confirmButton);
-    await user.click(confirmButton);
+    fireEvent.click(confirmButton);
+    fireEvent.click(confirmButton);
     await waitFor(() => {
       expect(apiMock.completeOnboarding).toHaveBeenCalledTimes(1);
     });
