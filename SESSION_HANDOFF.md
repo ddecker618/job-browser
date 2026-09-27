@@ -38,10 +38,9 @@
   security **3/3**; lifecycle **11/11**; packaged/installed regular, seeded
   upgrade, and onboarding save/reopen smokes all pass. Manual-mode asar guards,
   legal metadata, notification denial, and P36/P37 markers are verified.
-- **Latest working-tree acceptance candidate:** rebuilt after adding deferred
-  window display until manual-mode isolation preflight. HEAD remains `bfea12e`;
-  `src/desktop/main.ts`, `src/desktop/windowManager.ts`, and acceptance docs have
-  uncommitted changes. Installer: `release\Job-Browser-Setup-1.1.6.exe`,
+- **Latest manually accepted candidate:** built after adding deferred window
+  display until manual-mode isolation preflight. The EULA and all listed manual
+  checks passed on this candidate. Installer: `release\Job-Browser-Setup-1.1.6.exe`,
   253,702,892 bytes, SHA-256
   `22EFC10C2A6F962467255E2D369FCD9325C607EE1C2B0E022FEA01757B033AC0`.
   Packaged and installed `app.asar`: 74,771,503 bytes, SHA-256
@@ -50,11 +49,12 @@
   silent install exit 0. Artifact inspection confirms all legal files, author and
   `UNLICENSED` metadata, manual-mode/deferred-window safeguards, notification
   denial, and P36/P37 markers.
-- **Latest validation:** `npm run verify` 1837/1837; privacy 12/12; NLP security
-  3/3; lifecycle 11/11; packaged/installed normal and seeded-upgrade smokes;
-  packaged/installed onboarding save/resume smokes; legal notices current.
-  All passed. This artifact is a working-tree acceptance candidate, not a
-  committed release build.
+- **Accepted-candidate validation:** `npm run verify` 1837/1837; privacy 12/12;
+  NLP security 3/3; lifecycle 11/11; packaged/installed normal and
+  seeded-upgrade smokes; packaged/installed onboarding save/resume smokes;
+  legal notices current. All passed. The current release rebuild is pending a
+  lifecycle-harness mailbox race fix is committed as `fa35d17`; rebuild from
+  that committed source and record the final artifact evidence.
 - **Manual acceptance:** **FAILED** on 2026-09-27. The installed app initially
   showed an unavailable status screen although the subsequent status response
   contained a valid v2 snapshot at Preferences > Location; Retry immediately
@@ -69,7 +69,7 @@
   claim “production database untouched.” All prior packaged/installed smoke
   results used the synthetic coordinator, but they do not validate the failed
   manual acceptance run.
-- **Correction summary:** commits `20e3e35`, `9a9ff8b`, and `1ba2b3e` make the current
+- **Correction summary:** commits `20e3e35`, `9a9ff8b`, `1ba2b3e`, and `ec822e5` make the current
   source use only a synthetic
   coordinator in manual acceptance mode, disables scheduler construction,
   blocks ProviderHttpClient and Playwright network entry points, fails closed
@@ -79,7 +79,12 @@
   1837/1837 across 181 files; focused onboarding 224/224; privacy 12/12; NLP
   security 3/3; lifecycle 11/11. The corrected candidate was built from
   `bfea12e`, installed with `runAfterFinish: false`, and all artifact checks now
-  pass; its fresh manual acceptance remains pending below.
+  pass; fresh manual acceptance is recorded above.
+- **Lifecycle harness correction (`fa35d17`):** reruns exposed an atomicity
+  race in the test-only shared command file. The harness now sends/consumes one
+  atomically published file per request; the latest lifecycle rerun passes
+  **11/11**. Rebuild and rerun artifact-dependent checks from the committed
+  source.
 - **Production-data audit:** the September 14 database hash is not a reliable
   baseline for the September 27 default-data process. The database was not read
   or hashed; production non-modification cannot be proven.
@@ -455,8 +460,8 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. Commit the source change and documentation update in separate recoverable
-   commits. Rebuild 1.1.6 from the committed tree, rerun all artifact-dependent
+1. Commit the final artifact evidence in a recoverable documentation commit.
+   Rebuild 1.1.6 from committed source `fa35d17`, rerun all artifact-dependent
    checks, legal/privacy/security/lifecycle gates, and confirm asar equality,
    EULA configuration, version, installer hash, no orphan processes, and free
    listener ports.

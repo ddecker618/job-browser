@@ -205,6 +205,14 @@ it is a local acceptance candidate, not a release commit.
   security **3/3**; lifecycle **11/11**; packaged/installed normal and seeded
   upgrade smokes pass; packaged/installed two-process onboarding save/resume
   smokes pass; legal notices current.
+- After the manual review, final lifecycle reruns exposed a race in the
+  test-only file mailbox (commands appended during read/truncate could be
+  dropped). `src/desktop/lifecycleHarness.ts` and
+  `scripts/lifecycle-harness.ts` now publish/consume one atomically renamed
+  command file per request; the lifecycle harness passes **11/11** after the
+  fix, committed as `fa35d17`; `npm run verify` remains **1837/1837**. No
+  renderer or normal-mode desktop behavior changed after the recorded manual
+  review.
 - Fresh interactive installer EULA appeared and required acceptance: **PASS**.
   `runAfterFinish: false` correctly left app startup to a direct installed-app
   launch. The first post-installer launcher did not start the app; it was then
@@ -223,9 +231,12 @@ it is a local acceptance candidate, not a release commit.
   used the disposable OS-temp root. The user reports completion in this
   acceptance session; the separate earlier Built In run remains the documented
   isolation failure and production-baseline limitation.
-- MR1-07 remains **In progress**; 1.1.6 remains **Not shipped** and has not
-  been pushed. The earlier default-data launch still has no trustworthy
-  contemporaneous baseline, so production non-modification cannot be proven.
+- Manual checks apply to the **253,702,892-byte** candidate above. A final
+  committed-tree rebuild from `fa35d17` remains necessary because the lifecycle
+  test-harness fix was added afterward. MR1-07 remains **In progress**; 1.1.6 remains **Not
+  shipped** and has not been pushed. The earlier default-data launch still has
+  no trustworthy contemporaneous baseline, so production non-modification
+  cannot be proven.
 
 ## Manual acceptance — must be directly observed
 
