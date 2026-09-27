@@ -15,9 +15,22 @@ import { scanDirectory, scanText } from './helpers/privacy-markers.js';
 const FORBIDDEN_PERSONAL_FILE_TYPES =
   /\.(sqlite|sqlite-shm|sqlite-wal|db|docx|doc|pdf|xlsx|pptx|p12|pfx|pem)$/i;
 
-const PUBLIC_OWNER_ATTRIBUTION = JSON.parse(
-  readFileSync('package.json', 'utf8'),
-).author as string;
+function readOwnerAttribution(): string {
+  const parsedPackageJson: unknown = JSON.parse(
+    readFileSync('package.json', 'utf8'),
+  );
+  if (
+    typeof parsedPackageJson !== 'object' ||
+    parsedPackageJson === null ||
+    !('author' in parsedPackageJson) ||
+    typeof parsedPackageJson.author !== 'string'
+  ) {
+    throw new Error('package.json must declare a string author attribution');
+  }
+  return parsedPackageJson.author;
+}
+
+const PUBLIC_OWNER_ATTRIBUTION = readOwnerAttribution();
 const OWNER_ATTRIBUTION_FILES = new Set([
   'EULA.txt',
   'LICENSE.txt',
