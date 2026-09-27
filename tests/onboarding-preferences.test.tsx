@@ -486,10 +486,12 @@ describe('PreferencesStep guided onboarding', () => {
 
     await user.click(contract);
     await user.click(screen.getByRole('button', { name: 'Save and finish' }));
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Save and finish' }),
-      ).not.toBeDisabled(),
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole('button', { name: 'Save and finish' }),
+        ).not.toBeDisabled(),
+      { timeout: SAVE_DELAY_MS + 1_000 },
     );
 
     expect(readHarnessDraft().desiredEmploymentTypes).toEqual([
