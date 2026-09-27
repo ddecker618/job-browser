@@ -20,12 +20,14 @@ onboarding and first-user validation) is **In progress**, authorized
 2026-09-26. Source version is 1.1.6; its first installed manual acceptance
 failed on a transient status-load error and an external discovery-isolation
 breach. Corrected source is committed at `ec822e5`; the lifecycle test-mailbox
-race correction is committed at `fa35d17`; bounded onboarding-test wait is
-committed at `c0bb7aa`; manual/release evidence is committed at `7b83f61`. The
+race correction is committed at `fa35d17`; bounded onboarding-test waits are
+committed at `c0bb7aa` and `9ebcbfb`; manual/release evidence is committed at
+`7b83f61`. The
 user reports fresh manual acceptance passed, including required EULA
 acceptance, on the deferred-window source candidate. `npm run verify` passes
-1837/1837. A committed 1.1.6 release rebuild and artifact validation from the
-latest source remain pending before the authorized push. 1.1.5 remains latest shipped and 1.1.6 remains
+1837/1837. A final committed-source 1.1.6 rebuild after the latest test-only
+commit and artifact validation remain before the authorized push. 1.1.5 remains
+latest shipped and 1.1.6 remains
 **Not shipped**. Do not claim production data was untouched without a
 trustworthy pre-run baseline. See
 [`docs/delivery/tasks/MR1-05-search-plan.md`](delivery/tasks/MR1-05-search-plan.md)

@@ -49,19 +49,29 @@
   silent install exit 0. Artifact inspection confirms all legal files, author and
   `UNLICENSED` metadata, manual-mode/deferred-window safeguards, notification
   denial, and P36/P37 markers.
-- **Accepted-candidate validation:** `npm run verify` 1837/1837; privacy 12/12;
-  NLP security 3/3; lifecycle 11/11; packaged/installed normal and
-  seeded-upgrade smokes; packaged/installed onboarding save/resume smokes;
-  legal notices current. All passed. The current release rebuild is pending a
-  lifecycle-harness mailbox race fix (`fa35d17`) and bounded onboarding-test
-  wait (`c0bb7aa`) are committed. The current `npm run verify` passes
-  1837/1837; rebuild from the committed tree and record final artifact evidence.
+- **Manually accepted candidate validation:** `npm run verify` 1837/1837;
+  privacy 12/12; NLP security 3/3; lifecycle 11/11; packaged/installed normal,
+  seeded-upgrade, and onboarding save/resume smokes; legal notices current. All
+  passed. Subsequent lifecycle-harness mailbox race fix (`fa35d17`) and bounded
+  onboarding-test waits (`c0bb7aa`, `9ebcbfb`) are committed; current full
+  verification passes 1837/1837.
+- **Superseded committed-source artifact (built from `9261b4e`):** installer
+  `release\Job-Browser-Setup-1.1.6.exe`, 253,702,963 bytes, SHA-256
+  `9BAB688FB372081C62F7AAB1CFE639BC5973746F0A3FEA4B518EBEEA72A96BCF`;
+  packaged/installed `app.asar` identical at 74,771,969 bytes, SHA-256
+  `6221093D23CD98EB645BA616BF09E38B1C0D5F8755AC9C2BE45D42385F9981A2`.
+  ProductVersion `1.1.6.0`, FileVersion `1.1.6`, silent install exit 0. Asar
+  legal/metadata/marker inspection and final package/install/upgrade/onboarding
+  smokes pass; notices regenerated for 168 production packages. Final process
+  scan had no app/Electron/installer/Playwright processes and port 6783 free;
+  disposable acceptance root removed. The test-only correction `9ebcbfb` was
+  committed afterward, so the final rebuilt installer is pending.
 - **Manual acceptance:** **FAILED** on 2026-09-27. The installed app initially
   showed an unavailable status screen although the subsequent status response
   contained a valid v2 snapshot at Preferences > Location; Retry immediately
   restored onboarding. The observed cause is transient status/readiness, not
-  corrupt progress. The previously reported EULA PASS applies only to this
-  retired candidate and must be repeated.
+  corrupt progress. The EULA PASS for that retired artifact was repeated on the
+  corrected manually accepted candidate; the fresh result is recorded below.
 - **Isolation incident:** the manual run launched the real Built In coordinator
   (`fixtureOnly: false`), fetched 50 listings, and inserted 22 into the
   disposable acceptance database. The task card preserves this evidence. The
@@ -83,11 +93,11 @@
   pass; fresh manual acceptance is recorded above.
 - **Lifecycle harness correction (`fa35d17`):** reruns exposed an atomicity
   race in the test-only shared command file. The harness now sends/consumes one
-  atomically published file per request; the latest lifecycle rerun passes
-  **11/11**. Rebuild and rerun artifact-dependent checks from the committed
-  source.
-- **Onboarding test timing correction (`c0bb7aa`):** increased the bounded wait
-  beyond the controlled save delay; the focused case and full suite pass.
+  atomically published file per request; the final lifecycle rerun passes
+  **11/11**, and the committed-source 1.1.6 artifact was rebuilt and validated.
+- **Onboarding test timing corrections (`c0bb7aa`, `9ebcbfb`):** bounded all
+  save-delay waits beyond the controlled one-second delay; focused tests and the
+  full suite pass.
 - **Production-data audit:** the September 14 database hash is not a reliable
   baseline for the September 27 default-data process. The database was not read
   or hashed; production non-modification cannot be proven.
@@ -98,10 +108,11 @@
   fail-closed disposable mode; its log confirms synthetic coordinator,
   `realCoordinatorConstructed: false`, scheduler disabled. No Job Browser,
   Electron, installer, or Playwright process remained; port 6783 was free.
-- **Release state:** MR1-07 remains **In progress** pending final committed-tree
-  rebuild and gates. 1.1.6 is **Not shipped** and not pushed. Preserve the
-  earlier default-data launch limitation: no trustworthy pre-run baseline
-  exists, so production non-modification cannot be proven.
+- **Release state:** automated and user-observed acceptance gates pass; the
+  latest test-only commit requires a final committed-source rebuild, then remote
+  reconciliation and authorized push. 1.1.6 is **Not shipped** and not pushed. Preserve the earlier
+  default-data launch limitation: no trustworthy pre-run baseline exists, so
+  production non-modification cannot be proven.
 
 ## Historical verified baseline (recorded evidence — 2026-09-24)
 
@@ -463,14 +474,11 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. Commit the final artifact evidence in a recoverable documentation commit.
-   Rebuild 1.1.6 from committed source `c0bb7aa`, rerun all artifact-dependent
-   checks, legal/privacy/security/lifecycle gates, and confirm asar equality,
-   EULA configuration, version, installer hash, no orphan processes, and free
-   listener ports.
+1. Commit the final artifact evidence in a recoverable documentation commit,
+   then fetch/reconcile origin and inspect all commits and the full final diff.
 2. The user authorized pushing these commits if every final gate remains green.
-   Fetch/reconcile origin, inspect all commits and the final diff, then push only
-   after the final validation passes and report the resulting remote state.
+   Push after remote state is confirmed compatible, then report the resulting
+   remote state and clean worktree.
 3. Preserve the production-data audit limitation: no trustworthy pre-run
    baseline exists, so non-modification cannot be proven. Do not access the
    production database or claim it was untouched. MR3-01 remains the next

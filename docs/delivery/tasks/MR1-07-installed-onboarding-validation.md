@@ -216,8 +216,9 @@ do not change normal-mode desktop or renderer behavior.
 - A separate full-suite run exposed a tight wait in
   `onboarding-preferences.test.tsx`: the simulated one-second save delay equaled
   Testing Library's default wait timeout. The assertion now allows a bounded
-  additional second, committed as `c0bb7aa`; the focused test and full
-  `npm run verify` pass **1837/1837**.
+  additional second across all save-completion/failure assertions, committed as
+  `c0bb7aa` and `9ebcbfb`; the focused test and full `npm run verify` pass
+  **1837/1837**.
 - Fresh interactive installer EULA appeared and required acceptance: **PASS**.
   `runAfterFinish: false` correctly left app startup to a direct installed-app
   launch. The first post-installer launcher did not start the app; it was then
@@ -243,10 +244,47 @@ do not change normal-mode desktop or renderer behavior.
   no trustworthy contemporaneous baseline, so production non-modification
   cannot be proven.
 
-## Manual acceptance — must be directly observed
+## Committed-source release artifact before final test correction — superseded
 
-Pause only after the final 1.1.6 installer is built, installed, and all
-automated checks pass. With the candidate ready, request observations for:
+Built from committed source/documentation checkpoint `9261b4e` on 2026-09-27,
+after the lifecycle-mailbox and test-wait fixes:
+
+- Installer `release\Job-Browser-Setup-1.1.6.exe`: **253,702,963 bytes**,
+  SHA-256 `9BAB688FB372081C62F7AAB1CFE639BC5973746F0A3FEA4B518EBEEA72A96BCF`.
+- Packaged and installed `app.asar`: **74,771,969 bytes** each, SHA-256
+  `6221093D23CD98EB645BA616BF09E38B1C0D5F8755AC9C2BE45D42385F9981A2`;
+  hashes match. Installed ProductVersion `1.1.6.0`, FileVersion `1.1.6`;
+  silent installation exit **0**.
+- Asar inspection confirms all three legal files; version `1.1.6`, package
+  author metadata, and `UNLICENSED`; manual-mode preflight and deferred-window
+  safeguards; notification policy; and P36/P37 markers. `electron-builder.yml`
+  remains assisted (`oneClick: false`), sets `license: EULA.txt`, and keeps
+  `runAfterFinish: false`.
+- Notice generation wrote notices for **168 production packages**;
+  `npm run legal:check` passes. Final `npm run verify` passes **1837/1837**;
+  privacy **12/12**; NLP security **3/3**; lifecycle harness **11/11**.
+  Packaged and installed regular, seeded-upgrade, and onboarding save/resume
+  smokes all pass.
+- The user's fresh EULA acceptance and complete manual PASS set are recorded
+  above against the deferred-window candidate (installer SHA-256
+  `22EFC10C2A6F962467255E2D369FCD9325C607EE1C2B0E022FEA01757B033AC0`). The
+  final rebuild adds only lifecycle-test transport and bounded test-wait
+  corrections; normal renderer/desktop UI code and NSIS EULA configuration did
+  not change afterward.
+- Post-validation check: no Job Browser, Electron, installer, or Playwright
+  process remained; port 6783 was free. The disposable manual-acceptance root
+  under `%TEMP%` was removed. No production database was read or hashed during
+  final cleanup; the earlier default-data launch still has no trustworthy
+  baseline, so production non-modification cannot be proven.
+- The bounded-wait-only test correction `9ebcbfb` was committed after this
+  artifact. The final source and documentation checkpoints are being rebuilt
+  now; this artifact is superseded for the current release gate.
+
+## Manual acceptance — direct-observation record
+
+The user directly exercised the manually accepted candidate and reported the
+PASS results above. This checklist defines the observed scope; it is not a set
+of inferred results:
 
 1. Assisted installer displays the Job Browser EULA and requires acceptance.
 2. Normal desktop layout is usable; narrow-window layout has no inaccessible
