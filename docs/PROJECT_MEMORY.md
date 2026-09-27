@@ -74,6 +74,8 @@ future product directions, not completed features or an approved implementation
 sequence. Build on the existing Company identity and separate Employer registry;
 preserve local data, source provenance, and current deterministic authority.
 
+**User-prioritized source-reliability idea (2026-09-26):** Implement a user-assisted verification handoff that pauses a browser-backed query on a login/CAPTCHA/security wall, lets the user complete the check in the visible persistent browser, and resumes from a safe query checkpoint. Automated CAPTCHA solving and security-control evasion are out of scope. Track this as [MR3-01](delivery/tasks/MR3-01-user-assisted-verification-handoff.md); begin after the active onboarding work reaches a clean recovery commit.
+
 ## Purpose
 
 This file is the primary entry point for AI assistants working on Job Browser.

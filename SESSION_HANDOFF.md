@@ -6,26 +6,26 @@
 
 ## Current verified baseline (2026-09-26)
 
-- **Code checkpoint:** `778f3d2` (`fix: harden onboarding completion and edit recovery`),
-  preceded by `6e7319f` (`fix: type privacy attribution metadata safely`),
-  `b058cac` (AI product claims documentation), and `ce9a7a1` (proprietary
-  licensing and installer EULA). The two correction commits are local;
-  no push was performed.
-- **Working tree:** code/tests are committed; MR1-06 task-card and
-  handoff updates are pending a documentation commit. The delivery
-  board and project memory also contain separate user-prioritized MR3-01
-  planning changes; preserve the untracked
-  `docs/delivery/tasks/MR3-01-user-assisted-verification-handoff.md`.
+- **Accepted code checkpoint:** `df829b9` (`fix: serialize onboarding
+  completion per profile`) on top of `778f3d2` (`fix: harden onboarding
+  completion and edit recovery`), `6e7319f` (`fix: type privacy attribution
+  metadata safely`), `b058cac` (AI product claims documentation), and
+  `ce9a7a1` (proprietary licensing and installer EULA).
+- **Working tree at acceptance:** source and tests are committed. The
+  documentation closeout records MR1-06 acceptance together with the
+  separately preserved MR3-01 planning card, delivery-board entry, and
+  project-memory pointer.
 - **Validation at this code checkpoint:** `npm run verify` passed
-  **1823/1823** tests across 180 files; focused onboarding suites
-  **217/217** across 8 files; `npm run privacy:check` **12/12**;
+  **1826/1826** tests across 180 files; focused onboarding suites
+  **220/220** across 8 files; `npm run privacy:check` **12/12**;
   `npm run nlp:security-audit` **3/3**; formatting and diff checks clean.
-- **Branch reference:** last observed after the code commits, `main` was
-  ahead of locally recorded `origin/main` by 4 commits and behind by 0.
-  This is local tracking information only; server state was not checked.
-- MR1-04 and MR1-05 remain accepted and **Done**. MR1-06 remains
-  **Review**, not self-approved as Done. No MR1-07 implementation,
-  release build, version bump, or push is authorized by this handoff.
+- **Review result:** MR1-06 is accepted and **Done**. The final review
+  added server-side protection against concurrent completion requests
+  with different attempt IDs and against a second completion without an
+  explicit edit session. MR1-07 remains unstarted and owns installed
+  visual, narrow-window, and 200% zoom acceptance.
+- **Release state:** Not shipped. No version bump or installer rebuild
+  belongs to this documentation closeout.
 
 ## Historical verified baseline (recorded evidence — 2026-09-24)
 
@@ -376,11 +376,14 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. Commit the reconciled MR1-06 task card and handoff locally, without
-   bundling MR3-01 planning changes. Keep MR1-06 in Review for Codex.
-2. Recheck the working tree and local `origin/main` relationship. Do not
-   push, start MR1-07, bump the version, or claim a new release. The
-   release remains **Not shipped**.
+1. MR1-07 is the next onboarding boundary: validate the installed
+   first-user experience with disposable data, including visual,
+   narrow-window, and 200% zoom checks. It requires explicit task start.
+2. MR3-01 is preserved as the next user-prioritized source-reliability
+   implementation after the onboarding/release boundary is safe.
+3. Do not claim a new release until the version, installer, packaged and
+   installed smokes, legal/EULA checks, privacy checks, and release docs
+   are completed under the mandatory release gate in `AGENTS.md`.
 
 ## Links to historical evidence
 

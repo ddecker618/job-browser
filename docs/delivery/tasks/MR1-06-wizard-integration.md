@@ -16,13 +16,15 @@
 - **Correction passes complete** through 2026-09-26 — OpenCode applied
   the plan-authority/credential, invalid-progress precedence,
   terminal-attempt replay, save-and-leave, and cleanup-transaction
-  findings. MR1-06 remains in Review pending Codex re-review and the
-  observed visual/accessibility acceptance items below; it is not Done.
-- **In Review** awaiting Codex re-acceptance; **not** self-approved
-  as Done.
-- Validated on the 2026-09-26 correction state: `npm run verify`
-  **1823/1823 PASS** across 180 files (legal notices, format, lint,
-  typecheck, and full test suite); focused onboarding suite **217/217
+  findings. Codex then added a profile-scoped completion guard so
+  distinct attempt IDs cannot launch duplicate discovery, bounded the
+  attempt-ID contract, and made edit-start validation return safe JSON.
+- **Accepted and Done** — Codex re-review completed 2026-09-26. The
+  reviewed correction is committed at `df829b9`; the installed visual,
+  narrow-window, and 200% zoom checks remain owned by MR1-07.
+- Validated on the accepted 2026-09-26 state: `npm run verify`
+  **1826/1826 PASS** across 180 files (legal notices, format, lint,
+  typecheck, and full test suite); focused onboarding suite **220/220
   PASS** across 8 files; `npm run privacy:check` **12/12 PASS**;
   `npm run nlp:security-audit` **3/3 PASS**; `git diff --check` clean.
 
@@ -372,6 +374,11 @@ existing route is changed.
 - source query cascade happens only after confirmation;
 - no discovery when persistence fails;
 - discovery called once after successful confirmation;
+- distinct attempt IDs cannot complete the same profile concurrently;
+- a completed profile requires an explicit edit session before a new
+  completion attempt can run;
+- completion attempt IDs are bounded and edit-start validation returns
+  safe, endpoint-specific JSON;
 - saved-but-discovery-failed result supports search-only retry;
 - completion marker distinguishes completed from missing progress.
 
