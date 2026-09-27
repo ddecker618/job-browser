@@ -55,17 +55,17 @@
   passed. Subsequent lifecycle-harness mailbox race fix (`fa35d17`) and bounded
   onboarding-test waits (`c0bb7aa`, `9ebcbfb`) are committed; current full
   verification passes 1837/1837.
-- **Superseded committed-source artifact (built from `9261b4e`):** installer
-  `release\Job-Browser-Setup-1.1.6.exe`, 253,702,963 bytes, SHA-256
-  `9BAB688FB372081C62F7AAB1CFE639BC5973746F0A3FEA4B518EBEEA72A96BCF`;
+- **Final committed-source artifact (built from `ba56ecd`):** installer
+  `release\Job-Browser-Setup-1.1.6.exe`, 253,702,995 bytes, SHA-256
+  `CAB6CD4864AB6B90F14059F275B8C242F2A0641E87869643E7FE8532269FD9B2`;
   packaged/installed `app.asar` identical at 74,771,969 bytes, SHA-256
   `6221093D23CD98EB645BA616BF09E38B1C0D5F8755AC9C2BE45D42385F9981A2`.
   ProductVersion `1.1.6.0`, FileVersion `1.1.6`, silent install exit 0. Asar
   legal/metadata/marker inspection and final package/install/upgrade/onboarding
   smokes pass; notices regenerated for 168 production packages. Final process
-  scan had no app/Electron/installer/Playwright processes and port 6783 free;
-  disposable acceptance root removed. The test-only correction `9ebcbfb` was
-  committed afterward, so the final rebuilt installer is pending.
+  scan found no app/Electron/installer/Playwright processes and port 6783 free;
+  disposable acceptance root removed. The build includes both bounded-wait
+  test commits (`c0bb7aa`, `9ebcbfb`).
 - **Manual acceptance:** **FAILED** on 2026-09-27. The installed app initially
   showed an unavailable status screen although the subsequent status response
   contained a valid v2 snapshot at Preferences > Location; Retry immediately
@@ -108,9 +108,9 @@
   fail-closed disposable mode; its log confirms synthetic coordinator,
   `realCoordinatorConstructed: false`, scheduler disabled. No Job Browser,
   Electron, installer, or Playwright process remained; port 6783 was free.
-- **Release state:** automated and user-observed acceptance gates pass; the
-  latest test-only commit requires a final committed-source rebuild, then remote
-  reconciliation and authorized push. 1.1.6 is **Not shipped** and not pushed. Preserve the earlier
+- **Release state:** automated and user-observed acceptance gates pass; only
+  final artifact-evidence documentation, remote reconciliation, and authorized
+  push remain. 1.1.6 is **Not shipped** and not pushed. Preserve the earlier
   default-data launch limitation: no trustworthy pre-run baseline exists, so
   production non-modification cannot be proven.
 

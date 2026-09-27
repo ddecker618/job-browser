@@ -25,8 +25,9 @@ committed at `c0bb7aa` and `9ebcbfb`; manual/release evidence is committed at
 `7b83f61`. The
 user reports fresh manual acceptance passed, including required EULA
 acceptance, on the deferred-window source candidate. `npm run verify` passes
-1837/1837. A final committed-source 1.1.6 rebuild after the latest test-only
-commit and artifact validation remain before the authorized push. 1.1.5 remains
+1837/1837. The final committed-source 1.1.6 installer and asar match; all
+artifact and release gates pass. Final hash documentation, remote reconciliation,
+and the authorized push remain. 1.1.5 remains
 latest shipped and 1.1.6 remains
 **Not shipped**. Do not claim production data was untouched without a
 trustworthy pre-run baseline. See

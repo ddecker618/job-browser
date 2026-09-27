@@ -237,20 +237,20 @@ do not change normal-mode desktop or renderer behavior.
   used the disposable OS-temp root. The user reports completion in this
   acceptance session; the separate earlier Built In run remains the documented
   isolation failure and production-baseline limitation.
-- Manual checks apply to the **253,702,892-byte** candidate above. A final
-  committed-tree rebuild after the lifecycle-harness and test-wait fixes remains
-  necessary. MR1-07 remains **In progress**; 1.1.6 remains **Not
-  shipped** and has not been pushed. The earlier default-data launch still has
+- Manual checks apply to the **253,702,892-byte** candidate above. Later changes
+  were limited to the lifecycle test harness and test wait bounds; normal-mode
+  desktop and renderer UI did not change. MR1-07 remains **In progress**; 1.1.6
+  remains **Not shipped** until the authorized push. The earlier default-data launch still has
   no trustworthy contemporaneous baseline, so production non-modification
   cannot be proven.
 
-## Committed-source release artifact before final test correction — superseded
+## Final committed-source release artifact — automated gates passed
 
-Built from committed source/documentation checkpoint `9261b4e` on 2026-09-27,
-after the lifecycle-mailbox and test-wait fixes:
+Built from committed source/documentation checkpoint `ba56ecd` on 2026-09-27,
+after the lifecycle-mailbox and bounded save-wait fixes:
 
-- Installer `release\Job-Browser-Setup-1.1.6.exe`: **253,702,963 bytes**,
-  SHA-256 `9BAB688FB372081C62F7AAB1CFE639BC5973746F0A3FEA4B518EBEEA72A96BCF`.
+- Installer `release\Job-Browser-Setup-1.1.6.exe`: **253,702,995 bytes**,
+  SHA-256 `CAB6CD4864AB6B90F14059F275B8C242F2A0641E87869643E7FE8532269FD9B2`.
 - Packaged and installed `app.asar`: **74,771,969 bytes** each, SHA-256
   `6221093D23CD98EB645BA616BF09E38B1C0D5F8755AC9C2BE45D42385F9981A2`;
   hashes match. Installed ProductVersion `1.1.6.0`, FileVersion `1.1.6`;
@@ -276,9 +276,8 @@ after the lifecycle-mailbox and test-wait fixes:
   under `%TEMP%` was removed. No production database was read or hashed during
   final cleanup; the earlier default-data launch still has no trustworthy
   baseline, so production non-modification cannot be proven.
-- The bounded-wait-only test correction `9ebcbfb` was committed after this
-  artifact. The final source and documentation checkpoints are being rebuilt
-  now; this artifact is superseded for the current release gate.
+- Release remains **Not shipped** until the authorized commits are pushed and
+  post-push state is confirmed.
 
 ## Manual acceptance — direct-observation record
 
