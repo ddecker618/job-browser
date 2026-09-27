@@ -1,4 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
@@ -754,6 +760,43 @@ describe('onboarding API — preview and completion', () => {
     });
     expect(body.draft.answers.desiredSalary).toBe('answered');
     expect(body.planToken).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('initializes unified preferences from current authorities on a genuinely fresh install', async () => {
+    const { handle, profilePreferencesPath } = await startBackend(undefined, {
+      withReadySource: true,
+      noCoordinator: true,
+    });
+    rmSync(profilePreferencesPath, { force: true });
+
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: basePreferences.desiredJobTitles,
+      }),
+    );
+    expect(preview.confirmationAllowed).toBe(true);
+
+    const response = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'fresh-install-first-completion',
+    });
+
+    expect(response.status).toBe(200);
+    const body = await readJson<OnboardingCompleteResponse>(response);
+    expect(body.ok).toBe(true);
+    expect(body.discoveryOutcome.state).toBe('unavailable');
+    expect(existsSync(profilePreferencesPath)).toBe(true);
+    const stored = profilePreferencesSchema.parse(
+      JSON.parse(readFileSync(profilePreferencesPath, 'utf8')) as unknown,
+    );
+    expect(stored.candidate.id).toBe('candidate-api-one');
+    expect(stored.jobPreferences.desiredJobTitles).toEqual([
+      'Network Engineer',
+    ]);
+    expect(stored.discovery.sourceQueryRoles).toEqual(['Network Engineer']);
   });
 
   it('completes onboarding once with a matching plan token and persists the outcome', async () => {

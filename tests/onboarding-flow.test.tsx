@@ -421,6 +421,36 @@ describe('OnboardingPage â€” Discard current edit', () => {
 });
 
 describe('OnboardingPage â€” blocked screens', () => {
+  it('keeps invalid progress blocked ahead of a resumable completed-user edit', async () => {
+    apiMock.onboardingStatus.mockResolvedValue(
+      statusNotStarted({
+        state: 'blocked',
+        blockKind: 'malformed',
+        blockMessage: 'Stored onboarding progress is unreadable.',
+        editSession: {
+          editing: false,
+          resumable: true,
+          startedAt: '2026-09-26T00:00:00.000Z',
+        },
+        completion: {
+          completed: true,
+          completedAt: '2026-09-25T00:00:00.000Z',
+        },
+        prefilledDraft: undefined,
+        planToken: undefined,
+      }),
+    );
+    renderPage();
+    expect(
+      await screen.findByRole('heading', {
+        name: /Onboarding progress is unreadable/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('onboarding-save-and-leave'),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows a distinct blocked screen for storage-failure progress with Retry+Leave and no destructive reset', async () => {
     apiMock.onboardingStatus.mockResolvedValue(
       statusNotStarted({

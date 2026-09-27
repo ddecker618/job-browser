@@ -272,6 +272,7 @@ export function createApp(
       ...(profilePreferencesPath === undefined
         ? {}
         : { profilePreferencesPath }),
+      ...(scoringPath === undefined ? {} : { scoringConfigPath: scoringPath }),
       ...(options.onboardingProgressStore === undefined
         ? {}
         : { progressStore: options.onboardingProgressStore }),

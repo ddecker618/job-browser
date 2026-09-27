@@ -16,6 +16,12 @@ import {
 } from '../repositories/onboarding-repository.js';
 import { createDatabaseOnboardingProgressStore } from '../repositories/onboarding-repository.js';
 import { loadCandidateProfile } from '../config/candidate-profile.js';
+import { loadScoringConfig } from '../config/scoring-config.js';
+import {
+  DEFAULT_SEARCH_PROFILE,
+  searchProfileSchema,
+  type SearchProfile,
+} from '../config/search-profile.js';
 import {
   loadUnifiedLegacyPreferences,
   saveUnifiedProfilePreferences,
@@ -42,7 +48,6 @@ import type {
   OnboardingSearchPlan,
   OnboardingValidatedPreferences,
 } from '../models/onboarding.js';
-import { DEFAULT_SEARCH_PROFILE } from '../config/search-profile.js';
 import type { SourceRepository as SourceRepositoryType } from '../repositories/source-repository.js';
 import type { LegacyPreferences } from '../preferences/profilePreferencesAdapters.js';
 
@@ -53,6 +58,7 @@ export interface OnboardingRouteOptions {
   credentialResolver?: CredentialResolver;
   candidateProfilePath?: string;
   profilePreferencesPath?: string;
+  scoringConfigPath?: string;
   /**
    * Test seam: override the onboarding progress store. Production
    * uses `createDatabaseOnboardingProgressStore(database)`.
@@ -782,6 +788,7 @@ export function createOnboardingRouter(
     coordinator,
     candidateProfilePath,
     profilePreferencesPath,
+    scoringConfigPath,
   } = options;
   const credentialResolver =
     options.credentialResolver ?? unavailableCredentialResolver;
@@ -799,6 +806,67 @@ export function createOnboardingRouter(
     ((profileId: string) => {
       resetOnboardingProgress(store, profileId);
     });
+
+  function loadLegacySearchProfile(): SearchProfile {
+    const row = database
+      .prepare<
+        [string],
+        { setting_value_json: string }
+      >('SELECT setting_value_json FROM app_settings WHERE setting_key = ?')
+      .get('searchProfile');
+    if (row === undefined) return DEFAULT_SEARCH_PROFILE;
+    try {
+      return searchProfileSchema.parse(
+        JSON.parse(row.setting_value_json) as unknown,
+      );
+    } catch {
+      return DEFAULT_SEARCH_PROFILE;
+    }
+  }
+
+  function loadLegacyTargetRoles(): string[] {
+    const row = database
+      .prepare<
+        [string],
+        { setting_value_json: string }
+      >('SELECT setting_value_json FROM app_settings WHERE setting_key = ?')
+      .get('targetRoles');
+    if (row !== undefined) {
+      try {
+        const parsed: unknown = JSON.parse(row.setting_value_json);
+        if (
+          Array.isArray(parsed) &&
+          parsed.length > 0 &&
+          parsed.every((role): role is string => typeof role === 'string')
+        ) {
+          return parsed;
+        }
+      } catch {
+        // Use the same neutral defaults as the existing profile adapter.
+      }
+    }
+    return [
+      'Systems Administrator',
+      'Network Administrator',
+      'SOC Analyst',
+      'Technical Support Engineer',
+    ];
+  }
+
+  function loadPreferencesForFirstCompletion(): LegacyPreferences {
+    return {
+      candidateProfile: loadCandidateProfile(
+        candidateProfilePath,
+        profilePreferencesPath,
+      ),
+      searchProfile: loadLegacySearchProfile(),
+      sourceQueryRoles: loadLegacyTargetRoles(),
+      scoringConfig: loadScoringConfig(
+        scoringConfigPath,
+        profilePreferencesPath,
+      ),
+    };
+  }
   const providerDescriptorsOverride = options.providerDescriptors;
   // A completion attempt is profile-scoped, even though its durable
   // idempotency record is keyed by attempt id. This prevents two clients,
@@ -1375,21 +1443,15 @@ export function createOnboardingRouter(
 
       // Step 2 — persist profile preferences and sourceQueryRoles.
       try {
-        const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
-        if (unified === null) {
-          writeAttemptRecord(database, profileId, attemptId, {
-            state: 'failed-retryable',
-            lastCompletedStage: 'preview-rebuilt',
-            errorMessage: 'Unified profile preferences are not available.',
-            createdAt: new Date().toISOString(),
-            response: null,
-          });
-          response.status(409).json({
-            error: 'Unified profile preferences are not available.',
-            code: 'onboarding_complete_no_unified',
-          });
-          return;
+        const savedUnified = loadUnifiedLegacyPreferences(
+          profilePreferencesPath,
+        );
+        if (savedUnified === null && profilePreferencesPath === undefined) {
+          throw new Error(
+            'The unified profile-preferences path is unavailable.',
+          );
         }
+        const unified = savedUnified ?? loadPreferencesForFirstCompletion();
         const existing = loadCandidateProfile(
           candidateProfilePath,
           profilePreferencesPath,

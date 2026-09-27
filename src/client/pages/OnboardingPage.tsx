@@ -185,6 +185,29 @@ export function OnboardingPage() {
       </section>
     );
   }
+  if (status.state === 'blocked' && status.blockKind !== undefined) {
+    const isStorageFailure = status.blockKind === 'storage-failure';
+    return (
+      <BlockedView
+        title={blockTitle(status.blockKind)}
+        message={
+          status.blockMessage ?? 'Onboarding progress could not be loaded.'
+        }
+        primaryLabel={isStorageFailure ? 'Retry' : 'Clear broken progress'}
+        onPrimary={async () => {
+          if (isStorageFailure) {
+            await loadStatus();
+            return;
+          }
+          await api.resetOnboardingProgress();
+          await loadStatus();
+        }}
+        secondaryLabel={isStorageFailure ? 'Leave' : 'Open Sources'}
+        secondaryHref={isStorageFailure ? '/jobs' : '/sources'}
+        storageFailure={isStorageFailure}
+      />
+    );
+  }
   // Active editing of an already-completed configuration takes
   // precedence: render the wizard, not the completed view.
   if (status.editSession.editing || status.editSession.resumable) {
@@ -224,30 +247,6 @@ export function OnboardingPage() {
       />
     );
   }
-  if (status.state === 'blocked' && status.blockKind !== undefined) {
-    const isStorageFailure = status.blockKind === 'storage-failure';
-    return (
-      <BlockedView
-        title={blockTitle(status.blockKind)}
-        message={
-          status.blockMessage ?? 'Onboarding progress could not be loaded.'
-        }
-        primaryLabel={isStorageFailure ? 'Retry' : 'Clear broken progress'}
-        onPrimary={async () => {
-          if (isStorageFailure) {
-            await loadStatus();
-            return;
-          }
-          await api.resetOnboardingProgress();
-          await loadStatus();
-        }}
-        secondaryLabel={isStorageFailure ? 'Leave' : 'Open Sources'}
-        secondaryHref={isStorageFailure ? '/jobs' : '/sources'}
-        storageFailure={isStorageFailure}
-      />
-    );
-  }
-
   return <Wizard status={status} onRefreshStatus={loadStatus} />;
 }
 
