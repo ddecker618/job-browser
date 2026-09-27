@@ -50,6 +50,14 @@ user's explicit approval.
 - Before proposing discovery, matching, semantic-ranking, application-
   assistance, or monetization work, read
   `docs/AI_PRODUCT_CLAIMS_GAP_ANALYSIS.md`.
+- Before proposing occupation expansion, new job-source coverage, or a paid
+  subscription product, also read
+  `docs/UNIVERSAL_EMPLOYMENT_COVERAGE_ROADMAP.md`. Universal employment
+  coverage is a commercial-launch requirement, while its individual delivery
+  slices still require explicit task scope and validation. Its personal
+  job-search non-interference rule is mandatory: never broaden or alter the
+  owner's active searches, profile, sources, ranking, preferences, or
+  production data as part of expansion planning or isolated development.
 - Treat that file as a claim audit and candidate register, not authorization to
   start every item. The active delivery board, implementation roadmap, project
   memory, and the user's explicit direction remain authoritative.
