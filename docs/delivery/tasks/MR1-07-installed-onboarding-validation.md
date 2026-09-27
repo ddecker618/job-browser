@@ -93,9 +93,14 @@ automated checks pass. With the candidate ready, request observations for:
 6. Close/reopen, Save and leave, resume, edit, and discard behave as expected.
 7. No unexpected notification sound or OS notification occurs.
 
-Run the installed app with the disposable user-data/database environment; do not
-open production data during manual review. Record each result as observed,
-failed, or not performed. Do not infer a manual pass from automated tests.
+Run the installed app with `JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE=1`,
+`JOB_BROWSER_SMOKE_USER_DATA=<temporary-root>`, and
+`JOB_BROWSER_DB_PATH=<temporary-root>\data\jobs.sqlite`. The packaged app
+fails closed unless both paths are under the operating-system temporary
+directory, supplies a synthetic local coordinator, and disables its scheduler
+in this mode. Do not open production data during manual review. Record each
+result as observed, failed, or not performed. Do not infer a manual pass from
+automated tests.
 
 ## Rollback and failure handling
 

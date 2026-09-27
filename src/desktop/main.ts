@@ -1,6 +1,7 @@
 import { writeFileSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import {
   app,
@@ -56,9 +57,26 @@ if (process.env['JOB_BROWSER_SMOKE_USER_DATA']) {
   app.setPath('userData', process.env['JOB_BROWSER_SMOKE_USER_DATA']);
 }
 const smokeTest = process.env['JOB_BROWSER_SMOKE_TEST'] === '1';
+const manualOnboardingAcceptance =
+  process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'] === '1';
 const onboardingSmokePhase = smokeTest
   ? process.env['JOB_BROWSER_SMOKE_ONBOARDING_PHASE']
   : undefined;
+if (manualOnboardingAcceptance) {
+  const userDataRoot = process.env['JOB_BROWSER_SMOKE_USER_DATA'];
+  const databasePath = process.env['JOB_BROWSER_DB_PATH'];
+  const temporaryRoot = resolve(tmpdir());
+  if (
+    userDataRoot === undefined ||
+    databasePath === undefined ||
+    !isPathWithin(temporaryRoot, userDataRoot) ||
+    !isPathWithin(userDataRoot, databasePath)
+  ) {
+    throw new Error(
+      'Disposable onboarding acceptance mode requires temporary user-data and database paths.',
+    );
+  }
+}
 const smokeStatusPath = smokeTest
   ? resolve(app.getPath('userData'), 'smoke-status.txt')
   : null;
@@ -450,7 +468,9 @@ async function runStartup(): Promise<void> {
       logger: desktopLogger.log,
       credentialResolver: credentialVault,
       ...(onboardingSmokePhase === undefined
-        ? {}
+        ? manualOnboardingAcceptance
+          ? { onboardingCoordinator: { runAll: () => Promise.resolve([]) } }
+          : {}
         : {
             onboardingCoordinator: {
               runAll: () => {
@@ -1273,6 +1293,14 @@ function writeSmokeSetting(
          updated_at = excluded.updated_at`,
     )
     .run(key, JSON.stringify(value));
+}
+
+function isPathWithin(root: string, candidate: string): boolean {
+  const path = relative(resolve(root), resolve(candidate));
+  return (
+    path === '' ||
+    (!isAbsolute(path) && path !== '..' && !path.startsWith(`..${sep}`))
+  );
 }
 
 function insertDesktopSmokeJob(
