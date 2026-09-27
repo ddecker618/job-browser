@@ -4,7 +4,30 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
-## Current verified baseline (recorded evidence — 2026-09-24)
+## Current verified baseline (2026-09-26)
+
+- **Code checkpoint:** `778f3d2` (`fix: harden onboarding completion and edit recovery`),
+  preceded by `6e7319f` (`fix: type privacy attribution metadata safely`),
+  `b058cac` (AI product claims documentation), and `ce9a7a1` (proprietary
+  licensing and installer EULA). The two correction commits are local;
+  no push was performed.
+- **Working tree:** code/tests are committed; MR1-06 task-card and
+  handoff updates are pending a documentation commit. The delivery
+  board and project memory also contain separate user-prioritized MR3-01
+  planning changes; preserve the untracked
+  `docs/delivery/tasks/MR3-01-user-assisted-verification-handoff.md`.
+- **Validation at this code checkpoint:** `npm run verify` passed
+  **1823/1823** tests across 180 files; focused onboarding suites
+  **217/217** across 8 files; `npm run privacy:check` **12/12**;
+  `npm run nlp:security-audit` **3/3**; formatting and diff checks clean.
+- **Branch reference:** last observed after the code commits, `main` was
+  ahead of locally recorded `origin/main` by 4 commits and behind by 0.
+  This is local tracking information only; server state was not checked.
+- MR1-04 and MR1-05 remain accepted and **Done**. MR1-06 remains
+  **Review**, not self-approved as Done. No MR1-07 implementation,
+  release build, version bump, or push is authorized by this handoff.
+
+## Historical verified baseline (recorded evidence — 2026-09-24)
 
 - **HEAD:** `050651d` (`docs: record MR1-06 review boundary`) on top of
   the accepted foundation commits `877c31f` (`feat: add onboarding
@@ -211,74 +234,23 @@
   [`docs/delivery/tasks/MR1-04-progress-storage.md`](docs/delivery/tasks/MR1-04-progress-storage.md).
   Browser, narrow-window and 200% zoom checks remain explicit
   acceptance items for **MR1-06/MR1-07** and are **not** marked as
-  passed. Release status remains **Not shipped**; MR1-06 still not
-  started.
+  passed. Release status remains **Not shipped**; MR1-06 remains in
+  Review.
 - **MR1-06 — Connect the onboarding wizard to saved preferences and
-   real discovery** is the next authorized task (claimed by OpenCode
-   2026-09-24 after Codex accepted MR1-05; implementation complete
-   and moved to **Review**; a Codex review correction pass is in
-   progress on top of `050651d`). The slice wires the accepted
-   `PreferencesStep`, `ReviewStep`, and `SearchPlanStep` components
-   into one working flow that prepares and starts a real Job Browser
-   search through the existing `DiscoveryCoordinator`. A narrow
-   versioned API is mounted at `/api/onboarding` (`GET /status`,
-   `POST /preview`, `POST /draft-from-profile`, `POST /save`,
-   `POST /reset`, `POST /edit/start`, `POST /edit/end`,
-   `POST /complete`, `POST /discovery/retry`); strict request
-   validation through `onboardingProgressSnapshotSchema`,
-   `onboardingValidatedPreferencesSchema`, and the newly exported
-   `onboardingReviewItemSchema`; safe client errors without raw
-   diagnostics; plan preview is always rebuilt from the current
-   draft via `POST /api/onboarding/preview` and returns a SHA-256
-   `planToken`; completion compares the `planToken` and rejects stale
-   plans with 409 + refreshed plan; credentials are resolved through
-   `credentialResolver.status` instead of being fabricated;
-   profile-derived `OnboardingPreferencesDraft` via
-   `POST /api/onboarding/draft-from-profile`; completion-marker
-   persistence in `app_settings.onboardingCompletion:<profileId>`.
-   Confirmation ordering: validate → rebuild+compare token →
-   confirmationAllowed → persist → cascade → completion marker →
-   clear progress → edit session → invoke `coordinator.runAll()`
-   once. Persistence failure never runs discovery, keeps draft and
-   review state, and surfaces a retryable error. Cascade failure
-   never writes the completion marker and returns a retryable
-   `onboarding_complete_cascade_failed`. Discovery failure keeps
-   completion and progress clearing, persists a bounded translated
-   `discoveryError`, and supports search-only retry through
-   `/api/onboarding/discovery/retry`. Completion is idempotent via a
-   client-generated `attemptId` stored as
-   `onboardingAttempt:<profileId>:<attemptId>` with the stored
-   outcome that a repeated request returns without rewriting,
-   cascading, or re-running discovery. A durable discovery outcome
-   is persisted as
-   `app_settings.onboardingDiscoveryOutcome:<profileId>` with state
-   `not-started` \| `running` \| `succeeded` \| `failed` \| `unavailable`
-   and is returned through `/api/onboarding/status` so the
-   CompletedView renders truthful wording after reload. Concurrent
-   discovery retry is blocked with 409 `onboarding_retry_already_running`.
-   The new `src/client/pages/OnboardingPage.tsx` parent wizard wires
-   the accepted child components with a `/onboarding` route in
-   `App.tsx`; visible `Start onboarding`/`Review search setup` entry
-   points are exposed through `FirstRunPanel`, `SearchProfilePage`,
-   and a `Search Setup` nav entry; no forced redirect; distinct
-   blocked screens for malformed/unsupported-version/storage-failure
-   with Retry+Leave for storage-failure (no destructive reset);
-   transitions persist the destination snapshot before advancing;
-   `Cancel and leave` saves valid progress via `endOnboardingEdit(true)`
-   and never calls the destructive reset endpoint; existing completion
-   markers are preserved when a later editing session ends with
-   `keepProgress:false`. Validated: typecheck clean;
-   `tests/onboarding-api.test.ts` 20/20 PASS;
-   `tests/onboarding-flow.test.tsx` 13/13 PASS; combined onboarding
-   focused suite **197/197 PASS** across 7 files (was 164 before
-   MR1-06; **+33** new tests); `npm run verify` **1802/1802 PASS**
-   across 179 files (was 1769/1769 across 177 before MR1-06; **+33**
-   tests, same file count); `npm run privacy:check` 11/11 PASS;
-   `npm run nlp:security-audit` 3/3 PASS; `git diff --check` clean.
-   Browser, narrow-window and 200% zoom checks remain explicit
-   acceptance items for **MR1-07** and were **not** performed or
-   claimed here. Release status remains **Not shipped**; MR1-07 still
-   not started.
+  real discovery** remains **Review**. Further correction work addresses
+  plan reconstruction and credential status, blocked-progress
+  precedence, terminal completion-attempt replay, edit-session resume,
+  and transactional cleanup failure behavior. Confirmation rebuilds
+  and token-checks the plan, persists preferences and query scope,
+  transactionally writes completion and clears progress, then invokes
+  the existing `DiscoveryCoordinator` once. Discovery failures are
+  terminal for that completion attempt and retain an exact replay
+  response; search retry is a separate endpoint. Editing a completed
+  setup preserves historical completion, supports Save and leave, and
+  can resume later. MR1-06 is not self-approved as Done. The final
+  validation results are recorded in the task card and baseline above.
+  Browser, narrow-window, and 200% zoom checks remain outstanding
+  for MR1-07; release status remains **Not shipped**.
 - **MR1-05 — Preview bounded search/source plan** was authorized by
   the user on 2026-09-24 (after Codex accepted MR1-04) and is now
   **Done**. The slice is preview-only and never executes discovery: a
@@ -322,8 +294,7 @@
   [`docs/delivery/tasks/MR1-05-search-plan.md`](docs/delivery/tasks/MR1-05-search-plan.md).
   Browser, narrow-window and 200% zoom checks remain explicit
   acceptance items for **MR1-06/MR1-07** and are **not** marked as
-  passed. Release status remains **Not shipped**; MR1-06 is now the
-  next authorized task.
+  passed. Release status remains **Not shipped**; MR1-06 is in Review.
 
 ## Important constraints (active)
 
@@ -371,7 +342,7 @@ real packaged Windows session:
 No code changes required to investigate any of the above.
 Investigations are out of scope for MR0-01 (which is docs-only).
 
-## Next action
+## Previous next action (2026-09-24)
 
 1. **MR1-06 is in Review for Codex** (claimed by OpenCode 2026-09-24
    after Codex accepted MR1-05; implementation complete; a Codex
@@ -402,6 +373,14 @@ Investigations are out of scope for MR0-01 (which is docs-only).
    pass will produce one further local recoverable commit on top of
    `050651d`. No push is performed; the 1.1.5 release status on the
    board stays **Not shipped**.
+
+## Next action
+
+1. Commit the reconciled MR1-06 task card and handoff locally, without
+   bundling MR3-01 planning changes. Keep MR1-06 in Review for Codex.
+2. Recheck the working tree and local `origin/main` relationship. Do not
+   push, start MR1-07, bump the version, or claim a new release. The
+   release remains **Not shipped**.
 
 ## Links to historical evidence
 

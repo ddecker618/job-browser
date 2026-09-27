@@ -13,23 +13,18 @@
 - **First correction pass complete** on 2026-09-24 — OpenCode applied
   the Codex review findings (plan preview, idempotency, entry points,
   prefill).
-- **Second correction pass complete** on 2026-09-24 — OpenCode applied
-  the deeper Codex findings (editable completed onboarding, save-and-
-  leave navigation, staged attempt retry semantics, real failure
-  seams, durable discovery outcome).
+- **Correction passes complete** through 2026-09-26 — OpenCode applied
+  the plan-authority/credential, invalid-progress precedence,
+  terminal-attempt replay, save-and-leave, and cleanup-transaction
+  findings. MR1-06 remains in Review pending Codex re-review and the
+  observed visual/accessibility acceptance items below; it is not Done.
 - **In Review** awaiting Codex re-acceptance; **not** self-approved
   as Done.
-- Validated: typecheck clean; `tests/onboarding-api.test.ts` 22/22
-  PASS; `tests/onboarding-flow.test.tsx` 14/14 PASS;
-  `tests/onboarding-entry-points.test.tsx` 4/4 PASS; combined
-  onboarding focused suite **204/204 PASS** across 8 files (was 164
-  before MR1-06; **+40** new tests); `npm run verify`
-  **1809/1809 PASS** across 180 files (was 1769/1769 across 177
-  before MR1-06; **+40** tests, **+1** file);
-  `npm run privacy:check` 11/11 PASS;
-  `npm run nlp:security-audit` 3/3 PASS;
-  `git diff --check` clean; `npm run format:check` clean;
-  `npm run lint` clean.
+- Validated on the 2026-09-26 correction state: `npm run verify`
+  **1823/1823 PASS** across 180 files (legal notices, format, lint,
+  typecheck, and full test suite); focused onboarding suite **217/217
+  PASS** across 8 files; `npm run privacy:check` **12/12 PASS**;
+  `npm run nlp:security-audit` **3/3 PASS**; `git diff --check` clean.
 
 ## Outcome
 
@@ -101,9 +96,18 @@ Returns an `OnboardingStatusResponse`:
   profileId: string;
   onboardingStep?: 'experience' | 'preferences' | 'review' | 'search-plan';
   question?: OnboardingQuestion | null;
-  resumeKind?: 'stored' | 'fresh';
+  resumeKind?: 'stored' | 'fresh' | 'editing-existing';
   snapshot?: OnboardingProgressSnapshot;
-  plan?: OnboardingSearchPlan;
+  planToken?: string;
+  prefilledDraft?: OnboardingPreferencesDraft;
+  discoveryOutcome: {
+    state: 'not-started' | 'running' | 'succeeded' | 'failed' | 'unavailable';
+    message: string | null;
+    summariesCount: number;
+    completedAt: string | null;
+    attemptId: string | null;
+  };
+  editSession: { editing: boolean; resumable: boolean; startedAt: string | null };
   blockKind?: 'malformed' | 'unsupported-version' | 'storage-failure';
   blockMessage?: string;
   completion: { completed: boolean; completedAt: string | null };
@@ -114,6 +118,20 @@ The plan is always rebuilt from current authoritative sources and
 provider descriptors so the client cannot authorize against a stale
 preview.
 
+### `POST /api/onboarding/preview`
+
+Strictly validates the current preferences and confirmed titles, rebuilds
+the plan using current source/provider/credential state, and returns the
+plan, its SHA-256 `planToken`, and `confirmationAllowed`. Completion must
+present the exact reviewed token; a changed plan requires re-review.
+
+### `POST /api/onboarding/draft-from-profile`
+
+Returns a draft derived from the active candidate profile plus a freshly
+built plan token and `confirmationAllowed`. This supplies the initial
+draft for a new or completed-user edit when no saved onboarding snapshot
+exists; it does not create or save progress.
+
 ### `POST /api/onboarding/save`
 
 Strictly validates the body against
@@ -123,9 +141,20 @@ previous stored snapshot intact and returns a safe 409.
 
 ### `POST /api/onboarding/reset`
 
-Explicit reset only. Clears the progress key and the completion
-marker. Does not alter the candidate profile, sources, jobs,
-applications, scoring, or NLP data.
+Explicit recovery action. By default clears only progress and the edit
+session; it preserves a historical completion marker. The marker and
+discovery outcome are erased only when the separately named request
+field `resetCompletion: true` is supplied. The ordinary wizard footer
+does not expose a full-completion reset. No reset alters the candidate
+profile, sources, jobs, applications, scoring, or NLP data.
+
+### `POST /api/onboarding/edit/start` and `/edit/end`
+
+Starting an edit records an active resumable edit session while retaining
+the historical completion marker. Ending with `keepProgress: true`
+leaves the session inactive but resumable; ending with `false` deletes
+the edit progress first and then clears the session. A progress-delete
+failure leaves the edit session intact and returns a bounded error.
 
 ### `POST /api/onboarding/complete`
 
@@ -135,6 +164,8 @@ Body:
 {
   preferences: OnboardingValidatedPreferences;
   reviewItems: readonly OnboardingReviewItem[];
+  planToken: string;
+  attemptId: string;
 }
 ```
 
@@ -143,34 +174,48 @@ and `onboardingReviewItemSchema`.
 
 Confirmation ordering (see `src/server/onboardingRoutes.ts`):
 
-1. Rebuild the plan from current authoritative inputs.
-2. Persist the candidate profile through
+1. Strictly validate the request.
+2. Rebuild the plan from current authoritative inputs and compare its
+   SHA-256 token with the exact plan token the user reviewed. Token
+   mismatch → safe 409 + refreshed plan; the user must review again.
+3. Reject when `confirmationAllowed === false`.
+4. Persist the candidate profile through
    `saveUnifiedProfilePreferences`, merging validated preferences and
    applying confirmed review items.
-3. Set `sourceQueryRoles` to exactly `plan.appliedQueries` and call
+5. Set `sourceQueryRoles` to exactly `plan.appliedQueries` and call
    `sourceRepository.cascadeTargetRoles`.
-4. Write the profile-scoped completion marker in `app_settings`.
-5. Clear the stored progress key.
-6. Invoke `coordinator.runAll()` exactly once.
+6. In one database transaction, write the completion marker, delete
+   progress, and end the edit session. A progress-delete failure rolls
+   back the completion marker and edit-session mutation.
+7. Invoke `coordinator.runAll()` exactly once.
 
 Failure handling:
 
 - Profile persistence failure → 500, no completion marker, no
   progress cleared, no discovery, draft preserved on the client.
-- Cascade failure → completion marker is written and progress is
-  cleared, but the response reports the cascade failure so the
-  client can keep the user on the wizard and offer a retry path.
-  Discovery is not invoked.
+- Cascade failure → safe 500 `onboarding_complete_cascade_failed`; no
+  completion marker, no progress cleared, no discovery. The attempt is
+  `failed-retryable`, and retrying the same `attemptId` retries profile
+  persistence + cascade safely.
+- Completion finalization failure → the transaction rolls back the
+  marker and edit-session clearing; progress remains; safe 500
+  `onboarding_complete_finalize_failed`; no discovery. The attempt is
+  `failed-retryable` and can be retried.
 - Discovery failure → completion marker and progress clearing
-  succeed; the response reports a translated, bounded
-  `discoveryError` and `discoveryStarted: false`. The client offers
-  a search-only retry through `POST /api/onboarding/discovery/retry`.
+  succeed; a bounded generic discovery message is persisted in the
+  `failed` outcome. The completion attempt is terminal `completed` and
+  the exact terminal response is stored on the attempt record. Replaying
+  the same `attemptId` returns that exact response without rewriting,
+  cascading, or running discovery. Search-only retry is available only
+  through `POST /api/onboarding/discovery/retry`.
 
 ### `POST /api/onboarding/discovery/retry`
 
-Idempotent search-only retry used by the client when discovery
-failed after a successful completion. Does not touch progress, does
-not rewrite preferences, does not clear the completion marker.
+Search-only retry used by the client when discovery failed after a
+successful completion. Does not touch progress, does not rewrite
+preferences, and does not clear the completion marker. A persisted
+`running` state blocks concurrent retry calls with HTTP 409. Success
+or failure updates only the durable discovery outcome.
 
 ## First-run / manual-entry behavior
 
@@ -184,9 +229,23 @@ not rewrite preferences, does not clear the completion marker.
 - A stored disabled `salary` position recovers through the accepted
   MR1-04 behavior (the wizard resumes at the first unresolved
   enabled question).
-- `Not now` / `Cancel and leave` saves valid progress when possible
-  and returns to the application without marking onboarding
-  complete.
+- A completed user can select **Edit search setup**. This calls
+  `POST /api/onboarding/edit/start`; status then gives the active edit
+  session precedence over the historical completion marker and
+  returns a profile-derived draft when no edit snapshot exists.
+- Returning to `/onboarding` resumes an edit whose `editSession` is
+  resumable even after the completed user left the page.
+- `Save and leave` persists the exact current snapshot, ends the
+  active edit while retaining resumability and completion history,
+  then navigates to `/jobs`. A save or edit-end failure keeps the
+  wizard open, preserves entered values, and does not navigate.
+- **Discard current edit** clears only the resumable edit progress,
+  ends the editing marker, and retains the previously completed
+  configuration. It does not save the snapshot first.
+- Malformed/unsupported progress can be cleared with the explicit
+  **Clear broken progress** action. This preserves any previous
+  completion marker by default; storage-failure offers Retry/Leave,
+  never destructive reset.
 - Back navigation preserves the draft and review edits.
 
 ## Progress-save boundaries
@@ -205,17 +264,22 @@ Distinct screens for each blocked kind:
   version".
 - `storage-failure` → "Onboarding progress could not be loaded".
 
-Each blocked screen offers an explicit Reset action and a link to the
-Sources workspace. No blocked state may appear as an empty first-run
-wizard.
+Malformed and unsupported-version screens offer an explicit **Clear
+broken progress** action and a link to the Sources workspace.
+Storage-failure offers **Retry** and **Leave** only; it does not offer
+Reset. No blocked state may appear as an empty first-run wizard. A
+failed retry leaves the same blocked state and all markers intact.
 
 ## Completion marker behavior
 
 A completion marker (`app_settings.onboardingCompletion:<profileId>`)
-is written only when persistence succeeds. The marker distinguishes
-"completed" from "missing progress". A successful completion always
-clears the stored progress key. A failed persistence never writes the
-marker.
+is written only after profile persistence, source-query cascading, and
+progress deletion succeed. It distinguishes "completed" from "missing
+progress". Completed setup may enter an explicit edit session without
+erasing the marker; leaving an edit preserves it, completing the edit
+replaces its completion timestamp, and discarding the edit retains the
+previous completion. A failed persistence, cascade, progress deletion,
+or marker write does not report completion.
 
 ## Confirmation and discovery ordering
 
@@ -223,10 +287,14 @@ The `/api/onboarding/complete` endpoint is the single ordered
 authority:
 
 1. Revalidate and rebuild the plan (server-side, authoritative).
-2. Save confirmed profile preferences and executable query scope.
-3. Mark onboarding complete.
-4. Clear stored progress.
-5. Invoke the existing `DiscoveryCoordinator.runAll` exactly once.
+2. Compare the exact reviewed `planToken`; require a re-review on
+   mismatch.
+3. Verify that the rebuilt plan is confirmable.
+4. Save confirmed profile preferences and executable query scope.
+5. Cascade source query roles through the existing SourceRepository.
+6. Transactionally write the completion marker, delete progress, and
+   end the editing session.
+7. Invoke the existing `DiscoveryCoordinator.runAll` exactly once.
 
 ## Retry / cancel semantics
 
@@ -237,10 +305,15 @@ authority:
   progress clearing stand; the client surfaces the translated
   discovery error and exposes a search-only `Retry search` button
   that calls `/api/onboarding/discovery/retry`.
-- `Cancel and leave` → saves valid progress when possible and clears
-  the completion marker so the user is not marked complete.
-- Reset → explicit user action; clears progress and completion marker;
-  does not alter other data.
+- `Save and leave` → save the destination snapshot, end the active edit
+  with progress retained, then navigate to `/jobs`. If either save or
+  edit-end fails, remain in the wizard and show a safe retryable error.
+- `Discard current edit` → clear resumable progress, end the edit, keep
+  the historical completion marker; no save occurs first.
+- `Clear broken progress` → explicit blocked-state action; clears only
+  the progress and edit-session markers by default and preserves any
+  prior completion marker. Storage failure offers Retry/Leave only.
+- Full completion-marker erasure is not exposed in the ordinary wizard.
 
 ## Failure-state wording
 
@@ -288,7 +361,8 @@ existing route is changed.
 - missing progress creates only the legitimate fresh state;
 - valid progress resumes exactly;
 - malformed / unsupported-version / storage-failure stay blocked;
-- explicit reset clears the progress key and completion marker;
+- default recovery clears progress but preserves historical completion;
+  `resetCompletion: true` is required to erase the completion marker;
 - strict request validation rejects invalid bodies;
 - safe client errors without diagnostic leakage;
 - progress save/load round-trip;
@@ -311,12 +385,12 @@ existing route is changed.
 - back navigation preserves draft and review edits;
 - review state round-trip;
 - progress restoration at the exact stored question;
-- cancel/leave and resume;
+- Save and leave; completed-user edit resume;
+- discard current edit while preserving historical completion;
 - distinct malformed / unsupported-version / storage-failure
   screens;
-- explicit reset;
-- plan refresh before confirmation (the plan returned by the status
-  endpoint is used for the preview);
+- blocked-progress recovery without erasing historical completion;
+- plan refresh before confirmation (via `POST /api/onboarding/preview`);
 - applied and omitted query display (verified by the existing
   MR1-05 component tests);
 - saving/confirming disabled state;
@@ -337,7 +411,7 @@ Focused gates while developing:
 - `npx vitest run tests/onboarding-api.test.ts`
 - `npx vitest run tests/onboarding-flow.test.tsx`
 - combined onboarding suites:
-  `npx vitest run tests/onboarding-contract.test.ts tests/onboarding-preferences.test.tsx tests/onboarding-review.test.tsx tests/onboarding-progress-storage.test.ts tests/onboarding-search-plan.test.tsx tests/onboarding-api.test.ts tests/onboarding-flow.test.tsx`
+  `npx vitest run tests/onboarding-contract.test.ts tests/onboarding-preferences.test.tsx tests/onboarding-review.test.tsx tests/onboarding-progress-storage.test.ts tests/onboarding-search-plan.test.tsx tests/onboarding-api.test.ts tests/onboarding-flow.test.tsx tests/onboarding-entry-points.test.tsx`
 - `npx eslint` on the changed source and test files
 - `npx prettier --check` on the changed source, tests, CSS, and docs
 
