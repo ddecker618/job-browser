@@ -2,30 +2,30 @@
 
 ## Current project status
 
-Reconciled against source checkpoint `8281609` (1.1.5 / P37 SHADOW) and
-the P33/1.1.3 + 1.1.4 release records. Git/source evidence takes precedence
-over historical completion records.
+Reconciled against source checkpoint `0f96335` (1.1.5 / accepted MR1-06)
+and the P33/1.1.3 + 1.1.4 release records. Git/source evidence takes
+precedence over historical completion records.
 
 **Active task queue:** [`docs/JOB_BROWSER_DELIVERY_BOARD.md`](JOB_BROWSER_DELIVERY_BOARD.md)
 is the single task-status authority as of 2026-09-18. Status/owner/claimed
 files for any in-flight work live on that board; do not duplicate the
 queue here.
 
-**Onboarding workstream (2026-09-18 → 2026-09-24):** MR0-01
-documentation baseline, MR1-01 frozen onboarding contract, MR1-02
-guided preferences step, MR1-03 review/confirmation screen,
-MR1-04 persist-and-resume progress through existing profile services,
-and MR1-05 bounded search/source-plan preview are all **Done**
-(accepted by Codex). MR1-06 (connect the wizard to saved preferences
-and real discovery) is **In Review**; the implementation plus a
-Codex review correction pass are complete and waiting for re-review.
-MR1-07 (validate the installed onboarding and first-user
-experience) remains not started. Onboarding remains **Not shipped**;
-the 1.1.5 package version and installer are unchanged. See
+**Onboarding workstream (2026-09-18 → 2026-09-26):** MR0-01
+documentation baseline and MR1-01 through MR1-05 are **Done**. MR1-06
+(connect the wizard to saved preferences and real discovery) was
+accepted by Codex and moved to **Done** on 2026-09-26, including the
+profile-scoped completion guard at `df829b9`. MR1-07 (installed
+onboarding and first-user validation) is **In progress**, authorized
+2026-09-26, and preparing the 1.1.6 release boundary. The package remains
+1.1.5 and the release remains **Not shipped** until all required
+automated and human checks pass. See
 [`docs/delivery/tasks/MR1-05-search-plan.md`](delivery/tasks/MR1-05-search-plan.md)
 and
 [`docs/delivery/tasks/MR1-06-wizard-integration.md`](delivery/tasks/MR1-06-wizard-integration.md)
-for the accepted contracts.
+for accepted contracts, and
+[`docs/delivery/tasks/MR1-07-installed-onboarding-validation.md`](delivery/tasks/MR1-07-installed-onboarding-validation.md)
+for active release acceptance.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
@@ -74,7 +74,7 @@ future product directions, not completed features or an approved implementation
 sequence. Build on the existing Company identity and separate Employer registry;
 preserve local data, source provenance, and current deterministic authority.
 
-**User-prioritized source-reliability idea (2026-09-26):** Implement a user-assisted verification handoff that pauses a browser-backed query on a login/CAPTCHA/security wall, lets the user complete the check in the visible persistent browser, and resumes from a safe query checkpoint. Automated CAPTCHA solving and security-control evasion are out of scope. Track this as [MR3-01](delivery/tasks/MR3-01-user-assisted-verification-handoff.md); begin after the active onboarding work reaches a clean recovery commit.
+**User-prioritized source-reliability idea (2026-09-26):** Implement a user-assisted verification handoff that pauses a browser-backed query on a login/CAPTCHA/security wall, lets the user complete the check in the visible persistent browser, and resumes from a safe query checkpoint. Automated CAPTCHA solving and security-control evasion are out of scope. Track this as [MR3-01](delivery/tasks/MR3-01-user-assisted-verification-handoff.md); keep it preserved and defer implementation until the MR1-07 / 1.1.6 release boundary is safe.
 
 ## Purpose
 

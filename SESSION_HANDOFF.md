@@ -22,8 +22,10 @@
 - **Review result:** MR1-06 is accepted and **Done**. The final review
   added server-side protection against concurrent completion requests
   with different attempt IDs and against a second completion without an
-  explicit edit session. MR1-07 remains unstarted and owns installed
-  visual, narrow-window, and 200% zoom acceptance.
+  explicit edit session. MR1-07 is now **In progress**, authorized
+  2026-09-26, and owns installed onboarding acceptance and the 1.1.6
+  release boundary. The package is still 1.1.5 and the release remains
+  Not shipped until all automated and human gates pass.
 - **Release state:** Not shipped. No version bump or installer rebuild
   belongs to this documentation closeout.
 
@@ -376,14 +378,14 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. MR1-07 is the next onboarding boundary: validate the installed
-   first-user experience with disposable data, including visual,
-   narrow-window, and 200% zoom checks. It requires explicit task start.
+1. Complete MR1-07 using isolated synthetic data. Build and validate a
+   current-source 1.1.6 installer, and pause for direct human acceptance
+   only after every automated gate passes.
 2. MR3-01 is preserved as the next user-prioritized source-reliability
    implementation after the onboarding/release boundary is safe.
-3. Do not claim a new release until the version, installer, packaged and
-   installed smokes, legal/EULA checks, privacy checks, and release docs
-   are completed under the mandatory release gate in `AGENTS.md`.
+3. Do not describe 1.1.6 as ready, released, or pushed until all version,
+   installer, packaged/installed smoke, legal/EULA, privacy, manual
+   acceptance, and release-documentation gates pass.
 
 ## Links to historical evidence
 
