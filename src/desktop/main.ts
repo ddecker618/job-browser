@@ -941,7 +941,7 @@ async function runOnboardingDesktopSmoke(
       'Fresh isolated install did not report a genuine not-started onboarding state',
     );
     await loadDesktopSmokeRoute(window.webContents, '/onboarding');
-    await assertPageText(window.webContents, 'Question 1 of 5');
+    await assertPageText(window.webContents, 'QUESTION 1 OF 5');
     await assertPageText(window.webContents, 'What roles interest you?');
     const roleEntered: unknown = await window.webContents.executeJavaScript(
       `(() => {
@@ -973,7 +973,7 @@ async function runOnboardingDesktopSmoke(
       continued === true,
       'Onboarding smoke could not advance from desired-work',
     );
-    await assertPageText(window.webContents, 'Question 2 of 5');
+    await assertPageText(window.webContents, 'QUESTION 2 OF 5');
     await assertPageText(window.webContents, 'Where would you like to work?');
     const leftWizard: unknown = await window.webContents.executeJavaScript(
       `(() => {
@@ -1021,7 +1021,7 @@ async function runOnboardingDesktopSmoke(
     'Reopened app did not restore the exact saved onboarding point',
   );
   await loadDesktopSmokeRoute(window.webContents, '/onboarding');
-  await assertPageText(window.webContents, 'Question 2 of 5');
+  await assertPageText(window.webContents, 'QUESTION 2 OF 5');
   await assertPageText(window.webContents, 'Where would you like to work?');
 
   const profileId = status['profileId'];
@@ -1107,7 +1107,10 @@ async function runOnboardingDesktopSmoke(
     attemptId: firstAttemptId,
   });
   assertOnboardingSmoke(
-    replay['idempotent'] === true && onboardingSmokeCallCount() === 1,
+    replay['attemptId'] === firstAttemptId &&
+      isSmokeRecord(replay['discoveryOutcome']) &&
+      replay['discoveryOutcome']['state'] === 'failed' &&
+      onboardingSmokeCallCount() === 1,
     'Replaying the terminal completion attempt launched discovery again',
   );
   const blockedSecondCompletion = await onboardingSmokePost(
@@ -1165,7 +1168,7 @@ async function runOnboardingDesktopSmoke(
     edited === true,
     'Completed setup did not offer explicit edit',
   );
-  await assertPageText(window.webContents, 'Question 1 of 5');
+  await assertPageText(window.webContents, 'QUESTION 1 OF 5');
   const discarded: unknown = await window.webContents.executeJavaScript(
     `(() => {
       const button = document.querySelector('[data-testid="onboarding-discard-edit"]');

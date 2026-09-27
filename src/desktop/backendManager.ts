@@ -10,6 +10,7 @@ import {
 import { waitForHealth, type StartupStage } from './startup.js';
 import type { LogWriter } from '../logging/logger.js';
 import type { CredentialResolver } from '../discovery/credentialResolver.js';
+import type { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
 
 export class BackendManager {
   private handle: BackendHandle | null = null;
@@ -21,6 +22,7 @@ export class BackendManager {
       development: boolean;
       logger: LogWriter;
       credentialResolver: CredentialResolver;
+      onboardingCoordinator?: Pick<DiscoveryCoordinator, 'runAll'>;
       onProgress?: (stage: StartupStage) => void;
     },
   ): Promise<BackendHandle> {
@@ -45,7 +47,10 @@ export class BackendManager {
         logger: options.logger,
         backupBeforeMigrations: true,
         credentialResolver: options.credentialResolver,
-        enableScheduler: true,
+        ...(options.onboardingCoordinator === undefined
+          ? {}
+          : { onboardingCoordinator: options.onboardingCoordinator }),
+        enableScheduler: options.onboardingCoordinator === undefined,
         seedDefaultSources: true,
         linkedinProfile: paths.linkedinProfile,
         diceProfile: paths.diceProfile,

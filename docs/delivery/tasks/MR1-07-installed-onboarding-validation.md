@@ -39,7 +39,9 @@
   `npm run privacy:check`, and `npm run nlp:security-audit`.
 - Focused onboarding tests cover status boundaries, profile-scoped completion
   serialization, explicit edit authorization, navigation persistence/resume,
-  Save and leave, discard, bounded errors, and search-only retry.
+  fresh-install preference initialization when the unified document is absent,
+  invalid-progress precedence during a resumable edit, Save and leave, discard,
+  bounded errors, and search-only retry.
 - `npm run desktop:lifecycle-harness` passes with no live discovery.
 - `electron-builder.yml` still includes `LICENSE.txt`, `EULA.txt`, and
   `THIRD_PARTY_NOTICES.md`; NSIS remains assisted (`oneClick: false`) and sets
@@ -65,11 +67,13 @@
   byte/hash equality between packaged and installed `app.asar`.
 - Add/run a packaged onboarding integration smoke with synthetic local data
   that verifies first-run entry, persisted navigation, close/reopen resume,
-  Save and leave, synthetic completion exactly once, refusal of a second
-  completion without explicit edit, authorized edit/discard preserving prior
-  completion, safe discovery failure + search-only retry, and distinct
-  malformed/unsupported/storage-failure handling. Assert no paths, credentials,
-  secrets, secret-bearing URLs, or raw diagnostics appear in rendered/API text.
+  Save and leave, a synthetic coordinator invocation exactly once, refusal of a
+  second completion without explicit edit, authorized edit/discard preserving
+  prior completion, safe discovery failure + search-only retry, and distinct
+  malformed/unsupported handling. The injected-store onboarding API tests must
+  verify storage-failure remains distinct and non-destructive. Assert no paths,
+  credentials, secrets, secret-bearing URLs, or raw diagnostics appear in
+  rendered/API text.
 - After all desktop checks, confirm no Job Browser, Electron, Playwright,
   installer, or helper process remains; port 6783 is free; the test paths all
   resolve inside the disposable root; and no production database path was
@@ -95,6 +99,14 @@ failed, or not performed. Do not infer a manual pass from automated tests.
 
 ## Rollback and failure handling
 
+- **Smoke correction note (2026-09-26):** An initial unpackaged onboarding
+  smoke exposed a missing pass-through for its synthetic coordinator and made
+  one Built In `/jobs` HTTP read before failing its assertion. It used only the
+  disposable smoke user-data/database root; it did not open production data.
+  The coordinator now passes through the desktop backend and disables its
+  scheduler for the dedicated onboarding smoke phase. The subsequent complete
+  two-process onboarding smoke passed without a Built In request log. This
+  incident is recorded and must remain disclosed in release evidence.
 - Preserve the current 1.1.5 installer and source history; never overwrite it
   with an artifact described as 1.1.6.
 - If any source or manual check fails, keep the candidate unpublished, fix only
