@@ -11,19 +11,22 @@ is the single task-status authority as of 2026-09-18. Status/owner/claimed
 files for any in-flight work live on that board; do not duplicate the
 queue here.
 
-**Onboarding workstream (2026-09-18 → 2026-09-26):** MR0-01
+**Onboarding workstream (2026-09-18 → 2026-09-27):** MR0-01
 documentation baseline and MR1-01 through MR1-05 are **Done**. MR1-06
 (connect the wizard to saved preferences and real discovery) was
 accepted by Codex and moved to **Done** on 2026-09-26, including the
 profile-scoped completion guard at `df829b9`. MR1-07 (installed
 onboarding and first-user validation) is **In progress**, authorized
-2026-09-26. Source version is 1.1.6; its first installed manual
-acceptance failed on a transient status-load error and an external
-discovery-isolation breach. Corrected source is committed through `1ba2b3e`;
-`npm run verify` passes 1837/1837, but the retired candidate has not yet been
-rebuilt and installed acceptance remains pending. 1.1.5 remains latest shipped and 1.1.6 remains
-**Not shipped**. Do not claim production data was untouched without a
-trustworthy pre-run baseline. See
+2026-09-26. Source version is 1.1.6; its first installed manual acceptance
+failed on a transient status-load error and an external discovery-isolation
+breach. Corrected source and docs are committed at `bfea12e`; the latest local
+acceptance candidate also includes uncommitted deferred-window/preflight
+changes. Full automated and artifact gates pass. The user reports that fresh
+manual acceptance passed, including required EULA acceptance. The candidate is
+not yet a committed release build; source and documentation must be committed
+separately, then rebuilt and validated before the authorized push. 1.1.5 remains
+latest shipped and 1.1.6 remains **Not shipped**. Do not claim production data
+was untouched without a trustworthy pre-run baseline. See
 [`docs/delivery/tasks/MR1-05-search-plan.md`](delivery/tasks/MR1-05-search-plan.md)
 and
 [`docs/delivery/tasks/MR1-06-wizard-integration.md`](delivery/tasks/MR1-06-wizard-integration.md)

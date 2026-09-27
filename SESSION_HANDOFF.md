@@ -4,15 +4,16 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
-## Current verified baseline (2026-09-26)
+## Current verified baseline (2026-09-27)
 
-- **Corrected source checkpoint:** `1ba2b3e` (`test: stabilize onboarding
-  interaction assertions`) on top of `9a9ff8b` (safe status diagnostics),
-  `20e3e35` (manual acceptance fail-closed safeguards), and the retired
-  candidate source at `f13b44a`. Corrected source is committed but not packaged.
-- **Branch:** local `main` extends `origin/main` at `0f96335`; the locally
-  recorded remote reference has not moved. Fetch and reconcile server state
-  before any authorized push.
+- **Corrected candidate source checkpoint:** `bfea12e` (`docs: update MR1-07
+  remediation checkpoint`) on top of `1ba2b3e` (stable onboarding tests),
+  `9a9ff8b` (safe status diagnostics), and `20e3e35` (manual acceptance
+  fail-closed safeguards). This is the source/documentation commit used to
+  build the corrected 1.1.6 candidate.
+- **Branch:** local `main` was 12 commits ahead of `origin/main` at the candidate
+  checkpoint, behind by 0. The locally recorded remote reference is `0f96335`;
+  fetch and reconcile server state before any authorized push.
 - **Retired candidate:** version 1.1.6; the current-source NSIS installer from
   `f13b44a` was built and
   installed. Installer: `release\Job-Browser-Setup-1.1.6.exe`, 253,700,613
@@ -25,6 +26,35 @@
   upgrade smokes pass; packaged and installed onboarding save/reopen flows
   pass; legal notices current; executable ProductVersion `1.1.6.0`, FileVersion
   `1.1.6`; legal metadata and P36/P37 markers verified in the asar.
+- **Corrected candidate:** installer `release\Job-Browser-Setup-1.1.6.exe`,
+  253,702,793 bytes, SHA-256
+  `103F66681E0C637EE5DE405D12623378D06386BFF7ACDDA0DB54ECF28C5B3895`;
+  packaged/installed `app.asar` identical at 74,771,085 bytes, SHA-256
+  `A0CCF075AD5DB14AF7D0D9E7C2D16643F9E3239F537AAAD2D609F46C50AB0289`.
+  Silent installation exit 0; installed ProductVersion `1.1.6.0`, FileVersion
+  `1.1.6`; NSIS is assisted, licenses the EULA, and does not auto-launch.
+- **Corrected-candidate automated validation:** `npm run verify` **1837/1837**
+  across 181 files; focused onboarding **224/224**; privacy **12/12**; NLP
+  security **3/3**; lifecycle **11/11**; packaged/installed regular, seeded
+  upgrade, and onboarding save/reopen smokes all pass. Manual-mode asar guards,
+  legal metadata, notification denial, and P36/P37 markers are verified.
+- **Latest working-tree acceptance candidate:** rebuilt after adding deferred
+  window display until manual-mode isolation preflight. HEAD remains `bfea12e`;
+  `src/desktop/main.ts`, `src/desktop/windowManager.ts`, and acceptance docs have
+  uncommitted changes. Installer: `release\Job-Browser-Setup-1.1.6.exe`,
+  253,702,892 bytes, SHA-256
+  `22EFC10C2A6F962467255E2D369FCD9325C607EE1C2B0E022FEA01757B033AC0`.
+  Packaged and installed `app.asar`: 74,771,503 bytes, SHA-256
+  `6C29FC78A1E8CA88C8D510F93723903DDF3684B935509434FCCC58F619BFADFF`;
+  hashes match. Installed ProductVersion `1.1.6.0`, FileVersion `1.1.6`;
+  silent install exit 0. Artifact inspection confirms all legal files, author and
+  `UNLICENSED` metadata, manual-mode/deferred-window safeguards, notification
+  denial, and P36/P37 markers.
+- **Latest validation:** `npm run verify` 1837/1837; privacy 12/12; NLP security
+  3/3; lifecycle 11/11; packaged/installed normal and seeded-upgrade smokes;
+  packaged/installed onboarding save/resume smokes; legal notices current.
+  All passed. This artifact is a working-tree acceptance candidate, not a
+  committed release build.
 - **Manual acceptance:** **FAILED** on 2026-09-27. The installed app initially
   showed an unavailable status screen although the subsequent status response
   contained a valid v2 snapshot at Preferences > Location; Retry immediately
@@ -47,15 +77,23 @@
   failures with a safe diagnostic. A clean-root smoke injects a cancelled
   initial status request and verifies recovery. `npm run verify` passes
   1837/1837 across 181 files; focused onboarding 224/224; privacy 12/12; NLP
-  security 3/3; lifecycle 11/11. A corrected 1.1.6 installer build and its
-  artifact-dependent checks remain outstanding.
+  security 3/3; lifecycle 11/11. The corrected candidate was built from
+  `bfea12e`, installed with `runAfterFinish: false`, and all artifact checks now
+  pass; its fresh manual acceptance remains pending below.
 - **Production-data audit:** the September 14 database hash is not a reliable
   baseline for the September 27 default-data process. The database was not read
   or hashed; production non-modification cannot be proven.
-- **Release state:** MR1-07 remains **In progress**; 1.1.6 remains **Not
-  shipped** and not pushed. Rebuild, repeat automated/artifact checks, then
-  request a fresh manual pass. Recheck EULA presentation; the prior PASS applies
-  only to the retired candidate.
+- **Fresh manual acceptance:** user reports PASS for required EULA acceptance,
+  initial status, normal/narrow layouts, 200% scaling, keyboard/focus, text
+  readability, tray/focus, close/reopen/resume, Save and leave, edit/discard,
+  and notification/sound checks. The direct installed launch used the
+  fail-closed disposable mode; its log confirms synthetic coordinator,
+  `realCoordinatorConstructed: false`, scheduler disabled. No Job Browser,
+  Electron, installer, or Playwright process remained; port 6783 was free.
+- **Release state:** MR1-07 remains **In progress** pending final committed-tree
+  rebuild and gates. 1.1.6 is **Not shipped** and not pushed. Preserve the
+  earlier default-data launch limitation: no trustworthy pre-run baseline
+  exists, so production non-modification cannot be proven.
 
 ## Historical verified baseline (recorded evidence — 2026-09-24)
 
@@ -417,18 +455,18 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. Build 1.1.6 from corrected source checkpoint `1ba2b3e` and repeat every
-   artifact-dependent check. The manual-mode network interlocks and startup-
-   status retry have focused and clean-root smoke coverage.
-2. Prepare a fresh installed candidate and prove the synthetic coordinator,
-   disabled scheduler, zero provider calls, and disposable paths before opening
-   the UI for new human acceptance.
-3. Audit the earlier default-data launch only against a trustworthy pre-run
-   baseline. If none exists, retain the explicit finding that production
-   non-modification cannot be proven.
-4. After every renewed human gate passes, finish release docs, commit locally,
-   fetch and verify origin, then push the reviewed boundary. MR3-01 remains the
-   next future user-prioritized task.
+1. Commit the source change and documentation update in separate recoverable
+   commits. Rebuild 1.1.6 from the committed tree, rerun all artifact-dependent
+   checks, legal/privacy/security/lifecycle gates, and confirm asar equality,
+   EULA configuration, version, installer hash, no orphan processes, and free
+   listener ports.
+2. The user authorized pushing these commits if every final gate remains green.
+   Fetch/reconcile origin, inspect all commits and the final diff, then push only
+   after the final validation passes and report the resulting remote state.
+3. Preserve the production-data audit limitation: no trustworthy pre-run
+   baseline exists, so non-modification cannot be proven. Do not access the
+   production database or claim it was untouched. MR3-01 remains the next
+   future user-prioritized task.
 
 ## Links to historical evidence
 

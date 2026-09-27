@@ -125,7 +125,7 @@ Prepared on the committed source checkpoint `f13b44a` (target package 1.1.6):
   after the report, in keeping with the no-access boundary. Production
   non-modification cannot be proven without a contemporaneous pre-run baseline.
 
-## Corrected source checkpoints — `20e3e35`, `9a9ff8b`, `1ba2b3e` (not packaged)
+## Corrected source checkpoints — `20e3e35`, `9a9ff8b`, `1ba2b3e`
 
 - Manual acceptance now fails closed unless the real user-data root is under
   the OS temporary directory and the database is under that root, including
@@ -153,10 +153,79 @@ Prepared on the committed source checkpoint `f13b44a` (target package 1.1.6):
 - `9a9ff8b` records bounded, privacy-safe initial-status diagnostics in the
   desktop log; the clean-root smoke verifies the transient failure/recovery
   record contains only the safe event, kind, status, code, and attempt count.
-- Corrected source has **not** been packaged or installed. The prior
-  installer and all prior artifact gates describe only the retired candidate.
-  Run the full repository gates, rebuild 1.1.6, and repeat every artifact check
-  and all manual acceptance before any release/push claim.
+- The corrected source is packaged below as a new candidate. The prior `f13b44a`
+  artifact remains retired; only the current candidate's evidence below is
+  relevant to renewed manual acceptance.
+
+## Corrected installed candidate checkpoint — superseded artifact
+
+Built from current commit `bfea12e` after the corrected source and documentation
+checkpoint:
+
+- Installer `release\Job-Browser-Setup-1.1.6.exe`: **253,702,793 bytes**,
+  SHA-256 `103F66681E0C637EE5DE405A420535E062408E3EDDFAD7CA1AFAD7766C7F1D32`.
+- Packaged and installed `app.asar`: **74,771,085 bytes** each, SHA-256
+  `3AD8EA6FF88AF9845073A28C4343B9EEF0A9554E2D653220E9C922ABBF7301F9`;
+  hashes match exactly.
+- Silent installation exit code **0**; installed ProductVersion `1.1.6.0`,
+  FileVersion `1.1.6`. Installer configuration is assisted NSIS with the EULA
+  page, `license: EULA.txt`, and `runAfterFinish: false`.
+- Current asar inspection confirms the legal files and metadata; MR1-06/profile
+  completion guard; manual-mode synthetic coordinator, disabled scheduler,
+  disposable-path guard, provider HTTP/Playwright network interlocks, bounded
+  status diagnostic; and required P36/P37 markers.
+- Corrected-candidate packaged, installed, seeded-upgrade, and two-process
+  onboarding smokes pass. The onboarding smoke confirms synthetic coordination,
+  zero provider network attempts, and recovery after one canceled status request.
+- This candidate is installed but has **not** received new human acceptance.
+  Recheck the EULA on this build; then complete the manual checklist below.
+  Release remains **Not shipped**, no push has occurred, and production DB
+  non-modification cannot be claimed without a trustworthy pre-run baseline.
+
+## Latest working-tree candidate — manual acceptance passed
+
+Rebuilt on 2026-09-27 after adding a manual-mode startup preflight that keeps
+the window hidden until disposable-path and synthetic-mode checks succeed.
+This artifact was built from local `main` at `bfea12e` plus the current
+uncommitted `src/desktop/main.ts` and `src/desktop/windowManager.ts` changes;
+it is a local acceptance candidate, not a release commit.
+
+- Installer `release\Job-Browser-Setup-1.1.6.exe`: **253,702,892 bytes**,
+  SHA-256 `22EFC10C2A6F962467255E2D369FCD9325C607EE1C2B0E022FEA01757B033AC0`.
+- Packaged and installed `app.asar`: **74,771,503 bytes** each, SHA-256
+  `6C29FC78A1E8CA88C8D510F93723903DDF3684B935509434FCCC58F619BFADFF`;
+  hashes match exactly. Installed ProductVersion `1.1.6.0`, FileVersion
+  `1.1.6`; silent installation exit code **0**.
+- `app.asar` inspection confirms `LICENSE.txt`, `EULA.txt`,
+  `THIRD_PARTY_NOTICES.md`, version `1.1.6`, package author metadata, license
+  `UNLICENSED`, hidden-window/preflight/manual-mode code, notification policy,
+  and P36/P37 markers. NSIS remains assisted with `license: EULA.txt` and
+  `runAfterFinish: false`.
+- `npm run verify`: **1837/1837** across 181 files; privacy **12/12**; NLP
+  security **3/3**; lifecycle **11/11**; packaged/installed normal and seeded
+  upgrade smokes pass; packaged/installed two-process onboarding save/resume
+  smokes pass; legal notices current.
+- Fresh interactive installer EULA appeared and required acceptance: **PASS**.
+  `runAfterFinish: false` correctly left app startup to a direct installed-app
+  launch. The first post-installer launcher did not start the app; it was then
+  launched directly with acceptance mode enabled and both user-data/database
+  paths rooted under `%TEMP%\job-browser-mr1-07-manual-acceptance-1.1.6`.
+- Fresh human checks on this candidate, reported 2026-09-27: initial onboarding
+  and status **PASS** without the unavailable-status error; normal layout,
+  narrow-window layout, and Windows 200% scaling **PASS**; keyboard navigation
+  and visible focus **PASS**; readable/unclipped status and error text **PASS**;
+  tray icon/menu/focus **PASS**; close/reopen/resume **PASS**; Save and leave
+  **PASS**; edit and discard **PASS**; no unexpected notification or sound
+  **PASS**. The user's results are the source of this manual evidence; they are
+  not inferred from automated tests.
+- The acceptance log records `coordinator: "synthetic"`,
+  `realCoordinatorConstructed: false`, and `schedulerEnabled: false`. Startup
+  used the disposable OS-temp root. The user reports completion in this
+  acceptance session; the separate earlier Built In run remains the documented
+  isolation failure and production-baseline limitation.
+- MR1-07 remains **In progress**; 1.1.6 remains **Not shipped** and has not
+  been pushed. The earlier default-data launch still has no trustworthy
+  contemporaneous baseline, so production non-modification cannot be proven.
 
 ## Manual acceptance — must be directly observed
 
