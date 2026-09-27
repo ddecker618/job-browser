@@ -7,7 +7,6 @@ import type { JobDatabase } from '../db/database.js';
 import { providerRegistry } from '../providers/providerRegistry.js';
 import type { CredentialResolver } from '../discovery/credentialResolver.js';
 import { unavailableCredentialResolver } from '../discovery/credentialResolver.js';
-import { translateError } from '../discovery/discoveryCoordinator.js';
 import {
   loadOnboardingProgress,
   resetOnboardingProgress,
@@ -72,6 +71,24 @@ export interface OnboardingRouteOptions {
    * `sourceRepository.cascadeTargetRoles`.
    */
   cascadeTargetRoles?: (roles: readonly string[]) => void;
+  /**
+   * Test seam: override resumable-progress deletion. Production uses
+   * `resetOnboardingProgress(store, profileId)`. Throwing from this
+   * function must roll back the surrounding database transaction so
+   * finalization remains atomic.
+   */
+  deleteOnboardingProgress?: (profileId: string) => void;
+  /**
+   * Test seam: override the provider descriptor list used by the
+   * plan builder. Production builds descriptors from
+   * `providerRegistry.list()` after resolving credentials through
+   * `credentialResolver.status`. Tests use this to inject a
+   * credential-required provider without standing up a full
+   * JobProvider implementation.
+   */
+  providerDescriptors?: readonly Parameters<
+    typeof buildOnboardingSearchPlan
+  >[0]['providerDescriptors'][number][];
 }
 
 export type OnboardingDiscoveryOutcomeState =
@@ -91,6 +108,8 @@ export interface OnboardingDiscoveryOutcome {
 
 export interface OnboardingEditSession {
   readonly editing: boolean;
+  /** True when a saved edit should resume on the next /onboarding visit. */
+  readonly resumable: boolean;
   readonly startedAt: string | null;
 }
 
@@ -125,18 +144,6 @@ export interface OnboardingDraftFromProfileResponse {
   readonly confirmationAllowed: boolean;
 }
 
-/**
- * Staged attempt-state contract for completion idempotency and
- * retryability. A repeated request with the same `attemptId` must:
- * - return the stored successful result when `completed`;
- * - be refused with HTTP 409 when `in-progress` (concurrent prevention);
- * - be safely retried after `failed-retryable` (the stored record is
- *   removed and a fresh `in-progress` stage begins).
- *
- * `failed-retryable` records carry a safe bounded `errorMessage` and
- * the `lastCompletedStage` so the UI can communicate progress without
- * leaking raw diagnostics.
- */
 type AttemptState = 'in-progress' | 'failed-retryable' | 'completed';
 
 type AttemptLastStage =
@@ -152,6 +159,13 @@ interface AttemptRecord {
   readonly lastCompletedStage: AttemptLastStage;
   readonly errorMessage: string | null;
   readonly createdAt: string;
+  /**
+   * Immutable terminal response for a `completed` attempt. Used by
+   * idempotent replays so the result does not depend on the mutable
+   * global `onboardingDiscoveryOutcome:<profileId>` row (which a
+   * later search-only retry can overwrite).
+   */
+  readonly response: OnboardingCompleteResponse | null;
 }
 
 export interface OnboardingCompleteResponse {
@@ -194,6 +208,7 @@ const ZERO_OUTCOME: OnboardingDiscoveryOutcome = {
 
 const ZERO_EDIT_SESSION: OnboardingEditSession = {
   editing: false,
+  resumable: false,
   startedAt: null,
 };
 
@@ -206,6 +221,25 @@ function isDiscoveryOutcomeState(
     value === 'succeeded' ||
     value === 'failed' ||
     value === 'unavailable'
+  );
+}
+
+function isAttemptState(value: unknown): value is AttemptState {
+  return (
+    value === 'in-progress' ||
+    value === 'failed-retryable' ||
+    value === 'completed'
+  );
+}
+
+function isAttemptLastStage(value: unknown): value is AttemptLastStage {
+  return (
+    value === 'started' ||
+    value === 'preview-rebuilt' ||
+    value === 'profile-persisted' ||
+    value === 'cascaded' ||
+    value === 'finalized' ||
+    value === 'discovery'
   );
 }
 
@@ -245,6 +279,17 @@ function safeCascadeError(): string {
 
 function safeFinalizeError(): string {
   return 'Onboarding completion could not be finalized.';
+}
+
+function safeDiscoveryMessage(): string {
+  // Coordinator/provider exceptions can contain credentials, secret
+  // URLs, paths, and raw diagnostics. The onboarding outcome is a
+  // durable public projection, so use fixed safe copy here.
+  return 'Discovery could not complete. Review Sources and retry.';
+}
+
+function safeEditDiscardError(): string {
+  return 'Onboarding edit could not be discarded; progress remains available for resume.';
 }
 
 function readCompletionMarker(
@@ -365,10 +410,12 @@ function readEditSession(
   try {
     const parsed = JSON.parse(row.setting_value_json) as {
       editing?: unknown;
+      resumable?: unknown;
       startedAt?: unknown;
     };
     return {
       editing: parsed.editing === true,
+      resumable: parsed.resumable === true || parsed.editing === true,
       startedAt: typeof parsed.startedAt === 'string' ? parsed.startedAt : null,
     };
   } catch {
@@ -381,7 +428,7 @@ function writeEditSession(
   profileId: string,
   session: OnboardingEditSession,
 ): void {
-  if (!session.editing) {
+  if (!session.editing && !session.resumable) {
     database
       .prepare('DELETE FROM app_settings WHERE setting_key = ?')
       .run(onboardingEditSessionKey(profileId));
@@ -416,24 +463,84 @@ function readAttemptRecord(
       lastCompletedStage?: unknown;
       errorMessage?: unknown;
       createdAt?: unknown;
+      response?: unknown;
     };
     if (
-      typeof parsed.state === 'string' &&
-      typeof parsed.lastCompletedStage === 'string' &&
+      isAttemptState(parsed.state) &&
+      isAttemptLastStage(parsed.lastCompletedStage) &&
       typeof parsed.createdAt === 'string'
     ) {
+      const parsedResponse = parseStoredResponse(parsed.response);
       return {
-        state: parsed.state as AttemptState,
-        lastCompletedStage: parsed.lastCompletedStage as AttemptLastStage,
+        state: parsed.state,
+        lastCompletedStage: parsed.lastCompletedStage,
         errorMessage:
           typeof parsed.errorMessage === 'string' ? parsed.errorMessage : null,
         createdAt: parsed.createdAt,
+        response: parsedResponse,
       };
     }
   } catch {
     // fall through
   }
   return null;
+}
+
+function parseStoredResponse(
+  value: unknown,
+): OnboardingCompleteResponse | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const candidate = value as Record<string, unknown>;
+  if (
+    typeof candidate['ok'] !== 'boolean' ||
+    typeof candidate['idempotent'] !== 'boolean' ||
+    typeof candidate['attemptId'] !== 'string' ||
+    candidate['attemptId'].length > 128 ||
+    typeof candidate['discoveryOutcome'] !== 'object' ||
+    candidate['discoveryOutcome'] === null
+  ) {
+    return null;
+  }
+  const outcome = candidate['discoveryOutcome'] as {
+    state?: unknown;
+    message?: unknown;
+    summariesCount?: unknown;
+    completedAt?: unknown;
+    attemptId?: unknown;
+  };
+  if (!isDiscoveryOutcomeState(outcome.state)) return null;
+  if (typeof outcome.message === 'string' && outcome.message.length > 240) {
+    return null;
+  }
+  if (
+    typeof outcome.summariesCount === 'number' &&
+    (!Number.isInteger(outcome.summariesCount) || outcome.summariesCount < 0)
+  ) {
+    return null;
+  }
+  return {
+    ok: candidate['ok'],
+    idempotent: candidate['idempotent'],
+    attemptId: candidate['attemptId'],
+    discoveryOutcome: {
+      state: outcome.state,
+      message: typeof outcome.message === 'string' ? outcome.message : null,
+      summariesCount:
+        typeof outcome.summariesCount === 'number' ? outcome.summariesCount : 0,
+      completedAt:
+        typeof outcome.completedAt === 'string' ? outcome.completedAt : null,
+      attemptId:
+        typeof outcome.attemptId === 'string' ? outcome.attemptId : null,
+    },
+    ...(typeof candidate['cascadeError'] === 'string' &&
+    candidate['cascadeError'].length <= 240
+      ? { cascadeError: candidate['cascadeError'] }
+      : {}),
+    ...(typeof candidate['saveError'] === 'string' &&
+    candidate['saveError'].length <= 240
+      ? { saveError: candidate['saveError'] }
+      : {}),
+  };
 }
 
 function writeAttemptRecord(
@@ -451,6 +558,28 @@ function writeAttemptRecord(
          updated_at = excluded.updated_at`,
     )
     .run(onboardingAttemptKey(profileId, attemptId), JSON.stringify(record));
+}
+
+function storeTerminalAttempt(
+  database: JobDatabase,
+  profileId: string,
+  attemptId: string,
+  terminalResponse: OnboardingCompleteResponse,
+): void {
+  database.transaction(() => {
+    writeDiscoveryOutcome(
+      database,
+      profileId,
+      terminalResponse.discoveryOutcome,
+    );
+    writeAttemptRecord(database, profileId, attemptId, {
+      state: 'completed',
+      lastCompletedStage: 'discovery',
+      errorMessage: null,
+      createdAt: new Date().toISOString(),
+      response: terminalResponse,
+    });
+  })();
 }
 
 function clearAttemptRecord(
@@ -500,17 +629,6 @@ export function computeOnboardingPlanToken(plan: OnboardingSearchPlan): string {
   return createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
 }
 
-/**
- * Build the draft the wizard should prefill from the current saved
- * candidate profile when no resumable edit snapshot exists.
- */
-function buildPrefilledDraft(
-  profile: ReturnType<typeof loadCandidateProfile>,
-): OnboardingPreferencesDraft {
-  const validated = pickPreferencesFromProfile(profile);
-  return toPreferencesDraft(validated);
-}
-
 function buildStatus(
   database: JobDatabase,
   profileId: string,
@@ -527,61 +645,9 @@ function buildStatus(
     discoveryOutcome,
     editSession,
   };
-  // Active editing of an already-completed configuration takes
-  // precedence: the wizard must render, not the completed view.
-  if (editSession.editing) {
-    if (load.kind === 'valid') {
-      const resumed = resumeOnboardingProgress(load, load.snapshot.answers);
-      const question = resumed.kind === 'ready' ? resumed.question : null;
-      return {
-        ...base,
-        state: 'in-progress',
-        onboardingStep: load.snapshot.onboardingStep,
-        question,
-        resumeKind: 'stored',
-        snapshot: load.snapshot,
-        ...(planToken === null ? {} : { planToken }),
-      };
-    }
-    // No resumable snapshot — derive a draft from the saved profile.
-    return {
-      ...base,
-      state: 'in-progress',
-      onboardingStep: 'preferences',
-      question: null,
-      resumeKind: 'editing-existing',
-      ...(prefilledDraft === null ? {} : { prefilledDraft }),
-      ...(planToken === null ? {} : { planToken }),
-    };
-  }
-  if (completion.completed) {
-    return {
-      ...base,
-      state: 'completed',
-    };
-  }
-  if (load.kind === 'valid') {
-    const resumed = resumeOnboardingProgress(load, load.snapshot.answers);
-    const question = resumed.kind === 'ready' ? resumed.question : null;
-    return {
-      ...base,
-      state: 'in-progress',
-      onboardingStep: load.snapshot.onboardingStep,
-      question,
-      resumeKind: 'stored',
-      snapshot: load.snapshot,
-      ...(planToken === null ? {} : { planToken }),
-    };
-  }
-  if (load.kind === 'missing') {
-    return {
-      ...base,
-      state: 'not-started',
-      question: null,
-      ...(prefilledDraft === null ? {} : { prefilledDraft }),
-      ...(planToken === null ? {} : { planToken }),
-    };
-  }
+  // 1. Invalid progress always blocks, even with an active edit
+  //    session. The blocked screen offers recovery without losing the
+  //    completion marker or the edit-session marker.
   if (load.kind === 'malformed') {
     return {
       ...base,
@@ -598,11 +664,73 @@ function buildStatus(
       blockMessage: `Stored onboarding progress uses an unsupported version (${String(load.version)}).`,
     };
   }
+  if (load.kind === 'storage-failure') {
+    return {
+      ...base,
+      state: 'blocked',
+      blockKind: 'storage-failure',
+      blockMessage: safeBlockMessage(load.error),
+    };
+  }
+  // 2. Active editing takes precedence over the completed view, but
+  //    only when progress is valid or genuinely missing. The wizard
+  //    must never replace invalid progress with a profile-derived draft.
+  if (editSession.editing || editSession.resumable) {
+    if (load.kind === 'valid') {
+      const resumed = resumeOnboardingProgress(load, load.snapshot.answers);
+      const question = resumed.kind === 'ready' ? resumed.question : null;
+      return {
+        ...base,
+        state: 'in-progress',
+        onboardingStep: load.snapshot.onboardingStep,
+        question,
+        resumeKind: 'stored',
+        snapshot: load.snapshot,
+        ...(planToken === null ? {} : { planToken }),
+      };
+    }
+    // Invalid kinds already returned above and valid returned above;
+    // in an active edit the only remaining load kind is genuinely
+    // missing, so use the profile-derived draft.
+    return {
+      ...base,
+      state: 'in-progress',
+      onboardingStep: 'preferences',
+      question: null,
+      resumeKind: 'editing-existing',
+      ...(prefilledDraft === null ? {} : { prefilledDraft }),
+      ...(planToken === null ? {} : { planToken }),
+    };
+  }
+  // 3. Completed state (with the marker as the authoritative signal).
+  if (completion.completed) {
+    return {
+      ...base,
+      state: 'completed',
+    };
+  }
+  // 4. Ordinary valid progress.
+  if (load.kind === 'valid') {
+    const resumed = resumeOnboardingProgress(load, load.snapshot.answers);
+    const question = resumed.kind === 'ready' ? resumed.question : null;
+    return {
+      ...base,
+      state: 'in-progress',
+      onboardingStep: load.snapshot.onboardingStep,
+      question,
+      resumeKind: 'stored',
+      snapshot: load.snapshot,
+      ...(planToken === null ? {} : { planToken }),
+    };
+  }
+  // 5. Missing progress (no edit session, not completed) → fresh
+  //    first-run state with optional profile-derived prefill.
   return {
     ...base,
-    state: 'blocked',
-    blockKind: 'storage-failure',
-    blockMessage: safeBlockMessage(load.error),
+    state: 'not-started',
+    question: null,
+    ...(prefilledDraft === null ? {} : { prefilledDraft }),
+    ...(planToken === null ? {} : { planToken }),
   };
 }
 
@@ -623,6 +751,12 @@ const startEditRequestSchema = z.strictObject({}).optional();
 const endEditRequestSchema = z.strictObject({
   keepProgress: z.boolean().optional(),
 });
+
+const resetRequestSchema = z
+  .strictObject({
+    resetCompletion: z.boolean().optional(),
+  })
+  .optional();
 
 const asyncRoute =
   (handler: (request: Request, response: Response) => void | Promise<void>) =>
@@ -655,6 +789,12 @@ export function createOnboardingRouter(
     ((roles: readonly string[]) => {
       if (roles.length > 0) sourceRepository.cascadeTargetRoles([...roles]);
     });
+  const deleteOnboardingProgressFn =
+    options.deleteOnboardingProgress ??
+    ((profileId: string) => {
+      resetOnboardingProgress(store, profileId);
+    });
+  const providerDescriptorsOverride = options.providerDescriptors;
 
   function currentProfileId(): string {
     const profile = loadCandidateProfile(
@@ -667,10 +807,81 @@ export function createOnboardingRouter(
     return profile.id;
   }
 
-  function loadPrefilledDraft(profileId: string): {
+  /**
+   * The single authoritative async plan path. Every code path that
+   * builds a plan — status prefill, preview, draft-from-profile, and
+   * completion — calls this. Credential status is resolved on every
+   * call through the configured `credentialResolver` so a credential
+   * added while the app is open is reflected by the next request.
+   */
+  async function buildPlan(
+    preferences: OnboardingValidatedPreferences,
+    confirmedTitles: readonly string[],
+  ): Promise<{ plan: OnboardingSearchPlan; planToken: string }> {
+    const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
+    const searchProfile = unified?.searchProfile ?? DEFAULT_SEARCH_PROFILE;
+    const sources = sourceRepository.list();
+    type Descriptor = Parameters<
+      typeof buildOnboardingSearchPlan
+    >[0]['providerDescriptors'][number];
+    let descriptors: Descriptor[];
+    if (providerDescriptorsOverride !== undefined) {
+      descriptors = [...providerDescriptorsOverride];
+    } else {
+      descriptors = [];
+      await providerRegistry.loadProviders();
+      for (const provider of providerRegistry.list()) {
+        descriptors.push({
+          id: provider.id,
+          name: provider.name,
+          type: provider.type,
+          capabilities: provider.capabilities,
+          // Replaced by a live status read below for credential-bearing
+          // providers; this placeholder is never passed to the plan.
+          credentialStatus: { configured: false, available: false },
+          supportState:
+            provider.capabilities.interactiveBrowser === true
+              ? ('supported-with-configuration' as const)
+              : ('supported' as const),
+        });
+      }
+    }
+    const descriptorsWithCurrentCredentials: Descriptor[] = [];
+    for (const descriptor of descriptors) {
+      if (!descriptor.capabilities.requiresCredentials) {
+        descriptorsWithCurrentCredentials.push({
+          ...descriptor,
+          credentialStatus: { configured: true, available: true },
+        });
+        continue;
+      }
+      let credentialStatus = { configured: false, available: false };
+      try {
+        credentialStatus = await credentialResolver.status(descriptor.id);
+      } catch {
+        // A missing or failing resolver is conservative: this source
+        // cannot be considered ready.
+      }
+      descriptorsWithCurrentCredentials.push({
+        ...descriptor,
+        credentialStatus,
+      });
+    }
+    const plan = buildOnboardingSearchPlan({
+      preferences,
+      confirmedTitles,
+      searchProfile: { maxQueriesPerRun: searchProfile.maxQueriesPerRun },
+      sources,
+      providerDescriptors: descriptorsWithCurrentCredentials,
+    });
+    const planToken = computeOnboardingPlanToken(plan);
+    return { plan, planToken };
+  }
+
+  async function loadPrefilledDraft(profileId: string): Promise<{
     draft: OnboardingPreferencesDraft | null;
     planToken: string | null;
-  } {
+  }> {
     try {
       const profile = loadCandidateProfile(
         candidateProfilePath,
@@ -681,10 +892,9 @@ export function createOnboardingRouter(
       }
       const validated = pickPreferencesFromProfile(profile);
       const draft = buildPrefilledDraft(profile);
-      void validated;
-      const { plan, planToken } = planFromPreferencesSync(
-        draft,
-        draft.desiredJobTitles,
+      const { plan, planToken } = await buildPlan(
+        validated,
+        validated.desiredJobTitles,
       );
       void plan;
       return { draft, planToken };
@@ -693,128 +903,16 @@ export function createOnboardingRouter(
     }
   }
 
-  async function loadProviderDescriptors() {
-    await providerRegistry.loadProviders();
-    type ProviderDescriptorArg = Parameters<
-      typeof buildOnboardingSearchPlan
-    >[0]['providerDescriptors'][number];
-    const out: ProviderDescriptorArg[] = [];
-    for (const provider of providerRegistry.list()) {
-      const credentialStatus = provider.capabilities.requiresCredentials
-        ? await credentialResolver.status(provider.id)
-        : { configured: true, available: true };
-      out.push({
-        id: provider.id,
-        name: provider.name,
-        type: provider.type,
-        capabilities: provider.capabilities,
-        credentialStatus,
-        supportState:
-          provider.capabilities.interactiveBrowser === true
-            ? 'supported-with-configuration'
-            : 'supported',
-      });
-    }
-    return out;
-  }
-
-  let providerDescriptorsPromise: Promise<
-    Awaited<ReturnType<typeof loadProviderDescriptors>>
-  > | null = null;
-  function getProviderDescriptors() {
-    providerDescriptorsPromise ??= loadProviderDescriptors();
-    return providerDescriptorsPromise;
-  }
-
-  function planFromPreferencesSync(
-    preferences: OnboardingPreferencesDraft,
-    confirmedTitles: readonly string[],
-  ): { plan: OnboardingSearchPlan; planToken: string } {
-    const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
-    const searchProfile = unified?.searchProfile ?? DEFAULT_SEARCH_PROFILE;
-    const sources = sourceRepository.list();
-    const providerDescriptors = providerRegistry.list().map((provider) => ({
-      id: provider.id,
-      name: provider.name,
-      type: provider.type,
-      capabilities: provider.capabilities,
-      credentialStatus: { configured: true, available: true },
-      supportState:
-        provider.capabilities.interactiveBrowser === true
-          ? ('supported-with-configuration' as const)
-          : ('supported' as const),
-    }));
-    const plan = buildOnboardingSearchPlan({
-      preferences: preferences as unknown as OnboardingValidatedPreferences,
-      confirmedTitles,
-      searchProfile: { maxQueriesPerRun: searchProfile.maxQueriesPerRun },
-      sources,
-      providerDescriptors,
-    });
-    const planToken = computeOnboardingPlanToken(plan);
-    return { plan, planToken };
-  }
-
-  async function planFromPreferences(
-    preferences: OnboardingValidatedPreferences,
-    confirmedTitles: readonly string[],
-  ): Promise<{ plan: OnboardingSearchPlan; planToken: string }> {
-    const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
-    const searchProfile = unified?.searchProfile ?? DEFAULT_SEARCH_PROFILE;
-    const sources = sourceRepository.list();
-    const providerDescriptors = await getProviderDescriptors();
-    return {
-      plan: buildOnboardingSearchPlan({
-        preferences,
-        confirmedTitles,
-        searchProfile: { maxQueriesPerRun: searchProfile.maxQueriesPerRun },
-        sources,
-        providerDescriptors,
-      }),
-      planToken: computeOnboardingPlanToken(
-        buildOnboardingSearchPlan({
-          preferences,
-          confirmedTitles,
-          searchProfile: { maxQueriesPerRun: searchProfile.maxQueriesPerRun },
-          sources,
-          providerDescriptors,
-        }),
-      ),
-    };
-  }
-
-  function planFromValidatedSync(
-    preferences: OnboardingValidatedPreferences,
-    confirmedTitles: readonly string[],
-  ): { plan: OnboardingSearchPlan; planToken: string } {
-    const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
-    const searchProfile = unified?.searchProfile ?? DEFAULT_SEARCH_PROFILE;
-    const sources = sourceRepository.list();
-    const providerDescriptors = providerRegistry.list().map((provider) => ({
-      id: provider.id,
-      name: provider.name,
-      type: provider.type,
-      capabilities: provider.capabilities,
-      credentialStatus: { configured: true, available: true },
-      supportState:
-        provider.capabilities.interactiveBrowser === true
-          ? ('supported-with-configuration' as const)
-          : ('supported' as const),
-    }));
-    const plan = buildOnboardingSearchPlan({
-      preferences,
-      confirmedTitles,
-      searchProfile: { maxQueriesPerRun: searchProfile.maxQueriesPerRun },
-      sources,
-      providerDescriptors,
-    });
-    const planToken = computeOnboardingPlanToken(plan);
-    return { plan, planToken };
+  function buildPrefilledDraft(
+    profile: ReturnType<typeof loadCandidateProfile>,
+  ): OnboardingPreferencesDraft {
+    const validated = pickPreferencesFromProfile(profile);
+    return toPreferencesDraft(validated);
   }
 
   router.get(
     '/status',
-    asyncRoute((_request, response) => {
+    asyncRoute(async (_request, response) => {
       let profileId: string;
       try {
         profileId = currentProfileId();
@@ -825,38 +923,18 @@ export function createOnboardingRouter(
         });
         return;
       }
-      let load: OnboardingProgressLoadResult;
-      try {
-        load = loadOnboardingProgress(store, profileId);
-      } catch (caught) {
-        // Storage failure injection path: the store threw on read.
-        const base = {
-          profileId,
-          completion: readCompletionMarker(database, profileId),
-          discoveryOutcome: readDiscoveryOutcome(database, profileId),
-          editSession: readEditSession(database, profileId),
-        };
-        const caughtError: Error =
-          caught instanceof Error ? caught : new Error(String(caught));
-        response.json({
-          ...base,
-          state: 'blocked',
-          blockKind: 'storage-failure',
-          blockMessage: safeBlockMessage(caughtError),
-        });
-        return;
-      }
+      // loadOnboardingProgress already converts getSetting() exceptions
+      // into a storage-failure load result, so the buildStatus switch
+      // handles every blocked kind without an extra try/catch.
+      const load = loadOnboardingProgress(store, profileId);
       let prefilledDraft: OnboardingPreferencesDraft | null = null;
       let planToken: string | null = null;
-      const editSession = readEditSession(database, profileId);
+      // Only generate the plan token + prefilled draft when the
+      // status will actually surface them (missing progress, including
+      // an active edit session with no snapshot). Invalid progress is
+      // never replaced with a profile-derived draft.
       if (load.kind === 'missing') {
-        // Prefill when no resumable snapshot exists OR when an active
-        // edit session is operating against a completed configuration.
-        const result = loadPrefilledDraft(profileId);
-        prefilledDraft = result.draft;
-        planToken = result.planToken;
-      } else if (editSession.editing && load.kind !== 'valid') {
-        const result = loadPrefilledDraft(profileId);
+        const result = await loadPrefilledDraft(profileId);
         prefilledDraft = result.draft;
         planToken = result.planToken;
       }
@@ -868,7 +946,7 @@ export function createOnboardingRouter(
 
   router.post(
     '/preview',
-    asyncRoute((request, response) => {
+    asyncRoute(async (request, response) => {
       try {
         currentProfileId();
       } catch (error) {
@@ -890,7 +968,7 @@ export function createOnboardingRouter(
         const cleanedTitles = parsed.data.confirmedTitles
           .map((title) => title.trim())
           .filter((title) => title !== '');
-        const { plan, planToken } = planFromValidatedSync(
+        const { plan, planToken } = await buildPlan(
           parsed.data.preferences,
           cleanedTitles,
         );
@@ -910,7 +988,7 @@ export function createOnboardingRouter(
 
   router.post(
     '/draft-from-profile',
-    asyncRoute((_request, response) => {
+    asyncRoute(async (_request, response) => {
       try {
         currentProfileId();
       } catch (error) {
@@ -926,8 +1004,8 @@ export function createOnboardingRouter(
           profilePreferencesPath,
         );
         const draft = buildPrefilledDraft(profile);
-        const { plan, planToken } = planFromPreferencesSync(
-          draft,
+        const { plan, planToken } = await buildPlan(
+          pickPreferencesFromProfile(profile),
           draft.desiredJobTitles,
         );
         void plan;
@@ -989,7 +1067,14 @@ export function createOnboardingRouter(
   router.post(
     '/reset',
     asyncRoute((request, response) => {
-      z.strictObject({}).parse(request.body ?? {});
+      const parsed = resetRequestSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        response.status(400).json({
+          error: 'Onboarding reset payload is invalid.',
+          code: 'onboarding_reset_validation_failed',
+        });
+        return;
+      }
       let profileId: string;
       try {
         profileId = currentProfileId();
@@ -1001,10 +1086,15 @@ export function createOnboardingRouter(
         return;
       }
       try {
-        resetOnboardingProgress(store, profileId);
-        clearCompletionMarker(database, profileId);
-        writeDiscoveryOutcome(database, profileId, ZERO_OUTCOME);
-        writeEditSession(database, profileId, ZERO_EDIT_SESSION);
+        const resetCompletion = parsed.data?.resetCompletion === true;
+        database.transaction(() => {
+          deleteOnboardingProgressFn(profileId);
+          writeEditSession(database, profileId, ZERO_EDIT_SESSION);
+          if (resetCompletion) {
+            clearCompletionMarker(database, profileId);
+            writeDiscoveryOutcome(database, profileId, ZERO_OUTCOME);
+          }
+        })();
         response.json({ ok: true });
       } catch (error) {
         response.status(500).json({
@@ -1031,6 +1121,7 @@ export function createOnboardingRouter(
       }
       writeEditSession(database, profileId, {
         editing: true,
+        resumable: true,
         startedAt: new Date().toISOString(),
       });
       response.json({ ok: true });
@@ -1060,13 +1151,30 @@ export function createOnboardingRouter(
       }
       const keepProgress = parsed.data.keepProgress ?? true;
       if (!keepProgress) {
+        // Discard path: if the resumable-progress delete fails, do
+        // NOT erase the edit session — leave it active so the user
+        // can retry. Return a bounded failure.
         try {
-          resetOnboardingProgress(store, profileId);
-        } catch {
-          // best effort; the edit session is the authoritative signal.
+          deleteOnboardingProgressFn(profileId);
+        } catch (error) {
+          response.status(500).json({
+            error: safeEditDiscardError(),
+            code: 'onboarding_edit_discard_failed',
+          });
+          void error;
+          return;
         }
+        writeEditSession(database, profileId, ZERO_EDIT_SESSION);
+      } else {
+        // Save-and-leave: the editor is inactive, but the saved edit
+        // remains resumable on the next /onboarding visit.
+        const current = readEditSession(database, profileId);
+        writeEditSession(database, profileId, {
+          editing: false,
+          resumable: true,
+          startedAt: current.startedAt,
+        });
       }
-      writeEditSession(database, profileId, ZERO_EDIT_SESSION);
       response.json({ ok: true });
     }),
   );
@@ -1094,10 +1202,8 @@ export function createOnboardingRouter(
       }
       const { preferences, reviewItems, planToken, attemptId } = parsed.data;
 
-      // Step 0 — staged attempt semantics. A stored `completed`
-      // attempt is idempotent; an `in-progress` attempt is refused
-      // (concurrent prevention); a `failed-retryable` attempt is
-      // removed and the request is allowed to retry from scratch.
+      // Idempotency: completed attempts return the immutable stored
+      // response (NOT the mutable global discovery-outcome row).
       const stored = readAttemptRecord(database, profileId, attemptId);
       if (stored?.state === 'in-progress') {
         response.status(409).json({
@@ -1108,36 +1214,59 @@ export function createOnboardingRouter(
         return;
       }
       if (stored?.state === 'completed') {
-        const storedDiscovery = readDiscoveryOutcome(database, profileId);
-        response.json({
-          ok: true,
-          idempotent: true,
-          attemptId,
-          discoveryOutcome:
-            storedDiscovery.attemptId === attemptId
-              ? storedDiscovery
-              : ZERO_OUTCOME,
+        const terminal = stored.response;
+        if (terminal !== null) {
+          // Return the immutable terminal result exactly as first recorded.
+          // The request is idempotent because no side effect is repeated;
+          // the stored response itself is not reconstructed or rewritten.
+          response.json(terminal);
+          return;
+        }
+        // Defensive: a completed record without a valid terminal response
+        // is corrupt; never turn it into a pseudo-success.
+        response.status(500).json({
+          error: 'The saved onboarding completion result is unavailable.',
+          code: 'onboarding_complete_attempt_corrupt',
         });
         return;
       }
+      if (
+        stored?.state === 'failed-retryable' &&
+        stored.lastCompletedStage === 'discovery' &&
+        stored.response !== null
+      ) {
+        // Discovery already ran; only its durable terminal projection
+        // failed to persist. Retry persistence, never discovery/profile
+        // writes, then return the original terminal response.
+        try {
+          storeTerminalAttempt(database, profileId, attemptId, stored.response);
+          response.json(stored.response);
+        } catch {
+          response.status(500).json({
+            error:
+              'The completed search result could not be saved. Retry again.',
+            code: 'onboarding_complete_outcome_finalize_failed',
+          });
+        }
+        return;
+      }
       if (stored?.state === 'failed-retryable') {
-        // Allow the retry; the record below transitions to in-progress.
         clearAttemptRecord(database, profileId, attemptId);
       }
 
-      // Persist `in-progress` before any side-effecting step.
       writeAttemptRecord(database, profileId, attemptId, {
         state: 'in-progress',
         lastCompletedStage: 'started',
         errorMessage: null,
         createdAt: new Date().toISOString(),
+        response: null,
       });
 
       // Step 1 — rebuild and compare plan token.
       let plan: OnboardingSearchPlan;
       let computedToken: string;
       try {
-        const rebuilt = await planFromPreferences(
+        const rebuilt = await buildPlan(
           preferences,
           preferences.desiredJobTitles,
         );
@@ -1149,6 +1278,7 @@ export function createOnboardingRouter(
           lastCompletedStage: 'started',
           errorMessage: safeCompletionError(error),
           createdAt: new Date().toISOString(),
+          response: null,
         });
         response.status(500).json({
           error: safeCompletionError(error),
@@ -1163,6 +1293,7 @@ export function createOnboardingRouter(
           errorMessage:
             'The search plan changed since you reviewed it. Please re-review and confirm.',
           createdAt: new Date().toISOString(),
+          response: null,
         });
         response.status(409).json({
           error:
@@ -1181,6 +1312,7 @@ export function createOnboardingRouter(
           errorMessage:
             'The search plan cannot be confirmed. Add at least one ready source and one query.',
           createdAt: new Date().toISOString(),
+          response: null,
         });
         response.status(409).json({
           error:
@@ -1194,7 +1326,6 @@ export function createOnboardingRouter(
       }
 
       // Step 2 — persist profile preferences and sourceQueryRoles.
-      let persisted = false;
       try {
         const unified = loadUnifiedLegacyPreferences(profilePreferencesPath);
         if (unified === null) {
@@ -1203,6 +1334,7 @@ export function createOnboardingRouter(
             lastCompletedStage: 'preview-rebuilt',
             errorMessage: 'Unified profile preferences are not available.',
             createdAt: new Date().toISOString(),
+            response: null,
           });
           response.status(409).json({
             error: 'Unified profile preferences are not available.',
@@ -1229,13 +1361,13 @@ export function createOnboardingRouter(
           candidateProfile: nextProfile,
           sourceQueryRoles: [...plan.appliedQueries],
         });
-        persisted = true;
       } catch (error) {
         writeAttemptRecord(database, profileId, attemptId, {
           state: 'failed-retryable',
           lastCompletedStage: 'preview-rebuilt',
           errorMessage: safeCompletionError(error),
           createdAt: new Date().toISOString(),
+          response: null,
         });
         response.status(500).json({
           error: safeCompletionError(error),
@@ -1243,9 +1375,6 @@ export function createOnboardingRouter(
         });
         return;
       }
-      // Narrow the type after the early-return above.
-      // persisted is always true here because the catch block returns.
-      void persisted;
 
       // Step 3 — cascade executable queries into source rows.
       try {
@@ -1256,6 +1385,7 @@ export function createOnboardingRouter(
           lastCompletedStage: 'profile-persisted',
           errorMessage: safeCascadeError(),
           createdAt: new Date().toISOString(),
+          response: null,
         });
         response.status(500).json({
           ok: false,
@@ -1265,129 +1395,108 @@ export function createOnboardingRouter(
         return;
       }
 
-      // Step 4 — atomically finalize: completion marker, progress
-      // clear, edit-session clear. The attempt record stays
-      // `in-progress` until discovery finishes so a concurrent call
-      // cannot duplicate the discovery run. The transaction prevents a
-      // contradictory "completed but failed" state when one of the
-      // writes throws.
+      // Step 4 — finalize atomically. If the resumable-progress delete
+      // throws, the database.transaction() rolls back the completion
+      // marker and the edit-session clear. The attempt is marked
+      // failed-retryable and no discovery is started.
+      let terminalOutcome: OnboardingDiscoveryOutcome;
       try {
         database.transaction(() => {
           writeCompletionMarker(database, profileId);
-          try {
-            resetOnboardingProgress(store, profileId);
-          } catch {
-            // best effort; the completion marker is authoritative.
-          }
+          deleteOnboardingProgressFn(profileId);
           writeEditSession(database, profileId, ZERO_EDIT_SESSION);
         })();
-      } catch {
-        // Finalization is the only step that may have written the
-        // completion marker but failed to clear progress. Treat the
-        // attempt as retryable; the next call will retry and the
-        // marker write is idempotent.
-        try {
-          resetOnboardingProgress(store, profileId);
-        } catch {
-          // best effort
-        }
+      } catch (error) {
+        // Finalization failed; the database.transaction() has rolled
+        // back, so the completion marker is absent and the edit
+        // session is still active. The attempt is retryable. No
+        // second best-effort mutation is performed here.
         writeAttemptRecord(database, profileId, attemptId, {
           state: 'failed-retryable',
           lastCompletedStage: 'cascaded',
           errorMessage: safeFinalizeError(),
           createdAt: new Date().toISOString(),
+          response: null,
         });
         response.status(500).json({
           error: safeFinalizeError(),
           code: 'onboarding_complete_finalize_failed',
         });
+        void error;
         return;
       }
 
-      // Step 5 — invoke discovery exactly once. The attempt record
-      // remains `in-progress` while discovery runs so concurrent
-      // calls cannot duplicate it. The result is persisted as a
-      // durable outcome and the attempt is moved to `completed` or
-      // `failed-retryable` accordingly.
+      // Step 5 — invoke discovery exactly once. The attempt remains
+      // `in-progress` until discovery finishes so a concurrent call
+      // cannot duplicate it. Discovery success AND failure both
+      // record a terminal `completed` attempt whose stored response
+      // is replayed by any duplicate /complete request.
       if (coordinator === undefined) {
-        const outcome: OnboardingDiscoveryOutcome = {
+        terminalOutcome = {
           state: 'unavailable',
           message: 'Discovery coordinator is unavailable.',
           summariesCount: 0,
           completedAt: new Date().toISOString(),
           attemptId,
         };
-        writeDiscoveryOutcome(database, profileId, outcome);
-        writeAttemptRecord(database, profileId, attemptId, {
-          state: 'completed',
-          lastCompletedStage: 'discovery',
-          errorMessage: null,
-          createdAt: new Date().toISOString(),
-        });
-        response.json({
-          ok: true,
-          idempotent: false,
-          attemptId,
-          discoveryOutcome: outcome,
-        });
-        return;
-      }
-      const runningOutcome: OnboardingDiscoveryOutcome = {
-        state: 'running',
-        message: null,
-        summariesCount: 0,
-        completedAt: null,
-        attemptId,
-      };
-      writeDiscoveryOutcome(database, profileId, runningOutcome);
-      try {
-        const summaries = await coordinator.runAll();
-        const completedAtDiscovery = new Date().toISOString();
-        const outcome: OnboardingDiscoveryOutcome = {
-          state: 'succeeded',
+      } else {
+        const runningOutcome: OnboardingDiscoveryOutcome = {
+          state: 'running',
           message: null,
-          summariesCount: Array.isArray(summaries)
-            ? (summaries as readonly DiscoverySummary[]).length
-            : 0,
-          completedAt: completedAtDiscovery,
-          attemptId,
-        };
-        writeDiscoveryOutcome(database, profileId, outcome);
-        writeAttemptRecord(database, profileId, attemptId, {
-          state: 'completed',
-          lastCompletedStage: 'discovery',
-          errorMessage: null,
-          createdAt: new Date().toISOString(),
-        });
-        response.json({
-          ok: true,
-          idempotent: false,
-          attemptId,
-          discoveryOutcome: outcome,
-        });
-      } catch (error) {
-        const completedAtDiscovery = new Date().toISOString();
-        const outcome: OnboardingDiscoveryOutcome = {
-          state: 'failed',
-          message: translateError(error),
           summariesCount: 0,
-          completedAt: completedAtDiscovery,
+          completedAt: null,
           attemptId,
         };
-        writeDiscoveryOutcome(database, profileId, outcome);
+        writeDiscoveryOutcome(database, profileId, runningOutcome);
+        try {
+          const summaries = await coordinator.runAll();
+          const completedAtDiscovery = new Date().toISOString();
+          terminalOutcome = {
+            state: 'succeeded',
+            message: null,
+            summariesCount: Array.isArray(summaries)
+              ? (summaries as readonly DiscoverySummary[]).length
+              : 0,
+            completedAt: completedAtDiscovery,
+            attemptId,
+          };
+        } catch {
+          const completedAtDiscovery = new Date().toISOString();
+          terminalOutcome = {
+            state: 'failed',
+            message: safeDiscoveryMessage(),
+            summariesCount: 0,
+            completedAt: completedAtDiscovery,
+            attemptId,
+          };
+        }
+      }
+      const terminalResponse: OnboardingCompleteResponse = {
+        ok: true,
+        idempotent: false,
+        attemptId,
+        discoveryOutcome: terminalOutcome,
+      };
+      try {
+        storeTerminalAttempt(database, profileId, attemptId, terminalResponse);
+      } catch {
+        // Discovery already ran; retain its terminal response in a
+        // retryable attempt so a repeated request can persist the
+        // outcome without invoking discovery again.
         writeAttemptRecord(database, profileId, attemptId, {
           state: 'failed-retryable',
           lastCompletedStage: 'discovery',
-          errorMessage: translateError(error),
+          errorMessage: 'The completed search result could not be saved.',
           createdAt: new Date().toISOString(),
+          response: terminalResponse,
         });
-        response.json({
-          ok: true,
-          idempotent: false,
-          attemptId,
-          discoveryOutcome: outcome,
+        response.status(500).json({
+          error: 'The completed search result could not be saved. Retry again.',
+          code: 'onboarding_complete_outcome_finalize_failed',
         });
+        return;
       }
+      response.json(terminalResponse);
     }),
   );
 
@@ -1455,11 +1564,11 @@ export function createOnboardingRouter(
           attemptId,
           discoveryOutcome: outcome,
         });
-      } catch (error) {
+      } catch {
         const completedAt = new Date().toISOString();
         const outcome: OnboardingDiscoveryOutcome = {
           state: 'failed',
-          message: translateError(error),
+          message: safeDiscoveryMessage(),
           summariesCount: 0,
           completedAt,
           attemptId,

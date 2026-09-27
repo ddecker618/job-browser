@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/server/app.js';
 import { createTestDatabase } from './helpers/test-database.js';
 import { SourceRepository } from '../src/repositories/source-repository.js';
+import type { JobDatabase } from '../src/db/database.js';
 import { candidateProfileSchema } from '../src/schemas/candidate-profile.js';
 import { scoringConfigSchema } from '../src/schemas/scoring-config.js';
 import { DEFAULT_SEARCH_PROFILE } from '../src/config/search-profile.js';
@@ -22,6 +23,7 @@ import {
 } from '../src/preferences/profilePreferencesAdapters.js';
 import { profilePreferencesSchema } from '../src/schemas/profile-preferences.js';
 import type { DiscoveryCoordinator } from '../src/discovery/discoveryCoordinator.js';
+import type { CredentialResolver } from '../src/discovery/credentialResolver.js';
 import type { DiscoverySummary } from '../src/models/discovery.js';
 import type {
   OnboardingPreferencesDraft,
@@ -34,7 +36,13 @@ import type {
   OnboardingStatusResponse,
 } from '../src/server/onboardingRoutes.js';
 import { ONBOARDING_PROGRESS_SETTING_PREFIX } from '../src/repositories/onboarding-repository.js';
-import type { OnboardingProgressStore } from '../src/repositories/onboarding-repository.js';
+import {
+  createDatabaseOnboardingProgressStore,
+  resetOnboardingProgress,
+  saveOnboardingProgress,
+  type OnboardingProgressStore,
+} from '../src/repositories/onboarding-repository.js';
+import { loadUnifiedLegacyPreferences } from '../src/preferences/profilePreferencesRuntime.js';
 
 interface BackendHandle {
   baseUrl: string;
@@ -45,12 +53,18 @@ interface StartOptions {
   noCoordinator?: boolean;
   profileOverrides?: Record<string, unknown>;
   withReadySource?: boolean;
+  withCredentialRequiredSource?: boolean;
   progressStore?: OnboardingProgressStore;
   saveProfilePreferences?: (
     path: string | undefined,
     prefs: LegacyPreferences,
   ) => void;
   cascadeTargetRoles?: (roles: readonly string[]) => void;
+  deleteOnboardingProgress?: (profileId: string) => void;
+  credentialResolver?: CredentialResolver;
+  providerDescriptors?: readonly Parameters<
+    typeof import('../src/onboarding/search-plan-service.js').buildOnboardingSearchPlan
+  >[0]['providerDescriptors'][number][];
 }
 
 const handles: BackendHandle[] = [];
@@ -240,7 +254,35 @@ async function startBackend(
       'valid',
     );
   }
-
+  if (options.withCredentialRequiredSource === true) {
+    const sourceRepository = new SourceRepository(
+      database,
+      profilePreferencesPath,
+    );
+    sourceRepository.create(
+      {
+        displayName: 'Credential Source',
+        employer: 'Credential Employer',
+        providerId: 'credential-provider',
+        careersUrl: 'https://example.com/credential-jobs',
+        enabled: true,
+        configuration: {},
+        searchCriteria: {
+          query: 'example',
+          location: null,
+          remoteOnly: false,
+          limit: 50,
+          maxAgeDays: 30,
+        },
+        schedule: {
+          enabled: false,
+          cadence: 'manual',
+          dailyLocalTime: null,
+        },
+      },
+      'valid',
+    );
+  }
   const coordinatorArg = options.noCoordinator
     ? undefined
     : (coordinator ?? makeCoordinator());
@@ -259,6 +301,15 @@ async function startBackend(
     ...(options.cascadeTargetRoles === undefined
       ? {}
       : { cascadeTargetRoles: options.cascadeTargetRoles }),
+    ...(options.deleteOnboardingProgress === undefined
+      ? {}
+      : { deleteOnboardingProgress: options.deleteOnboardingProgress }),
+    ...(options.credentialResolver === undefined
+      ? {}
+      : { credentialResolver: options.credentialResolver }),
+    ...(options.providerDescriptors === undefined
+      ? {}
+      : { providerDescriptors: options.providerDescriptors }),
   });
 
   const server = createServer(app);
@@ -313,6 +364,18 @@ const snapshotV2: OnboardingProgressSnapshot = {
   answers: createEmptyPreferencesDraft(),
   reviewItems: [],
 };
+
+function markCompleted(database: JobDatabase): void {
+  database
+    .prepare(
+      `INSERT OR REPLACE INTO app_settings (setting_key, setting_value_json, updated_at)
+       VALUES (?, ?, datetime('now'))`,
+    )
+    .run(
+      'onboardingCompletion:candidate-api-one',
+      JSON.stringify({ completedAt: '2026-09-24T00:00:00.000Z' }),
+    );
+}
 
 describe('onboarding API — load/status', () => {
   it('returns not-started for a fresh profile', async () => {
@@ -511,6 +574,120 @@ describe('onboarding API — completed user can edit', () => {
     expect(status.completion.completed).toBe(true);
     expect(status.editSession.editing).toBe(false);
   });
+
+  it('clearing blocked progress by default preserves completed history', async () => {
+    const { handle, database } = await startBackend(makeCoordinator());
+    markCompleted(database);
+    await postJson(handle, '/api/onboarding/edit/start', {});
+    const reset = await postJson(handle, '/api/onboarding/reset', {});
+    expect(reset.status).toBe(200);
+    const status = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(status.completion.completed).toBe(true);
+    expect(status.editSession.editing).toBe(false);
+    expect(status.editSession.resumable).toBe(false);
+    expect(status.state).toBe('completed');
+  });
+
+  it('saves, leaves, resumes, and completes an established user edit', async () => {
+    const runAll = vi.fn(() => Promise.resolve([]));
+    const { handle, profilePreferencesPath } = await startBackend(
+      makeCoordinator({ runAll }),
+      { withReadySource: true },
+    );
+    const initialPreview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    const initialCompletion = await postJson(
+      handle,
+      '/api/onboarding/complete',
+      {
+        preferences: basePreferences,
+        reviewItems: [],
+        planToken: initialPreview.planToken,
+        attemptId: 'established-initial',
+      },
+    );
+    expect(initialCompletion.status).toBe(200);
+
+    await postJson(handle, '/api/onboarding/edit/start', {});
+    const editedSnapshot: OnboardingProgressSnapshot = {
+      version: 2,
+      onboardingStep: 'review',
+      currentQuestion: 'location',
+      answers: {
+        ...createEmptyPreferencesDraft(),
+        desiredJobTitles: ['Cloud Support Engineer'],
+        preferredLocations: [{ city: 'Example City', state: 'EX' }],
+        searchRadiusMiles: '25',
+        secondarySearchRadiusMiles: '50',
+        remotePreference: 'preferred',
+        answers: {
+          remotePreference: 'answered',
+          desiredSalary: 'unanswered',
+        },
+        desiredEmploymentTypes: ['full-time'],
+      },
+      reviewItems: [],
+    };
+    const save = await postJson(handle, '/api/onboarding/save', {
+      snapshot: editedSnapshot,
+    });
+    expect(save.status).toBe(200);
+    const leave = await postJson(handle, '/api/onboarding/edit/end', {
+      keepProgress: true,
+    });
+    expect(leave.status).toBe(200);
+
+    // Simulate reload: completion history remains but the saved edit is
+    // returned as an editable in-progress wizard at the exact state.
+    const resumed = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(resumed.completion.completed).toBe(true);
+    expect(resumed.editSession).toMatchObject({
+      editing: false,
+      resumable: true,
+    });
+    expect(resumed.state).toBe('in-progress');
+    expect(resumed.snapshot).toEqual(editedSnapshot);
+    const resumedAgain = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(resumedAgain.snapshot).toEqual(editedSnapshot);
+
+    const editedPreferences = {
+      ...basePreferences,
+      desiredJobTitles: ['Cloud Support Engineer'],
+    };
+    const editedPreview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: editedPreferences,
+        confirmedTitles: editedPreferences.desiredJobTitles,
+      }),
+    );
+    const completeEdit = await postJson(handle, '/api/onboarding/complete', {
+      preferences: editedPreferences,
+      reviewItems: [],
+      planToken: editedPreview.planToken,
+      attemptId: 'established-edit',
+    });
+    expect(completeEdit.status).toBe(200);
+    const finalStatus = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(finalStatus.state).toBe('completed');
+    expect(finalStatus.completion.completed).toBe(true);
+    expect(finalStatus.editSession.resumable).toBe(false);
+    expect(
+      loadUnifiedLegacyPreferences(profilePreferencesPath)?.candidateProfile
+        .desiredJobTitles,
+    ).toEqual(['Cloud Support Engineer']);
+  });
 });
 
 describe('onboarding API — preview and completion', () => {
@@ -531,7 +708,20 @@ describe('onboarding API — preview and completion', () => {
   });
 
   it('builds a draft from the existing profile', async () => {
-    const { handle } = await startBackend(makeCoordinator());
+    const { handle } = await startBackend(makeCoordinator(), {
+      profileOverrides: {
+        preferredLocations: [
+          { city: 'Austin', state: 'TX' },
+          { city: 'Remote', state: 'TX' },
+        ],
+        searchRadiusMiles: 35,
+        secondarySearchRadiusMiles: 75,
+        remotePreference: 'not-preferred',
+        desiredSalary: { minimum: 65000, target: 90000, currency: 'USD' },
+        desiredJobTitles: ['Systems Administrator', 'Network Engineer'],
+        desiredEmploymentTypes: ['full-time', 'contract'],
+      },
+    });
     const response = await fetch(
       `${handle.baseUrl}/api/onboarding/draft-from-profile`,
       { method: 'POST' },
@@ -542,7 +732,27 @@ describe('onboarding API — preview and completion', () => {
       planToken: string;
       confirmationAllowed: boolean;
     }>(response);
-    expect(body.draft.desiredJobTitles).toEqual(['Network Engineer']);
+    expect(body.draft.desiredJobTitles).toEqual([
+      'Systems Administrator',
+      'Network Engineer',
+    ]);
+    expect(body.draft.preferredLocations).toEqual([
+      { city: 'Austin', state: 'TX' },
+      { city: 'Remote', state: 'TX' },
+    ]);
+    expect(body.draft.searchRadiusMiles).toBe('35');
+    expect(body.draft.secondarySearchRadiusMiles).toBe('75');
+    expect(body.draft.remotePreference).toBe('not-preferred');
+    expect(body.draft.desiredEmploymentTypes).toEqual([
+      'full-time',
+      'contract',
+    ]);
+    expect(body.draft.desiredSalary).toEqual({
+      minimum: '65000',
+      target: '90000',
+      currency: 'USD',
+    });
+    expect(body.draft.answers.desiredSalary).toBe('answered');
     expect(body.planToken).toMatch(/^[a-f0-9]{64}$/);
   });
 
@@ -599,6 +809,7 @@ describe('onboarding API — preview and completion', () => {
       attemptId,
     });
     expect(first.status).toBe(200);
+    const firstBody = await readJson<OnboardingCompleteResponse>(first);
     expect(runAll).toHaveBeenCalledTimes(1);
 
     const second = await postJson(handle, '/api/onboarding/complete', {
@@ -609,7 +820,7 @@ describe('onboarding API — preview and completion', () => {
     });
     expect(second.status).toBe(200);
     const secondBody = await readJson<OnboardingCompleteResponse>(second);
-    expect(secondBody.idempotent).toBe(true);
+    expect(secondBody).toEqual(firstBody);
     // No duplicate discovery run.
     expect(runAll).toHaveBeenCalledTimes(1);
   });
@@ -667,6 +878,7 @@ describe('onboarding API — preview and completion', () => {
 
   it('does not run discovery when profile persistence fails (real seam)', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
+    const cascadeTargetRoles = vi.fn();
     const throwingSave: (
       path: string | undefined,
       prefs: LegacyPreferences,
@@ -676,7 +888,12 @@ describe('onboarding API — preview and completion', () => {
     const { handle } = await startBackend(makeCoordinator({ runAll }), {
       withReadySource: true,
       saveProfilePreferences: throwingSave,
+      cascadeTargetRoles,
     });
+    const savedProgress = await postJson(handle, '/api/onboarding/save', {
+      snapshot: snapshotV2,
+    });
+    expect(savedProgress.status).toBe(200);
     const preview = await readJson<OnboardingPreviewResponse>(
       await postJson(handle, '/api/onboarding/preview', {
         preferences: basePreferences,
@@ -695,11 +912,14 @@ describe('onboarding API — preview and completion', () => {
     expect(body.error).toBe(
       'Onboarding could not be saved to your profile preferences.',
     );
+    expect(cascadeTargetRoles).not.toHaveBeenCalled();
     expect(runAll).not.toHaveBeenCalled();
     const status = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
     );
     expect(status.completion.completed).toBe(false);
+    expect(status.state).toBe('in-progress');
+    expect(status.snapshot).toEqual(snapshotV2);
   });
 
   it('reports a bounded discovery error and supports search-only retry', async () => {
@@ -726,7 +946,9 @@ describe('onboarding API — preview and completion', () => {
     const body = await readJson<OnboardingCompleteResponse>(response);
     expect(body.ok).toBe(true);
     expect(body.discoveryOutcome.state).toBe('failed');
-    expect(body.discoveryOutcome.message).toMatch(/Timeout/);
+    expect(body.discoveryOutcome.message).toBe(
+      'Discovery could not complete. Review Sources and retry.',
+    );
 
     const status = await readJson<OnboardingStatusResponse>(
       await get(handle, '/api/onboarding/status'),
@@ -739,6 +961,7 @@ describe('onboarding API — preview and completion', () => {
       { method: 'POST' },
     );
     expect(retry.status).toBe(200);
+    expect(runAll).toHaveBeenCalledTimes(2);
     const retryBody = await readJson<OnboardingCompleteResponse>(retry);
     expect(retryBody.ok).toBe(true);
     expect(retryBody.discoveryOutcome.state).toBe('succeeded');
@@ -752,7 +975,9 @@ describe('onboarding API — preview and completion', () => {
 
   it('rejects search-only retry when onboarding has not been completed', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
-    const { handle } = await startBackend(makeCoordinator({ runAll }));
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
+    });
     const retry = await fetch(
       `${handle.baseUrl}/api/onboarding/discovery/retry`,
       { method: 'POST' },
@@ -761,19 +986,28 @@ describe('onboarding API — preview and completion', () => {
     expect(runAll).not.toHaveBeenCalled();
   });
 
-  it('records cascade failure via the real cascade seam without writing the completion marker or running discovery', async () => {
+  it('recovers from a one-shot cascade failure using the same completion attempt', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
+    let failCascade = true;
+    let sourceRepository: SourceRepository | null = null;
     const cascadeTargetRoles = (roles: readonly string[]) => {
-      throw new Error('boom cascade');
-      // Real implementation is not invoked because we control the
-      // seam; the test asserts no side effects on the source table
-      // when cascade throws.
-      void roles;
+      if (failCascade) throw new Error('boom cascade');
+      if (sourceRepository === null)
+        throw new Error('test source repository missing');
+      sourceRepository.cascadeTargetRoles([...roles]);
     };
-    const { handle } = await startBackend(makeCoordinator({ runAll }), {
-      withReadySource: true,
-      cascadeTargetRoles,
+    const { handle, database, profilePreferencesPath } = await startBackend(
+      makeCoordinator({ runAll }),
+      {
+        withReadySource: true,
+        cascadeTargetRoles,
+      },
+    );
+    sourceRepository = new SourceRepository(database, profilePreferencesPath);
+    const progressSave = await postJson(handle, '/api/onboarding/save', {
+      snapshot: snapshotV2,
     });
+    expect(progressSave.status).toBe(200);
     const preview = await readJson<OnboardingPreviewResponse>(
       await postJson(handle, '/api/onboarding/preview', {
         preferences: basePreferences,
@@ -800,8 +1034,27 @@ describe('onboarding API — preview and completion', () => {
       await get(handle, '/api/onboarding/status'),
     );
     expect(status.completion.completed).toBe(false);
-    // Progress remains available for retry.
-    expect(status.state).toBe('not-started');
+    expect(status.state).toBe('in-progress');
+    expect(status.snapshot).toEqual(snapshotV2);
+
+    // Removing the one-shot failure allows the same attempt ID to retry
+    // persistence/cascade/finalization and launch discovery exactly once.
+    failCascade = false;
+    const recovered = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-cascade-fail',
+    });
+    expect(recovered.status).toBe(200);
+    const recoveredBody = await readJson<OnboardingCompleteResponse>(recovered);
+    expect(recoveredBody.ok).toBe(true);
+    expect(recoveredBody.idempotent).toBe(false);
+    expect(runAll).toHaveBeenCalledTimes(1);
+    const cascadedSource = sourceRepository.list()[0];
+    expect(cascadedSource?.searchCriteria.queries).toEqual([
+      'Network Engineer',
+    ]);
   });
 
   it('computes a deterministic plan token', () => {
@@ -894,14 +1147,29 @@ describe('onboarding API — staged attempt retry semantics', () => {
   it('remembers a failed-retryable attempt and allows the same attempt id to succeed once the failure is removed', async () => {
     const runAll = vi.fn(() => Promise.resolve([]));
     let cascadeShouldThrow = true;
+    let realSourceRepository: SourceRepository | null = null;
     const cascadeTargetRoles = (roles: readonly string[]) => {
       if (cascadeShouldThrow) throw new Error('boom cascade');
-      void roles;
+      if (realSourceRepository === null) {
+        throw new Error('test source repository is unavailable');
+      }
+      realSourceRepository.cascadeTargetRoles([...roles]);
     };
-    const { handle } = await startBackend(makeCoordinator({ runAll }), {
-      withReadySource: true,
-      cascadeTargetRoles,
+    const { handle, database, profilePreferencesPath } = await startBackend(
+      makeCoordinator({ runAll }),
+      {
+        withReadySource: true,
+        cascadeTargetRoles,
+      },
+    );
+    realSourceRepository = new SourceRepository(
+      database,
+      profilePreferencesPath,
+    );
+    const savedProgress = await postJson(handle, '/api/onboarding/save', {
+      snapshot: snapshotV2,
     });
+    expect(savedProgress.status).toBe(200);
     const preview = await readJson<OnboardingPreviewResponse>(
       await postJson(handle, '/api/onboarding/preview', {
         preferences: basePreferences,
@@ -924,7 +1192,8 @@ describe('onboarding API — staged attempt retry semantics', () => {
       await get(handle, '/api/onboarding/status'),
     );
     expect(statusAfterFail.completion.completed).toBe(false);
-    expect(statusAfterFail.state).toBe('not-started');
+    expect(statusAfterFail.state).toBe('in-progress');
+    expect(statusAfterFail.snapshot).toEqual(snapshotV2);
     // The stored record is `failed-retryable`, not a fake success. A
     // replay does not return HTTP 200.
     const replayWhileStillFailing = await postJson(
@@ -952,6 +1221,9 @@ describe('onboarding API — staged attempt retry semantics', () => {
     expect(okBody.ok).toBe(true);
     expect(okBody.idempotent).toBe(false);
     expect(runAll).toHaveBeenCalledTimes(1);
+    expect(realSourceRepository.list()[0]?.searchCriteria.queries).toEqual([
+      'Network Engineer',
+    ]);
     // A third replay of the same attempt id is idempotent.
     const replay = await postJson(handle, '/api/onboarding/complete', {
       preferences: basePreferences,
@@ -961,7 +1233,7 @@ describe('onboarding API — staged attempt retry semantics', () => {
     });
     expect(replay.status).toBe(200);
     const replayBody = await readJson<OnboardingCompleteResponse>(replay);
-    expect(replayBody.idempotent).toBe(true);
+    expect(replayBody).toEqual(okBody);
     expect(runAll).toHaveBeenCalledTimes(1);
   });
 
@@ -1002,3 +1274,517 @@ describe('onboarding API — staged attempt retry semantics', () => {
     expect(runAll).toHaveBeenCalledTimes(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// MR1-06 third correction pass — deterministic coverage of every
+// release-blocking defect listed in the Codex review.
+// ---------------------------------------------------------------------------
+
+describe('onboarding API — authoritative credential resolution', () => {
+  it('refreshes credential status for every plan path and rejects/reviews a token when availability changes', async () => {
+    let credentialAvailable = false;
+    const credentialStatus = vi.fn(() =>
+      Promise.resolve({
+        configured: credentialAvailable,
+        available: credentialAvailable,
+      }),
+    );
+    const descriptors = [
+      {
+        id: 'credential-provider',
+        name: 'Credential Provider',
+        type: 'job-board' as const,
+        capabilities: {
+          keywordSearch: true,
+          locationSearch: true,
+          remoteFilter: true,
+          pagination: true,
+          compensation: true,
+          requiresCredentials: true,
+          structuredPreview: false,
+        },
+        // This intentionally says available=true. The server must
+        // ignore it and ask the resolver every time.
+        credentialStatus: { configured: true, available: true },
+        supportState: 'supported' as const,
+      },
+    ];
+    const runAll = vi.fn(() => Promise.resolve([]));
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withCredentialRequiredSource: true,
+      providerDescriptors: descriptors,
+      credentialResolver: {
+        status: credentialStatus,
+        resolve: () => Promise.resolve(null),
+      },
+    });
+
+    const unavailablePreview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    expect(credentialStatus).toHaveBeenCalled();
+    expect(unavailablePreview.plan.readySourceCount).toBe(0);
+    expect(unavailablePreview.plan.sources[0]?.state).toBe('needs-attention');
+    expect(unavailablePreview.confirmationAllowed).toBe(false);
+    expect(JSON.stringify(unavailablePreview)).not.toContain(
+      'configured":true',
+    );
+
+    // Status prefill uses the same asynchronous plan path. A second
+    // request must query the resolver again, not reuse a router-lifetime
+    // cache.
+    const callsBeforeStatus = credentialStatus.mock.calls.length;
+    await get(handle, '/api/onboarding/status');
+    expect(credentialStatus.mock.calls.length).toBeGreaterThan(
+      callsBeforeStatus,
+    );
+    const callsBeforeDraft = credentialStatus.mock.calls.length;
+    await fetch(`${handle.baseUrl}/api/onboarding/draft-from-profile`, {
+      method: 'POST',
+    });
+    expect(credentialStatus.mock.calls.length).toBeGreaterThan(
+      callsBeforeDraft,
+    );
+    // Credentials become available while the process is open.
+    credentialAvailable = true;
+    const availablePreview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    expect(availablePreview.plan.readySourceCount).toBe(1);
+    expect(availablePreview.confirmationAllowed).toBe(true);
+    expect(availablePreview.planToken).not.toBe(unavailablePreview.planToken);
+
+    // The old token is stale; the server returns the freshly rebuilt
+    // plan and requires the user to review it again.
+    const stale = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: unavailablePreview.planToken,
+      attemptId: 'credential-attempt',
+    });
+    expect(stale.status).toBe(409);
+    const staleBody = await readJson<{ code: string; planToken: string }>(
+      stale,
+    );
+    expect(staleBody.code).toBe('onboarding_complete_stale_plan');
+    expect(staleBody.planToken).toBe(availablePreview.planToken);
+
+    // Reusing the same retryable attempt with the reviewed fresh token
+    // succeeds, and preview + completion token calculations match when
+    // credential status is unchanged.
+    const completed = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: availablePreview.planToken,
+      attemptId: 'credential-attempt',
+    });
+    expect(completed.status).toBe(200);
+    expect(runAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('preview and completion use the same credential status without a false stale-plan response', async () => {
+    const statusSpy = vi.fn(() =>
+      Promise.resolve({ configured: true, available: true }),
+    );
+    const descriptors = [
+      {
+        id: 'credential-provider',
+        name: 'Credential Provider',
+        type: 'job-board' as const,
+        capabilities: {
+          keywordSearch: true,
+          locationSearch: true,
+          remoteFilter: true,
+          pagination: true,
+          compensation: true,
+          requiresCredentials: true,
+          structuredPreview: false,
+        },
+        credentialStatus: { configured: false, available: false },
+        supportState: 'supported' as const,
+      },
+    ];
+    const runAll = vi.fn(() => Promise.resolve([]));
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withCredentialRequiredSource: true,
+      providerDescriptors: descriptors,
+      credentialResolver: {
+        status: statusSpy,
+        resolve: () => Promise.resolve(null),
+      },
+    });
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    expect(preview.confirmationAllowed).toBe(true);
+    const completed = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'credential-stable-attempt',
+    });
+    expect(completed.status).toBe(200);
+    expect(statusSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(runAll).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('onboarding API — buildStatus precedence for invalid progress', () => {
+  it('reports blocked/malformed even with an active edit session', async () => {
+    const { handle, database } = await startBackend(makeCoordinator());
+    markCompleted(database);
+    // Insert malformed progress.
+    database
+      .prepare(
+        `INSERT OR REPLACE INTO app_settings (setting_key, setting_value_json, updated_at)
+         VALUES (?, ?, datetime('now'))`,
+      )
+      .run(
+        `${ONBOARDING_PROGRESS_SETTING_PREFIX}candidate-api-one`,
+        '{not-json',
+      );
+    // Start an edit session explicitly.
+    await postJson(handle, '/api/onboarding/edit/start', {});
+    const status = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(status.state).toBe('blocked');
+    expect(status.blockKind).toBe('malformed');
+    expect(status.editSession.editing).toBe(true);
+    // Completion marker remains preserved.
+    expect(status.completion.completed).toBe(true);
+  });
+
+  it('reports blocked/unsupported-version even with an active edit session', async () => {
+    const { handle, database } = await startBackend(makeCoordinator());
+    markCompleted(database);
+    database
+      .prepare(
+        `INSERT OR REPLACE INTO app_settings (setting_key, setting_value_json, updated_at)
+         VALUES (?, ?, datetime('now'))`,
+      )
+      .run(
+        `${ONBOARDING_PROGRESS_SETTING_PREFIX}candidate-api-one`,
+        JSON.stringify({ version: 99 }),
+      );
+    await postJson(handle, '/api/onboarding/edit/start', {});
+    const status = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(status.state).toBe('blocked');
+    expect(status.blockKind).toBe('unsupported-version');
+    expect(status.completion.completed).toBe(true);
+    expect(status.editSession.editing).toBe(true);
+  });
+
+  it('reports blocked/storage-failure even with an active edit session', async () => {
+    const getSetting = vi.fn(() => {
+      throw new Error('disk i/o boom');
+    });
+    const saveSetting = vi.fn();
+    const deleteSetting = vi.fn();
+    const throwingStore: OnboardingProgressStore = {
+      getSetting,
+      saveSetting,
+      deleteSetting,
+    };
+    const { handle, database } = await startBackend(undefined, {
+      progressStore: throwingStore,
+    });
+    markCompleted(database);
+    await postJson(handle, '/api/onboarding/edit/start', {});
+    const status = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(status.state).toBe('blocked');
+    expect(status.blockKind).toBe('storage-failure');
+    expect(status.editSession.editing).toBe(true);
+    expect(status.completion.completed).toBe(true);
+    expect(status.blockMessage).toBe(
+      'Onboarding progress could not be loaded.',
+    );
+    expect(status.blockMessage).not.toContain('disk');
+    expect(getSetting).toHaveBeenCalledTimes(1);
+    expect(saveSetting).not.toHaveBeenCalled();
+    expect(deleteSetting).not.toHaveBeenCalled();
+  });
+});
+
+describe('onboarding API — terminal attempt replay is idempotent', () => {
+  it('stores the terminal response inside the attempt record and replays it', async () => {
+    const runAll = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('boom timeout'))
+      .mockResolvedValueOnce([]);
+    const saveSpy = vi.fn(() => undefined);
+    const cascadeSpy = vi.fn();
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
+      saveProfilePreferences: saveSpy,
+      cascadeTargetRoles: cascadeSpy,
+    });
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    // Completion with discovery failure is stored as a terminal
+    // `completed` attempt whose response includes the failed
+    // discovery outcome.
+    const first = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-terminal-a',
+    });
+    expect(first.status).toBe(200);
+    const firstBody = await readJson<OnboardingCompleteResponse>(first);
+    expect(firstBody.ok).toBe(true);
+    expect(firstBody.discoveryOutcome.state).toBe('failed');
+    expect(runAll).toHaveBeenCalledTimes(1);
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(cascadeSpy).toHaveBeenCalledTimes(1);
+
+    // A search-only retry overwrites the mutable global outcome with a
+    // different attempt ID.
+    const retry = await fetch(
+      `${handle.baseUrl}/api/onboarding/discovery/retry`,
+      { method: 'POST' },
+    );
+    expect(retry.status).toBe(200);
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(cascadeSpy).toHaveBeenCalledTimes(1);
+
+    // Replay of the original completion attempt must return the stored
+    // terminal response (failed), NOT the newer retry outcome.
+    const replay = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-terminal-a',
+    });
+    expect(replay.status).toBe(200);
+    const replayBody = await readJson<OnboardingCompleteResponse>(replay);
+    expect(replayBody).toEqual(firstBody);
+    // Discovery was NOT re-run for the replay.
+    // The second call was the explicit search-only retry above; replay
+    // itself did not add a third discovery run.
+    expect(runAll).toHaveBeenCalledTimes(2);
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(cascadeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a discovery-failed completion as terminal; a second /complete does not re-run discovery', async () => {
+    const runAll = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('boom timeout'))
+      .mockResolvedValueOnce([]);
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
+    });
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    const attemptId = 'attempt-discovery-failed';
+    const first = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId,
+    });
+    expect(first.status).toBe(200);
+    const firstBody = await readJson<OnboardingCompleteResponse>(first);
+    expect(firstBody.ok).toBe(true);
+    expect(firstBody.discoveryOutcome.state).toBe('failed');
+    expect(runAll).toHaveBeenCalledTimes(1);
+
+    const replay = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId,
+    });
+    expect(replay.status).toBe(200);
+    const replayBody = await readJson<OnboardingCompleteResponse>(replay);
+    expect(replayBody).toEqual(firstBody);
+    expect(runAll).toHaveBeenCalledTimes(1);
+
+    // /discovery/retry runs discovery a second time and can succeed.
+    const retry = await fetch(
+      `${handle.baseUrl}/api/onboarding/discovery/retry`,
+      { method: 'POST' },
+    );
+    expect(retry.status).toBe(200);
+    const retryBody = await readJson<OnboardingCompleteResponse>(retry);
+    expect(retryBody.discoveryOutcome.state).toBe('succeeded');
+    expect(runAll).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('onboarding API — discard and finalization cleanup failures', () => {
+  it('returns a bounded failure when discard cannot clear resumable progress', async () => {
+    let databaseRef: JobDatabase | null = null;
+    let failDelete = false;
+    const { handle, database } = await startBackend(makeCoordinator(), {
+      withReadySource: true,
+      deleteOnboardingProgress: (profileId) => {
+        if (failDelete) throw new Error('disk on fire');
+        if (databaseRef === null) throw new Error('test database missing');
+        resetOnboardingProgress(
+          createDatabaseOnboardingProgressStore(databaseRef),
+          profileId,
+        );
+      },
+    });
+    databaseRef = database;
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    const completed = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'discard-setup-complete',
+    });
+    expect(completed.status).toBe(200);
+    await postJson(handle, '/api/onboarding/edit/start', {});
+    const progress = await postJson(handle, '/api/onboarding/save', {
+      snapshot: snapshotV2,
+    });
+    expect(progress.status).toBe(200);
+
+    failDelete = true;
+    const discard = await postJson(handle, '/api/onboarding/edit/end', {
+      keepProgress: false,
+    });
+    expect(discard.status).toBe(500);
+    const discardBody = await readJson<{ code: string; error: string }>(
+      discard,
+    );
+    expect(discardBody.code).toBe('onboarding_edit_discard_failed');
+    expect(discardBody.error).toMatch(/discard/i);
+    // Completion history and edit marker survive the failed discard.
+    const status = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(status.completion.completed).toBe(true);
+    expect(status.editSession.editing).toBe(true);
+    expect(status.state).toBe('in-progress');
+    expect(status.snapshot).toEqual(snapshotV2);
+  });
+
+  it('rolls back finalization and does not run discovery when progress delete fails', async () => {
+    const runAll = vi.fn(() => Promise.resolve([]));
+    let databaseRef: JobDatabase | null = null;
+    let failDelete = true;
+    const { handle, database } = await startBackend(
+      makeCoordinator({ runAll }),
+      {
+        withReadySource: true,
+        deleteOnboardingProgress: (profileId: string) => {
+          if (failDelete) throw new Error('disk on fire');
+          if (databaseRef === null) throw new Error('test database missing');
+          resetOnboardingProgress(
+            createDatabaseOnboardingProgressStore(databaseRef),
+            profileId,
+          );
+        },
+      },
+    );
+    databaseRef = database;
+    // Pre-seed a valid v2 progress snapshot so the earlier `save`
+    // step in the completion handler does not fail before
+    // finalization.
+    saveOnboardingProgressForTest(database);
+    await postJson(handle, '/api/onboarding/edit/start', {});
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    const response = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-finalize-fail',
+    });
+    expect(response.status).toBe(500);
+    const body = await readJson<{ code: string }>(response);
+    expect(body.code).toBe('onboarding_complete_finalize_failed');
+    expect(runAll).not.toHaveBeenCalled();
+    // Completion marker was rolled back.
+    const completionRow = database
+      .prepare<
+        [string],
+        { setting_value_json: string } | undefined
+      >('SELECT setting_value_json FROM app_settings WHERE setting_key = ?')
+      .get(`onboardingCompletion:candidate-api-one`);
+    expect(completionRow).toBeUndefined();
+    const blockedStatus = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(blockedStatus.completion.completed).toBe(false);
+    expect(blockedStatus.editSession.editing).toBe(true);
+    expect(blockedStatus.state).toBe('in-progress');
+    expect(blockedStatus.snapshot).toBeDefined();
+    // The attempt is failed-retryable so the next call can retry
+    // after the injected failure is removed.
+    const attemptRow = database
+      .prepare<
+        [string],
+        { setting_value_json: string } | undefined
+      >('SELECT setting_value_json FROM app_settings WHERE setting_key = ?')
+      .get(`onboardingAttempt:candidate-api-one:attempt-finalize-fail`);
+    expect(attemptRow).toBeDefined();
+    const parsed = JSON.parse(attemptRow!.setting_value_json) as {
+      state: string;
+    };
+    expect(parsed.state).toBe('failed-retryable');
+
+    // Retrying the same attempt after removing the injected failure
+    // successfully finalizes and starts discovery exactly once.
+    failDelete = false;
+    const retry = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-finalize-fail',
+    });
+    expect(retry.status).toBe(200);
+    expect(runAll).toHaveBeenCalledTimes(1);
+  });
+});
+
+function saveOnboardingProgressForTest(database: JobDatabase): void {
+  // Helper used by the finalization-failure test to pre-seed a valid
+  // v2 progress snapshot so the earlier `save` step in the completion
+  // handler does not fail before finalization.
+  saveOnboardingProgress(
+    createDatabaseOnboardingProgressStore(database),
+    'candidate-api-one',
+    {
+      version: 2,
+      onboardingStep: 'preferences',
+      currentQuestion: 'desired-work',
+      answers: createEmptyPreferencesDraft(),
+      reviewItems: [],
+    },
+  );
+}

@@ -97,6 +97,18 @@ function safeCompletionMessage(error: unknown): string {
   return 'Onboarding could not be completed.';
 }
 
+function safeLoadMessage(error: unknown): string {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : '';
+  return message.startsWith('Onboarding progress could not be loaded')
+    ? message
+    : 'Onboarding progress could not be loaded. Retry or leave the setup screen.';
+}
+
 function isV2Snapshot(value: unknown): value is OnboardingProgressSnapshot {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as { version?: unknown; reviewItems?: unknown };
@@ -132,11 +144,7 @@ export function OnboardingPage() {
       const next = await api.onboardingStatus();
       setStatus(next);
     } catch (error) {
-      setLoadError(
-        error instanceof Error
-          ? error.message
-          : 'Onboarding status could not be loaded.',
-      );
+      setLoadError(safeLoadMessage(error));
     }
   }, []);
 
@@ -151,11 +159,7 @@ export function OnboardingPage() {
       await api.startOnboardingEdit();
       await loadStatus();
     } catch (error) {
-      setEditError(
-        error instanceof Error
-          ? error.message
-          : 'Could not start editing your saved search setup.',
-      );
+      setEditError(safeCompletionMessage(error));
     } finally {
       setEditBusy(false);
     }
@@ -168,8 +172,8 @@ export function OnboardingPage() {
         message={loadError}
         primaryLabel="Retry"
         onPrimary={() => void loadStatus()}
-        secondaryLabel="Open Sources"
-        secondaryHref="/sources"
+        secondaryLabel="Leave"
+        secondaryHref="/jobs"
         storageFailure
       />
     );
@@ -183,7 +187,7 @@ export function OnboardingPage() {
   }
   // Active editing of an already-completed configuration takes
   // precedence: render the wizard, not the completed view.
-  if (status.editSession.editing) {
+  if (status.editSession.editing || status.editSession.resumable) {
     return (
       <Wizard
         status={status}
@@ -228,7 +232,7 @@ export function OnboardingPage() {
         message={
           status.blockMessage ?? 'Onboarding progress could not be loaded.'
         }
-        primaryLabel={isStorageFailure ? 'Retry' : 'Reset onboarding'}
+        primaryLabel={isStorageFailure ? 'Retry' : 'Clear broken progress'}
         onPrimary={async () => {
           if (isStorageFailure) {
             await loadStatus();
@@ -237,8 +241,8 @@ export function OnboardingPage() {
           await api.resetOnboardingProgress();
           await loadStatus();
         }}
-        secondaryLabel="Open Sources"
-        secondaryHref="/sources"
+        secondaryLabel={isStorageFailure ? 'Leave' : 'Open Sources'}
+        secondaryHref={isStorageFailure ? '/jobs' : '/sources'}
         storageFailure={isStorageFailure}
       />
     );
@@ -277,9 +281,11 @@ function BlockedView({
   readonly secondaryHref: string;
   readonly storageFailure: boolean;
 }) {
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const footnote = storageFailure
     ? 'Retry loading to try again. Leaving returns to the application without changing anything.'
-    : 'Resetting clears the stored progress so you can start fresh. It does not change your candidate profile, sources, jobs, applications, or scoring data.';
+    : 'Clearing this stored progress does not change your candidate profile, sources, jobs, applications, scoring data, or any previously completed search setup.';
   return (
     <section
       className="onboarding-card onboarding-blocked"
@@ -291,15 +297,33 @@ function BlockedView({
       <p className="onboarding-question-copy" role="status">
         {message}
       </p>
+      {actionError !== null ? (
+        <p className="onboarding-save-error" role="alert">
+          {actionError}
+        </p>
+      ) : undefined}
       <p className="onboarding-footnote">{footnote}</p>
       <div className="onboarding-actions">
         <div className="onboarding-actions-left">
           <button
             type="button"
             className="button primary"
-            onClick={() => void onPrimary()}
+            disabled={actionBusy}
+            onClick={() => {
+              void (async () => {
+                setActionBusy(true);
+                setActionError(null);
+                try {
+                  await onPrimary();
+                } catch (error) {
+                  setActionError(safeSaveMessage(error));
+                } finally {
+                  setActionBusy(false);
+                }
+              })();
+            }}
           >
-            {primaryLabel}
+            {actionBusy ? 'Working…' : primaryLabel}
           </button>
           <Link className="button secondary" to={secondaryHref}>
             {secondaryLabel}
@@ -675,12 +699,16 @@ function Wizard({
           // Stay on the wizard; saveError is already set.
           return;
         }
-        // Preserve progress and end the editing session so a later
-        // visit resumes the saved state.
+        // End the editing session BEFORE navigating. If the server
+        // fails to end the edit, do not navigate — the wizard must
+        // remain visible and the resumable edit must stay active.
         try {
           await api.endOnboardingEdit(true);
         } catch {
-          // best effort; navigation still leaves the wizard intact.
+          setSaveError(
+            'Could not end the editing session. Stay on the wizard and retry to keep your draft resumable.',
+          );
+          return;
         }
         await onRefreshStatus();
         // navigate is synchronous in react-router v6; the void operator
@@ -706,11 +734,7 @@ function Wizard({
       try {
         await api.endOnboardingEdit(false);
       } catch (error) {
-        setSaveError(
-          error instanceof Error
-            ? error.message
-            : 'Could not discard the current edit.',
-        );
+        setSaveError(safeSaveMessage(error));
         return;
       }
       await onRefreshStatus();
@@ -780,7 +804,7 @@ function Wizard({
           <SearchPlanStep
             plan={plan}
             saving={confirming}
-            saveError={confirmError}
+            saveError={confirmError ?? saveError}
             onBack={() => {
               handlePlanBack();
             }}
@@ -844,17 +868,19 @@ function Wizard({
           >
             {saveLeaveBusy ? 'Saving…' : 'Save and leave'}
           </button>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={saving || confirming || saveLeaveBusy}
-            onClick={() => {
-              handleDiscardEdit();
-            }}
-            data-testid="onboarding-discard-edit"
-          >
-            Discard current edit
-          </button>
+          {editingExistingCompletion ? (
+            <button
+              type="button"
+              className="button secondary"
+              disabled={saving || confirming || saveLeaveBusy}
+              onClick={() => {
+                handleDiscardEdit();
+              }}
+              data-testid="onboarding-discard-edit"
+            >
+              Discard current edit
+            </button>
+          ) : undefined}
         </div>
       </div>
     </div>

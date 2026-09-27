@@ -41,7 +41,10 @@ import { defaultDatabasePath } from '../db/database.js';
 import { persistenceSetCoordinator } from '../db/persistenceSetCoordinator.js';
 import { JOB_STATUSES } from '../domain/job-status.js';
 import { detectAts, type AtsDetectorOptions } from '../domain/atsDetector.js';
-import type { AtsDetectionResult } from '../models/source-management.js';
+import type {
+  AtsDetectionResult,
+  ProviderDescriptor,
+} from '../models/source-management.js';
 import type { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
 import { EmployerDiscoveryService } from '../discovery/employerDiscoveryService.js';
 import { EmployerSeedImporter } from '../discovery/employerSeedImporter.js';
@@ -151,6 +154,8 @@ export interface AppOptions {
    * `sourceRepository.cascadeTargetRoles`.
    */
   cascadeTargetRoles?: (roles: readonly string[]) => void;
+  deleteOnboardingProgress?: (profileId: string) => void;
+  providerDescriptors?: readonly ProviderDescriptor[];
 }
 
 const asyncRoute =
@@ -272,6 +277,12 @@ export function createApp(
       ...(options.cascadeTargetRoles === undefined
         ? {}
         : { cascadeTargetRoles: options.cascadeTargetRoles }),
+      ...(options.deleteOnboardingProgress === undefined
+        ? {}
+        : { deleteOnboardingProgress: options.deleteOnboardingProgress }),
+      ...(options.providerDescriptors === undefined
+        ? {}
+        : { providerDescriptors: options.providerDescriptors }),
     }),
   );
 

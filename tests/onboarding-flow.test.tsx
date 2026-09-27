@@ -48,6 +48,7 @@ const ZERO_OUTCOME: OnboardingDiscoveryOutcome = {
 
 const ZERO_EDIT = {
   editing: false,
+  resumable: false,
   startedAt: null,
 };
 
@@ -210,24 +211,41 @@ afterEach(() => {
 
 describe('OnboardingPage â€” completed user can edit', () => {
   it('exposes an Edit search setup action on the completed view that calls startOnboardingEdit', async () => {
-    apiMock.onboardingStatus.mockResolvedValue(
-      statusNotStarted({
-        state: 'completed',
-        completion: {
-          completed: true,
-          completedAt: '2026-09-24T00:00:00.000Z',
-        },
-        discoveryOutcome: {
-          state: 'succeeded',
-          message: null,
-          summariesCount: 1,
-          completedAt: '2026-09-24T00:00:00.000Z',
-          attemptId: 'a',
-        },
-        prefilledDraft: undefined,
-        planToken: undefined,
-      }),
-    );
+    apiMock.onboardingStatus
+      .mockResolvedValueOnce(
+        statusNotStarted({
+          state: 'completed',
+          completion: {
+            completed: true,
+            completedAt: '2026-09-24T00:00:00.000Z',
+          },
+          discoveryOutcome: {
+            state: 'succeeded',
+            message: null,
+            summariesCount: 1,
+            completedAt: '2026-09-24T00:00:00.000Z',
+            attemptId: 'a',
+          },
+          prefilledDraft: undefined,
+          planToken: undefined,
+        }),
+      )
+      .mockResolvedValueOnce(
+        statusNotStarted({
+          state: 'in-progress',
+          resumeKind: 'editing-existing',
+          question: 'desired-work',
+          editSession: {
+            editing: true,
+            resumable: true,
+            startedAt: '2026-09-24T00:00:00.000Z',
+          },
+          completion: {
+            completed: true,
+            completedAt: '2026-09-24T00:00:00.000Z',
+          },
+        }),
+      );
     renderPage();
     const editButton = await screen.findByTestId('onboarding-completed-edit');
     await userEvent.setup().click(editButton);
@@ -235,6 +253,9 @@ describe('OnboardingPage â€” completed user can edit', () => {
       expect(apiMock.startOnboardingEdit).toHaveBeenCalledTimes(1);
     });
     expect(apiMock.onboardingStatus).toHaveBeenCalledTimes(2);
+    expect(
+      await screen.findByRole('heading', { name: /What roles interest you/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders the wizard once editSession.editing is true and keeps the completion marker', async () => {
@@ -244,7 +265,11 @@ describe('OnboardingPage â€” completed user can edit', () => {
         resumeKind: 'editing-existing',
         onboardingStep: 'preferences',
         question: 'desired-work',
-        editSession: { editing: true, startedAt: '2026-09-24T00:00:00.000Z' },
+        editSession: {
+          editing: true,
+          resumable: true,
+          startedAt: '2026-09-24T00:00:00.000Z',
+        },
         completion: {
           completed: true,
           completedAt: '2026-09-24T00:00:00.000Z',
@@ -328,6 +353,37 @@ describe('OnboardingPage â€” Save and leave actually leaves', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Jobs')).not.toBeInTheDocument();
   });
+
+  it('does not navigate when the edit session cannot be ended after a successful save', async () => {
+    apiMock.onboardingStatus.mockResolvedValue(
+      statusNotStarted({
+        state: 'in-progress',
+        snapshot: snapshotV2() as unknown as Record<string, unknown>,
+        resumeKind: 'stored',
+        question: 'desired-work',
+        prefilledDraft: undefined,
+        planToken: undefined,
+      }),
+    );
+    apiMock.endOnboardingEdit.mockRejectedValueOnce(
+      new Error('edit-end disk on fire'),
+    );
+    renderPageWithNavigation();
+    const leave = await screen.findByTestId('onboarding-save-and-leave');
+    await userEvent.setup().click(leave);
+    await waitFor(() => {
+      expect(apiMock.saveOnboardingProgress).toHaveBeenCalled();
+    });
+    expect(apiMock.endOnboardingEdit).toHaveBeenCalledWith(true);
+    // The wizard remains visible and no navigation occurred.
+    expect(
+      screen.getByRole('heading', { name: /What roles interest you/i }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/end the editing session/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Jobs')).not.toBeInTheDocument();
+  });
 });
 
 describe('OnboardingPage â€” Discard current edit', () => {
@@ -338,7 +394,15 @@ describe('OnboardingPage â€” Discard current edit', () => {
         snapshot: snapshotV2() as unknown as Record<string, unknown>,
         resumeKind: 'stored',
         question: 'desired-work',
-        editSession: { editing: true, startedAt: '2026-09-24T00:00:00.000Z' },
+        editSession: {
+          editing: true,
+          resumable: true,
+          startedAt: '2026-09-24T00:00:00.000Z',
+        },
+        completion: {
+          completed: true,
+          completedAt: '2026-09-23T00:00:00.000Z',
+        },
         prefilledDraft: undefined,
         planToken: undefined,
       }),
@@ -373,10 +437,24 @@ describe('OnboardingPage â€” blocked screens', () => {
         name: /Onboarding progress could not be loaded/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument();
+    const retry = screen.getByRole('button', { name: /Retry/i });
+    expect(retry).toBeInTheDocument();
+    const readsBeforeRetry = apiMock.onboardingStatus.mock.calls.length;
+    await userEvent.setup().click(retry);
+    await waitFor(() => {
+      expect(apiMock.onboardingStatus).toHaveBeenCalledTimes(
+        readsBeforeRetry + 1,
+      );
+    });
     expect(
       screen.queryByRole('button', { name: /^Reset onboarding$/ }),
     ).not.toBeInTheDocument();
+    const leave = screen.getByRole('link', { name: 'Leave' });
+    expect(leave).toHaveAttribute('href', '/jobs');
+    await userEvent.setup().click(leave);
+    expect(await screen.findByText('Jobs')).toBeInTheDocument();
+    expect(apiMock.resetOnboardingProgress).not.toHaveBeenCalled();
+    expect(apiMock.saveOnboardingProgress).not.toHaveBeenCalled();
   });
 
   it('shows a destructive Reset only for malformed or unsupported-version states', async () => {
@@ -395,9 +473,42 @@ describe('OnboardingPage â€” blocked screens', () => {
         name: /Onboarding progress is unreadable/i,
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Reset onboarding/i }),
-    ).toBeInTheDocument();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /Clear broken progress/i }));
+    await waitFor(() => {
+      expect(apiMock.resetOnboardingProgress).toHaveBeenCalledWith();
+    });
+    expect(apiMock.saveOnboardingProgress).not.toHaveBeenCalled();
+  });
+
+  it('shows a bounded reset error and does not save progress first', async () => {
+    apiMock.onboardingStatus.mockResolvedValue(
+      statusNotStarted({
+        state: 'blocked',
+        blockKind: 'malformed',
+        blockMessage: 'Stored onboarding progress is unreadable.',
+        prefilledDraft: undefined,
+        planToken: undefined,
+      }),
+    );
+    apiMock.resetOnboardingProgress.mockRejectedValueOnce(
+      new Error('disk path secret stack'),
+    );
+    renderPage();
+    await screen.findByRole('heading', {
+      name: /Onboarding progress is unreadable/i,
+    });
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: /Clear broken progress/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /Onboarding progress could not be saved/i,
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent(
+      /secret|stack|path/i,
+    );
+    expect(apiMock.saveOnboardingProgress).not.toHaveBeenCalled();
   });
 });
 

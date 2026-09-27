@@ -119,6 +119,7 @@ export interface OnboardingDiscoveryOutcome {
 
 export interface OnboardingEditSession {
   readonly editing: boolean;
+  readonly resumable: boolean;
   readonly startedAt: string | null;
 }
 
@@ -532,8 +533,11 @@ export const api = {
     ),
   saveOnboardingProgress: (snapshot: unknown) =>
     request<{ ok: true }>('/api/onboarding/save', json('POST', { snapshot })),
-  resetOnboardingProgress: () =>
-    request<{ ok: true }>('/api/onboarding/reset', { method: 'POST' }),
+  resetOnboardingProgress: (resetCompletion = false) =>
+    request<{ ok: true }>(
+      '/api/onboarding/reset',
+      json('POST', { resetCompletion }),
+    ),
   startOnboardingEdit: () =>
     request<{ ok: true }>('/api/onboarding/edit/start', { method: 'POST' }),
   endOnboardingEdit: (keepProgress: boolean) =>
