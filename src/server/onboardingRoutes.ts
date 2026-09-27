@@ -743,7 +743,12 @@ const completeRequestSchema = z.strictObject({
   preferences: onboardingValidatedPreferencesSchema,
   reviewItems: z.array(onboardingReviewItemSchema),
   planToken: z.string().min(1),
-  attemptId: z.string().min(1),
+  attemptId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9._:-]+$/),
 });
 
 const startEditRequestSchema = z.strictObject({}).optional();
@@ -795,6 +800,11 @@ export function createOnboardingRouter(
       resetOnboardingProgress(store, profileId);
     });
   const providerDescriptorsOverride = options.providerDescriptors;
+  // A completion attempt is profile-scoped, even though its durable
+  // idempotency record is keyed by attempt id. This prevents two clients,
+  // reloads, or independently generated attempt ids from persisting and
+  // starting discovery concurrently for the same active profile.
+  const activeCompletionProfiles = new Set<string>();
 
   function currentProfileId(): string {
     const profile = loadCandidateProfile(
@@ -1108,7 +1118,14 @@ export function createOnboardingRouter(
   router.post(
     '/edit/start',
     asyncRoute((request, response) => {
-      startEditRequestSchema.parse(request.body ?? {});
+      const parsed = startEditRequestSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        response.status(400).json({
+          error: 'Onboarding edit-start payload is invalid.',
+          code: 'onboarding_edit_start_validation_failed',
+        });
+        return;
+      }
       let profileId: string;
       try {
         profileId = currentProfileId();
@@ -1253,6 +1270,37 @@ export function createOnboardingRouter(
       if (stored?.state === 'failed-retryable') {
         clearAttemptRecord(database, profileId, attemptId);
       }
+
+      if (activeCompletionProfiles.has(profileId)) {
+        response.status(409).json({
+          error: 'Another onboarding completion attempt is already running.',
+          code: 'onboarding_complete_profile_in_progress',
+        });
+        return;
+      }
+      const completion = readCompletionMarker(database, profileId);
+      const editSession = readEditSession(database, profileId);
+      if (
+        completion.completed &&
+        !editSession.editing &&
+        !editSession.resumable
+      ) {
+        response.status(409).json({
+          error:
+            'Onboarding is already complete. Start an edit or retry the saved search instead.',
+          code: 'onboarding_complete_already_completed',
+        });
+        return;
+      }
+      activeCompletionProfiles.add(profileId);
+      let completionProfileReleased = false;
+      const releaseCompletionProfile = (): void => {
+        if (completionProfileReleased) return;
+        completionProfileReleased = true;
+        activeCompletionProfiles.delete(profileId);
+      };
+      response.once('finish', releaseCompletionProfile);
+      response.once('close', releaseCompletionProfile);
 
       writeAttemptRecord(database, profileId, attemptId, {
         state: 'in-progress',

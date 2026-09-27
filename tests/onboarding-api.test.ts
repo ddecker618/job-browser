@@ -1141,6 +1141,128 @@ describe('onboarding API — preview and completion', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(runAll).toHaveBeenCalledTimes(1);
   });
+
+  it('refuses a different attemptId while the same profile is completing', async () => {
+    let releaseDiscovery!: (value: DiscoverySummary[]) => void;
+    const discoveryPromise = new Promise<DiscoverySummary[]>((resolve) => {
+      releaseDiscovery = resolve;
+    });
+    const runAll = vi.fn(() => discoveryPromise);
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
+    });
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+
+    void postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-profile-first',
+    });
+    const deadline = Date.now() + 1000;
+    let observed = false;
+    while (Date.now() < deadline) {
+      const status = await readJson<OnboardingStatusResponse>(
+        await get(handle, '/api/onboarding/status'),
+      );
+      if (status.discoveryOutcome.state === 'running') {
+        observed = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    expect(observed).toBe(true);
+
+    const second = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-profile-second',
+    });
+    releaseDiscovery([]);
+    expect(second.status).toBe(409);
+    expect((await readJson<{ code: string }>(second)).code).toBe(
+      'onboarding_complete_profile_in_progress',
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(runAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a new completion attempt after completion unless an edit was started', async () => {
+    const runAll = vi.fn(() => Promise.resolve([]));
+    const { handle } = await startBackend(makeCoordinator({ runAll }), {
+      withReadySource: true,
+    });
+    const preview = await readJson<OnboardingPreviewResponse>(
+      await postJson(handle, '/api/onboarding/preview', {
+        preferences: basePreferences,
+        confirmedTitles: ['Network Engineer'],
+      }),
+    );
+    const first = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-first-completion',
+    });
+    expect(first.status).toBe(200);
+
+    const duplicate = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-second-completion',
+    });
+    expect(duplicate.status).toBe(409);
+    expect((await readJson<{ code: string }>(duplicate)).code).toBe(
+      'onboarding_complete_already_completed',
+    );
+    expect(runAll).toHaveBeenCalledTimes(1);
+
+    expect(
+      (await postJson(handle, '/api/onboarding/edit/start', {})).status,
+    ).toBe(200);
+    const edited = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: preview.planToken,
+      attemptId: 'attempt-approved-edit',
+    });
+    expect(edited.status).toBe(200);
+    expect(runAll).toHaveBeenCalledTimes(2);
+  });
+
+  it('bounds completion attempt ids and edit-start validation errors', async () => {
+    const { handle } = await startBackend(makeCoordinator(), {
+      withReadySource: true,
+    });
+    const invalidAttempt = await postJson(handle, '/api/onboarding/complete', {
+      preferences: basePreferences,
+      reviewItems: [],
+      planToken: 'token',
+      attemptId: 'x'.repeat(129),
+    });
+    expect(invalidAttempt.status).toBe(400);
+    expect((await readJson<{ code: string }>(invalidAttempt)).code).toBe(
+      'onboarding_complete_validation_failed',
+    );
+
+    const invalidEditStart = await postJson(
+      handle,
+      '/api/onboarding/edit/start',
+      { unexpected: true },
+    );
+    expect(invalidEditStart.status).toBe(400);
+    expect((await readJson<{ code: string }>(invalidEditStart)).code).toBe(
+      'onboarding_edit_start_validation_failed',
+    );
+  });
 });
 
 describe('onboarding API — staged attempt retry semantics', () => {
