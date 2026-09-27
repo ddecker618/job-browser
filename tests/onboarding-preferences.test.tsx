@@ -32,6 +32,7 @@ afterEach(() => {
 // Keep the pending-save window comfortably longer than Testing Library's
 // asynchronous user-event sequence so this interaction is deterministic.
 const SAVE_DELAY_MS = 1_000;
+const SAVE_WAIT_OPTIONS = { timeout: SAVE_DELAY_MS + 1_000 };
 const FAILURE_MESSAGE = 'Could not save preferences. Please try again.';
 
 function Harness({
@@ -491,7 +492,7 @@ describe('PreferencesStep guided onboarding', () => {
         expect(
           screen.getByRole('button', { name: 'Save and finish' }),
         ).not.toBeDisabled(),
-      { timeout: SAVE_DELAY_MS + 1_000 },
+      SAVE_WAIT_OPTIONS,
     );
 
     expect(readHarnessDraft().desiredEmploymentTypes).toEqual([
@@ -520,10 +521,12 @@ describe('PreferencesStep guided onboarding', () => {
 
     await user.click(savingButton);
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Save and finish' }),
-      ).not.toBeDisabled(),
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole('button', { name: 'Save and finish' }),
+        ).not.toBeDisabled(),
+      SAVE_WAIT_OPTIONS,
     );
     expect(readHarnessSaveAttempts()).toBe(1);
   });
@@ -539,7 +542,9 @@ describe('PreferencesStep guided onboarding', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Save and finish' }));
-    expect(await screen.findByText(FAILURE_MESSAGE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(FAILURE_MESSAGE, {}, SAVE_WAIT_OPTIONS),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         name: 'What employment types work for you?',
@@ -550,7 +555,10 @@ describe('PreferencesStep guided onboarding', () => {
     expect(readHarnessSaveAttempts()).toBe(1);
 
     await user.click(screen.getByRole('button', { name: 'Save and finish' }));
-    await waitFor(() => expect(screen.queryByText(FAILURE_MESSAGE)).toBeNull());
+    await waitFor(
+      () => expect(screen.queryByText(FAILURE_MESSAGE)).toBeNull(),
+      SAVE_WAIT_OPTIONS,
+    );
     expect(readHarnessSaveAttempts()).toBe(2);
     expect(readHarnessLastSaved()).not.toBeNull();
   });
@@ -616,10 +624,12 @@ describe('PreferencesStep guided onboarding', () => {
     expect(screen.queryByText(/Salary preferences come later/)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Save and finish' }));
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Save and finish' }),
-      ).not.toBeDisabled(),
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole('button', { name: 'Save and finish' }),
+        ).not.toBeDisabled(),
+      SAVE_WAIT_OPTIONS,
     );
 
     const saved = readHarnessLastSaved();
@@ -791,7 +801,9 @@ describe('PreferencesStep guided onboarding', () => {
     expect(readHarnessDraft().desiredEmploymentTypes).toEqual(before);
     expect(readHarnessSaveAttempts()).toBe(1);
 
-    expect(await screen.findByText(FAILURE_MESSAGE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(FAILURE_MESSAGE, {}, SAVE_WAIT_OPTIONS),
+    ).toBeInTheDocument();
 
     await user.click(partTime);
     expect(readHarnessDraft().desiredEmploymentTypes).toEqual([
@@ -800,7 +812,10 @@ describe('PreferencesStep guided onboarding', () => {
     ]);
 
     await user.click(screen.getByRole('button', { name: 'Save and finish' }));
-    await waitFor(() => expect(screen.queryByText(FAILURE_MESSAGE)).toBeNull());
+    await waitFor(
+      () => expect(screen.queryByText(FAILURE_MESSAGE)).toBeNull(),
+      SAVE_WAIT_OPTIONS,
+    );
     expect(readHarnessSaveAttempts()).toBe(2);
     expect(readHarnessLastSaved()?.desiredEmploymentTypes).toEqual([
       ...before,
