@@ -283,9 +283,12 @@ async function startDesktop(): Promise<void> {
       void lifecycle?.onWindowsSessionEnd(false, fetchJson);
     },
   });
-  windows.window?.webContents.on('console-message', (_event, _level, message) =>
-    recordOnboardingStatusDiagnostic(message),
-  );
+  windows.window?.webContents.on('console-message', (details) => {
+    const message = (details as unknown as { message?: unknown }).message;
+    if (typeof message === 'string') {
+      recordOnboardingStatusDiagnostic(message);
+    }
+  });
   recordSmokeStage('window-created');
   await createTray();
   recordSmokeStage('tray-created');
