@@ -19,9 +19,9 @@ profile-scoped completion guard at `df829b9`. MR1-07 (installed
 onboarding and first-user validation) is **In progress**, authorized
 2026-09-26. Source version is 1.1.6; its first installed manual
 acceptance failed on a transient status-load error and an external
-discovery-isolation breach. Corrected source is committed at `20e3e35`, but the
-retired candidate has not yet been rebuilt; full final gates and new manual
-acceptance remain pending. 1.1.5 remains latest shipped and 1.1.6 remains
+discovery-isolation breach. Corrected source is committed through `1ba2b3e`;
+`npm run verify` passes 1837/1837, but the retired candidate has not yet been
+rebuilt and installed acceptance remains pending. 1.1.5 remains latest shipped and 1.1.6 remains
 **Not shipped**. Do not claim production data was untouched without a
 trustworthy pre-run baseline. See
 [`docs/delivery/tasks/MR1-05-search-plan.md`](delivery/tasks/MR1-05-search-plan.md)

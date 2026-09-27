@@ -125,7 +125,7 @@ Prepared on the committed source checkpoint `f13b44a` (target package 1.1.6):
   after the report, in keeping with the no-access boundary. Production
   non-modification cannot be proven without a contemporaneous pre-run baseline.
 
-## Corrected source checkpoint — `20e3e35` (not packaged)
+## Corrected source checkpoints — `20e3e35`, `9a9ff8b`, `1ba2b3e` (not packaged)
 
 - Manual acceptance now fails closed unless the real user-data root is under
   the OS temporary directory and the database is under that root, including
@@ -142,11 +142,18 @@ Prepared on the committed source checkpoint `f13b44a` (target package 1.1.6):
   API regression covers one safe `onboarding_status_not_ready` 503. Malformed,
   unsupported-version, and storage-failure blocked-state behavior remains
   distinct and non-destructive.
-- Focused acceptance-mode, provider-network, onboarding, and backend tests pass;
-  the complete unpackaged two-process onboarding smoke passes with zero provider
-  network attempts. `runAfterFinish: false` prevents the installer from
-  launching the app on Finish.
-- This source checkpoint has **not** been packaged or installed. The prior
+- `npm run verify` passes **1837/1837** across 181 files; focused onboarding
+  suites **224/224** across 8 files; privacy **12/12**; NLP security **3/3**;
+  format/lint/typecheck/legal gates pass. The lifecycle harness passes **11/11**
+  on the corrected source. Focused path/network/status tests pass.
+- The complete unpackaged two-process onboarding smoke injects exactly one
+  canceled first status request, verifies the bounded retry and safe diagnostic,
+  and completes with zero external provider attempts. `runAfterFinish: false`
+  prevents installer Finish from launching the app.
+- `9a9ff8b` records bounded, privacy-safe initial-status diagnostics in the
+  desktop log; the clean-root smoke verifies the transient failure/recovery
+  record contains only the safe event, kind, status, code, and attempt count.
+- Corrected source has **not** been packaged or installed. The prior
   installer and all prior artifact gates describe only the retired candidate.
   Run the full repository gates, rebuild 1.1.6, and repeat every artifact check
   and all manual acceptance before any release/push claim.

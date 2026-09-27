@@ -6,12 +6,13 @@
 
 ## Current verified baseline (2026-09-26)
 
-- **Corrected source checkpoint:** `20e3e35` (`fix: fail closed in manual
-  onboarding acceptance`) on top of the retired candidate source at `f13b44a`.
-  The correction is committed but has not yet been packaged.
-- **Branch:** local `main` is 8 commits ahead of locally recorded
-  `origin/main`, behind by 0. Current remote-server state will be fetched and
-  reconciled before any authorized push.
+- **Corrected source checkpoint:** `1ba2b3e` (`test: stabilize onboarding
+  interaction assertions`) on top of `9a9ff8b` (safe status diagnostics),
+  `20e3e35` (manual acceptance fail-closed safeguards), and the retired
+  candidate source at `f13b44a`. Corrected source is committed but not packaged.
+- **Branch:** local `main` extends `origin/main` at `0f96335`; the locally
+  recorded remote reference has not moved. Fetch and reconcile server state
+  before any authorized push.
 - **Retired candidate:** version 1.1.6; the current-source NSIS installer from
   `f13b44a` was built and
   installed. Installer: `release\Job-Browser-Setup-1.1.6.exe`, 253,700,613
@@ -38,13 +39,16 @@
   claim “production database untouched.” All prior packaged/installed smoke
   results used the synthetic coordinator, but they do not validate the failed
   manual acceptance run.
-- **Correction summary:** the current source now uses only a synthetic
+- **Correction summary:** commits `20e3e35`, `9a9ff8b`, and `1ba2b3e` make the current
+  source use only a synthetic
   coordinator in manual acceptance mode, disables scheduler construction,
   blocks ProviderHttpClient and Playwright network entry points, fails closed
   on non-temporary data roots, and retries only bounded transport/readiness
   failures with a safe diagnostic. A clean-root smoke injects a cancelled
-  initial status request and verifies recovery. Focused tests pass. A new full
-  verification and 1.1.6 installer build remain outstanding.
+  initial status request and verifies recovery. `npm run verify` passes
+  1837/1837 across 181 files; focused onboarding 224/224; privacy 12/12; NLP
+  security 3/3; lifecycle 11/11. A corrected 1.1.6 installer build and its
+  artifact-dependent checks remain outstanding.
 - **Production-data audit:** the September 14 database hash is not a reliable
   baseline for the September 27 default-data process. The database was not read
   or hashed; production non-modification cannot be proven.
@@ -413,9 +417,9 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. Run the one final full repository gate on corrected source, rebuild 1.1.6,
-   and repeat every artifact-dependent check. The manual-mode network interlocks
-   and startup-status retry have focused and clean-root smoke coverage.
+1. Build 1.1.6 from corrected source checkpoint `1ba2b3e` and repeat every
+   artifact-dependent check. The manual-mode network interlocks and startup-
+   status retry have focused and clean-root smoke coverage.
 2. Prepare a fresh installed candidate and prove the synthetic coordinator,
    disabled scheduler, zero provider calls, and disposable paths before opening
    the UI for new human acceptance.
