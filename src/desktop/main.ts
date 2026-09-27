@@ -1,7 +1,6 @@
 import { writeFileSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import {
   app,
@@ -26,6 +25,7 @@ import {
 } from './paths.js';
 import { TrayManager, type TraySummary } from './trayManager.js';
 import { WindowManager } from './windowManager.js';
+import { assertDisposableManualAcceptancePaths } from './manualAcceptancePaths.js';
 import {
   applicationIdFromSmokeCreateResponse,
   isApplicationListSmokeResponse,
@@ -47,6 +47,7 @@ const DESKTOP_SMOKE_RESUME_ID = '00000000-0000-4000-8000-000000008303';
 const DESKTOP_SMOKE_TITLE = 'Desktop Smoke Application Engineer';
 const DESKTOP_SMOKE_JOB_TITLE = 'Desktop Smoke Retained Job';
 let onboardingSmokeDiscoveryCalls = 0;
+let onboardingSmokeStatusTransportFailures = 0;
 
 const UPGRADE_SMOKE_STALE_FINGERPRINT = 'd'.repeat(64);
 const UPGRADE_SMOKE_REMOVED_FINGERPRINT = 'e'.repeat(64);
@@ -63,19 +64,10 @@ const onboardingSmokePhase = smokeTest
   ? process.env['JOB_BROWSER_SMOKE_ONBOARDING_PHASE']
   : undefined;
 if (manualOnboardingAcceptance) {
-  const userDataRoot = process.env['JOB_BROWSER_SMOKE_USER_DATA'];
-  const databasePath = process.env['JOB_BROWSER_DB_PATH'];
-  const temporaryRoot = resolve(tmpdir());
-  if (
-    userDataRoot === undefined ||
-    databasePath === undefined ||
-    !isPathWithin(temporaryRoot, userDataRoot) ||
-    !isPathWithin(userDataRoot, databasePath)
-  ) {
-    throw new Error(
-      'Disposable onboarding acceptance mode requires temporary user-data and database paths.',
-    );
-  }
+  assertDisposableManualAcceptancePaths(
+    process.env['JOB_BROWSER_SMOKE_USER_DATA'],
+    process.env['JOB_BROWSER_DB_PATH'],
+  );
 }
 const smokeStatusPath = smokeTest
   ? resolve(app.getPath('userData'), 'smoke-status.txt')
@@ -291,6 +283,9 @@ async function startDesktop(): Promise<void> {
       void lifecycle?.onWindowsSessionEnd(false, fetchJson);
     },
   });
+  windows.window?.webContents.on('console-message', (_event, _level, message) =>
+    recordOnboardingStatusDiagnostic(message),
+  );
   recordSmokeStage('window-created');
   await createTray();
   recordSmokeStage('tray-created');
@@ -467,6 +462,7 @@ async function runStartup(): Promise<void> {
       development: !app.isPackaged && !process.argv.includes('--built'),
       logger: desktopLogger.log,
       credentialResolver: credentialVault,
+      manualOnboardingAcceptance,
       ...(onboardingSmokePhase === undefined
         ? manualOnboardingAcceptance
           ? { onboardingCoordinator: { runAll: () => Promise.resolve([]) } }
@@ -488,6 +484,34 @@ async function runStartup(): Promise<void> {
           }),
       onProgress: (stage) => windows.sendProgress(stage),
     });
+    if (onboardingSmokePhase === 'save') {
+      const statusUrl = `${handle.url}/api/onboarding/status`;
+      session.defaultSession.webRequest.onBeforeRequest(
+        { urls: [statusUrl] },
+        (details, callback) => {
+          if (
+            onboardingSmokeStatusTransportFailures === 0 &&
+            details.url === statusUrl
+          ) {
+            onboardingSmokeStatusTransportFailures += 1;
+            callback({ cancel: true });
+            return;
+          }
+          callback({});
+        },
+      );
+    }
+    if (manualOnboardingAcceptance) {
+      desktopLogger.log(
+        'info',
+        'Manual onboarding acceptance safeguards active',
+        {
+          coordinator: 'synthetic',
+          realCoordinatorConstructed: false,
+          schedulerEnabled: false,
+        },
+      );
+    }
     windows.sendProgress('Loading dashboard');
     await windows.loadDashboard(handle.url);
     windows.sendProgress('Ready');
@@ -951,18 +975,25 @@ async function runOnboardingDesktopSmoke(
     throw new Error('Unknown onboarding desktop smoke phase');
   }
   const onboardingUrl = `${handle.url}/api/onboarding`;
-  const status = await onboardingSmokeJson(`${onboardingUrl}/status`);
+  const acceptanceStatusUrl = `${handle.url}/api/manual-acceptance/status`;
+  await assertManualAcceptanceIsolation(acceptanceStatusUrl);
 
   if (phase === 'save') {
+    await loadDesktopSmokeRoute(window.webContents, '/onboarding');
+    await assertPageText(window.webContents, 'QUESTION 1 OF 5');
+    await assertPageText(window.webContents, 'What roles interest you?');
+    await assertOnboardingStatusRetryDiagnostic();
+    assertOnboardingSmoke(
+      onboardingSmokeStatusTransportFailures === 1,
+      'The clean-root smoke did not inject exactly one local status transport failure',
+    );
+    const status = await onboardingSmokeJson(`${onboardingUrl}/status`);
     assertOnboardingSmoke(
       status['state'] === 'not-started' &&
         isSmokeRecord(status['completion']) &&
         status['completion']['completed'] === false,
       'Fresh isolated install did not report a genuine not-started onboarding state',
     );
-    await loadDesktopSmokeRoute(window.webContents, '/onboarding');
-    await assertPageText(window.webContents, 'QUESTION 1 OF 5');
-    await assertPageText(window.webContents, 'What roles interest you?');
     const roleEntered: unknown = await window.webContents.executeJavaScript(
       `(() => {
         const label = [...document.querySelectorAll('label')].find((item) => item.textContent?.includes('Desired role'));
@@ -1023,9 +1054,11 @@ async function runOnboardingDesktopSmoke(
         ),
       'Save and leave did not persist the current question and entered role',
     );
+    await assertManualAcceptanceIsolation(acceptanceStatusUrl);
     return;
   }
 
+  const status = await onboardingSmokeJson(`${onboardingUrl}/status`);
   const snapshot = status['snapshot'];
   assertOnboardingSmoke(
     status['state'] === 'in-progress' &&
@@ -1213,6 +1246,48 @@ async function runOnboardingDesktopSmoke(
       onboardingSmokeCallCount() === 2,
     'Discarding an edit changed completed setup or reran discovery',
   );
+  await assertManualAcceptanceIsolation(acceptanceStatusUrl);
+}
+
+async function assertManualAcceptanceIsolation(url: string): Promise<void> {
+  const status = await onboardingSmokeJson(url);
+  assertOnboardingSmoke(
+    status['enabled'] === true &&
+      status['coordinator'] === 'synthetic' &&
+      status['realCoordinatorConstructed'] === false &&
+      status['schedulerEnabled'] === false &&
+      status['providerRequestsStarted'] === 0 &&
+      status['blockedProviderAccessAttempts'] === 0,
+    'Manual acceptance was not using the synthetic, network-isolated backend',
+  );
+}
+
+async function assertOnboardingStatusRetryDiagnostic(): Promise<void> {
+  const deadline = Date.now() + 2_000;
+  while (Date.now() < deadline) {
+    const lines = readFileSync(desktopLogger.path, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      let entry: unknown;
+      try {
+        entry = JSON.parse(line) as unknown;
+      } catch {
+        continue;
+      }
+      if (
+        isSmokeRecord(entry) &&
+        entry['message'] === 'Onboarding status request diagnostic' &&
+        entry['event'] === 'recovered' &&
+        entry['kind'] === 'transport' &&
+        entry['status'] === null &&
+        entry['code'] === 'local_service_unavailable' &&
+        entry['attempts'] === 2
+      ) {
+        return;
+      }
+    }
+    await new Promise((accept) => setTimeout(accept, 50));
+  }
+  throw new Error('Safe transient onboarding status diagnostic was not logged');
 }
 
 async function onboardingSmokeJson(
@@ -1293,14 +1368,6 @@ function writeSmokeSetting(
          updated_at = excluded.updated_at`,
     )
     .run(key, JSON.stringify(value));
-}
-
-function isPathWithin(root: string, candidate: string): boolean {
-  const path = relative(resolve(root), resolve(candidate));
-  return (
-    path === '' ||
-    (!isAbsolute(path) && path !== '..' && !path.startsWith(`..${sep}`))
-  );
 }
 
 function insertDesktopSmokeJob(
@@ -1533,6 +1600,47 @@ function hasApplicationListItem(
 function recordSmokeStage(stage: string): void {
   if (smokeStatusPath !== null)
     writeFileSync(smokeStatusPath, `${stage}\n`, 'utf8');
+}
+
+function recordOnboardingStatusDiagnostic(message: string): void {
+  const prefix = 'ONBOARDING_STATUS_DIAGNOSTIC ';
+  if (!message.startsWith(prefix)) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(message.slice(prefix.length)) as unknown;
+  } catch {
+    return;
+  }
+  if (!isSmokeRecord(parsed)) return;
+  const event = parsed['event'];
+  const kind = parsed['kind'];
+  const status = parsed['status'];
+  const code = parsed['code'];
+  const attempts = parsed['attempts'];
+  if (
+    (event !== 'retrying' && event !== 'recovered' && event !== 'failed') ||
+    (kind !== 'http' && kind !== 'transport' && kind !== 'unknown') ||
+    (status !== null &&
+      (typeof status !== 'number' ||
+        !Number.isInteger(status) ||
+        status < 0 ||
+        status > 599)) ||
+    typeof code !== 'string' ||
+    !/^[a-z0-9:_-]{1,64}$/i.test(code) ||
+    typeof attempts !== 'number' ||
+    !Number.isInteger(attempts) ||
+    attempts < 1 ||
+    attempts > 3
+  ) {
+    return;
+  }
+  desktopLogger.log('warn', 'Onboarding status request diagnostic', {
+    event,
+    kind,
+    status,
+    code,
+    attempts,
+  });
 }
 
 function hasProvider(value: unknown, providerId: string): boolean {

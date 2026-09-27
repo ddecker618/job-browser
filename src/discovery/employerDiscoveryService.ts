@@ -1,4 +1,4 @@
-import type { DiscoveryCoordinator } from './discoveryCoordinator.js';
+import type { DiscoveryCoordinatorRuntime } from './discoveryCoordinator.js';
 import type { CredentialResolver } from './credentialResolver.js';
 import { detectCareerSiteProvider } from '../domain/atsFingerprint.js';
 import type { CareerSite } from '../models/employer.js';
@@ -30,7 +30,7 @@ export class EmployerDiscoveryService {
     private readonly employers: EmployerRepository,
     private readonly sources: SourceRepository,
     private readonly providers: Pick<ProviderRegistry, 'loadProviders' | 'get'>,
-    private readonly coordinator?: DiscoveryCoordinator,
+    private readonly coordinator?: DiscoveryCoordinatorRuntime,
     private readonly credentialResolver?: CredentialResolver,
     private readonly intelligence?: EmployerDiscoveryIntelligenceService,
     private readonly now: () => Date = () => new Date(),

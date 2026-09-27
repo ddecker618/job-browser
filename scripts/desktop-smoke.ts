@@ -72,7 +72,10 @@ async function runElectronSmoke(
   const childEnvironment = { ...environment };
   delete childEnvironment['JOB_BROWSER_SMOKE_ONBOARDING_PHASE'];
   if (onboardingPhase !== undefined) {
+    childEnvironment['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'] = '1';
     childEnvironment['JOB_BROWSER_SMOKE_ONBOARDING_PHASE'] = onboardingPhase;
+  } else {
+    delete childEnvironment['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'];
   }
   const application = spawn(
     packaged

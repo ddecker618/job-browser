@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   startBackend,
@@ -20,6 +20,7 @@ import {
 } from '../src/server/backend.js';
 import { DatabaseRecoveryError, openDatabase } from '../src/db/database.js';
 import { DEFAULT_MIGRATIONS_DIRECTORY } from '../src/db/migration-runner.js';
+import { DiscoveryCoordinator } from '../src/discovery/discoveryCoordinator.js';
 import { leaveCommittedWal } from './helpers/wal-fixture.js';
 
 const directories: string[] = [];
@@ -37,6 +38,67 @@ afterEach(async () => {
 });
 
 describe('backend lifecycle', () => {
+  it('refuses manual acceptance startup without an explicit synthetic coordinator', async () => {
+    const directory = temporary();
+    const databasePath = join(directory, 'must-not-open.sqlite');
+    await expect(
+      startBackend({
+        databasePath,
+        manualOnboardingAcceptance: true,
+      }),
+    ).rejects.toThrow(
+      'Manual onboarding acceptance requires an explicit synthetic coordinator',
+    );
+    expect(existsSync(databasePath)).toBe(false);
+  });
+
+  it('constructs only the synthetic coordinator and disables scheduler in manual acceptance mode', async () => {
+    const previous = process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'];
+    process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'] = '1';
+    const runAll = vi.fn(() => Promise.resolve([]));
+    try {
+      const handle = await backend(temporary(), {
+        manualOnboardingAcceptance: true,
+        onboardingCoordinator: { runAll },
+        enableScheduler: true,
+      });
+      handles.push(handle);
+      expect(handle.coordinator).not.toBeInstanceOf(DiscoveryCoordinator);
+
+      const statusResponse = await fetch(
+        `${handle.url}/api/manual-acceptance/status`,
+      );
+      expect(statusResponse.status).toBe(200);
+      const status = (await statusResponse.json()) as Record<string, unknown>;
+      expect(status).toMatchObject({
+        enabled: true,
+        coordinator: 'synthetic',
+        realCoordinatorConstructed: false,
+        schedulerEnabled: false,
+        providerRequestsStarted: 0,
+        blockedProviderAccessAttempts: 0,
+      });
+
+      const runResponse = await fetch(`${handle.url}/api/discovery/run`, {
+        method: 'POST',
+      });
+      expect(runResponse.status).toBe(200);
+      await expect(runResponse.json()).resolves.toEqual([]);
+      expect(runAll).toHaveBeenCalledTimes(1);
+      const afterRun = (await (
+        await fetch(`${handle.url}/api/manual-acceptance/status`)
+      ).json()) as Record<string, unknown>;
+      expect(afterRun['providerRequestsStarted']).toBe(0);
+      expect(afterRun['blockedProviderAccessAttempts']).toBe(0);
+    } finally {
+      if (previous === undefined) {
+        delete process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'];
+      } else {
+        process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'] = previous;
+      }
+    }
+  });
+
   it('initializes a first-run database, applies migrations, and stops cleanly', async () => {
     const directory = temporary();
     const handle = await backend(directory);

@@ -274,6 +274,17 @@ export class DiscoveryCoordinator {
   }
 }
 
+export type DiscoveryCoordinatorRuntime = Pick<
+  DiscoveryCoordinator,
+  | 'status'
+  | 'recentRuns'
+  | 'runSource'
+  | 'runAll'
+  | 'validateSource'
+  | 'healthCheck'
+  | 'stop'
+>;
+
 function discoveryRequests(
   providerType: string,
   criteria: {

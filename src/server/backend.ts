@@ -33,7 +33,10 @@ import { providerRegistry } from '../providers/providerRegistry.js';
 import { SourceRepository } from '../repositories/source-repository.js';
 import { JobRepository } from '../repositories/job-repository.js';
 import { JobLifecycleRepository } from '../repositories/job-lifecycle-repository.js';
-import { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
+import {
+  DiscoveryCoordinator,
+  type DiscoveryCoordinatorRuntime,
+} from '../discovery/discoveryCoordinator.js';
 import { DiscoveryScheduler } from '../discovery/discoveryScheduler.js';
 import { EmployerDiscoveryService } from '../discovery/employerDiscoveryService.js';
 import { CareerSiteHealthService } from '../discovery/careerSiteHealthService.js';
@@ -100,7 +103,7 @@ export interface BackendHandle {
   url: string;
   pendingMigrations: string[];
   migrationBackupPath: string | null;
-  coordinator: DiscoveryCoordinator;
+  coordinator: DiscoveryCoordinatorRuntime;
   startupMaintenance: Promise<void>;
   backup(): Promise<string>;
   listBackups(): BackupMetadata[];
@@ -110,6 +113,14 @@ export interface BackendHandle {
 export async function startBackend(
   options: BackendOptions = {},
 ): Promise<BackendHandle> {
+  if (
+    options.manualOnboardingAcceptance === true &&
+    options.onboardingCoordinator === undefined
+  ) {
+    throw new Error(
+      'Manual onboarding acceptance requires an explicit synthetic coordinator.',
+    );
+  }
   const logger = options.logger ?? log;
   const databasePath = options.databasePath ?? defaultDatabasePath();
   const quarantineDirectory =
@@ -261,30 +272,31 @@ export async function startBackend(
         const discoveryAnalyticsService = new DiscoveryAnalyticsService(
           activeDatabase,
         );
-        const coordinator = new DiscoveryCoordinator(
-          activeDatabase,
-          providerRegistry,
-          {
-            credentialResolver:
-              options.credentialResolver ?? unavailableCredentialResolver,
-            writeLog: logger,
-            ...(options.profilePreferencesPath === undefined
-              ? {}
-              : { profilePreferencesPath: options.profilePreferencesPath }),
-            analyze: () =>
-              new IntelligenceEngine(activeDatabase).analyze(
-                loadCandidateProfile(
-                  options.candidateProfilePath,
-                  options.profilePreferencesPath,
-                ),
-                loadScoringConfig(
-                  options.scoringConfigPath,
-                  options.profilePreferencesPath,
-                ),
-              ),
-            evaluateAlerts: () => discoveryAlertService.evaluateRules(),
-          },
-        );
+        const coordinator: DiscoveryCoordinatorRuntime =
+          options.manualOnboardingAcceptance === true
+            ? createManualAcceptanceCoordinator(
+                options.onboardingCoordinator?.runAll,
+              )
+            : new DiscoveryCoordinator(activeDatabase, providerRegistry, {
+                credentialResolver:
+                  options.credentialResolver ?? unavailableCredentialResolver,
+                writeLog: logger,
+                ...(options.profilePreferencesPath === undefined
+                  ? {}
+                  : { profilePreferencesPath: options.profilePreferencesPath }),
+                analyze: () =>
+                  new IntelligenceEngine(activeDatabase).analyze(
+                    loadCandidateProfile(
+                      options.candidateProfilePath,
+                      options.profilePreferencesPath,
+                    ),
+                    loadScoringConfig(
+                      options.scoringConfigPath,
+                      options.profilePreferencesPath,
+                    ),
+                  ),
+                evaluateAlerts: () => discoveryAlertService.evaluateRules(),
+              });
         const employerRepository = new EmployerRepository(activeDatabase);
         const employerDiscoveryIntelligence =
           new EmployerDiscoveryIntelligenceService(activeDatabase);
@@ -302,6 +314,7 @@ export async function startBackend(
           options.atsDetector,
         );
         const scheduler =
+          options.manualOnboardingAcceptance !== true &&
           options.enableScheduler === true
             ? new DiscoveryScheduler(
                 sourceRepository,
@@ -577,6 +590,42 @@ export async function startBackend(
     if (database?.open === true) database.close();
     throw error;
   }
+}
+
+function createManualAcceptanceCoordinator(
+  runAll?: DiscoveryCoordinatorRuntime['runAll'],
+): DiscoveryCoordinatorRuntime {
+  return {
+    status: () => ({
+      running: false,
+      queuedSourceIds: [],
+      activeSourceId: null,
+      startedAt: null,
+      completedSources: 0,
+      totalSources: 0,
+      lastError: null,
+    }),
+    recentRuns: () => [],
+    runSource: () => Promise.resolve([]),
+    runAll: runAll ?? (() => Promise.resolve([])),
+    validateSource: () =>
+      Promise.resolve({
+        valid: false,
+        message:
+          'Provider validation is disabled during manual onboarding acceptance.',
+        normalizedConfiguration: null,
+        preview: null,
+        failureCategory: 'blocked',
+      }),
+    healthCheck: () =>
+      Promise.resolve({
+        status: 'failed',
+        message:
+          'Provider health checks are disabled during manual onboarding acceptance.',
+        checkedAt: new Date().toISOString(),
+      }),
+    stop: () => Promise.resolve(),
+  };
 }
 
 function timeStartupPhase<T>(

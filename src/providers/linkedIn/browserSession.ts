@@ -9,6 +9,7 @@ import {
 } from 'playwright';
 import { ensureDir } from '../../utilities/files.js';
 import { log } from '../../logging/logger.js';
+import { assertExternalProviderAccessAllowed } from '../manualAcceptancePolicy.js';
 
 function setBundledBrowserPath(): void {
   if (process.env['PLAYWRIGHT_BROWSERS_PATH']) return;
@@ -86,6 +87,7 @@ function detectInstalledChrome(): { channel: string; path: string } | null {
 export async function launchBrowserSession(
   config: BrowserSessionConfig,
 ): Promise<BrowserSession> {
+  assertExternalProviderAccessAllowed();
   setBundledBrowserPath();
 
   if (activeSession !== null) {

@@ -67,6 +67,7 @@ interface StartOptions {
   ) => void;
   cascadeTargetRoles?: (roles: readonly string[]) => void;
   deleteOnboardingProgress?: (profileId: string) => void;
+  statusReadinessFailures?: number;
   credentialResolver?: CredentialResolver;
   providerDescriptors?: readonly Parameters<
     typeof import('../src/onboarding/search-plan-service.js').buildOnboardingSearchPlan
@@ -316,6 +317,9 @@ async function startBackend(
     ...(options.providerDescriptors === undefined
       ? {}
       : { providerDescriptors: options.providerDescriptors }),
+    ...(options.statusReadinessFailures === undefined
+      ? {}
+      : { onboardingStatusReadinessFailures: options.statusReadinessFailures }),
   });
 
   const server = createServer(app);
@@ -393,6 +397,26 @@ describe('onboarding API — load/status', () => {
     expect(body.profileId).toBe('candidate-api-one');
     expect(body.completion.completed).toBe(false);
     expect(body.editSession.editing).toBe(false);
+  });
+
+  it('recovers cleanly after one transient local-service readiness response', async () => {
+    const { handle } = await startBackend(undefined, {
+      statusReadinessFailures: 1,
+    });
+    const transient = await get(handle, '/api/onboarding/status');
+    expect(transient.status).toBe(503);
+    await expect(readJson(transient)).resolves.toMatchObject({
+      code: 'onboarding_status_not_ready',
+      error: 'Onboarding status service is temporarily unavailable.',
+    });
+
+    const recovered = await readJson<OnboardingStatusResponse>(
+      await get(handle, '/api/onboarding/status'),
+    );
+    expect(recovered.state).toBe('not-started');
+    expect(recovered.prefilledDraft?.desiredJobTitles).toEqual([
+      'Network Engineer',
+    ]);
   });
 
   it('prefills the draft and plan token for a fresh profile', async () => {

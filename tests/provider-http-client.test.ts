@@ -6,11 +6,40 @@ import {
   type ProviderHttpResolver,
   type ProviderHttpTransport,
 } from '../src/providers/providerHttpClient.js';
+import { manualAcceptanceNetworkStatus } from '../src/providers/manualAcceptancePolicy.js';
 
 const jsonHeaders = { 'Content-Type': 'application/json' };
 const silentLog = vi.fn();
 
 describe('ProviderHttpClient', () => {
+  it('fails closed before transport when manual onboarding acceptance is enabled', async () => {
+    const previous = process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'];
+    const transport = vi.fn<ProviderHttpTransport>(() =>
+      Promise.resolve(
+        new Response('{}', { status: 200, headers: jsonHeaders }),
+      ),
+    );
+    const client = createClient({ transport });
+    const blockedBefore =
+      manualAcceptanceNetworkStatus().blockedProviderAccessAttempts;
+    process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'] = '1';
+    try {
+      await expect(
+        client.request('https://example.test/jobs', { provider: 'Example' }),
+      ).rejects.toThrow('External provider access is disabled');
+      expect(transport).not.toHaveBeenCalled();
+      expect(
+        manualAcceptanceNetworkStatus().blockedProviderAccessAttempts,
+      ).toBe(blockedBefore + 1);
+    } finally {
+      if (previous === undefined) {
+        delete process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'];
+      } else {
+        process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'] = previous;
+      }
+    }
+  });
+
   it('requires a positive timeout and composes caller cancellation', async () => {
     expect(() => new ProviderHttpClient({ timeoutMs: 0 })).toThrow('timeout');
     const controller = new AbortController();

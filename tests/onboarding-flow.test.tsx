@@ -421,6 +421,36 @@ describe('OnboardingPage â€” Discard current edit', () => {
 });
 
 describe('OnboardingPage â€” blocked screens', () => {
+  it('recovers from one bounded status-readiness failure and logs only safe diagnostics', async () => {
+    apiMock.onboardingStatus
+      .mockRejectedValueOnce(
+        Object.assign(
+          new TypeError('Failed to fetch C:\\private\\secret=do-not-log'),
+          { code: 'transport_failure' },
+        ),
+      )
+      .mockResolvedValueOnce(statusNotStarted());
+    const warning = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    try {
+      renderPage();
+      expect(
+        await screen.findByRole('heading', {
+          name: /What roles interest you/i,
+        }),
+      ).toBeInTheDocument();
+      expect(apiMock.onboardingStatus).toHaveBeenCalledTimes(2);
+      const diagnosticText = JSON.stringify(warning.mock.calls);
+      expect(diagnosticText).toContain('ONBOARDING_STATUS_DIAGNOSTIC');
+      expect(diagnosticText).toContain('recovered');
+      expect(diagnosticText).not.toContain('C:\\private');
+      expect(diagnosticText).not.toContain('do-not-log');
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
   it('keeps invalid progress blocked ahead of a resumable completed-user edit', async () => {
     apiMock.onboardingStatus.mockResolvedValue(
       statusNotStarted({

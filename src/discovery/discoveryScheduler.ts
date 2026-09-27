@@ -1,5 +1,5 @@
 import type { SourceRepository } from '../repositories/source-repository.js';
-import type { DiscoveryCoordinator } from './discoveryCoordinator.js';
+import type { DiscoveryCoordinatorRuntime } from './discoveryCoordinator.js';
 import type { EmployerDiscoveryService } from './employerDiscoveryService.js';
 import type { CareerSiteHealthService } from './careerSiteHealthService.js';
 import type { JobLifecycleRepository } from '../repositories/job-lifecycle-repository.js';
@@ -16,7 +16,7 @@ export class DiscoveryScheduler {
 
   public constructor(
     private readonly sources: SourceRepository,
-    private readonly coordinator: DiscoveryCoordinator,
+    private readonly coordinator: DiscoveryCoordinatorRuntime,
     private readonly intervalMs = 30_000,
     private readonly employerDiscovery?: EmployerDiscoveryService,
     private readonly now: () => Date = () => new Date(),

@@ -54,4 +54,4 @@ nsis:
   shortcutName: Job Browser
   uninstallDisplayName: Job Browser
   deleteAppDataOnUninstall: false
-  runAfterFinish: true
+  runAfterFinish: false

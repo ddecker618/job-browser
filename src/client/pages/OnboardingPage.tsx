@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import {
+  ApiRequestError,
   api,
   type OnboardingDiscoveryOutcome,
   type OnboardingStatusResponse,
@@ -109,6 +110,47 @@ function safeLoadMessage(error: unknown): string {
     : 'Onboarding progress could not be loaded. Retry or leave the setup screen.';
 }
 
+const ONBOARDING_STATUS_RETRY_DELAYS_MS = [120, 320] as const;
+
+function isRetryableOnboardingStatusError(error: unknown): boolean {
+  if (error instanceof TypeError) return true;
+  if (!(error instanceof ApiRequestError) || error.name !== 'ApiRequestError') {
+    return false;
+  }
+  return (
+    error.status === 502 ||
+    error.status === 504 ||
+    (error.status === 503 && error.code === 'onboarding_status_not_ready')
+  );
+}
+
+function onboardingStatusDiagnostic(error: unknown): {
+  readonly kind: 'http' | 'transport' | 'unknown';
+  readonly status: number | null;
+  readonly code: string;
+} {
+  if (error instanceof ApiRequestError && error.name === 'ApiRequestError') {
+    return {
+      kind: 'http',
+      status:
+        Number.isInteger(error.status) &&
+        error.status >= 0 &&
+        error.status <= 599
+          ? error.status
+          : null,
+      code: /^[a-z0-9:_-]{1,64}$/i.test(error.code) ? error.code : 'unknown',
+    };
+  }
+  if (error instanceof TypeError) {
+    return {
+      kind: 'transport',
+      status: null,
+      code: 'local_service_unavailable',
+    };
+  }
+  return { kind: 'unknown', status: null, code: 'unknown' };
+}
+
 function isV2Snapshot(value: unknown): value is OnboardingProgressSnapshot {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as { version?: unknown; reviewItems?: unknown };
@@ -140,11 +182,54 @@ export function OnboardingPage() {
 
   const loadStatus = useCallback(async () => {
     setLoadError(null);
-    try {
-      const next = await api.onboardingStatus();
-      setStatus(next);
-    } catch (error) {
-      setLoadError(safeLoadMessage(error));
+    let previousFailure: ReturnType<typeof onboardingStatusDiagnostic> | null =
+      null;
+    for (
+      let attempt = 0;
+      attempt <= ONBOARDING_STATUS_RETRY_DELAYS_MS.length;
+      attempt += 1
+    ) {
+      try {
+        const next = await api.onboardingStatus();
+        if (previousFailure !== null) {
+          console.warn(
+            `ONBOARDING_STATUS_DIAGNOSTIC ${JSON.stringify({
+              event: 'recovered',
+              ...previousFailure,
+              attempts: attempt + 1,
+            })}`,
+          );
+        }
+        setStatus(next);
+        return;
+      } catch (error) {
+        const diagnostic = onboardingStatusDiagnostic(error);
+        const retryDelay = ONBOARDING_STATUS_RETRY_DELAYS_MS[attempt];
+        if (
+          retryDelay !== undefined &&
+          isRetryableOnboardingStatusError(error)
+        ) {
+          previousFailure = diagnostic;
+          console.warn(
+            `ONBOARDING_STATUS_DIAGNOSTIC ${JSON.stringify({
+              event: 'retrying',
+              ...diagnostic,
+              attempts: attempt + 1,
+            })}`,
+          );
+          await new Promise<void>((resolve) => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        console.warn(
+          `ONBOARDING_STATUS_DIAGNOSTIC ${JSON.stringify({
+            event: 'failed',
+            ...diagnostic,
+            attempts: attempt + 1,
+          })}`,
+        );
+        setLoadError(safeLoadMessage(error));
+        return;
+      }
     }
   }, []);
 

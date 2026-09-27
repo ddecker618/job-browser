@@ -22,6 +22,7 @@ export class BackendManager {
       development: boolean;
       logger: LogWriter;
       credentialResolver: CredentialResolver;
+      manualOnboardingAcceptance?: boolean;
       onboardingCoordinator?: Pick<DiscoveryCoordinator, 'runAll'>;
       onProgress?: (stage: StartupStage) => void;
     },
@@ -47,10 +48,15 @@ export class BackendManager {
         logger: options.logger,
         backupBeforeMigrations: true,
         credentialResolver: options.credentialResolver,
+        ...(options.manualOnboardingAcceptance === undefined
+          ? {}
+          : { manualOnboardingAcceptance: options.manualOnboardingAcceptance }),
         ...(options.onboardingCoordinator === undefined
           ? {}
           : { onboardingCoordinator: options.onboardingCoordinator }),
-        enableScheduler: options.onboardingCoordinator === undefined,
+        enableScheduler:
+          options.manualOnboardingAcceptance !== true &&
+          options.onboardingCoordinator === undefined,
         seedDefaultSources: true,
         linkedinProfile: paths.linkedinProfile,
         diceProfile: paths.diceProfile,

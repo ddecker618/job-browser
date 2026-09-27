@@ -4,8 +4,28 @@ import type { Browser, BrowserContext } from 'playwright';
 import {
   closeSession,
   DEFAULT_SESSION_CLOSE_TIMEOUT_MS,
+  launchBrowserSession,
 } from '../src/providers/linkedIn/browserSession.js';
 import type { BrowserSession } from '../src/providers/linkedIn/browserSession.js';
+
+it('blocks Playwright session creation during manual onboarding acceptance', async () => {
+  const previous = process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'];
+  process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'] = '1';
+  try {
+    await expect(
+      launchBrowserSession({
+        profileDir: 'disposable-profile',
+        headless: true,
+      }),
+    ).rejects.toThrow('External provider access is disabled');
+  } finally {
+    if (previous === undefined) {
+      delete process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'];
+    } else {
+      process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'] = previous;
+    }
+  }
+});
 
 function fakeSession(overrides: Partial<BrowserSession> = {}): {
   session: BrowserSession;

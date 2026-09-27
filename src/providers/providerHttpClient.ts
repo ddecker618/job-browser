@@ -8,6 +8,7 @@ import {
   type ResolvedPublicUrl,
 } from '../security/publicUrlPolicy.js';
 import { ProviderFetchError } from './baseProvider.js';
+import { assertExternalProviderAccessAllowed } from './manualAcceptancePolicy.js';
 
 const RETRYABLE = new Set([429, 502, 503, 504]);
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
@@ -149,6 +150,7 @@ export class ProviderHttpClient {
     input: string | URL,
     request: ProviderHttpRequest,
   ): Promise<ProviderHttpResponse> {
+    assertExternalProviderAccessAllowed();
     const maxResponseBytes =
       request.maxResponseBytes ?? this.options.maxResponseBytes;
     if (!Number.isInteger(maxResponseBytes) || maxResponseBytes <= 0)

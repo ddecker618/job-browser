@@ -95,6 +95,8 @@ export interface OnboardingRouteOptions {
   providerDescriptors?: readonly Parameters<
     typeof buildOnboardingSearchPlan
   >[0]['providerDescriptors'][number][];
+  /** Test seam: simulate bounded transient local-service readiness failures. */
+  statusReadinessFailures?: number;
 }
 
 export type OnboardingDiscoveryOutcomeState =
@@ -782,6 +784,10 @@ export function createOnboardingRouter(
   options: OnboardingRouteOptions,
 ): Router {
   const router = express.Router();
+  let remainingStatusReadinessFailures = Math.max(
+    0,
+    Math.floor(options.statusReadinessFailures ?? 0),
+  );
   const {
     database,
     sourceRepository,
@@ -991,6 +997,14 @@ export function createOnboardingRouter(
   router.get(
     '/status',
     asyncRoute(async (_request, response) => {
+      if (remainingStatusReadinessFailures > 0) {
+        remainingStatusReadinessFailures -= 1;
+        response.status(503).json({
+          error: 'Onboarding status service is temporarily unavailable.',
+          code: 'onboarding_status_not_ready',
+        });
+        return;
+      }
       let profileId: string;
       try {
         profileId = currentProfileId();

@@ -45,7 +45,7 @@ import type {
   AtsDetectionResult,
   ProviderDescriptor,
 } from '../models/source-management.js';
-import type { DiscoveryCoordinator } from '../discovery/discoveryCoordinator.js';
+import type { DiscoveryCoordinatorRuntime } from '../discovery/discoveryCoordinator.js';
 import { EmployerDiscoveryService } from '../discovery/employerDiscoveryService.js';
 import { EmployerSeedImporter } from '../discovery/employerSeedImporter.js';
 import { CareerSiteHealthService } from '../discovery/careerSiteHealthService.js';
@@ -53,6 +53,7 @@ import { EmployerDiscoveryIntelligenceService } from '../discovery/employerDisco
 import { DiscoveryAlertService } from '../discovery/discoveryAlertService.js';
 import { DiscoveryAnalyticsService } from '../discovery/discoveryAnalyticsService.js';
 import type { CredentialResolver } from '../discovery/credentialResolver.js';
+import { manualAcceptanceNetworkStatus } from '../providers/manualAcceptancePolicy.js';
 import {
   ResumeSnapshotCaptureError,
   SNAPSHOT_MANAGED_DIRECTORY,
@@ -120,7 +121,7 @@ export interface AppOptions {
   artifactDirectory?: string;
   databasePath?: string;
   onSettingsSaved?: (settings: AppSettings) => void;
-  coordinator?: DiscoveryCoordinator;
+  coordinator?: DiscoveryCoordinatorRuntime;
   sourceRepository?: SourceRepository;
   employerRepository?: EmployerRepository;
   employerDiscoveryService?: EmployerDiscoveryService;
@@ -157,7 +158,9 @@ export interface AppOptions {
   deleteOnboardingProgress?: (profileId: string) => void;
   providerDescriptors?: readonly ProviderDescriptor[];
   /** Smoke-only discovery adapter for installed onboarding acceptance. */
-  onboardingCoordinator?: Pick<DiscoveryCoordinator, 'runAll'>;
+  onboardingCoordinator?: Pick<DiscoveryCoordinatorRuntime, 'runAll'>;
+  manualOnboardingAcceptance?: boolean;
+  onboardingStatusReadinessFailures?: number;
 }
 
 const asyncRoute =
@@ -255,6 +258,17 @@ export function createApp(
     next();
   });
 
+  if (options.manualOnboardingAcceptance === true) {
+    app.get('/api/manual-acceptance/status', (_request, response) => {
+      response.json({
+        coordinator: 'synthetic',
+        realCoordinatorConstructed: false,
+        schedulerEnabled: false,
+        ...manualAcceptanceNetworkStatus(),
+      });
+    });
+  }
+
   app.use(
     '/api/onboarding',
     createOnboardingRouter({
@@ -288,6 +302,11 @@ export function createApp(
       ...(options.providerDescriptors === undefined
         ? {}
         : { providerDescriptors: options.providerDescriptors }),
+      ...(options.onboardingStatusReadinessFailures === undefined
+        ? {}
+        : {
+            statusReadinessFailures: options.onboardingStatusReadinessFailures,
+          }),
     }),
   );
 
