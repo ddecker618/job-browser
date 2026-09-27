@@ -182,13 +182,13 @@ checkpoint:
   Release remains **Not shipped**, no push has occurred, and production DB
   non-modification cannot be claimed without a trustworthy pre-run baseline.
 
-## Latest working-tree candidate — manual acceptance passed
+## Manually accepted candidate — final test-only rebuild pending
 
 Rebuilt on 2026-09-27 after adding a manual-mode startup preflight that keeps
 the window hidden until disposable-path and synthetic-mode checks succeed.
-This artifact was built from local `main` at `bfea12e` plus the current
-uncommitted `src/desktop/main.ts` and `src/desktop/windowManager.ts` changes;
-it is a local acceptance candidate, not a release commit.
+This artifact contains source now committed as `ec822e5`; the lifecycle mailbox
+and timing-only test fixes (`fa35d17`, `c0bb7aa`) followed the manual review and
+do not change normal-mode desktop or renderer behavior.
 
 - Installer `release\Job-Browser-Setup-1.1.6.exe`: **253,702,892 bytes**,
   SHA-256 `22EFC10C2A6F962467255E2D369FCD9325C607EE1C2B0E022FEA01757B033AC0`.
@@ -213,6 +213,11 @@ it is a local acceptance candidate, not a release commit.
   fix, committed as `fa35d17`; `npm run verify` remains **1837/1837**. No
   renderer or normal-mode desktop behavior changed after the recorded manual
   review.
+- A separate full-suite run exposed a tight wait in
+  `onboarding-preferences.test.tsx`: the simulated one-second save delay equaled
+  Testing Library's default wait timeout. The assertion now allows a bounded
+  additional second, committed as `c0bb7aa`; the focused test and full
+  `npm run verify` pass **1837/1837**.
 - Fresh interactive installer EULA appeared and required acceptance: **PASS**.
   `runAfterFinish: false` correctly left app startup to a direct installed-app
   launch. The first post-installer launcher did not start the app; it was then
@@ -232,8 +237,8 @@ it is a local acceptance candidate, not a release commit.
   acceptance session; the separate earlier Built In run remains the documented
   isolation failure and production-baseline limitation.
 - Manual checks apply to the **253,702,892-byte** candidate above. A final
-  committed-tree rebuild from `fa35d17` remains necessary because the lifecycle
-  test-harness fix was added afterward. MR1-07 remains **In progress**; 1.1.6 remains **Not
+  committed-tree rebuild after the lifecycle-harness and test-wait fixes remains
+  necessary. MR1-07 remains **In progress**; 1.1.6 remains **Not
   shipped** and has not been pushed. The earlier default-data launch still has
   no trustworthy contemporaneous baseline, so production non-modification
   cannot be proven.
