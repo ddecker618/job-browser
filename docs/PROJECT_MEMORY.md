@@ -2,9 +2,9 @@
 
 ## Current project status
 
-Reconciled against source checkpoint `0f96335` (1.1.5 / accepted MR1-06)
-and the P33/1.1.3 + 1.1.4 release records. Git/source evidence takes
-precedence over historical completion records.
+Reconciled against the pushed 1.1.6 release and post-push `origin/main` check
+on 2026-09-27. Git/source evidence takes precedence over historical completion
+records.
 
 **Active task queue:** [`docs/JOB_BROWSER_DELIVERY_BOARD.md`](JOB_BROWSER_DELIVERY_BOARD.md)
 is the single task-status authority as of 2026-09-18. Status/owner/claimed
@@ -15,50 +15,49 @@ queue here.
 documentation baseline and MR1-01 through MR1-05 are **Done**. MR1-06
 (connect the wizard to saved preferences and real discovery) was
 accepted by Codex and moved to **Done** on 2026-09-26, including the
-profile-scoped completion guard at `df829b9`. MR1-07 (installed
-onboarding and first-user validation) is **In progress**, authorized
-2026-09-26. Source version is 1.1.6; its first installed manual acceptance
-failed on a transient status-load error and an external discovery-isolation
-breach. Corrected source is committed at `ec822e5`; the lifecycle test-mailbox
-race correction is committed at `fa35d17`; bounded onboarding-test waits are
-committed at `c0bb7aa` and `9ebcbfb`; manual/release evidence is committed at
-`7b83f61`. The
-user reports fresh manual acceptance passed, including required EULA
-acceptance, on the deferred-window source candidate. `npm run verify` passes
-1837/1837. The final committed-source 1.1.6 installer and asar match; all
-artifact and release gates pass. Final hash documentation, remote reconciliation,
-and the authorized push remain. 1.1.5 remains
-latest shipped and 1.1.6 remains
-**Not shipped**. Do not claim production data was untouched without a
-trustworthy pre-run baseline. See
+profile-scoped completion guard at `df829b9`. MR1-07 (installed onboarding and
+first-user validation) is **Done** and 1.1.6 is shipped. The first manual
+acceptance failed on a transient status-load error and an external discovery-
+isolation breach; its chronology remains in the task card. Corrected source
+commits include `ec822e5` (deferred-window preflight), `fa35d17`
+(atomic lifecycle test mailbox), `c0bb7aa`/`9ebcbfb` (bounded test waits), and
+separate acceptance/release documentation commits. The user reports fresh
+manual acceptance passed, including required EULA acceptance. Final full
+verification (`npm run verify`) passes 1837/1837. The installer and
+packaged/installed asar match;
+privacy, security, lifecycle, package/install, upgrade, and onboarding smoke
+gates pass. Source and release evidence were pushed; post-push fetch confirmed
+`main` and `origin/main` aligned with a clean tree. Do not claim production data
+was untouched: non-modification during the earlier default-data launch cannot
+be proven without a trustworthy pre-run baseline. See
 [`docs/delivery/tasks/MR1-05-search-plan.md`](delivery/tasks/MR1-05-search-plan.md)
 and
 [`docs/delivery/tasks/MR1-06-wizard-integration.md`](delivery/tasks/MR1-06-wizard-integration.md)
 for accepted contracts, and
 [`docs/delivery/tasks/MR1-07-installed-onboarding-validation.md`](delivery/tasks/MR1-07-installed-onboarding-validation.md)
-for active release acceptance.
+for final release evidence.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
   9.6 seed manifest import is complete. These are not open implementation tasks.
 - The 18-phase beta-readiness sprint is complete: READY FOR EXTERNAL BETA.
-  Original product phases, beta phases, NLP Stages 0–29, and P0–P36 checkpoints
+  Original product phases, beta phases, NLP Stages 0–29, and P0–P37 checkpoints
   are separate numbering sequences.
-- NLP Stages 0–29 and P0–P37 are complete. P36 + the 1.1.4 release commit
-  (`f05bee9`) are present in the locally recorded `origin/main`
-  reference (the local ref points at `f05bee9`). P37 SHADOW `Level 0`
-  is shipped in the 1.1.5 release boundary (2026-09-14); the 1.1.5
-  release commit is absent from the locally recorded `origin/main`
-  reference — current remote-server state was not checked. P35 is
-  committed as `fd63a2a`. Latest recorded full source
-  verification: **172 files / 1,605 tests, fully green (`npm run
-verify`, 2026-09-14)**.
-- Current source package version: **1.1.6** (candidate failed manual acceptance,
-  **not shipped**). Latest validated installer remains **1.1.5**, shipped at
-  the P37 release boundary (2026-09-14). That artifact includes the prior
-  P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop lifecycle work, the
-  1.1.4 P36 coverage abstention hygiene, and the P37 SHADOW `Level 0`
-  occupation / job-type taxonomy + classifier. SHADOW only — no
+- NLP Stages 0–29 and P0–P37 are complete. P37 SHADOW `Level 0`
+  occupation/job-type taxonomy shipped in 1.1.5; MR1-06 onboarding integration
+  and MR1-07 installed onboarding acceptance shipped in 1.1.6. P35 is
+  committed as `fd63a2a`.
+- Current source package version and latest validated installer: **1.1.6**,
+  `release\Job-Browser-Setup-1.1.6.exe`, 253,702,995 bytes, SHA-256
+  `CAB6CD4864AB6B90F14059F275B8C242F2A0641E87869643E7FE8532269FD9B2`.
+  Packaged/installed `app.asar` match at 74,771,969 bytes, SHA-256
+  `6221093D23CD98EB645BA616BF09E38B1C0D5F8755AC9C2BE45D42385F9981A2`.
+  Installed ProductVersion `1.1.6.0`, FileVersion `1.1.6`; `npm run verify`
+  1837/1837, privacy 12/12, NLP security 3/3, lifecycle 11/11, and packaged /
+  installed regular, seeded-upgrade, and onboarding smokes pass. This release
+  includes prior P31/P32/P34/P35 source, the 1.1.3 Package A/B/C desktop
+  lifecycle work, 1.1.4 P36 coverage abstention hygiene, P37 SHADOW `Level 0`
+  taxonomy, and onboarding validation. SHADOW only — no
   scoring / eligibility / ranking / filtering / lifecycle / status /
   archive / removal / hard-gate change.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,

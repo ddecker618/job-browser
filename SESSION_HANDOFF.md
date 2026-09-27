@@ -90,7 +90,7 @@
   1837/1837 across 181 files; focused onboarding 224/224; privacy 12/12; NLP
   security 3/3; lifecycle 11/11. The corrected candidate was built from
   `bfea12e`, installed with `runAfterFinish: false`, and all artifact checks now
-  pass; fresh manual acceptance is recorded above.
+  pass; fresh manual acceptance is recorded below.
 - **Lifecycle harness correction (`fa35d17`):** reruns exposed an atomicity
   race in the test-only shared command file. The harness now sends/consumes one
   atomically published file per request; the final lifecycle rerun passes
@@ -108,11 +108,12 @@
   fail-closed disposable mode; its log confirms synthetic coordinator,
   `realCoordinatorConstructed: false`, scheduler disabled. No Job Browser,
   Electron, installer, or Playwright process remained; port 6783 was free.
-- **Release state:** automated and user-observed acceptance gates pass; only
-  final artifact-evidence documentation, remote reconciliation, and authorized
-  push remain. 1.1.6 is **Not shipped** and not pushed. Preserve the earlier
-  default-data launch limitation: no trustworthy pre-run baseline exists, so
-  production non-modification cannot be proven.
+- **Release state:** 1.1.6 is shipped to `origin/main`. Post-push fetch at the
+  release commit confirmed local and remote `main` aligned with a clean tree.
+  Release follow-up is documentation-only; application code and the validated
+  artifact are unchanged. Preserve the earlier default-data launch limitation: no
+  trustworthy pre-run baseline exists, so production non-modification cannot
+  be proven.
 
 ## Historical verified baseline (recorded evidence — 2026-09-24)
 
@@ -474,11 +475,10 @@ Investigations are out of scope for MR0-01 (which is docs-only).
 
 ## Next action
 
-1. Commit the final artifact evidence in a recoverable documentation commit,
-   then fetch/reconcile origin and inspect all commits and the full final diff.
-2. The user authorized pushing these commits if every final gate remains green.
-   Push after remote state is confirmed compatible, then report the resulting
-   remote state and clean worktree.
+1. MR1-07/1.1.6 release work is complete; preserve its release evidence and
+   production-data limitation.
+2. MR3-01 remains the next future user-prioritized implementation task; begin
+   it only under explicit scope and validation.
 3. Preserve the production-data audit limitation: no trustworthy pre-run
    baseline exists, so non-modification cannot be proven. Do not access the
    production database or claim it was untouched. MR3-01 remains the next

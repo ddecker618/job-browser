@@ -17,8 +17,8 @@
 
 ## Current project status
 
-Reconciled against source checkpoint `b453ae0` (P37) and the 1.1.5
-release record. Git/source evidence takes precedence over historical
+Reconciled against the pushed 1.1.6 release and final release record
+(2026-09-27). Git/source evidence takes precedence over historical
 completion records.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
@@ -28,15 +28,18 @@ completion records.
   Original product phases, beta phases, NLP Stages 0–29, and P0–P37 checkpoints
   are separate numbering sequences.
 - NLP Stages 0–29 and P0–P37 are complete. P37 SHADOW `Level 0` shipped
-  in the 1.1.5 release boundary. P36 shipped in 1.1.4. Latest
-  recorded full source verification: **172 files / 1,605 tests, fully
-  green (`npm run verify`, 2026-09-14)**.
-- Current package version and latest validated installer: **1.1.5**,
-  shipped at the P37 release boundary (2026-09-14). This artifact
-  includes P31/P32/P34/P35 and the 1.1.3 Package A/B/C desktop lifecycle
-  work, plus the 1.1.4 P36 coverage abstention hygiene, plus the 1.1.5
-  P37 SHADOW `Level 0` occupation / job-type taxonomy + classifier.
-  Package C remains verified by the 11-scenario lifecycle harness.
+  in the 1.1.5 release boundary; P36 shipped in 1.1.4. MR1-06 onboarding
+  integration and MR1-07 installed onboarding validation shipped in 1.1.6.
+- Current package version and latest validated installer: **1.1.6**,
+  `release\Job-Browser-Setup-1.1.6.exe`, 253,702,995 bytes, SHA-256
+  `CAB6CD4864AB6B90F14059F275B8C242F2A0641E87869643E7FE8532269FD9B2`.
+  Packaged/installed `app.asar` match at 74,771,969 bytes, SHA-256
+  `6221093D23CD98EB645BA616BF09E38B1C0D5F8755AC9C2BE45D42385F9981A2`.
+  Installed ProductVersion `1.1.6.0`, FileVersion `1.1.6`. The release
+  includes prior P31/P32/P34/P35, P36/P37, and desktop lifecycle work plus
+  the accepted onboarding experience. Final verification is 1837/1837;
+  privacy 12/12; NLP security 3/3; lifecycle 11/11; packaged/installed
+  regular, seeded-upgrade, and onboarding smokes pass.
 - Current source defaults: `jobIntelligenceExplanation`, `roleFamilySuggestion`,
   and `searchProfileFeedback` are on; `searchTieBreak` is off. Stored opt-outs
   remain authoritative. Explanation is evidence-only; exact-tie enrichment is

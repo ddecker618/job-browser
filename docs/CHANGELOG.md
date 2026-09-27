@@ -1,8 +1,8 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.6] - 2026-09-27
 
-### Onboarding wizard integration correction pass — MR1-06 (In Review, NOT SHIPPED)
+### Onboarding wizard integration correction pass — MR1-06
 
 - The plan preview is now rebuilt from the current draft via the
   authoritative `POST /api/onboarding/preview` endpoint. The server
@@ -75,11 +75,10 @@
   preserved progress, all blocked states were genuinely tested,
   existing users had a visible entry point, and visual checks passed
   have been corrected.
-- Onboarding remains **Not shipped**. No push, no version bump, no
-  installer build, no production-data access. Package version remains
-  **1.1.5**.
+- This implementation/correction checkpoint is included in the final 1.1.6
+  release described below. Its earlier pre-acceptance status is historical.
 
-### Onboarding wizard connection — MR1-06 (In Review, NOT SHIPPED)
+### Onboarding wizard connection — MR1-06 implementation history
 
 - New narrow versioned onboarding API mounted at `/api/onboarding`:
   `GET /status` returns a discriminated status (not-started,
@@ -117,11 +116,41 @@ plan.appliedQueries` → write `app_settings.onboardingCompletion:<profileId>`
   +21). `npm run verify` **1790/1790 PASS across 179 files** (was
   1769/1769 across 177); `npm run privacy:check` 11/11 PASS;
   `npm run nlp:security-audit` 3/3 PASS; `git diff --check` clean.
-- Onboarding remains **Not shipped**. No push, no version bump, no
-  installer build, no production-data access. Browser, narrow-window,
-  and 200% zoom checks remain explicit acceptance items for
-  **MR1-07** and are not described as passed. Package version
-  remains **1.1.5**.
+- This initial implementation checkpoint was corrected and accepted before the
+  final 1.1.6 release documented below. Its earlier not-shipped status and
+  pending visual checks are historical.
+
+### Installed onboarding and first-user validation — MR1-07 (SHIPPED)
+
+- The installed onboarding experience now starts only after manual-mode
+  isolation preflight succeeds. Manual acceptance runs with a synthetic
+  coordinator, scheduler disabled, and OS-temp user-data/database paths; direct
+  user observation passed the EULA, initial onboarding/status, normal/narrow
+  layouts, Windows 200% scaling, keyboard/focus, readable text, tray behavior,
+  close/reopen/resume, Save and leave, edit/discard, and notification checks.
+- Final assisted NSIS installer:
+  `release\Job-Browser-Setup-1.1.6.exe`, 253,702,995 bytes, SHA-256
+  `CAB6CD4864AB6B90F14059F275B8C242F2A0641E87869643E7FE8532269FD9B2`.
+  Packaged/installed `app.asar` matches at 74,771,969 bytes, SHA-256
+  `6221093D23CD98EB645BA616BF09E38B1C0D5F8755AC9C2BE45D42385F9981A2`.
+  Installed ProductVersion `1.1.6.0`, FileVersion `1.1.6`; NSIS remains assisted,
+  presents `EULA.txt`, and does not auto-launch on Finish.
+- `app.asar` contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`,
+  `package.json` with version `1.1.6` and `UNLICENSED` metadata, notification
+  denial, manual-acceptance safeguards, and P36/P37 markers. `npm run
+legal:notices` generated 168 production-package notices; `npm run legal:check`
+  passes.
+- Final checks: `npm run verify` 1837/1837 across 181 files;
+  `npm run privacy:check` 12/12; `npm run nlp:security-audit` 3/3;
+  `npm run desktop:lifecycle-harness` 11/11; packaged/installed normal,
+  seeded-upgrade, and onboarding save/resume smokes all pass. No orphan app,
+  Electron, installer, or Playwright processes remained; port 6783 was free.
+- The earlier failed manual run (transient initial status error and real Built In
+  discovery in a disposable database) remains documented in the MR1-07 task
+  card. A separate earlier default-data launch has no trustworthy pre-run
+  database baseline; production non-modification cannot be proven.
+- Release source and validation commits were pushed to `origin/main`; current
+  branch synchronization is recorded in `SESSION_HANDOFF.md`.
 
 ## [1.1.5] - 2026-09-14
 

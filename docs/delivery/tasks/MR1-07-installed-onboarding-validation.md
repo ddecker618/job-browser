@@ -1,6 +1,6 @@
 # MR1-07 — Validate installed onboarding and first-user experience
 
-**Status:** In progress — authorized 2026-09-26; target release 1.1.6
+**Status:** Done — accepted and shipped 2026-09-27; target release 1.1.6
 
 **Owner:** OpenCode
 
@@ -8,7 +8,8 @@
 
 **Dependencies:** MR1-06 accepted and Done (`df829b9`)
 
-**Release state:** Not shipped until all automated and manual gates pass
+**Release state:** 1.1.6 shipped to `origin/main` after automated and manual
+gates passed; see final artifact and post-push evidence below.
 
 ## Isolation rules
 
@@ -182,7 +183,7 @@ checkpoint:
   Release remains **Not shipped**, no push has occurred, and production DB
   non-modification cannot be claimed without a trustworthy pre-run baseline.
 
-## Manually accepted candidate — final test-only rebuild pending
+## Manually accepted candidate — direct-observation evidence
 
 Rebuilt on 2026-09-27 after adding a manual-mode startup preflight that keeps
 the window hidden until disposable-path and synthetic-mode checks succeed.
@@ -239,10 +240,9 @@ do not change normal-mode desktop or renderer behavior.
   isolation failure and production-baseline limitation.
 - Manual checks apply to the **253,702,892-byte** candidate above. Later changes
   were limited to the lifecycle test harness and test wait bounds; normal-mode
-  desktop and renderer UI did not change. MR1-07 remains **In progress**; 1.1.6
-  remains **Not shipped** until the authorized push. The earlier default-data launch still has
-  no trustworthy contemporaneous baseline, so production non-modification
-  cannot be proven.
+  desktop and renderer UI did not change. MR1-07 is now **Done** and 1.1.6
+  is shipped. The earlier default-data launch still has no trustworthy
+  contemporaneous baseline, so production non-modification cannot be proven.
 
 ## Final committed-source release artifact — automated gates passed
 
@@ -276,8 +276,9 @@ after the lifecycle-mailbox and bounded save-wait fixes:
   under `%TEMP%` was removed. No production database was read or hashed during
   final cleanup; the earlier default-data launch still has no trustworthy
   baseline, so production non-modification cannot be proven.
-- Release remains **Not shipped** until the authorized commits are pushed and
-  post-push state is confirmed.
+- 1.1.6 source and release evidence were pushed to `origin/main` at
+  `0e00748`; post-push verification confirmed local `HEAD` equals `origin/main`
+  with a clean tree. The final documentation update records the shipped state.
 
 ## Manual acceptance — direct-observation record
 
