@@ -19,6 +19,8 @@ export interface WindowManagerOptions {
   icon: string;
   windowState: string;
   development: boolean;
+  /** Hold the UI hidden until manual-acceptance safety preflight succeeds. */
+  deferShow?: boolean;
   /**
    * Called on every window-close attempt. The returned action decides
    * whether the window actually closes (existing behavior) or is hidden
@@ -70,7 +72,9 @@ export class WindowManager {
     this.window = window;
     window.setMenuBarVisibility(false);
     if (bounds.maximized === true) window.maximize();
-    window.once('ready-to-show', () => window.show());
+    window.once('ready-to-show', () => {
+      if (options.deferShow !== true) window.show();
+    });
     window.on('close', (event) => {
       saveBounds(window, options.windowState);
       if (this.closeDecision() === 'hide') {

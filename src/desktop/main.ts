@@ -274,6 +274,7 @@ async function startDesktop(): Promise<void> {
     icon: paths.icon,
     windowState: paths.windowState,
     development: !app.isPackaged && !process.argv.includes('--built'),
+    deferShow: manualOnboardingAcceptance,
     closeDecision: () => lifecycle?.closeAction() ?? 'close',
     querySessionEnd: () => {
       // Bounded best-effort cleanup on Windows shutdown/logoff.
@@ -505,6 +506,9 @@ async function runStartup(): Promise<void> {
       );
     }
     if (manualOnboardingAcceptance) {
+      await assertManualAcceptanceIsolation(
+        `${handle.url}/api/manual-acceptance/status`,
+      );
       desktopLogger.log(
         'info',
         'Manual onboarding acceptance safeguards active',
@@ -517,6 +521,10 @@ async function runStartup(): Promise<void> {
     }
     windows.sendProgress('Loading dashboard');
     await windows.loadDashboard(handle.url);
+    if (manualOnboardingAcceptance) {
+      windows.window?.show();
+      windows.window?.focus();
+    }
     windows.sendProgress('Ready');
     diagnosticText = JSON.stringify(runtimeInfo(), null, 2);
     await lifecycle?.loadCloseToTrayFromBackend(fetchJson);
@@ -564,6 +572,7 @@ async function runStartup(): Promise<void> {
       databasePath: paths.database,
       code: startupError?.code ?? 'unknown',
     });
+    if (manualOnboardingAcceptance) windows.window?.show();
   } finally {
     starting = false;
   }
