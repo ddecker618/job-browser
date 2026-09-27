@@ -1,8 +1,8 @@
 # Universal Employment Coverage Roadmap
 
-**Status:** Approved product requirement; implementation planning required.  
+**Status:** Approved product requirement; implementation planning required.
 **Commercial significance:** Required before Job Browser can be presented as a
-general subscription job-search product.  
+general subscription job-search product.
 **Current boundary:** The application accepts user-defined job titles and can
 show all collected listings, but its defaults, occupation taxonomy, matching
 assumptions, and validated source coverage remain primarily technology-focused.
