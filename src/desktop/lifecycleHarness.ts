@@ -13,6 +13,7 @@
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   unlinkSync,
   writeFileSync,
@@ -239,10 +240,11 @@ export function installLifecycleHarnessHooks(
 export function attachHarnessStdio(deps: DispatcherDeps): () => void {
   // Windows Electron is a GUI-subsystem binary and may not have a
   // console attached, so `process.stdout.write` can be silently dropped.
-  // Use a file-based protocol: the harness writes one JSON command per
-  // line to `<userData>/harness-cmd.jsonl` and polls for one JSON
-  // response per command at `<userData>/harness-resp-<id>.json`.
-  const cmdPath = join(app.getPath('userData'), 'harness-cmd.jsonl');
+  // Use an atomic file-based queue: the harness publishes one complete
+  // command as `<userData>/harness-cmd-<id>.json`, and this process polls
+  // those files. Per-command files avoid lost appends from concurrent
+  // writers racing with a shared-file read/truncate cycle.
+  const commandDirectory = app.getPath('userData');
   const respDir = app.getPath('userData');
   let closed = false;
   const seen = new Set<number>();
@@ -257,25 +259,32 @@ export function attachHarnessStdio(deps: DispatcherDeps): () => void {
   };
   const tick = setInterval(() => {
     if (closed) return;
-    if (!existsSync(cmdPath)) return;
-    let raw: string;
+    let entries: string[];
     try {
-      raw = readFileSync(cmdPath, 'utf8');
+      entries = readdirSync(commandDirectory)
+        .filter((entry) => /^harness-cmd-\d+\.json$/.test(entry))
+        .sort((left, right) => {
+          const leftId = Number(
+            /^harness-cmd-(\d+)\.json$/.exec(left)?.[1] ?? 0,
+          );
+          const rightId = Number(
+            /^harness-cmd-(\d+)\.json$/.exec(right)?.[1] ?? 0,
+          );
+          return leftId - rightId;
+        });
     } catch {
       return;
     }
-    const lines = raw.split('\n');
-    // Keep the last partial line for the next tick.
-    const last = lines.pop() ?? '';
-    const remainingLines = last.length > 0 ? [last] : [];
-    // Clear the command file so we don't re-process.
-    try {
-      writeFileSync(cmdPath, '', 'utf8');
-    } catch {
-      // Ignore.
-    }
-    for (const line of [...lines, ...remainingLines]) {
-      const trimmed = line.trim();
+    for (const entry of entries) {
+      const commandPath = join(commandDirectory, entry);
+      let raw: string;
+      try {
+        raw = readFileSync(commandPath, 'utf8');
+        unlinkSync(commandPath);
+      } catch {
+        continue;
+      }
+      const trimmed = raw.trim();
       if (trimmed.length === 0) continue;
       let command: HarnessCommand;
       try {
@@ -299,9 +308,13 @@ export function attachHarnessStdio(deps: DispatcherDeps): () => void {
     closed = true;
     clearInterval(tick);
     try {
-      unlinkSync(cmdPath);
+      for (const entry of readdirSync(commandDirectory)) {
+        if (/^harness-cmd-\d+\.json$/.test(entry)) {
+          unlinkSync(join(commandDirectory, entry));
+        }
+      }
     } catch {
-      // Ignore.
+      // Ignore: harness may have torn down.
     }
   };
 }

@@ -5,9 +5,9 @@
  * `JOB_BROWSER_LIFECYCLE_TEST=1` and a fresh temporary user-data
  * directory per scenario. Communicates via a file-based protocol:
  *
- *   - Harness writes one JSON command per line to
- *     `<userData>/harness-cmd.jsonl`.
- *   - Electron main process polls the file, dispatches the command, and
+ *   - Harness atomically publishes one JSON command per file as
+ *     `<userData>/harness-cmd-<id>.json`.
+ *   - Electron main process polls the queue, dispatches each command, and
  *     writes a JSON response to `<userData>/harness-resp-<id>.json`.
  *
  * The file-based protocol works on all platforms, including Windows
@@ -26,6 +26,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   unlinkSync,
   writeFileSync,
@@ -71,7 +72,6 @@ class HarnessClient {
   private readonly pending = new Map<number, PendingRequest>();
   private readonly responses = new Map<number, HarnessStateResponse>();
   private readonly userData: string;
-  private readonly cmdPath: string;
   private readonly respDir: string;
   public readonly child: ChildProcessWithoutNullStreams;
   public lastBackendUrl: string | null = null;
@@ -82,7 +82,6 @@ class HarnessClient {
   ) {
     this.child = child;
     this.userData = userData;
-    this.cmdPath = join(userData, 'harness-cmd.jsonl');
     this.respDir = userData;
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
@@ -148,8 +147,11 @@ class HarnessClient {
         );
       }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer });
+      const commandPath = join(this.userData, `harness-cmd-${String(id)}.json`);
+      const temporaryPath = `${commandPath}.${String(process.pid)}.tmp`;
       const command = `${JSON.stringify({ id, op, ...extra })}\n`;
-      writeFileSync(this.cmdPath, command, { flag: 'a' });
+      writeFileSync(temporaryPath, command, 'utf8');
+      renameSync(temporaryPath, commandPath);
     });
   }
 
@@ -316,16 +318,17 @@ async function launchElectron(
   // same userData directory. Otherwise `waitForReady` can observe the
   // previous process's readiness state file and return before this
   // process's backend is actually up.
-  for (const staleFile of [
-    'harness-state.json',
-    'harness-cmd.jsonl',
-  ]) {
+  for (const staleFile of ['harness-state.json']) {
     const path = join(userData, staleFile);
     if (existsSync(path)) unlinkSync(path);
   }
   for (const entry of readdirSync(userData)) {
-    const match = entry.match(/^harness-resp-(\d+)\.json$/);
-    if (match === null) continue;
+    if (
+      !/^harness-(?:cmd-\d+\.json(?:\.\d+\.tmp)?|resp-\d+\.json)$/.test(
+        entry,
+      )
+    )
+      continue;
     try {
       unlinkSync(join(userData, entry));
     } catch {
