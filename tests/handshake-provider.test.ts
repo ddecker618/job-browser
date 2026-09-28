@@ -66,6 +66,7 @@ describe('HandshakeProvider', () => {
 
     await expect(provider.validateConfiguration({})).resolves.toMatchObject({
       valid: true,
+      normalizedConfiguration: { keepBrowserOpen: false },
     });
     await expect(
       provider.validateConfiguration({ maxResults: 0 }),

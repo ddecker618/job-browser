@@ -63,6 +63,86 @@ describe('source management API', () => {
     ).toBe(true);
   });
 
+  it('preserves edited starter-source configuration and schedule across restart', async () => {
+    const directory = mkdtempSync(
+      join(tmpdir(), 'job-browser-default-source-settings-'),
+    );
+    directories.push(directory);
+    const databasePath = join(directory, 'jobs.sqlite');
+    const firstHandle = await startBackend({
+      databasePath,
+      seedDefaultSources: true,
+    });
+    handles.push(firstHandle);
+
+    const firstControl = (await fetch(
+      `${firstHandle.url}/api/sources/control-center`,
+    ).then((response) => response.json())) as {
+      sources: ConfiguredSource[];
+    };
+    const handshake = firstControl.sources.find(
+      (source) => source.providerId === 'handshake',
+    );
+    expect(handshake).toBeDefined();
+    if (handshake === undefined) return;
+
+    const update = await fetch(
+      `${firstHandle.url}/api/sources/${handshake.id}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          displayName: 'My Handshake',
+          employer: handshake.employer,
+          providerId: 'handshake',
+          careersUrl: handshake.careersUrl,
+          configuration: {
+            ...handshake.configuration,
+            keepBrowserOpen: false,
+            maxResults: 37,
+          },
+          searchCriteria: handshake.searchCriteria,
+          enabled: handshake.enabled,
+          schedule: {
+            enabled: true,
+            cadence: 'daily',
+            dailyLocalTime: '08:15',
+          },
+        }),
+      },
+    );
+    expect(update.status).toBe(200);
+    await firstHandle.stop();
+    handles.splice(handles.indexOf(firstHandle), 1);
+
+    const restartedHandle = await startBackend({
+      databasePath,
+      seedDefaultSources: true,
+    });
+    handles.push(restartedHandle);
+    const restartedControl = (await fetch(
+      `${restartedHandle.url}/api/sources/control-center`,
+    ).then((response) => response.json())) as {
+      sources: ConfiguredSource[];
+    };
+    const restartedHandshake = restartedControl.sources.find(
+      (source) => source.providerId === 'handshake',
+    );
+
+    expect(restartedHandshake).toMatchObject({
+      displayName: 'My Handshake',
+      configuration: {
+        keepBrowserOpen: false,
+        maxResults: 37,
+      },
+      schedule: {
+        enabled: true,
+        cadence: 'daily',
+        dailyLocalTime: '08:15',
+      },
+    });
+  });
+
   it('lists provider capabilities and creates a validated disabled source', async () => {
     const directory = mkdtempSync(join(tmpdir(), 'job-browser-source-api-'));
     directories.push(directory);

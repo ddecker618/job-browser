@@ -1509,7 +1509,9 @@ function ProviderFields({
         <label className="checkbox-field">
           <input
             type="checkbox"
-            checked={Boolean(configuration['keepBrowserOpen'] ?? true)}
+            checked={Boolean(
+              configuration['keepBrowserOpen'] ?? providerId !== 'handshake',
+            )}
             onChange={(e) => update('keepBrowserOpen', e.target.checked)}
           />{' '}
           Keep browser open after search

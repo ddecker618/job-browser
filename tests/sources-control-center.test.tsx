@@ -111,6 +111,58 @@ describe('sources control center', () => {
     expect(screen.getByLabelText('Work arrangement')).toBeInTheDocument();
   });
 
+  it('saves the Handshake browser-close preference from the source editor', async () => {
+    const handshake = {
+      ...sourceFixture(),
+      displayName: 'Handshake (browser)',
+      employer: 'Handshake',
+      providerId: 'handshake',
+      sourceType: 'job-board',
+      careersUrl: 'https://app.joinhandshake.com/job-search',
+      configuration: {
+        searchKeywords: 'systems administrator',
+        queries: [{ keywords: 'systems administrator', location: '' }],
+        remoteFilter: '',
+        maxResults: 50,
+        keepBrowserOpen: true,
+      },
+    };
+    mockApi([handshake]);
+    renderPage();
+    await screen.findByText('Handshake (browser)');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+
+    const keepOpen = screen.getByLabelText('Keep browser open after search');
+    expect(keepOpen).toBeChecked();
+    await user.click(keepOpen);
+    expect(keepOpen).not.toBeChecked();
+    const editor = screen.getByRole('region', { name: 'Source editor' });
+    await user.click(within(editor).getByRole('button', { name: 'Validate' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Save source' }),
+    );
+
+    const fetchMock = vi.mocked(fetch);
+    const updateCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      return url.endsWith('/api/sources/source') && init?.method === 'PUT';
+    });
+    expect(updateCall).toBeDefined();
+    const serializedBody = updateCall?.[1]?.body;
+    expect(typeof serializedBody).toBe('string');
+    if (typeof serializedBody !== 'string') return;
+    const updateBody = JSON.parse(serializedBody) as {
+      configuration: Record<string, unknown>;
+    };
+    expect(updateBody.configuration['keepBrowserOpen']).toBe(false);
+  });
+
   it('shows the empty state without configured sources', async () => {
     mockApi([]);
     renderPage();
@@ -297,13 +349,17 @@ function mockApi(
         };
         const identifier = body.configuration['companyIdentifier'];
         const valid =
-          typeof identifier === 'string' && identifier.trim().length > 0;
+          body.providerId === 'handshake' ||
+          (typeof identifier === 'string' && identifier.trim().length > 0);
         return Promise.resolve(
           response({
             valid,
-            message: valid
-              ? 'SmartRecruiters configuration is valid'
-              : 'Company identifier must be a string',
+            message:
+              body.providerId === 'handshake'
+                ? 'Handshake configuration is valid'
+                : valid
+                  ? 'SmartRecruiters configuration is valid'
+                  : 'Company identifier must be a string',
             normalizedConfiguration: body.configuration,
             preview: null,
           }),

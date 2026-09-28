@@ -185,29 +185,14 @@ export class SourceRepository {
 
   private ensureSources(sources: readonly DefaultSource[]): void {
     const timestamp = nowUtc();
-    const upsert = this.database.prepare(
+    const insert = this.database.prepare(
       `INSERT INTO sources (
         id, employer, source_type, careers_url, enabled, connector,
         last_successful_run, last_failure, failure_count, created_at, updated_at,
         display_name, provider_id, configuration_json, search_criteria_json,
         configuration_status, health_status
       ) VALUES (?, ?, 'job-board', ?, ?, ?, NULL, NULL, 0, ?, ?, ?, ?, ?, ?, 'valid', 'never-run')
-      ON CONFLICT(id) DO UPDATE SET
-        employer = excluded.employer,
-        display_name = excluded.display_name,
-        provider_id = excluded.provider_id,
-        careers_url = excluded.careers_url,
-        configuration_json = excluded.configuration_json,
-        search_criteria_json = excluded.search_criteria_json,
-        configuration_status = excluded.configuration_status,
-        updated_at = excluded.updated_at`,
-    );
-    const updateExistingByProvider = this.database.prepare(
-      `UPDATE sources SET
-        employer = ?, display_name = ?, careers_url = ?,
-        configuration_json = ?, search_criteria_json = ?,
-        configuration_status = 'valid', updated_at = ?
-       WHERE provider_id = ? AND id != ?`,
+      ON CONFLICT(id) DO NOTHING`,
     );
     const checkProviderExists = this.database.prepare<[string], { id: string }>(
       `SELECT id FROM sources WHERE provider_id = ? LIMIT 1`,
@@ -215,34 +200,26 @@ export class SourceRepository {
     this.database.transaction(() => {
       for (const source of sources) {
         const existing = checkProviderExists.get(source.providerId);
-        if (existing !== undefined && existing.id !== source.id) {
-          updateExistingByProvider.run(
-            source.employer,
-            source.displayName,
-            source.careersUrl,
-            JSON.stringify(source.configuration),
-            JSON.stringify(source.searchCriteria),
-            timestamp,
-            source.providerId,
-            existing.id,
-          );
-          this.ensureSchedule(existing.id, false, 'manual', null);
-        } else {
-          upsert.run(
-            source.id,
-            source.employer,
-            source.careersUrl,
-            Number(source.enabled),
-            source.providerId,
-            timestamp,
-            timestamp,
-            source.displayName,
-            source.providerId,
-            JSON.stringify(source.configuration),
-            JSON.stringify(source.searchCriteria),
-          );
+        // Startup seeding must never replace settings that the user saved in
+        // the source editor. Query-role changes are propagated explicitly by
+        // cascadeTargetRoles(), so existing configuration and schedules remain
+        // authoritative here.
+        if (existing !== undefined) continue;
+        const result = insert.run(
+          source.id,
+          source.employer,
+          source.careersUrl,
+          Number(source.enabled),
+          source.providerId,
+          timestamp,
+          timestamp,
+          source.displayName,
+          source.providerId,
+          JSON.stringify(source.configuration),
+          JSON.stringify(source.searchCriteria),
+        );
+        if (result.changes === 1)
           this.ensureSchedule(source.id, false, 'manual', null);
-        }
       }
     })();
   }
@@ -780,7 +757,7 @@ const DEFAULT_SOURCES = [
       searchKeywords: 'systems administrator',
       remoteFilter: '',
       maxResults: 50,
-      keepBrowserOpen: true,
+      keepBrowserOpen: false,
       queries: [
         { keywords: 'systems administrator', location: '' },
         { keywords: 'network administrator', location: '' },

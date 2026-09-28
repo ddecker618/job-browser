@@ -74,7 +74,7 @@ const configurationSchema = z.strictObject({
     .default(''),
   maxResults: z.number().int().min(1).max(100).optional().default(50),
   browserProfileDir: z.string().optional(),
-  keepBrowserOpen: z.boolean().optional().default(true),
+  keepBrowserOpen: z.boolean().optional().default(false),
   debugMode: z.boolean().optional().default(false),
 });
 
