@@ -644,6 +644,64 @@ describe('iCIMS ATS detection', () => {
   // ----------------------------------------------------
 
   describe('Hosted iCIMS Variants Validation & Discovery', () => {
+    it('uses one honest iCIMS User-Agent for mode probes and hosted validation requests', async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('VITEST', 'false');
+      const requests: { path: string; userAgent: string | null }[] = [];
+      const sitemapXml = `<?xml version="1.0"?><urlset><url><loc>https://careers.example.com/jobs/801/test/job</loc></url></urlset>`;
+      const provider = new IcimsProvider(
+        providerTestClient((url, init) => {
+          requests.push({
+            path: `${url.pathname}${url.search}`,
+            userAgent: new Headers(init.headers).get('user-agent'),
+          });
+          if (url.pathname === '/api/jobs') {
+            return Promise.resolve(new Response('', { status: 404 }));
+          }
+          if (url.pathname === '/jobs/search' && url.searchParams.has('json')) {
+            return Promise.resolve(new Response('', { status: 404 }));
+          }
+          if (url.pathname === '/sitemap.xml') {
+            return Promise.resolve(
+              new Response(sitemapXml, {
+                status: 200,
+                headers: { 'Content-Type': 'application/xml' },
+              }),
+            );
+          }
+          if (url.pathname.includes('/jobs/801/')) {
+            return Promise.resolve(
+              new Response('<html><body><h1>Test role</h1></body></html>', {
+                status: 200,
+                headers: { 'Content-Type': 'text/html' },
+              }),
+            );
+          }
+          return Promise.resolve(new Response('', { status: 404 }));
+        }),
+      );
+
+      const result = await provider.validateConfiguration({
+        portalUrl: 'https://careers.example.com',
+      });
+
+      expect(result).toMatchObject({
+        valid: true,
+        variant: 'icims_hosted_v1',
+      });
+      expect(requests.map((request) => request.path)).toEqual(
+        expect.arrayContaining([
+          '/api/jobs?limit=1',
+          '/jobs/search?json=true',
+          '/sitemap.xml',
+          '/jobs/801/test/job',
+        ]),
+      );
+      expect(new Set(requests.map((request) => request.userAgent))).toEqual(
+        new Set(['Job-Browser-iCIMS/1.0 (local job discovery)']),
+      );
+    });
+
     it('discovers jobs via sitemap for v1 hosted variant', async () => {
       const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
       <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

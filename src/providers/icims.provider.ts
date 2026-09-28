@@ -32,6 +32,7 @@ const DEFAULT_FIXTURE_PATH = fileURLToPath(
 const PAGE_SIZE = 50;
 const MAX_PAGES = 10;
 const MAX_ITEMS = 500;
+const ICIMS_USER_AGENT = 'Job-Browser-iCIMS/1.0 (local job discovery)';
 
 const configurationSchema = z.strictObject({
   portalUrl: z
@@ -187,7 +188,7 @@ export class IcimsProvider extends BaseProvider {
         const url = new URL('/api/jobs?limit=1', portalUrl);
         let response;
         try {
-          response = await this.http.request(url, {
+          response = await this.request(url, {
             provider: this.name,
             headers: { Accept: 'application/json' },
           });
@@ -291,7 +292,7 @@ export class IcimsProvider extends BaseProvider {
         const url = new URL('/jobs/search?json=true&limit=1', portalUrl);
         let response;
         try {
-          response = await this.http.request(url, {
+          response = await this.request(url, {
             provider: this.name,
             headers: { Accept: 'application/json' },
           });
@@ -379,7 +380,7 @@ export class IcimsProvider extends BaseProvider {
         // icims_hosted_v1
         let sitemapUrls: string[] = [];
         try {
-          const sitemapRes = await this.http.request(
+          const sitemapRes = await this.request(
             new URL('/sitemap.xml', portalUrl),
             {
               provider: this.name,
@@ -418,7 +419,7 @@ export class IcimsProvider extends BaseProvider {
           const searchUrl = new URL('/jobs/search?in_iframe=1', portalUrl);
           let searchRes;
           try {
-            searchRes = await this.http.request(searchUrl, {
+            searchRes = await this.request(searchUrl, {
               provider: this.name,
             });
           } catch (error) {
@@ -477,12 +478,9 @@ export class IcimsProvider extends BaseProvider {
           const firstLink = jobLinks[0];
           if (firstLink !== undefined) {
             try {
-              const detailRes = await this.http.request(
-                new URL(firstLink.url),
-                {
-                  provider: this.name,
-                },
-              );
+              const detailRes = await this.request(new URL(firstLink.url), {
+                provider: this.name,
+              });
               if (detailRes.status === 200) {
                 const parsedDetail = parseJobDetail(detailRes.text());
                 samples = [
@@ -731,7 +729,7 @@ export class IcimsProvider extends BaseProvider {
 
     // Step 1: Sitemap
     try {
-      const sitemapRes = await this.http.request(
+      const sitemapRes = await this.request(
         new URL('/sitemap.xml', portalUrl),
         {
           provider: this.name,
@@ -774,7 +772,7 @@ export class IcimsProvider extends BaseProvider {
       if (variant === 'icims_hosted_v2') {
         try {
           const url = new URL('/jobs/search?json=true', portalUrl);
-          const response = await this.http.request(url, {
+          const response = await this.request(url, {
             provider: this.name,
             headers: { Accept: 'application/json' },
             signal,
@@ -825,7 +823,7 @@ export class IcimsProvider extends BaseProvider {
           );
           let response;
           try {
-            response = await this.http.request(searchUrl, {
+            response = await this.request(searchUrl, {
               provider: this.name,
               signal,
             });
@@ -863,7 +861,7 @@ export class IcimsProvider extends BaseProvider {
     await fetchWithConcurrency(itemsToFetch, 3, async (link) => {
       if (signal?.aborted) return;
       try {
-        const detailRes = await this.http.request(new URL(link.url), {
+        const detailRes = await this.request(new URL(link.url), {
           provider: this.name,
           signal,
         });
@@ -921,6 +919,16 @@ export class IcimsProvider extends BaseProvider {
     };
   }
 
+  private request(
+    url: string | URL,
+    request: Parameters<ProviderHttpClient['request']>[1],
+  ): ReturnType<ProviderHttpClient['request']> {
+    return this.http.request(url, {
+      ...request,
+      headers: { ...request.headers, 'User-Agent': ICIMS_USER_AGENT },
+    });
+  }
+
   public normalize(rawJob: unknown, discoveredAt: string): NormalizedJob {
     const raw = jobDataSchema.parse(rawJob);
     const location = locationText(raw);
@@ -959,12 +967,11 @@ export class IcimsProvider extends BaseProvider {
 
   private async json(url: URL, signal?: AbortSignal): Promise<unknown> {
     return (
-      await this.http.request(url, {
+      await this.request(url, {
         provider: this.name,
         signal,
         headers: {
           Accept: 'application/json',
-          'User-Agent': 'job-browser/1.0 (local job discovery)',
         },
       })
     ).json();
@@ -982,6 +989,7 @@ async function probeModernIcims(
   try {
     const probeRes = await http.request(new URL('/api/jobs?limit=1', origin), {
       provider: 'icims',
+      headers: { 'User-Agent': ICIMS_USER_AGENT },
     });
     if (probeRes.status === 200) {
       const json = JSON.parse(probeRes.text()) as { jobs?: unknown };
@@ -1002,6 +1010,7 @@ async function probeHostedV2(
       new URL('/jobs/search?json=true', origin),
       {
         provider: 'icims',
+        headers: { 'User-Agent': ICIMS_USER_AGENT },
       },
     );
     if (probeRes.status === 200) {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ProviderFetchError } from '../src/providers/baseProvider.js';
 import {
+  buildProviderTransportHeaders,
   ProviderHttpClient,
   type ProviderHttpResolver,
   type ProviderHttpTransport,
@@ -12,6 +13,21 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
 const silentLog = vi.fn();
 
 describe('ProviderHttpClient', () => {
+  it('preserves a provider-specific User-Agent while replacing only the default sentinel', () => {
+    const url = new URL('https://careers.example.test/jobs');
+    const custom = buildProviderTransportHeaders(url, {
+      'User-Agent': 'Job-Browser-iCIMS/1.0 (local job discovery)',
+    });
+    const sentinel = buildProviderTransportHeaders(url, {
+      'User-Agent': 'job-browser/1.0 (local job discovery)',
+    });
+
+    expect(custom.get('user-agent')).toBe(
+      'Job-Browser-iCIMS/1.0 (local job discovery)',
+    );
+    expect(custom.get('host')).toBe('careers.example.test');
+    expect(sentinel.get('user-agent')).toContain('Mozilla/5.0');
+  });
   it('fails closed before transport when manual onboarding acceptance is enabled', async () => {
     const previous = process.env['JOB_BROWSER_ONBOARDING_ACCEPTANCE_MODE'];
     const transport = vi.fn<ProviderHttpTransport>(() =>
