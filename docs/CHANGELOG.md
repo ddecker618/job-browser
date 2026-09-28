@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased source repair — Dice discovery
+## [1.1.7] - 2026-09-27
 
 - Dice search cards are extracted in one page evaluation, deduplicated, and
   retained as the fallback record when detail enrichment fails. Detail visits
@@ -13,8 +13,15 @@
 - Truncated Dice summaries remain persisted as useful runs and source health
   now describes partial/truncated results instead of claiming successful
   completion. Complete runs retain the existing success message.
-- This is a local source change only; no live crawl, production database access
-  or mutation, version bump, installer build, or push was performed.
+- Built `release\Job-Browser-Setup-1.1.7.exe` (253,704,895 bytes, SHA-256
+  `D3A503F715E91223FA3A42C01032BF821062584D1B9CEC08EC046F2DBCA818E8`).
+  Packaged smoke, packaged seeded-upgrade smoke, installed smoke, installed
+  seeded-upgrade smoke, and privacy 12/12 passed. Packaged and installed asars
+  match at SHA-256 `E39C4BE49C9242C48FDCCC554AEA52640ADE83F0B93085B301558C8DBD67FE8B`;
+  installed ProductVersion is 1.1.7.0 / FileVersion 1.1.7. Legal files,
+  author/license metadata, and Dice repair markers were confirmed. The production
+  database remained byte-for-byte unchanged. Assisted EULA confirmation remains
+  pending. No live crawl or push was performed.
 
 ## [1.1.6] - 2026-09-27
 

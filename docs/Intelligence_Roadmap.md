@@ -27,10 +27,13 @@ roles:
 
 ## Current project status
 
-Reconciled against the pushed 1.1.6 release (2026-09-27). Git/source evidence
-takes precedence over historical completion records. The authorized local Dice
-discovery repair is a provider reliability change only; it does not change NLP,
-ranking, profile, search configuration, or occupation coverage.
+Reconciled against pushed 1.1.6 and the local 1.1.7 Dice-repair release candidate
+(2026-09-27). Git/source evidence takes precedence over historical completion
+records. This provider reliability change does not change NLP, ranking, profile,
+search configuration, or occupation coverage. Packaged/installed regular and
+seeded-upgrade smokes pass, packaged and installed asars match, and the production
+database hash remained unchanged. Assisted EULA confirmation remains pending;
+nothing was pushed.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;

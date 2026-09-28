@@ -16,9 +16,12 @@ extraction, enrich through at most two separately closed worker pages with
 D-007-compatible per-worker pacing, and share one deadline across search and
 detail work. Partial/truncated results are retained and explicitly reported in
 source health. This does not alter search configuration, other providers, or
-NLP behavior. No live crawl or production-database access/mutation, version
-bump, installer build, or push was performed. Validation and local checkpoint
-are recorded in `SESSION_HANDOFF.md`.
+NLP behavior. Release candidate 1.1.7 is built, installed, and validated with
+packaged/installed regular and seeded-upgrade smokes. Packaged and installed
+asars match, and the production database hash remained unchanged. No live crawl
+occurred. Assisted EULA confirmation remains pending, and nothing was pushed.
+Validation, artifact hashes, and the local checkpoint are recorded in
+`SESSION_HANDOFF.md`.
 
 **Onboarding workstream (2026-09-18 → 2026-09-27):** MR0-01
 documentation baseline and MR1-01 through MR1-05 are **Done**. MR1-06

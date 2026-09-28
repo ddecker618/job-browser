@@ -19,8 +19,19 @@
   `npm run verify` passed **181 files / 1,844 tests**, including legal notices,
   format, lint, and typecheck. This checkpoint is committed locally and is not
   pushed.
-- No live crawl/provider run, production database access or mutation, search
-  configuration change, version bump, installer build, or push was performed.
+- Release candidate 1.1.7 was built and installed without a live Dice crawl.
+  Packaged smoke, packaged seeded-upgrade smoke, installed smoke, installed
+  seeded-upgrade smoke, and privacy 12/12 passed. Packaged and installed asars
+  match; packaged legal files, author/license metadata, and Dice repair markers
+  were confirmed. Installer:
+  253,704,895 bytes, SHA-256
+  `D3A503F715E91223FA3A42C01032BF821062584D1B9CEC08EC046F2DBCA818E8`;
+  app.asar: 74,786,724 bytes, SHA-256
+  `E39C4BE49C9242C48FDCCC554AEA52640ADE83F0B93085B301558C8DBD67FE8B`.
+  The installed executable reports ProductVersion 1.1.7.0 / FileVersion 1.1.7.
+  The production database remained byte-for-byte unchanged at 510,291,968 bytes,
+  SHA-256 `8266EA2034553F191A6436198D02BB35294509BD23682AF6A96A7706E536A5A1`.
+  Assisted EULA confirmation remains pending; no push occurred.
 
 ## Current verified baseline (2026-09-27)
 

@@ -25,9 +25,11 @@ completion records.
   search-card extraction and uses at most two detail worker pages with
   conservative per-worker pacing and one absolute deadline. Detail failure
   preserves card data; budget/cancellation partial results remain saved and
-  are not labeled as fully completed in source health. No live crawl, production
-  database access/mutation, version bump, installer build, or push is part of
-  this checkpoint. See `SESSION_HANDOFF.md` for validation and local commit.
+  are not labeled as fully completed in source health. Release candidate 1.1.7
+  is built, installed, and validated by packaged/installed regular and seeded-
+  upgrade smokes without a live crawl. Packaged and installed asars match and the
+  production database hash remained unchanged. Assisted EULA confirmation remains
+  pending; nothing was pushed. See `SESSION_HANDOFF.md` for evidence.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
