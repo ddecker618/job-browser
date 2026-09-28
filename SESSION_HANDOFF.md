@@ -4,26 +4,17 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
-## Current provider-reliability checkpoint (2026-09-28)
+## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
-- Commit `0759d26` repairs the live USAJOBS and LinkedIn browser sources. The
-  USAJOBS waiter now distinguishes visible cards from the permanently present
-  hidden empty-state element; an unverifiable page fails the query instead of
-  silently returning a complete empty snapshot.
-- LinkedIn's redesigned result page is parsed through stable semantic card
-  attributes (`componentkey`, accessible dismiss labels, and document order)
-  instead of randomized CSS classes. An all-zero or partially unrecognized
-  query set is incomplete/truncated and cannot retire stored memberships.
-- Focused provider validation passed **5 files / 80 tests**. Full verification
-  passed **183 files / 1,851 tests**. Compiled live checks extracted 3 USAJOBS
-  cards and 25 LinkedIn cards. These checks did not write the Job Browser
-  database.
-- The installed **1.1.8** artifact does not contain this source repair. No
-  version bump, installer rebuild/install, or push has occurred. A new release
-  boundary is required after the application is closed. The separately
-  confirmed Encyclis iCIMS User-Agent compatibility defect remains open.
+- Source checkpoints `0759d26` and `def4e53` repair USAJOBS hidden-empty-state waiting, LinkedIn redesigned-card extraction, and Encyclis/iCIMS request compatibility. Unverifiable browser result pages remain incomplete and cannot retire stored memberships; iCIMS uses one honest provider-specific User-Agent while shared transport behavior stays unchanged.
+- Focused provider validation passed **7 files / 121 tests** across the two repair slices. Full verification passed **183 files / 1,853 tests**. Compiled read-only live checks extracted 3 USAJOBS cards, 25 LinkedIn cards, and validated 8 Encyclis jobs without running discovery or writing the Job Browser database.
+- Version **1.1.9** was built, silently installed, and copied to `%USERPROFILE%\Downloads\Job-Browser-Setup-1.1.9.exe`. Installer: 253,705,787 bytes, SHA-256 `245687A51D5F1C21CA8791328B03A0DC89ADA3A7D04F02FFEC8403A3E41DE8FD`.
+- Packaged and installed `app.asar` are identical at 74,791,161 bytes, SHA-256 `852464A524835931ABC8DE9EE75148E6B2F7120CCBCD59E72A503F74C5930660`. Installed ProductVersion is `1.1.9.0`; FileVersion is `1.1.9`.
+- Packaged normal and seeded-upgrade smokes, installed normal and seeded-upgrade smokes, privacy **12/12**, legal notices/checks, format, lint, typecheck, build, and package all passed. The asar contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`, author `Dustin Decker`, `UNLICENSED`, notification denial, and all three provider repair markers.
+- The production database remained byte-for-byte unchanged at 585,752,576 bytes, SHA-256 `397720D111AB29BD2FD65EEC75FC9A0B7420479586DF964C85A3ACF302727816`. No Job Browser/Electron process or port-6783 listener remained after validation. No push occurred.
+- The NSIS configuration still uses assisted mode and `license: EULA.txt`; visual confirmation that this exact 1.1.9 installer presents the EULA remains the only release-gate item requiring a person. Until confirmed, treat 1.1.9 as a validated local release candidate rather than distribution-ready.
 
-## Current 1.1.8 release-candidate checkpoint (2026-09-28)
+## Historical 1.1.8 release-candidate checkpoint (2026-09-28)
 
 - Fixed starter-source persistence: startup now inserts missing default sources
   without overwriting an existing source's saved configuration, search criteria,

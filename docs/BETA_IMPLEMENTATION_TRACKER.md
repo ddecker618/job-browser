@@ -3,32 +3,17 @@
 > Persistent, authoritative record of the external-beta productization sprint.
 > Resume sessions from THIS file, not from chat. Repository evidence wins over any stale claim in this file.
 
-## Current provider-reliability checkpoint (2026-09-28)
+## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
-- Local commit `0759d26` fixes USAJOBS hidden-empty-state waiting and LinkedIn
-  redesigned-card extraction. Browser pages that cannot be verified as cards
-  or an explicit empty result are incomplete and cannot drive snapshot-removal
-  reconciliation.
-- Focused tests: 5 files / 80 tests. Full verification: 183 files / 1,851
-  tests. Compiled live checks extracted 3 USAJOBS cards and 25 LinkedIn cards;
-  no Job Browser database write was performed by those checks.
-- Release status: source-only, not shipped. Installed 1.1.8 is unchanged. No
-  version bump, installer build/install, or push. Encyclis User-Agent repair is
-  the next separate provider defect after this release boundary.
+- Source checkpoints `0759d26` and `def4e53` repair USAJOBS hidden-empty-state waiting, LinkedIn redesigned-card extraction, and Encyclis/iCIMS request compatibility. Unverifiable browser result pages remain incomplete and cannot retire stored memberships; iCIMS uses one honest provider-specific User-Agent while shared transport behavior stays unchanged.
+- Focused provider validation passed **7 files / 121 tests** across the two repair slices. Full verification passed **183 files / 1,853 tests**. Compiled read-only live checks extracted 3 USAJOBS cards, 25 LinkedIn cards, and validated 8 Encyclis jobs without running discovery or writing the Job Browser database.
+- Version **1.1.9** was built, silently installed, and copied to `%USERPROFILE%\Downloads\Job-Browser-Setup-1.1.9.exe`. Installer: 253,705,787 bytes, SHA-256 `245687A51D5F1C21CA8791328B03A0DC89ADA3A7D04F02FFEC8403A3E41DE8FD`.
+- Packaged and installed `app.asar` are identical at 74,791,161 bytes, SHA-256 `852464A524835931ABC8DE9EE75148E6B2F7120CCBCD59E72A503F74C5930660`. Installed ProductVersion is `1.1.9.0`; FileVersion is `1.1.9`.
+- Packaged normal and seeded-upgrade smokes, installed normal and seeded-upgrade smokes, privacy **12/12**, legal notices/checks, format, lint, typecheck, build, and package all passed. The asar contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`, author `Dustin Decker`, `UNLICENSED`, notification denial, and all three provider repair markers.
+- The production database remained byte-for-byte unchanged at 585,752,576 bytes, SHA-256 `397720D111AB29BD2FD65EEC75FC9A0B7420479586DF964C85A3ACF302727816`. No Job Browser/Electron process or port-6783 listener remained after validation. No push occurred.
+- The NSIS configuration still uses assisted mode and `license: EULA.txt`; visual confirmation that this exact 1.1.9 installer presents the EULA remains the only release-gate item requiring a person. Until confirmed, treat 1.1.9 as a validated local release candidate rather than distribution-ready.
 
-## Sprint Metadata
-
-| Field                      | Value                                                                                                                                                                                                                                          |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sprint                     | `beta-productization` ("JOB BROWSER - FULL BETA PRODUCTIZATION")                                                                                                                                                                               |
-| Started                    | 2026-09-08 (local)                                                                                                                                                                                                                             |
-| Repo                       | `ddecker618/job-browser`, branch `main`                                                                                                                                                                                                        |
-| Baseline commit            | `8998fde` (clean worktree at start)                                                                                                                                                                                                            |
-| Version during development | `1.0.28` → `1.1.0` (phase 17, 2026-09-09) → `1.1.1` startup patch → `1.1.2` P33 → `1.1.3` Package A/B/C → `1.1.4` P36 → `1.1.5` P37 SHADOW → `1.1.6` onboarding → `1.1.7` Dice repair → `1.1.8` source-persistence / Handshake-close candidate |
-| PUSH RULE                  | **NO PUSH during this sprint.** Local checkpoint commits only. Same for empty commits.                                                                                                                                                         |
-| Acceptance                 | Final report states **READY FOR EXTERNAL BETA** or **NOT READY FOR EXTERNAL BETA** + reason. Version bump only after all gates pass.                                                                                                           |
-
-## Current 1.1.8 release-candidate checkpoint (2026-09-28)
+## Historical 1.1.8 release-candidate checkpoint (2026-09-28)
 
 - Fixed starter-source persistence: startup now inserts missing default sources
   without overwriting an existing source's saved configuration, search criteria,

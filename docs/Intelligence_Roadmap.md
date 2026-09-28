@@ -140,24 +140,21 @@ preserve local data, source provenance, and current deterministic authority.
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       provider reliability repair committed locally on top of
-                     the installed 1.1.8 release candidate
-CURRENT_TASK:        prepare a versioned installer boundary for `0759d26`;
-                     then repair the separate Encyclis iCIMS User-Agent defect
-LAST_COMPLETED:      USAJOBS visible-card wait + LinkedIn redesigned semantic
-                     card extraction + incomplete-snapshot safety;
-                     focused 5/80, verify 183/1851, compiled live reads 3/25
-NEXT_ACTION:         close Job Browser; bump version, package, run release
-                     gates/smokes, install and validate the repaired sources;
-                     do not alter production search configuration or data
-FILES_IN_PROGRESS:   none; repair committed as `0759d26`; release docs are the
-                     only pending local update
-TESTS_TO_RUN:        release gates only for the next versioned installer;
-                     provider source verification is green
-KNOWN_FAILURES:      installed 1.1.8 lacks `0759d26`; Encyclis iCIMS rejects
-                     the shared fake-Chrome HTTP User-Agent with HTTP 405
-LATEST_CHECKPOINT:   `0759d26` source repair; no version bump, installer, or
-                     push
+CURRENT_STAGE:       1.1.9 provider-reliability release candidate built,
+                     installed, and validated locally
+CURRENT_TASK:        record the local release boundary; no push without explicit
+                     approval
+LAST_COMPLETED:      USAJOBS + LinkedIn + Encyclis repairs; focused 7/121,
+                     verify 183/1853, live read-only checks 3/25/8; four smokes,
+                     privacy 12/12, legal/package/asars/database checks green
+NEXT_ACTION:         visually confirm the exact 1.1.9 installer presents the
+                     EULA; then request explicit approval before any push
+FILES_IN_PROGRESS:   none after the release-record commit
+TESTS_TO_RUN:        no automated rerun; only exact-installer EULA visual check
+KNOWN_FAILURES:      none in automated validation; real user discovery remains
+                     the practical provider acceptance check
+LATEST_CHECKPOINT:   `def4e53` iCIMS source repair plus the local 1.1.9 release
+                     boundary recorded in this document; not pushed
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);

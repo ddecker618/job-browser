@@ -2,28 +2,24 @@
 
 **Prepared:** September 18, 2026.  
 **Purpose:** Proposed single authority for market-release task status after adoption.  
-**Latest inspected baseline:** local provider-reliability checkpoint `0759d26`
-on top of the 1.1.8 release candidate; release boundary pending. Recheck
-repository state before coding.
+**Latest inspected baseline:** local 1.1.9 provider-reliability candidate with
+source checkpoints `0759d26` and `def4e53`; recheck repository state before
+coding.
 **Current implementation in this plan:** MR1 onboarding is shipped in 1.1.6.
-USAJOBS and LinkedIn live extraction are repaired in source; installed 1.1.8
-does not contain the repair. Encyclis User-Agent compatibility remains the next
-separate provider defect.
+USAJOBS, LinkedIn, and Encyclis repairs are installed in 1.1.9. Automated release
+checks pass; exact-installer EULA presentation remains the only manual gate.
 
-## Current provider-reliability checkpoint (2026-09-28)
+## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
-- USAJOBS now waits for visible job cards or a genuinely visible no-results
-  state. Timeout/unrecognized markup fails the query and cannot become a
-  complete empty snapshot.
-- LinkedIn's randomized-class redesign is supported through stable semantic
-  card attributes. Empty/unrecognized queries make the run incomplete, so
-  selector drift cannot retire historical memberships.
-- Commit `0759d26`; focused validation 5 files / 80 tests; full verification
-  183 files / 1,851 tests; live compiled reads found 3 USAJOBS and 25 LinkedIn
-  cards without database writes. Source-only; no version bump, installer, or
-  push.
+- Source checkpoints `0759d26` and `def4e53` repair USAJOBS hidden-empty-state waiting, LinkedIn redesigned-card extraction, and Encyclis/iCIMS request compatibility. Unverifiable browser result pages remain incomplete and cannot retire stored memberships; iCIMS uses one honest provider-specific User-Agent while shared transport behavior stays unchanged.
+- Focused provider validation passed **7 files / 121 tests** across the two repair slices. Full verification passed **183 files / 1,853 tests**. Compiled read-only live checks extracted 3 USAJOBS cards, 25 LinkedIn cards, and validated 8 Encyclis jobs without running discovery or writing the Job Browser database.
+- Version **1.1.9** was built, silently installed, and copied to `%USERPROFILE%\Downloads\Job-Browser-Setup-1.1.9.exe`. Installer: 253,705,787 bytes, SHA-256 `245687A51D5F1C21CA8791328B03A0DC89ADA3A7D04F02FFEC8403A3E41DE8FD`.
+- Packaged and installed `app.asar` are identical at 74,791,161 bytes, SHA-256 `852464A524835931ABC8DE9EE75148E6B2F7120CCBCD59E72A503F74C5930660`. Installed ProductVersion is `1.1.9.0`; FileVersion is `1.1.9`.
+- Packaged normal and seeded-upgrade smokes, installed normal and seeded-upgrade smokes, privacy **12/12**, legal notices/checks, format, lint, typecheck, build, and package all passed. The asar contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`, author `Dustin Decker`, `UNLICENSED`, notification denial, and all three provider repair markers.
+- The production database remained byte-for-byte unchanged at 585,752,576 bytes, SHA-256 `397720D111AB29BD2FD65EEC75FC9A0B7420479586DF964C85A3ACF302727816`. No Job Browser/Electron process or port-6783 listener remained after validation. No push occurred.
+- The NSIS configuration still uses assisted mode and `license: EULA.txt`; visual confirmation that this exact 1.1.9 installer presents the EULA remains the only release-gate item requiring a person. Until confirmed, treat 1.1.9 as a validated local release candidate rather than distribution-ready.
 
-## Current 1.1.8 release-candidate checkpoint (2026-09-28)
+## Historical 1.1.8 release-candidate checkpoint (2026-09-28)
 
 - Fixed starter-source persistence: startup now inserts missing default sources
   without overwriting an existing source's saved configuration, search criteria,
