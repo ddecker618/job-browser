@@ -21,6 +21,14 @@ Reconciled against the pushed 1.1.6 release and final release record
 (2026-09-27). Git/source evidence takes precedence over historical
 completion records.
 
+- Current local source checkpoint: authorized Dice discovery repair batches
+  search-card extraction and uses at most two detail worker pages with
+  conservative per-worker pacing and one absolute deadline. Detail failure
+  preserves card data; budget/cancellation partial results remain saved and
+  are not labeled as fully completed in source health. No live crawl, production
+  database access/mutation, version bump, installer build, or push is part of
+  this checkpoint. See `SESSION_HANDOFF.md` for validation and local commit.
+
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;
   9.6 seed manifest import is complete. These are not open implementation tasks.

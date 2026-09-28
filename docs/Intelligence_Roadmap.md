@@ -27,9 +27,10 @@ roles:
 
 ## Current project status
 
-Reconciled against source checkpoint `b453ae0` (P37 shadow) + the 1.1.5
-release record and origin/main at `f05bee9` (1.1.4 release). Git/source
-evidence takes precedence over historical completion records.
+Reconciled against the pushed 1.1.6 release (2026-09-27). Git/source evidence
+takes precedence over historical completion records. The authorized local Dice
+discovery repair is a provider reliability change only; it does not change NLP,
+ranking, profile, search configuration, or occupation coverage.
 
 - Phase 7 and Phase 8 (8.1–8.8) are complete; Phase 8 was Architect-approved
   on 2026-08-12. Employer Discovery 9.1–9.5 is complete and approved;

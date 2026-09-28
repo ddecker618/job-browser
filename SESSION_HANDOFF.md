@@ -4,6 +4,24 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
+## Authorized Dice repair checkpoint (2026-09-27)
+
+- Dice card extraction is batched and deduplicated. Detail enrichment uses at
+  most two pages from the existing browser context, never returns with
+  `goBack()`, retains original cards after detail failures, and preserves
+  conservative 2.5-second per-worker start pacing.
+- A shared absolute deadline bounds Dice search and detail work. Cancellation
+  and deadline stop new requests, close detail pages in `finally`, and preserve
+  collected cards with explicit partial diagnostics. Discovery persists such
+  runs and the coordinator reports partial/truncated health rather than generic
+  success. Complete-run success messaging remains covered.
+- Focused Dice/browser/discovery validation passed **5 files / 65 tests**.
+  `npm run verify` passed **181 files / 1,844 tests**, including legal notices,
+  format, lint, and typecheck. This checkpoint is committed locally and is not
+  pushed.
+- No live crawl/provider run, production database access or mutation, search
+  configuration change, version bump, installer build, or push was performed.
+
 ## Current verified baseline (2026-09-27)
 
 - **Corrected candidate source checkpoint:** `bfea12e` (`docs: update MR1-07

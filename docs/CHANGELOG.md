@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased source repair — Dice discovery
+
+- Dice search cards are extracted in one page evaluation, deduplicated, and
+  retained as the fallback record when detail enrichment fails. Detail visits
+  use at most two worker pages with a 2.5-second per-worker start cadence;
+  workers never navigate back to the search page and always close their pages.
+- One absolute 20-minute deadline now covers Dice queries and detail visits.
+  Deadline/cancellation stops new work, returns collected cards, and records an
+  explicit partial-run reason. Progress logs report query position, unique
+  results, detail completion, and stop reason without page contents.
+- Truncated Dice summaries remain persisted as useful runs and source health
+  now describes partial/truncated results instead of claiming successful
+  completion. Complete runs retain the existing success message.
+- This is a local source change only; no live crawl, production database access
+  or mutation, version bump, installer build, or push was performed.
+
 ## [1.1.6] - 2026-09-27
 
 ### Onboarding wizard integration correction pass — MR1-06

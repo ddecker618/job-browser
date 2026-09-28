@@ -11,6 +11,15 @@ is the single task-status authority as of 2026-09-18. Status/owner/claimed
 files for any in-flight work live on that board; do not duplicate the
 queue here.
 
+**Authorized Dice repair (2026-09-27):** source-only changes batch card
+extraction, enrich through at most two separately closed worker pages with
+D-007-compatible per-worker pacing, and share one deadline across search and
+detail work. Partial/truncated results are retained and explicitly reported in
+source health. This does not alter search configuration, other providers, or
+NLP behavior. No live crawl or production-database access/mutation, version
+bump, installer build, or push was performed. Validation and local checkpoint
+are recorded in `SESSION_HANDOFF.md`.
+
 **Onboarding workstream (2026-09-18 → 2026-09-27):** MR0-01
 documentation baseline and MR1-01 through MR1-05 are **Done**. MR1-06
 (connect the wizard to saved preferences and real discovery) was

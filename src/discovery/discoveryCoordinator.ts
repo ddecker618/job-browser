@@ -233,10 +233,22 @@ export class DiscoveryCoordinator {
         }
         completedSuccessfully = true;
         const lastSummary = summaries[summaries.length - 1];
+        const partialSummary = summaries.find(
+          (summary) => summary.fetchTruncated,
+        );
+        const retainedCount = partialSummary
+          ? Math.max(
+              0,
+              partialSummary.jobsFound - partialSummary.recordsRejected,
+            )
+          : 0;
         this.sources.setHealth(
           source.id,
           'healthy',
-          lastSummary?.emptyNotice ?? 'Latest discovery completed successfully',
+          partialSummary
+            ? `Latest discovery was partial or truncated; ${String(retainedCount)} ${retainedCount === 1 ? 'result was' : 'results were'} retained, and additional results may be missing`
+            : (lastSummary?.emptyNotice ??
+                'Latest discovery completed successfully'),
         );
       } catch (error) {
         const interrupted = controller.signal.aborted;

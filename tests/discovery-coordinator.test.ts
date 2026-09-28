@@ -53,6 +53,39 @@ describe('discovery coordinator', () => {
         >('SELECT COUNT(*) AS count FROM job_observations')
         .get()?.count,
     ).toBe(1);
+    expect(
+      new SourceRepository(database).get('provider:ashby')?.healthMessage,
+    ).toBe('Latest discovery completed successfully');
+    await coordinator.stop();
+  });
+
+  it('retains partial results and reports an explicitly partial source health message', async () => {
+    const database = createDatabase();
+    const registry = new ProviderRegistry();
+    registry.register(new PartialAshbyProvider());
+    prepareAshbySource(database, registry);
+    const coordinator = createCoordinator(database, registry);
+
+    const summaries = await coordinator.runFixture('provider:ashby');
+
+    expect(summaries[0]).toMatchObject({
+      jobsFound: 2,
+      fetchTruncated: true,
+      completeSnapshot: false,
+    });
+    expect(
+      new SourceRepository(database).get('provider:ashby')?.healthMessage,
+    ).toMatch(
+      /Latest discovery was partial or truncated; 1 result was retained/,
+    );
+    expect(
+      database
+        .prepare<
+          [],
+          { count: number }
+        >("SELECT COUNT(*) AS count FROM runs WHERE status = 'succeeded'")
+        .get()?.count,
+    ).toBe(1);
     await coordinator.stop();
   });
 
@@ -415,6 +448,15 @@ class FixtureAshbyProvider extends AshbyProvider {
     options: DiscoveryOptions,
   ): Promise<ProviderSearch> {
     return super.search(request, { ...options, fixtureOnly: true });
+  }
+}
+
+class PartialAshbyProvider extends FixtureAshbyProvider {
+  public override async fetch(
+    search: ProviderSearch,
+  ): Promise<ProviderFetchResult> {
+    const result = await super.fetch(search);
+    return { ...result, truncated: true, complete: false };
   }
 }
 

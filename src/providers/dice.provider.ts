@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Page } from 'playwright';
+import type { BrowserContext, Page } from 'playwright';
 import { log } from '../logging/logger.js';
 import { BaseProvider } from './baseProvider.js';
 import type { QueryDiagnostics } from '../models/discovery.js';
@@ -24,7 +24,6 @@ import { loadJsonFixture } from '../utils/fixtureLoader.js';
 import {
   launchBrowserSession,
   closeBrowserSession,
-  navigateWithRetry,
   waitForContent,
   waitForCardCount,
 } from './linkedIn/browserSession.js';
@@ -36,6 +35,8 @@ const DEFAULT_FIXTURE_PATH = fileURLToPath(
 
 const DICE_ZERO_CARD_FAIL_LIMIT = 2;
 const DICE_FETCH_BUDGET_MS = 20 * 60_000;
+const DICE_DETAIL_WORKER_LIMIT = 2;
+const DICE_DETAIL_PACING_MS = 2500;
 
 const diceQuerySchema = z.strictObject({
   keywords: z.string().trim().min(1, 'Keywords are required'),
@@ -95,6 +96,11 @@ interface ResolvedQuery {
   remoteFilter: string | null;
   distance: number | null;
   datePosted: string | null;
+}
+
+interface DiceDetailResult {
+  completed: number;
+  stopReason: 'request_budget' | 'cancelled' | 'provider_error' | null;
 }
 
 export class DiceProvider extends BaseProvider {
@@ -222,6 +228,7 @@ export class DiceProvider extends BaseProvider {
       throw new Error('Dice browser profile directory is not configured');
 
     const signal = search.signal;
+    const deadline = Date.now() + DICE_FETCH_BUDGET_MS;
     const checkCancelled = (): void => {
       if (this.cancelRequested || signal?.aborted)
         throw new Error('Dice search cancelled');
@@ -230,17 +237,15 @@ export class DiceProvider extends BaseProvider {
     checkCancelled();
 
     try {
-      const { page } = await launchBrowserSession({
+      const { page, context } = await launchBrowserSession({
         profileDir,
         headless: false,
       });
-      checkCancelled();
 
       const queries = this.resolveQueries(config);
       if (queries.length === 0)
         throw new Error('Dice configuration has no queries');
 
-      const fetchStartedAt = Date.now();
       const allUnique: DiceRawJob[] = [];
       const seen = new Set<string>();
       const diagnostics: QueryDiagnostics[] = [];
@@ -248,6 +253,11 @@ export class DiceProvider extends BaseProvider {
       let failedQueries = 0;
       let truncatedQueries = 0;
       let consecutiveZeroCardQueries = 0;
+      let runStopReason:
+        | 'request_budget'
+        | 'cancelled'
+        | 'provider_error'
+        | null = null;
 
       const firstQuery = queries[0];
       if (!firstQuery) throw new Error('Dice configuration has no queries');
@@ -260,25 +270,84 @@ export class DiceProvider extends BaseProvider {
           datePosted: firstQuery.datePosted ?? 'any',
         } as DiceConfiguration,
       );
-      await navigateWithRetry(page, firstUrl, { retries: 3 });
-
-      if (!(await diceIsLoggedIn(page)) && isDiceAuthPath(page.url())) {
-        log('info', 'Dice login required, navigating to login page');
-        await page.goto('https://www.dice.com/login', {
-          waitUntil: 'domcontentloaded',
-          timeout: 45_000,
-        });
-        const loginCompleted = await diceWaitForLogin(page, 300_000);
-        if (!loginCompleted)
-          throw new Error('Dice login is required to view search results');
+      let initialNavigationComplete = true;
+      try {
+        await diceNavigateWithinDeadline(
+          page,
+          firstUrl,
+          deadline,
+          checkCancelled,
+        );
+      } catch (error) {
+        if (error instanceof DiceRunBudgetError) {
+          initialNavigationComplete = false;
+          runStopReason = 'request_budget';
+        } else if (
+          error instanceof Error &&
+          error.message.includes('cancelled')
+        ) {
+          initialNavigationComplete = false;
+          runStopReason = 'cancelled';
+        } else {
+          throw error;
+        }
       }
 
-      checkCancelled();
+      if (
+        initialNavigationComplete &&
+        !(await diceIsLoggedIn(page)) &&
+        isDiceAuthPath(page.url())
+      ) {
+        log('info', 'Dice login required, navigating to login page');
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) initialNavigationComplete = false;
+        if (!initialNavigationComplete) {
+          runStopReason = 'request_budget';
+        } else {
+          await page.goto('https://www.dice.com/login', {
+            waitUntil: 'domcontentloaded',
+            timeout: Math.max(1, Math.min(45_000, remainingMs)),
+          });
+          const loginCompleted = await diceWaitForLogin(
+            page,
+            Math.max(1, Math.min(300_000, deadline - Date.now())),
+          );
+          if (!loginCompleted) {
+            if (Date.now() >= deadline) {
+              initialNavigationComplete = false;
+              runStopReason = 'request_budget';
+            } else {
+              throw new Error('Dice login is required to view search results');
+            }
+          }
+        }
+      }
 
-      for (const q of queries) {
-        checkCancelled();
+      let firstQueryLoaded = true;
+      for (const [queryIndex, q] of queries.entries()) {
+        if (this.isCancellationRequested(signal)) {
+          runStopReason = 'cancelled';
+          this.addSkippedQueryDiagnostics(
+            diagnostics,
+            queries,
+            queryIndex,
+            'cancelled',
+            'Dice search cancelled before this query started',
+          );
+          break;
+        }
 
-        if (Date.now() - fetchStartedAt >= DICE_FETCH_BUDGET_MS) {
+        if (Date.now() >= deadline) {
+          runStopReason = 'request_budget';
+          const skippedAt = nowUtc();
+          this.addSkippedQueryDiagnostics(
+            diagnostics,
+            queries,
+            queryIndex,
+            'request_budget',
+            'Dice fetch time budget exhausted before this query started',
+            skippedAt,
+          );
           break;
         }
 
@@ -296,13 +365,26 @@ export class DiceProvider extends BaseProvider {
           datePosted: q.datePosted ?? 'any',
         } as DiceConfiguration);
 
-        log('info', `Dice: searching for "${q.keywords}"`);
+        log('info', 'Dice query started', {
+          queryIndex: queryIndex + 1,
+          queryTotal: queries.length,
+          uniqueResults: allUnique.length,
+        });
         try {
-          await navigateWithRetry(page, url, { retries: 3 });
+          if (!firstQueryLoaded) {
+            checkCancelled();
+            await diceNavigateWithinDeadline(
+              page,
+              url,
+              deadline,
+              checkCancelled,
+            );
+          }
+          firstQueryLoaded = false;
           const rendered = await waitForContent(
             page,
             ['[data-testid="job-card"]'],
-            3000,
+            Math.max(1, Math.min(3000, deadline - Date.now())),
           );
 
           if (!rendered) {
@@ -325,6 +407,7 @@ export class DiceProvider extends BaseProvider {
             page,
             maxResultsPerQuery,
             checkCancelled,
+            deadline,
           );
           for (const card of cards) {
             const key =
@@ -352,24 +435,52 @@ export class DiceProvider extends BaseProvider {
             terminationReason = 'global_unique_limit';
           }
 
-          completedQueries++;
+          if (Date.now() >= deadline) {
+            terminationReason = 'request_budget';
+            queryErrors.push(
+              'Dice fetch time budget exhausted while collecting this query',
+            );
+          }
+
+          if (terminationReason === 'request_budget') {
+            runStopReason = 'request_budget';
+          } else {
+            completedQueries++;
+          }
         } catch (error) {
           if (error instanceof DiceFetchAbortError) throw error;
-          failedQueries++;
-          terminationReason =
-            error instanceof Error && error.message.includes('cancelled')
-              ? 'cancelled'
-              : 'provider_error';
           const message =
             error instanceof Error ? error.message : String(error);
           queryErrors.push(message);
-          log('warn', `Dice: query "${q.keywords}" failed: ${message}`);
+          if (error instanceof DiceRunBudgetError) {
+            terminationReason = 'request_budget';
+            runStopReason = 'request_budget';
+            queryErrors.push(
+              'Dice fetch time budget exhausted during navigation',
+            );
+          } else {
+            if (message.includes('cancelled')) {
+              terminationReason = 'cancelled';
+              runStopReason = 'cancelled';
+            } else {
+              failedQueries++;
+              terminationReason = 'provider_error';
+            }
+          }
+          log('warn', 'Dice query failed', {
+            queryIndex: queryIndex + 1,
+            queryTotal: queries.length,
+            errorType: error instanceof Error ? error.name : 'unknown',
+          });
         }
 
-        log(
-          'info',
-          `Dice: found ${String(queryCards.length)} unique jobs for "${q.keywords}"`,
-        );
+        log('info', 'Dice query finished', {
+          queryIndex: queryIndex + 1,
+          queryTotal: queries.length,
+          queryUniqueResults: queryCards.length,
+          totalUniqueResults: allUnique.length,
+          terminationReason,
+        });
 
         diagnostics.push({
           provider: this.name,
@@ -386,21 +497,56 @@ export class DiceProvider extends BaseProvider {
         });
 
         if (allUnique.length >= maxUniqueResults) break;
+        if (terminationReason === 'request_budget') {
+          runStopReason = 'request_budget';
+          this.addSkippedQueryDiagnostics(
+            diagnostics,
+            queries,
+            queryIndex + 1,
+            'request_budget',
+            'Dice fetch time budget exhausted before this query started',
+          );
+          break;
+        }
       }
 
-      checkCancelled();
-
-      const enriched = await this.enrichWithDetails(
-        page,
+      const detailResult = await this.enrichWithDetails(
+        context,
         allUnique,
         checkCancelled,
+        deadline,
       );
+      if (detailResult.stopReason !== null && diagnostics.length > 0) {
+        const lastDiagnostic = diagnostics[diagnostics.length - 1];
+        if (lastDiagnostic) {
+          lastDiagnostic.errors.push(
+            detailResult.stopReason === 'request_budget'
+              ? 'Dice fetch time budget exhausted before all job details were enriched'
+              : detailResult.stopReason === 'cancelled'
+                ? 'Dice search cancelled before all job details were enriched'
+                : 'Dice detail worker setup failed before all job details were enriched',
+          );
+          lastDiagnostic.terminationReason = detailResult.stopReason;
+        }
+      }
+      const enrichmentComplete = detailResult.stopReason === null;
+      runStopReason ??= detailResult.stopReason;
+      const complete =
+        enrichmentComplete &&
+        failedQueries === 0 &&
+        completedQueries === queries.length;
+      log('info', 'Dice detail enrichment finished', {
+        detailCompleted: detailResult.completed,
+        detailTotal: allUnique.filter((job) => job.postingUrl !== null).length,
+        uniqueResults: allUnique.length,
+        stopReason: runStopReason,
+      });
 
       if (!keepBrowserOpen) {
         await closeBrowserSession().catch(() => undefined);
       }
 
-      const records = enriched.map((job) => ({
+      const records = allUnique.map((job) => ({
         ...job,
         providerId: this.id,
         providerName: this.name,
@@ -412,8 +558,12 @@ export class DiceProvider extends BaseProvider {
       return {
         records,
         rejected: 0,
-        truncated: truncatedQueries > 0,
-        complete: failedQueries === 0 && completedQueries === queries.length,
+        truncated:
+          truncatedQueries > 0 ||
+          !enrichmentComplete ||
+          runStopReason !== null ||
+          completedQueries < queries.length,
+        complete,
         queryDiagnostics: diagnostics,
         plannedQueries: queries.length,
         completedQueries,
@@ -423,7 +573,21 @@ export class DiceProvider extends BaseProvider {
     } catch (error) {
       await closeBrowserSession().catch(() => undefined);
       if (error instanceof Error && error.message === 'Dice search cancelled') {
-        return { records: [], rejected: 0, truncated: false, complete: false };
+        log('warn', 'Dice discovery stopped', {
+          stopReason: 'cancelled',
+          uniqueResults: 0,
+        });
+        return {
+          records: [],
+          rejected: 0,
+          truncated: true,
+          complete: false,
+          queryDiagnostics: [],
+          plannedQueries: 0,
+          completedQueries: 0,
+          failedQueries: 0,
+          truncatedQueries: 0,
+        };
       }
       throw error;
     }
@@ -486,10 +650,13 @@ export class DiceProvider extends BaseProvider {
     page: Page,
     maxResults: number,
     checkCancelled: () => void,
+    deadline: number,
   ): Promise<DiceRawJob[]> {
+    const selectorTimeout = deadline - Date.now();
+    if (selectorTimeout <= 0) return [];
     try {
       await page.waitForSelector('[data-testid="job-card"]', {
-        timeout: 15_000,
+        timeout: Math.max(1, Math.min(15_000, selectorTimeout)),
       });
     } catch {
       return [];
@@ -498,141 +665,293 @@ export class DiceProvider extends BaseProvider {
     const jobs: DiceRawJob[] = [];
     const seenIds = new Set<string>();
     let staleCount = 0;
+    let previousUniqueCount = 0;
 
     while (jobs.length < maxResults && staleCount < 3) {
       checkCancelled();
+      if (Date.now() >= deadline) break;
 
-      const cards = await page.$$('[data-testid="job-card"]');
+      const cards = await waitForDiceOperation(
+        page.evaluate(() =>
+          Array.from(document.querySelectorAll('[data-testid="job-card"]')).map(
+            (card) => {
+              const text = (selector: string, index = 0): string | null => {
+                const matches = card.querySelectorAll(selector);
+                if (index >= matches.length) return null;
+                const value = matches.item(index).textContent.trim();
+                return value.length > 0 ? value : null;
+              };
+              const link = card.querySelector<HTMLAnchorElement>(
+                '[data-testid="job-search-job-detail-link"]',
+              );
+              const href = link?.getAttribute('href') ?? null;
+              return {
+                jobId: card.getAttribute('data-job-guid'),
+                title: link ? link.textContent.trim() || null : null,
+                company: text('a[href*="/company-profile/"] p'),
+                location: text('p.text-sm.font-normal.text-zinc-600'),
+                postedDate: text('p.text-sm.font-normal.text-zinc-600', 1),
+                salaryText: text('p.text-xs.font-medium'),
+                postingUrl: href?.startsWith('/')
+                  ? `https://www.dice.com${href}`
+                  : href,
+              };
+            },
+          ),
+        ),
+        deadline,
+        checkCancelled,
+      );
       for (const card of cards) {
-        try {
-          const jobGuid = await card.getAttribute('data-job-guid');
-
-          const titleEl = await card.$(
-            '[data-testid="job-search-job-detail-link"]',
-          );
-          const title = titleEl
-            ? ((await titleEl.textContent())?.trim() ?? null)
-            : null;
-
-          const companyEl = await card.$('a[href*="/company-profile/"] p');
-          const company = companyEl
-            ? ((await companyEl.textContent())?.trim() ?? null)
-            : null;
-
-          const linkEl = await card.$(
-            '[data-testid="job-search-job-detail-link"]',
-          );
-          const href = linkEl
-            ? ((await linkEl.getAttribute('href')) ?? null)
-            : null;
-          const absoluteHref = href?.startsWith('/')
-            ? `https://www.dice.com${href}`
-            : href;
-
-          const locEls = await card.$$('p.text-sm.font-normal.text-zinc-600');
-          const locationText = locEls[0]
-            ? ((await locEls[0].textContent())?.trim() ?? null)
-            : null;
-          const postedText = locEls[1]
-            ? ((await locEls[1].textContent())?.trim() ?? null)
-            : null;
-
-          const salaryEl = await card.$('p.text-xs.font-medium');
-          const salaryText = salaryEl
-            ? ((await salaryEl.textContent())?.trim() ?? null)
-            : null;
-
-          const dedupKey = jobGuid ?? title ?? '';
-          if (dedupKey && !seenIds.has(dedupKey)) {
-            seenIds.add(dedupKey);
-            jobs.push({
-              jobId: jobGuid,
-              title,
-              company,
-              location: locationText,
-              salaryText,
-              salaryMinimum: null,
-              salaryMaximum: null,
-              description: null,
-              postingUrl: absoluteHref,
-              postedDate: postedText,
-              employmentType: null,
-              workplaceType: null,
-              companyLogo: null,
-              seniorityLevel: null,
-              employmentDetails: [],
-            });
-          }
-        } catch {
-          // skip individual card errors
+        const dedupKey = card.jobId ?? card.title ?? '';
+        if (dedupKey && !seenIds.has(dedupKey)) {
+          seenIds.add(dedupKey);
+          jobs.push({
+            ...card,
+            salaryMinimum: null,
+            salaryMaximum: null,
+            description: null,
+            employmentType: null,
+            workplaceType: null,
+            companyLogo: null,
+            seniorityLevel: null,
+            employmentDetails: [],
+          });
         }
       }
 
-      if (jobs.length >= maxResults) break;
+      if (jobs.length === previousUniqueCount) staleCount++;
+      else staleCount = 0;
+      previousUniqueCount = jobs.length;
 
-      const prevCount = jobs.length;
-      await page.evaluate(() => window.scrollBy(0, 800));
+      if (jobs.length >= maxResults) break;
+      if (staleCount >= 3) break;
+
+      const previousCardCount = cards.length;
+      await waitForDiceOperation(
+        page.evaluate(() => window.scrollBy(0, 800)),
+        deadline,
+        checkCancelled,
+      );
       await waitForCardCount(
         () => page.$$('[data-testid="job-card"]'),
-        prevCount,
-        2000,
+        previousCardCount,
+        Math.max(1, Math.min(2000, deadline - Date.now())),
       );
-
-      if (jobs.length === prevCount) staleCount++;
-      else staleCount = 0;
     }
 
     return jobs;
   }
 
   private async enrichWithDetails(
-    page: Page,
+    context: BrowserContext,
     jobs: DiceRawJob[],
     checkCancelled: () => void,
-  ): Promise<DiceRawJob[]> {
-    for (const job of jobs) {
-      checkCancelled();
+    deadline: number,
+  ): Promise<DiceDetailResult> {
+    const detailJobs = jobs.filter((job) => job.postingUrl !== null);
+    if (detailJobs.length === 0) return { completed: 0, stopReason: null };
 
-      if (!job.postingUrl) continue;
-
-      try {
-        await page.goto(job.postingUrl, {
-          waitUntil: 'domcontentloaded',
-          timeout: 30_000,
-        });
-        await waitForContent(
-          page,
-          [
-            '[data-testid="jobDetailStructuredData"]',
-            '[data-testid="job-detail-header-card"]',
-          ],
-          2000,
-        );
-
-        const detail = await extractJobDetail(page);
-        job.description = detail.description ?? job.description;
-        job.salaryText = detail.salaryText ?? job.salaryText;
-        job.salaryMinimum = detail.salaryMinimum ?? job.salaryMinimum;
-        job.salaryMaximum = detail.salaryMaximum ?? job.salaryMaximum;
-        job.workplaceType = detail.workplaceType ?? job.workplaceType;
-        job.employmentType = detail.employmentType ?? job.employmentType;
-        job.postedDate = detail.postedDate ?? job.postedDate;
-        job.company = detail.companyName ?? job.company;
-        job.location = detail.location ?? job.location;
-        job.title = detail.jobTitle ?? job.title;
-        job.companyLogo = detail.companyLogo;
-        job.employmentDetails = detail.employmentDetails;
-
-        await page
-          .goBack({ waitUntil: 'domcontentloaded' })
-          .catch(() => undefined);
-        await page.waitForTimeout(1500);
-        await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
-      } catch {
-        // skip detail loading failures
+    const pages: Page[] = [];
+    let nextJobIndex = 0;
+    let completed = 0;
+    let stopReason: DiceDetailResult['stopReason'] = null;
+    try {
+      for (
+        let index = 0;
+        index < Math.min(DICE_DETAIL_WORKER_LIMIT, detailJobs.length);
+        index++
+      ) {
+        checkCancelled();
+        if (Date.now() >= deadline) {
+          stopReason = 'request_budget';
+          return { completed, stopReason };
+        }
+        pages.push(await context.newPage());
       }
+
+      const runWorker = async (page: Page): Promise<void> => {
+        let lastRequestStartedAt = Number.NEGATIVE_INFINITY;
+        for (;;) {
+          if (this.cancelRequested) {
+            stopReason ??= 'cancelled';
+            return;
+          }
+          try {
+            checkCancelled();
+          } catch {
+            stopReason ??= 'cancelled';
+            return;
+          }
+          const jobIndex = nextJobIndex++;
+          const job = detailJobs[jobIndex];
+          if (!job) return;
+          if (Date.now() >= deadline) {
+            stopReason ??= 'request_budget';
+            return;
+          }
+          const postingUrl = job.postingUrl;
+          if (!postingUrl) continue;
+
+          while (Date.now() - lastRequestStartedAt < DICE_DETAIL_PACING_MS) {
+            let cancelled = false;
+            try {
+              checkCancelled();
+            } catch {
+              cancelled = true;
+            }
+            if (cancelled || this.isCancellationRequested()) {
+              stopReason ??= 'cancelled';
+              return;
+            }
+            const remainingMs = deadline - Date.now();
+            if (remainingMs <= 0) {
+              stopReason ??= 'request_budget';
+              return;
+            }
+            const pacingRemaining =
+              DICE_DETAIL_PACING_MS - (Date.now() - lastRequestStartedAt);
+            await new Promise((resolveDelay) =>
+              setTimeout(
+                resolveDelay,
+                Math.min(100, pacingRemaining, remainingMs),
+              ),
+            );
+          }
+
+          try {
+            checkCancelled();
+          } catch {
+            stopReason ??= 'cancelled';
+            return;
+          }
+          const remainingMs = deadline - Date.now();
+          if (remainingMs <= 0) {
+            stopReason ??= 'request_budget';
+            return;
+          }
+          lastRequestStartedAt = Date.now();
+          try {
+            await waitForDiceOperation(
+              page.goto(postingUrl, {
+                waitUntil: 'domcontentloaded',
+                timeout: Math.max(1, Math.min(30_000, remainingMs)),
+              }),
+              deadline,
+              checkCancelled,
+            );
+            const contentRemaining = deadline - Date.now();
+            if (contentRemaining <= 0) {
+              stopReason ??= 'request_budget';
+              return;
+            }
+            await waitForDiceOperation(
+              waitForContent(
+                page,
+                [
+                  '[data-testid="jobDetailStructuredData"]',
+                  '[data-testid="job-detail-header-card"]',
+                ],
+                Math.max(1, Math.min(2000, contentRemaining)),
+              ),
+              deadline,
+              checkCancelled,
+            );
+            checkCancelled();
+            if (Date.now() >= deadline) {
+              stopReason ??= 'request_budget';
+              return;
+            }
+            const detail = await waitForDiceOperation(
+              extractJobDetail(page),
+              deadline,
+              checkCancelled,
+            );
+            job.description = detail.description ?? job.description;
+            job.salaryText = detail.salaryText ?? job.salaryText;
+            job.salaryMinimum = detail.salaryMinimum ?? job.salaryMinimum;
+            job.salaryMaximum = detail.salaryMaximum ?? job.salaryMaximum;
+            job.workplaceType = detail.workplaceType ?? job.workplaceType;
+            job.employmentType = detail.employmentType ?? job.employmentType;
+            job.postedDate = detail.postedDate ?? job.postedDate;
+            job.company = detail.companyName ?? job.company;
+            job.location = detail.location ?? job.location;
+            job.title = detail.jobTitle ?? job.title;
+            job.companyLogo = detail.companyLogo;
+            job.employmentDetails = detail.employmentDetails;
+          } catch {
+            let cancelled = false;
+            try {
+              checkCancelled();
+            } catch {
+              cancelled = true;
+            }
+            if (cancelled) {
+              stopReason ??= 'cancelled';
+              return;
+            }
+            if (Date.now() >= deadline) {
+              stopReason ??= 'request_budget';
+              return;
+            }
+            // Detail enrichment is best-effort; keep the original search card.
+          }
+          completed++;
+          log('info', 'Dice detail visited', {
+            detailCompleted: completed,
+            detailTotal: detailJobs.length,
+          });
+        }
+      };
+
+      await Promise.all(pages.map((workerPage) => runWorker(workerPage)));
+      return { completed, stopReason };
+    } catch (error) {
+      stopReason =
+        error instanceof Error && error.message === 'Dice search cancelled'
+          ? 'cancelled'
+          : Date.now() >= deadline
+            ? 'request_budget'
+            : 'provider_error';
+      if (stopReason === 'provider_error') {
+        log('warn', 'Dice detail worker setup failed; retaining search cards');
+        return { completed, stopReason };
+      }
+      return { completed, stopReason };
+    } finally {
+      await Promise.all(
+        pages.map((workerPage) => workerPage.close().catch(() => undefined)),
+      );
     }
-    return jobs;
+  }
+
+  private addSkippedQueryDiagnostics(
+    diagnostics: QueryDiagnostics[],
+    queries: readonly ResolvedQuery[],
+    startIndex: number,
+    reason: 'request_budget' | 'cancelled',
+    message: string,
+    timestamp = nowUtc(),
+  ): void {
+    for (const skippedQuery of queries.slice(startIndex)) {
+      diagnostics.push({
+        provider: this.name,
+        searchTerm: skippedQuery.keywords,
+        location: skippedQuery.location,
+        requestStarted: timestamp,
+        requestCompleted: timestamp,
+        rawResultsReturned: 0,
+        uniqueResultsRetained: 0,
+        duplicatesRemoved: 0,
+        errors: [message],
+        durationMs: 0,
+        terminationReason: reason,
+      });
+    }
+  }
+
+  private isCancellationRequested(signal?: AbortSignal): boolean {
+    return this.cancelRequested || signal?.aborted === true;
   }
 
   private buildSearchUrl(
@@ -781,6 +1100,79 @@ function isDiceAuthPath(url: string): boolean {
 
 class DiceFetchAbortError extends Error {
   public override readonly name = 'DiceFetchAbortError';
+}
+
+class DiceRunBudgetError extends Error {
+  public override readonly name = 'DiceRunBudgetError';
+}
+
+async function diceNavigateWithinDeadline(
+  page: Page,
+  url: string,
+  deadline: number,
+  checkCancelled: () => void,
+): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    checkCancelled();
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) throw new DiceRunBudgetError();
+    try {
+      await page.goto(url, {
+        waitUntil: 'domcontentloaded',
+        timeout: Math.max(1, Math.min(45_000, remainingMs)),
+      });
+      if (Date.now() >= deadline) throw new DiceRunBudgetError();
+      return;
+    } catch (error) {
+      if (error instanceof DiceRunBudgetError) throw error;
+      if (Date.now() >= deadline) throw new DiceRunBudgetError();
+      if (attempt === 2) {
+        throw new Error('Dice navigation failed after bounded retries', {
+          cause: error,
+        });
+      }
+      let backoffRemaining = Math.min(2000, deadline - Date.now());
+      while (backoffRemaining > 0) {
+        checkCancelled();
+        const delayMs = Math.min(100, backoffRemaining);
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, delayMs));
+        backoffRemaining -= delayMs;
+        if (Date.now() >= deadline) throw new DiceRunBudgetError();
+      }
+    }
+  }
+}
+
+async function waitForDiceOperation<T>(
+  operation: Promise<T>,
+  deadline: number,
+  checkCancelled: () => void,
+): Promise<T> {
+  const timer: { current: ReturnType<typeof setTimeout> | undefined } = {
+    current: undefined,
+  };
+  const interruption = new Promise<never>((_resolve, reject) => {
+    const poll = (): void => {
+      try {
+        checkCancelled();
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+        return;
+      }
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        reject(new DiceRunBudgetError());
+        return;
+      }
+      timer.current = setTimeout(poll, Math.min(100, remainingMs));
+    };
+    poll();
+  });
+  try {
+    return await Promise.race([operation, interruption]);
+  } finally {
+    if (timer.current !== undefined) clearTimeout(timer.current);
+  }
 }
 
 async function diceWaitForLogin(
