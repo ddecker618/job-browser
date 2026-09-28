@@ -16,7 +16,7 @@ checks pass; exact-installer EULA presentation remains the only manual gate.
 - Version **1.1.9** was built, silently installed, and copied to `%USERPROFILE%\Downloads\Job-Browser-Setup-1.1.9.exe`. Installer: 253,705,787 bytes, SHA-256 `245687A51D5F1C21CA8791328B03A0DC89ADA3A7D04F02FFEC8403A3E41DE8FD`.
 - Packaged and installed `app.asar` are identical at 74,791,161 bytes, SHA-256 `852464A524835931ABC8DE9EE75148E6B2F7120CCBCD59E72A503F74C5930660`. Installed ProductVersion is `1.1.9.0`; FileVersion is `1.1.9`.
 - Packaged normal and seeded-upgrade smokes, installed normal and seeded-upgrade smokes, privacy **12/12**, legal notices/checks, format, lint, typecheck, build, and package all passed. The asar contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`, author `Dustin Decker`, `UNLICENSED`, notification denial, and all three provider repair markers.
-- The production database remained byte-for-byte unchanged at 585,752,576 bytes, SHA-256 `397720D111AB29BD2FD65EEC75FC9A0B7420479586DF964C85A3ACF302727816`. No Job Browser/Electron process or port-6783 listener remained after validation. No push occurred.
+- The production database remained byte-for-byte unchanged at 585,752,576 bytes, SHA-256 `397720D111AB29BD2FD65EEC75FC9A0B7420479586DF964C85A3ACF302727816`. No Job Browser/Electron process or port-6783 listener remained after validation. Release source and artifact records through `150598d` were pushed to `origin/main`; this reconciliation record follows them.
 - The NSIS configuration still uses assisted mode and `license: EULA.txt`; visual confirmation that this exact 1.1.9 installer presents the EULA remains the only release-gate item requiring a person. Until confirmed, treat 1.1.9 as a validated local release candidate rather than distribution-ready.
 
 ## Historical 1.1.8 release-candidate checkpoint (2026-09-28)
@@ -57,7 +57,7 @@ startup`). This sits on the local 1.1.7 Dice-repair commits `59acf19` and
   or port-6783 listener remained after validation.
 - Assisted confirmation that this exact 1.1.8 installer displays the EULA is
   still pending, so this is a validated local release candidate rather than a
-  distribution-ready release. No push occurred.
+  distribution-ready release. Release source and artifact records through `150598d` were pushed to `origin/main`; this reconciliation record follows them.
 
 ## Existing foundation — do not rebuild
 

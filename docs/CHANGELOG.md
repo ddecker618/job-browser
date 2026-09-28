@@ -8,7 +8,7 @@
 - Encyclis/iCIMS now sends one honest provider-specific User-Agent across mode detection, validation, and discovery; shared transport behavior for other providers is unchanged.
 - Focused provider validation passed 7 files / 121 tests; full verification passed 183 files / 1,853 tests. Read-only compiled checks found 3 USAJOBS cards, 25 LinkedIn cards, and 8 Encyclis jobs.
 - Built and installed `release\Job-Browser-Setup-1.1.9.exe` (253,705,787 bytes, SHA-256 `245687A51D5F1C21CA8791328B03A0DC89ADA3A7D04F02FFEC8403A3E41DE8FD`). Packaged and installed asars match at 74,791,161 bytes, SHA-256 `852464A524835931ABC8DE9EE75148E6B2F7120CCBCD59E72A503F74C5930660`.
-- Packaged/installed normal and seeded-upgrade smokes, privacy 12/12, legal checks, formatting, lint, typecheck, build, and packaging passed. Legal files, author/license metadata, notification denial, and all three provider repair markers were confirmed in the asar. The production database hash remained unchanged; no process or port listener remained. No push occurred. Exact-installer EULA presentation still needs visual confirmation.
+- Packaged/installed normal and seeded-upgrade smokes, privacy 12/12, legal checks, formatting, lint, typecheck, build, and packaging passed. Legal files, author/license metadata, notification denial, and all three provider repair markers were confirmed in the asar. The production database hash remained unchanged; no process or port listener remained. Release records through `150598d` were pushed to `origin/main`. Exact-installer EULA presentation still needs visual confirmation.
 
 ## [1.1.8] - 2026-09-28
 

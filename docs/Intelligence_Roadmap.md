@@ -142,8 +142,8 @@ preserve local data, source provenance, and current deterministic authority.
 ```
 CURRENT_STAGE:       1.1.9 provider-reliability release candidate built,
                      installed, and validated locally
-CURRENT_TASK:        record the local release boundary; no push without explicit
-                     approval
+CURRENT_TASK:        post-push 1.1.9 acceptance; source and release records are
+                     on origin/main
 LAST_COMPLETED:      USAJOBS + LinkedIn + Encyclis repairs; focused 7/121,
                      verify 183/1853, live read-only checks 3/25/8; four smokes,
                      privacy 12/12, legal/package/asars/database checks green
@@ -153,8 +153,8 @@ FILES_IN_PROGRESS:   none after the release-record commit
 TESTS_TO_RUN:        no automated rerun; only exact-installer EULA visual check
 KNOWN_FAILURES:      none in automated validation; real user discovery remains
                      the practical provider acceptance check
-LATEST_CHECKPOINT:   `def4e53` iCIMS source repair plus the local 1.1.9 release
-                     boundary recorded in this document; not pushed
+LATEST_CHECKPOINT:   `150598d` 1.1.9 release boundary is on `origin/main`; this
+                     documentation reconciliation follows it
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
