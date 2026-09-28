@@ -21,7 +21,7 @@ startup`). This sits on the local 1.1.7 Dice-repair commits `59acf19` and
   `release\Job-Browser-Setup-1.1.8.exe`, 253,704,921 bytes, SHA-256
   `FCEB5F76E0110BBE0C239338336DA522228553178C15D534C5F92A1E61E1F04C`.
   A verified copy is also at
-  `C:\Users\dusti\Downloads\Job-Browser-Setup-1.1.8.exe`.
+  `%USERPROFILE%\Downloads\Job-Browser-Setup-1.1.8.exe`.
 - Packaged and installed `app.asar` are identical at 74,786,055 bytes, SHA-256
   `997C4A086A4F72391AAA376AA45D5C26AF3324DCCC6858D2DA51858DD7E4AE3E`.
   Installed ProductVersion is `1.1.8.0`; FileVersion is `1.1.8`.

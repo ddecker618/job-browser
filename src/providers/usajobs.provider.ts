@@ -28,7 +28,10 @@ import {
   waitForContent,
 } from './linkedIn/browserSession.js';
 import { ensureUsaJobsLogin } from './usajobs/browserSession.js';
-import { extractSearchPage } from './usajobs/searchResultExtractor.js';
+import {
+  extractSearchPage,
+  hasVerifiableSearchState,
+} from './usajobs/searchResultExtractor.js';
 import { extractJobDetail } from './usajobs/jobDetailExtractor.js';
 import { parseSalaryText, toIsoDate } from './browserJobBoard.js';
 
@@ -452,14 +455,13 @@ export class UsaJobsProvider extends BaseProvider {
     checkCancelled: () => void,
   ): Promise<UsaJobsRawJob[]> {
     try {
-      await page.waitForSelector(
-        '#search-results .page-section, #no-search-results',
-        {
-          timeout: 20_000,
-        },
-      );
+      await page.waitForFunction(hasVerifiableSearchState, undefined, {
+        timeout: 20_000,
+      });
     } catch {
-      return [];
+      throw new Error(
+        'USAJOBS results did not reach a verifiable cards-or-empty state',
+      );
     }
 
     const jobs: UsaJobsRawJob[] = [];
@@ -470,6 +472,12 @@ export class UsaJobsProvider extends BaseProvider {
       checkCancelled();
 
       const data = await extractSearchPage(page);
+
+      if (data.cards.length === 0 && !data.noResults) {
+        throw new Error(
+          'USAJOBS result page could not be verified as cards or an explicit empty result',
+        );
+      }
 
       if (data.noResults && jobs.length === 0) break;
 

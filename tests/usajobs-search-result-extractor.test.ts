@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { searchResultsExtractor } from '../src/providers/usajobs/searchResultExtractor.js';
+import {
+  hasVerifiableSearchState,
+  searchResultsExtractor,
+} from '../src/providers/usajobs/searchResultExtractor.js';
 
 function renderSearchPage({
   withResults = true,
@@ -54,15 +57,28 @@ describe('searchResultsExtractor', () => {
       workSchedule: 'Full-time',
       appointmentType: 'Permanent',
     });
+    expect(hasVerifiableSearchState()).toBe(true);
   });
 
-  it('reports noResults=true only when there are no cards', () => {
+  it('does not accept the permanently present hidden no-results element as an empty result', () => {
     renderSearchPage({ withResults: false });
 
     const data = searchResultsExtractor();
 
     expect(data.cards).toHaveLength(0);
-    expect(data.noResults).toBe(true);
+    expect(data.noResults).toBe(false);
+    expect(hasVerifiableSearchState()).toBe(false);
     expect(data.hasNext).toBe(false);
+  });
+
+  it('accepts a visible no-results element as a verified empty result', () => {
+    renderSearchPage({ withResults: false });
+    document.querySelector('#no-search-results')?.classList.remove('hidden');
+
+    const data = searchResultsExtractor();
+
+    expect(data.cards).toHaveLength(0);
+    expect(data.noResults).toBe(true);
+    expect(hasVerifiableSearchState()).toBe(true);
   });
 });

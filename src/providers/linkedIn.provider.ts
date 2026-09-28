@@ -321,6 +321,7 @@ export class LinkedInProvider extends BaseProvider {
 
       const queries = this.resolveQueries(config, search.request.query);
       const allCards: Record<string, unknown>[] = [];
+      let failedQueries = 0;
 
       for (let qi = 0; qi < queries.length; qi++) {
         checkCancelled();
@@ -349,7 +350,11 @@ export class LinkedInProvider extends BaseProvider {
         checkCancelled();
         await waitForContent(
           page,
-          ['.job-card-container', '.jobs-search-results__list-item'],
+          [
+            '.job-card-container',
+            '.jobs-search-results__list-item',
+            '[role="button"][componentkey^="job-card-component-ref-"]',
+          ],
           3000,
         );
 
@@ -360,12 +365,17 @@ export class LinkedInProvider extends BaseProvider {
             `No search results for query ${String(qi + 1)}: ${q.keywords}`,
           );
           await takeDiagnosticScreenshot(page, `no-results-${String(qi + 1)}`);
+          failedQueries++;
           continue;
         }
 
         await waitForContent(
           page,
-          ['.job-card-container', '.jobs-search-results__list-item'],
+          [
+            '.job-card-container',
+            '.jobs-search-results__list-item',
+            '[role="button"][componentkey^="job-card-component-ref-"]',
+          ],
           2000,
         );
 
@@ -375,6 +385,7 @@ export class LinkedInProvider extends BaseProvider {
           checkCancelled,
           debugMode,
         );
+        if (cards.length === 0) failedQueries++;
         allCards.push(...cards);
         recordDiagnosticStage(
           `collected-cards-q${String(qi + 1)}`,
@@ -385,11 +396,16 @@ export class LinkedInProvider extends BaseProvider {
       checkCancelled();
 
       if (allCards.length === 0) {
+        if (!keepBrowserOpen) {
+          await closeBrowserSession().catch(() => {
+            /* empty */
+          });
+        }
         return {
           records: [],
           rejected: 0,
-          truncated: false,
-          complete: true,
+          truncated: true,
+          complete: false,
         };
       }
 
@@ -420,8 +436,8 @@ export class LinkedInProvider extends BaseProvider {
       return {
         records,
         rejected: 0,
-        truncated: allCards.length > maxResults,
-        complete: allCards.length <= maxResults,
+        truncated: allCards.length > maxResults || failedQueries > 0,
+        complete: allCards.length <= maxResults && failedQueries === 0,
       };
     } catch (error) {
       await closeBrowserSession().catch(() => {
@@ -585,7 +601,19 @@ export class LinkedInProvider extends BaseProvider {
 
       const previousCount = allCards.length;
       await page.evaluate(() => {
-        const list = document.querySelector('.jobs-search-results-list');
+        const modernCard = document.querySelector<HTMLElement>(
+          '[role="button"][componentkey^="job-card-component-ref-"]',
+        );
+        let modernScroller = modernCard?.parentElement ?? null;
+        while (
+          modernScroller &&
+          modernScroller.scrollHeight <= modernScroller.clientHeight
+        ) {
+          modernScroller = modernScroller.parentElement;
+        }
+        const list =
+          document.querySelector<HTMLElement>('.jobs-search-results-list') ??
+          modernScroller;
         if (list) {
           list.scrollTop = list.scrollHeight;
         } else {

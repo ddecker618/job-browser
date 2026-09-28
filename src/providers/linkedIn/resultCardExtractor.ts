@@ -22,12 +22,14 @@ export interface RawJobCard {
 
 export async function extractJobCards(page: Page): Promise<RawJobCard[]> {
   const cards: RawJobCard[] = [];
+  const seen = new Set<string>();
 
   try {
     const selectors = [
       '.job-card-container',
       '.jobs-search-results__list-item',
       'li[data-job-id]',
+      '[role="button"][componentkey^="job-card-component-ref-"]',
     ];
 
     let elements: Awaited<ReturnType<typeof page.$$>> = [];
@@ -44,7 +46,10 @@ export async function extractJobCards(page: Page): Promise<RawJobCard[]> {
     for (const element of elements) {
       try {
         const card = await extractSingleCard(element);
-        if (card.title || card.jobId) {
+        const identity =
+          card.jobId ?? `${card.company ?? ''}\u0000${card.title ?? ''}`;
+        if ((card.title || card.jobId) && !seen.has(identity)) {
+          seen.add(identity);
           cards.push(card);
         }
       } catch {
@@ -71,68 +76,128 @@ async function extractSingleCard(element: unknown): Promise<RawJobCard> {
       textContent: () => Promise<string>;
       getAttribute: (a: string) => Promise<string | null>;
     } | null>;
+    $$: (s: string) => Promise<
+      {
+        textContent: () => Promise<string>;
+      }[]
+    >;
+    textContent: () => Promise<string>;
+    getAttribute: (a: string) => Promise<string | null>;
   };
 
   const rawHref = await getAttribute(
     card,
-    'a.job-card-list__title, .job-card-container__link, a[data-job-id]',
+    'a.job-card-list__title, .job-card-container__link, a[data-job-id], a[href*="/jobs/view/"]',
     'href',
   );
-  const href = rawHref?.startsWith('/')
+  const hrefFromPage = rawHref?.startsWith('/')
     ? `https://www.linkedin.com${rawHref}`
     : rawHref;
   const dataJobId = await getAttribute(card, '', 'data-job-id');
-  const title = await getText(
+  const componentKey = await getAttribute(card, '', 'componentkey');
+  const componentJobId = componentKey?.match(
+    /^job-card-component-ref-(\d+)$/,
+  )?.[1];
+  const dismissLabel = await getAttribute(
+    card,
+    'button[aria-label^="Dismiss "][aria-label$=" job"]',
+    'aria-label',
+  );
+  const dismissTitle = dismissLabel
+    ?.replace(/^Dismiss\s+/i, '')
+    .replace(/\s+job$/i, '')
+    .trim();
+  const legacyTitle = await getText(
     card,
     '.job-card-list__title, .artdeco-entity-lockup__title, [data-job-title], .job-card-search__title',
   );
-  const company = await getText(
-    card,
-    '.job-card-container__company-name, .artdeco-entity-lockup__subtitle, .job-card-search__company-name',
-  );
-  const location = await getText(
-    card,
-    '.job-card-container__metadata-item, .job-card-search__location, .t-black--light',
-  );
-  const salaryText = await getText(
-    card,
-    '.job-card-container__salary-info, .job-card-search__salary-info',
-  );
-  const dateText = await getText(
-    card,
-    '.job-card-container__listed-state, time, .job-card-search__listed-state',
-  );
+  const linkedTitle = await getText(card, 'a[href*="/jobs/view/"]');
+  const title = legacyTitle ?? linkedTitle ?? dismissTitle ?? null;
+  const paragraphs = await getTexts(card, 'p');
+  const titleParagraphIndex = title
+    ? paragraphs.findIndex((text) => text.includes(title))
+    : -1;
+  const modernCompany =
+    titleParagraphIndex >= 0 ? paragraphs[titleParagraphIndex + 1] : null;
+  const modernLocation =
+    titleParagraphIndex >= 0 ? paragraphs[titleParagraphIndex + 2] : null;
+  const company =
+    (await getText(
+      card,
+      '.job-card-container__company-name, .artdeco-entity-lockup__subtitle, .job-card-search__company-name',
+    )) ??
+    modernCompany ??
+    null;
+  const location =
+    (await getText(
+      card,
+      '.job-card-container__metadata-item, .job-card-search__location, .t-black--light',
+    )) ??
+    modernLocation ??
+    null;
+  const salaryText =
+    (await getText(
+      card,
+      '.job-card-container__salary-info, .job-card-search__salary-info',
+    )) ??
+    paragraphs.find((text) => /\$.*(?:yr|year|hr|hour)/i.test(text)) ??
+    null;
+  const dateText =
+    (await getText(
+      card,
+      '.job-card-container__listed-state, time, .job-card-search__listed-state',
+    )) ??
+    paragraphs.find((text) =>
+      /(?:posted\s+)?(?:today|yesterday|\d+\s+(?:minute|hour|day|week|month)s?\s+ago)/i.test(
+        text,
+      ),
+    ) ??
+    null;
   const insight = await getText(card, '.job-card-container__insight');
   const footerText = await getText(card, '.job-card-container__footer-wrapper');
+  const rootText = await card.textContent().catch(() => '');
 
   const jobId =
     extractJobIdFromCard({
-      href,
+      href: hrefFromPage,
       dataId: dataJobId,
       dataset: {},
-    }) ?? (href ? extractIdFromHref(href) : null);
+    }) ??
+    componentJobId ??
+    (rawHref ? extractIdFromHref(rawHref) : null);
+  const href =
+    hrefFromPage ??
+    (jobId ? `https://www.linkedin.com/jobs/view/${jobId}` : null);
 
   const dateParsed = dateText
     ? parseRelativeDate(dateText)
     : { text: '', estimated: null };
 
   const workplaceType = detectWorkplaceType(
-    String(location) + ' ' + String(insight) + ' ' + String(footerText),
+    String(location) +
+      ' ' +
+      String(insight) +
+      ' ' +
+      String(footerText) +
+      ' ' +
+      rootText,
   );
   const employmentType = detectEmploymentType(
-    String(insight) + ' ' + String(footerText),
+    String(insight) + ' ' + String(footerText) + ' ' + rootText,
   );
   const applicantCount = detectApplicantCount(
-    String(insight) + ' ' + String(footerText),
+    String(insight) + ' ' + String(footerText) + ' ' + rootText,
   );
 
   const promoted =
     (insight ?? '').toLowerCase().includes('promoted') ||
-    (footerText ?? '').toLowerCase().includes('promoted');
+    (footerText ?? '').toLowerCase().includes('promoted') ||
+    rootText.toLowerCase().includes('promoted');
 
   const easyApply =
     (insight ?? '').toLowerCase().includes('easy apply') ||
-    (footerText ?? '').toLowerCase().includes('easy apply');
+    (footerText ?? '').toLowerCase().includes('easy apply') ||
+    rootText.toLowerCase().includes('easy apply');
 
   return {
     jobId,
@@ -201,6 +266,21 @@ async function getText(
   }
 }
 
+async function getTexts(element: unknown, selector: string): Promise<string[]> {
+  try {
+    const el = element as {
+      $$: (s: string) => Promise<{ textContent: () => Promise<string> }[]>;
+    };
+    const found = await el.$$(selector);
+    const texts = await Promise.all(found.map((node) => node.textContent()));
+    return texts
+      .map((text) => text.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 async function getAttribute(
   element: unknown,
   selector: string,
@@ -213,7 +293,9 @@ async function getAttribute(
       } | null>;
     };
     if (!selector) {
-      return null;
+      return await (
+        element as { getAttribute: (a: string) => Promise<string | null> }
+      ).getAttribute(attr);
     }
     const selectors = selector.split(',').map((s) => s.trim());
     for (const sel of selectors) {
@@ -234,7 +316,9 @@ export async function clickJobCard(
   index: number,
 ): Promise<boolean> {
   try {
-    const cards = await page.$$('.job-card-container');
+    const cards = await page.$$(
+      '.job-card-container, [role="button"][componentkey^="job-card-component-ref-"]',
+    );
     if (index >= cards.length) return false;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await cards[index]!.click();
@@ -251,7 +335,7 @@ export async function waitForSearchResults(
 ): Promise<boolean> {
   try {
     await page.waitForSelector(
-      '.job-card-container, .jobs-search-results__list-item',
+      '.job-card-container, .jobs-search-results__list-item, [role="button"][componentkey^="job-card-component-ref-"]',
       {
         timeout,
         state: 'attached',

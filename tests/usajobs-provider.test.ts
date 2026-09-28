@@ -29,6 +29,7 @@ vi.mock('../src/providers/usajobs/browserSession.js', () => ({
 
 vi.mock('../src/providers/usajobs/searchResultExtractor.js', () => ({
   extractSearchPage: vi.fn(),
+  hasVerifiableSearchState: vi.fn(() => true),
 }));
 
 import { UsaJobsProvider } from '../src/providers/usajobs.provider.js';
@@ -240,6 +241,22 @@ describe('UsaJobsProvider', () => {
     expect(result.complete).toBe(false);
     expect(result.completedQueries).toBe(3);
     expect(result.failedQueries).toBe(1);
+  });
+
+  it('treats an unverified empty result page as a failed query', async () => {
+    const { extractSearchPage } =
+      await import('../src/providers/usajobs/searchResultExtractor.js');
+    vi.mocked(extractSearchPage).mockResolvedValue({
+      cards: [],
+      hasNext: false,
+      noResults: false,
+    });
+    const provider = new UsaJobsProvider();
+    const result = await provider.fetch(makeSearch());
+
+    expect(result.records).toHaveLength(0);
+    expect(result.complete).toBe(false);
+    expect(result.failedQueries).toBe(4);
   });
 
   it('duplicates are consolidated across queries', async () => {

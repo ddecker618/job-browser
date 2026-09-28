@@ -19,6 +19,21 @@ export interface UsaJobsSearchPageData {
   noResults: boolean;
 }
 
+export function hasVerifiableSearchState(): boolean {
+  const noResults = document.querySelector<HTMLElement>('#no-search-results');
+  const style = noResults ? globalThis.getComputedStyle(noResults) : null;
+  const visibleNoResults =
+    !!noResults &&
+    !noResults.hidden &&
+    !noResults.classList.contains('hidden') &&
+    style?.display !== 'none' &&
+    style?.visibility !== 'hidden';
+  return (
+    document.querySelectorAll('#search-results .page-section').length > 0 ||
+    visibleNoResults
+  );
+}
+
 export function searchResultsExtractor(): UsaJobsSearchPageData {
   const clean = (value: unknown): string => {
     if (typeof value !== 'string') return '';
@@ -102,8 +117,18 @@ export function searchResultsExtractor(): UsaJobsSearchPageData {
     }
   }
 
+  const noResultsElement =
+    document.querySelector<HTMLElement>('#no-search-results');
+  const noResultsStyle = noResultsElement
+    ? globalThis.getComputedStyle(noResultsElement)
+    : null;
   const noResults =
-    cards.length === 0 && !!document.querySelector('#no-search-results');
+    cards.length === 0 &&
+    !!noResultsElement &&
+    !noResultsElement.hidden &&
+    !noResultsElement.classList.contains('hidden') &&
+    noResultsStyle?.display !== 'none' &&
+    noResultsStyle?.visibility !== 'hidden';
 
   return { cards, hasNext, noResults };
 }
