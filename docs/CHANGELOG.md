@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.1.8] - 2026-09-28
+
+- Starter-source seeding now inserts only missing providers and preserves every
+  existing source's saved configuration, search criteria, display name, and
+  schedule across application restarts. Explicit onboarding query-role cascades
+  remain intact.
+- Handshake now closes its browser after successful searches by default. The
+  source editor defaults the Handshake option off, while saved user choices stay
+  authoritative.
+- Added backend-restart, source-editor save, and provider-default regression
+  coverage. Full verification passed 181 files / 1,846 tests; focused coverage
+  passed 3 files / 27 tests.
+- Built and installed `release\Job-Browser-Setup-1.1.8.exe` (253,704,921 bytes,
+  SHA-256
+  `FCEB5F76E0110BBE0C239338336DA522228553178C15D534C5F92A1E61E1F04C`).
+  Packaged and installed asars match at 74,786,055 bytes, SHA-256
+  `997C4A086A4F72391AAA376AA45D5C26AF3324DCCC6858D2DA51858DD7E4AE3E`.
+  Packaged/installed normal and seeded-upgrade smokes, privacy 12/12, and legal
+  checks passed. The production database remained byte-for-byte unchanged and
+  its Handshake setting remains `keepBrowserOpen: false`. No live crawl or push
+  occurred. Assisted EULA confirmation for this exact installer remains pending.
+
 ## [1.1.7] - 2026-09-27
 
 - Dice search cards are extracted in one page evaluation, deduplicated, and

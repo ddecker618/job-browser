@@ -5,17 +5,57 @@
 
 ## Sprint Metadata
 
-| Field                      | Value                                                                                                                                                                                                                                                                           |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sprint                     | `beta-productization` ("JOB BROWSER - FULL BETA PRODUCTIZATION")                                                                                                                                                                                                                |
-| Started                    | 2026-09-08 (local)                                                                                                                                                                                                                                                              |
-| Repo                       | `ddecker618/job-browser`, branch `main`                                                                                                                                                                                                                                         |
-| Baseline commit            | `8998fde` (clean worktree at start)                                                                                                                                                                                                                                             |
-| Version during development | `1.0.28` → `1.1.0` (phase 17, 2026-09-09) → `1.1.1` startup patch (2026-09-11) → `1.1.2` P33 release boundary (2026-09-11) → `1.1.3` Package A/B/C release boundary (2026-09-14) → `1.1.4` P36 release boundary (2026-09-14) → `1.1.5` P37 SHADOW release boundary (2026-09-14) |
-| PUSH RULE                  | **NO PUSH during this sprint.** Local checkpoint commits only. Same for empty commits.                                                                                                                                                                                          |
-| Acceptance                 | Final report states **READY FOR EXTERNAL BETA** or **NOT READY FOR EXTERNAL BETA** + reason. Version bump only after all gates pass.                                                                                                                                            |
+| Field                      | Value                                                                                                                                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sprint                     | `beta-productization` ("JOB BROWSER - FULL BETA PRODUCTIZATION")                                                                                                                                                                               |
+| Started                    | 2026-09-08 (local)                                                                                                                                                                                                                             |
+| Repo                       | `ddecker618/job-browser`, branch `main`                                                                                                                                                                                                        |
+| Baseline commit            | `8998fde` (clean worktree at start)                                                                                                                                                                                                            |
+| Version during development | `1.0.28` → `1.1.0` (phase 17, 2026-09-09) → `1.1.1` startup patch → `1.1.2` P33 → `1.1.3` Package A/B/C → `1.1.4` P36 → `1.1.5` P37 SHADOW → `1.1.6` onboarding → `1.1.7` Dice repair → `1.1.8` source-persistence / Handshake-close candidate |
+| PUSH RULE                  | **NO PUSH during this sprint.** Local checkpoint commits only. Same for empty commits.                                                                                                                                                         |
+| Acceptance                 | Final report states **READY FOR EXTERNAL BETA** or **NOT READY FOR EXTERNAL BETA** + reason. Version bump only after all gates pass.                                                                                                           |
 
-## Current project status
+## Current 1.1.8 release-candidate checkpoint (2026-09-28)
+
+- Fixed starter-source persistence: startup now inserts missing default sources
+  without overwriting an existing source's saved configuration, search criteria,
+  display name, or schedule. Explicit onboarding query-role cascades remain the
+  only path that intentionally updates existing starter-source queries.
+- Handshake now defaults `keepBrowserOpen` to `false`, and the source editor
+  presents a new Handshake source with the option unchecked. Existing saved
+  choices remain authoritative across restarts.
+- Regression coverage verifies that an edited Handshake source and daily
+  schedule survive backend restart, that the UI saves
+  `keepBrowserOpen: false`, and that an empty Handshake configuration closes the
+  browser. Full verification passed **181 files / 1,846 tests**; focused source,
+  UI, and provider validation passed **3 files / 27 tests**.
+- Source checkpoint: `964477c` (`fix: persist browser source settings across
+startup`). This sits on the local 1.1.7 Dice-repair commits `59acf19` and
+  `4b8c9bf`; none of these local commits has been pushed.
+- Version **1.1.8** was built and silently installed. Installer:
+  `release\Job-Browser-Setup-1.1.8.exe`, 253,704,921 bytes, SHA-256
+  `FCEB5F76E0110BBE0C239338336DA522228553178C15D534C5F92A1E61E1F04C`.
+  A verified copy is also at
+  `C:\Users\dusti\Downloads\Job-Browser-Setup-1.1.8.exe`.
+- Packaged and installed `app.asar` are identical at 74,786,055 bytes, SHA-256
+  `997C4A086A4F72391AAA376AA45D5C26AF3324DCCC6858D2DA51858DD7E4AE3E`.
+  Installed ProductVersion is `1.1.8.0`; FileVersion is `1.1.8`.
+- Packaged normal smoke, packaged seeded-upgrade smoke, installed normal smoke,
+  installed seeded-upgrade smoke, privacy **12/12**, legal notices, formatting,
+  lint, and typecheck all passed. Packaged legal files, author/license metadata,
+  notification denial, source-persistence marker, and Handshake-close marker
+  were confirmed.
+- The production database remained byte-for-byte unchanged across installation
+  and automated validation: 577,814,528 bytes, SHA-256
+  `BBCEC142ABAC7022D74FDDFE37697C7DA210707AF82FDDDA90E5E0848D0C32CB`;
+  `PRAGMA quick_check` returned `ok`. Its Handshake source remains saved with
+  `keepBrowserOpen: false`. No live provider crawl ran. No app/Electron process
+  or port-6783 listener remained after validation.
+- Assisted confirmation that this exact 1.1.8 installer displays the EULA is
+  still pending, so this is a validated local release candidate rather than a
+  distribution-ready release. No push occurred.
+
+## Historical project status through 1.1.7
 
 Reconciled against the pushed 1.1.6 release and final release record
 (2026-09-27). Git/source evidence takes precedence over historical

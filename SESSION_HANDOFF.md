@@ -4,7 +4,47 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
-## Authorized Dice repair checkpoint (2026-09-27)
+## Current 1.1.8 release-candidate checkpoint (2026-09-28)
+
+- Fixed starter-source persistence: startup now inserts missing default sources
+  without overwriting an existing source's saved configuration, search criteria,
+  display name, or schedule. Explicit onboarding query-role cascades remain the
+  only path that intentionally updates existing starter-source queries.
+- Handshake now defaults `keepBrowserOpen` to `false`, and the source editor
+  presents a new Handshake source with the option unchecked. Existing saved
+  choices remain authoritative across restarts.
+- Regression coverage verifies that an edited Handshake source and daily
+  schedule survive backend restart, that the UI saves
+  `keepBrowserOpen: false`, and that an empty Handshake configuration closes the
+  browser. Full verification passed **181 files / 1,846 tests**; focused source,
+  UI, and provider validation passed **3 files / 27 tests**.
+- Source checkpoint: `964477c` (`fix: persist browser source settings across
+  startup`). This sits on the local 1.1.7 Dice-repair commits `59acf19` and
+  `4b8c9bf`; none of these local commits has been pushed.
+- Version **1.1.8** was built and silently installed. Installer:
+  `release\Job-Browser-Setup-1.1.8.exe`, 253,704,921 bytes, SHA-256
+  `FCEB5F76E0110BBE0C239338336DA522228553178C15D534C5F92A1E61E1F04C`.
+  A verified copy is also at
+  `C:\Users\dusti\Downloads\Job-Browser-Setup-1.1.8.exe`.
+- Packaged and installed `app.asar` are identical at 74,786,055 bytes, SHA-256
+  `997C4A086A4F72391AAA376AA45D5C26AF3324DCCC6858D2DA51858DD7E4AE3E`.
+  Installed ProductVersion is `1.1.8.0`; FileVersion is `1.1.8`.
+- Packaged normal smoke, packaged seeded-upgrade smoke, installed normal smoke,
+  installed seeded-upgrade smoke, privacy **12/12**, legal notices, formatting,
+  lint, and typecheck all passed. Packaged legal files, author/license metadata,
+  notification denial, source-persistence marker, and Handshake-close marker
+  were confirmed.
+- The production database remained byte-for-byte unchanged across installation
+  and automated validation: 577,814,528 bytes, SHA-256
+  `BBCEC142ABAC7022D74FDDFE37697C7DA210707AF82FDDDA90E5E0848D0C32CB`;
+  `PRAGMA quick_check` returned `ok`. Its Handshake source remains saved with
+  `keepBrowserOpen: false`. No live provider crawl ran. No app/Electron process
+  or port-6783 listener remained after validation.
+- Assisted confirmation that this exact 1.1.8 installer displays the EULA is
+  still pending, so this is a validated local release candidate rather than a
+  distribution-ready release. No push occurred.
+
+## Historical Dice repair checkpoint (2026-09-27)
 
 - Dice card extraction is batched and deduplicated. Detail enrichment uses at
   most two pages from the existing browser context, never returns with
