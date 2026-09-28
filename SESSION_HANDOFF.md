@@ -4,6 +4,25 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
+## Current provider-reliability checkpoint (2026-09-28)
+
+- Commit `0759d26` repairs the live USAJOBS and LinkedIn browser sources. The
+  USAJOBS waiter now distinguishes visible cards from the permanently present
+  hidden empty-state element; an unverifiable page fails the query instead of
+  silently returning a complete empty snapshot.
+- LinkedIn's redesigned result page is parsed through stable semantic card
+  attributes (`componentkey`, accessible dismiss labels, and document order)
+  instead of randomized CSS classes. An all-zero or partially unrecognized
+  query set is incomplete/truncated and cannot retire stored memberships.
+- Focused provider validation passed **5 files / 80 tests**. Full verification
+  passed **183 files / 1,851 tests**. Compiled live checks extracted 3 USAJOBS
+  cards and 25 LinkedIn cards. These checks did not write the Job Browser
+  database.
+- The installed **1.1.8** artifact does not contain this source repair. No
+  version bump, installer rebuild/install, or push has occurred. A new release
+  boundary is required after the application is closed. The separately
+  confirmed Encyclis iCIMS User-Agent compatibility defect remains open.
+
 ## Current 1.1.8 release-candidate checkpoint (2026-09-28)
 
 - Fixed starter-source persistence: startup now inserts missing default sources

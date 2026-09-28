@@ -25,6 +25,19 @@ roles:
 
 ---
 
+## Current provider-reliability checkpoint (2026-09-28)
+
+- Commit `0759d26` repairs USAJOBS hidden-empty-state waiting and LinkedIn's
+  redesigned semantic job cards. Unrecognized empty/partial browser pages are
+  incomplete and cannot drive availability removal.
+- Focused validation passed 5 files / 80 tests; full verification passed 183
+  files / 1,851 tests. Compiled live checks extracted 3 USAJOBS cards and 25
+  LinkedIn cards without writing the Job Browser database.
+- This is source-only. Installed 1.1.8 remains unchanged. The next bounded
+  work is a versioned release boundary, followed separately by the confirmed
+  Encyclis iCIMS User-Agent compatibility repair. NLP authority and scoring are
+  unchanged.
+
 ## Current 1.1.8 release-candidate checkpoint (2026-09-28)
 
 - Fixed starter-source persistence: startup now inserts missing default sources
@@ -127,35 +140,24 @@ preserve local data, source provenance, and current deterministic authority.
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       P37 shadow released as 1.1.5; release commit local;
-                     no push, 1.1.4 (P36) still on origin/main
-CURRENT_TASK:        none pending; 1.1.5 installer validated (4 smokes,
-                     asar match, P37 + P36 + notifications confirmed in
-                     asar); ready to push 1.1.5 on approval or next
-                     development task
-LAST_COMPLETED:      1.1.5 release boundary: P37 SHADOW `Level 0` job-type
-                     taxonomy + classifier packaged as
-                     release\Job-Browser-Setup-1.1.5.exe;
-                     packaged/installed/upgrade smokes PASS; verify
-                     172 files / 1605 tests; privacy 11/11; security 3/3;
-                     P37 markers + P36 markers + notifications confirmed
-                     in the asar; release commit local (not pushed)
-NEXT_ACTION:         nothing pending in source; acceptable next work is
-                     push of the 1.1.5 release commit, an EXPLANATION-1
-                     authorization for the P37 shadow, the next product
-                     feature branch, or manual packaged Windows acceptance
-FILES_IN_PROGRESS:   none on disk; P37 commits (`39e84c0` planning,
-                     `b453ae0` shadow impl) + 1.1.5 release commit are
-                     local; P36 + 1.1.4 release commit `f05bee9` are on
-                     origin/main
-TESTS_TO_RUN:        none new required; on any future source change rerun
-                     npm run verify + npm run desktop:lifecycle-harness +
-                     packaged/installed smokes
-KNOWN_FAILURES:      none in source
-LATEST_CHECKPOINT:   1.1.5 release boundary (version bump + installer)
-                     on top of P36 + 1.1.4 release f05bee9 on origin/main;
-                     P35 NLP defaults committed as fd63a2a; see git log
-                     HEAD + docs/CHANGELOG for context
+CURRENT_STAGE:       provider reliability repair committed locally on top of
+                     the installed 1.1.8 release candidate
+CURRENT_TASK:        prepare a versioned installer boundary for `0759d26`;
+                     then repair the separate Encyclis iCIMS User-Agent defect
+LAST_COMPLETED:      USAJOBS visible-card wait + LinkedIn redesigned semantic
+                     card extraction + incomplete-snapshot safety;
+                     focused 5/80, verify 183/1851, compiled live reads 3/25
+NEXT_ACTION:         close Job Browser; bump version, package, run release
+                     gates/smokes, install and validate the repaired sources;
+                     do not alter production search configuration or data
+FILES_IN_PROGRESS:   none; repair committed as `0759d26`; release docs are the
+                     only pending local update
+TESTS_TO_RUN:        release gates only for the next versioned installer;
+                     provider source verification is green
+KNOWN_FAILURES:      installed 1.1.8 lacks `0759d26`; Encyclis iCIMS rejects
+                     the shared fake-Chrome HTTP User-Agent with HTTP 405
+LATEST_CHECKPOINT:   `0759d26` source repair; no version bump, installer, or
+                     push
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);

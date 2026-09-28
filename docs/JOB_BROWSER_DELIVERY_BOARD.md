@@ -2,8 +2,26 @@
 
 **Prepared:** September 18, 2026.  
 **Purpose:** Proposed single authority for market-release task status after adoption.  
-**Latest inspected baseline:** local 1.1.8 release candidate / source checkpoint `964477c`; release-boundary commit pending. Recheck repository state before coding.
-**Current implementation in this plan:** MR1 onboarding is shipped in 1.1.6. The current maintenance boundary is the 1.1.8 starter-source persistence and Handshake-close repair; no task is actively claimed.
+**Latest inspected baseline:** local provider-reliability checkpoint `0759d26`
+on top of the 1.1.8 release candidate; release boundary pending. Recheck
+repository state before coding.
+**Current implementation in this plan:** MR1 onboarding is shipped in 1.1.6.
+USAJOBS and LinkedIn live extraction are repaired in source; installed 1.1.8
+does not contain the repair. Encyclis User-Agent compatibility remains the next
+separate provider defect.
+
+## Current provider-reliability checkpoint (2026-09-28)
+
+- USAJOBS now waits for visible job cards or a genuinely visible no-results
+  state. Timeout/unrecognized markup fails the query and cannot become a
+  complete empty snapshot.
+- LinkedIn's randomized-class redesign is supported through stable semantic
+  card attributes. Empty/unrecognized queries make the run incomplete, so
+  selector drift cannot retire historical memberships.
+- Commit `0759d26`; focused validation 5 files / 80 tests; full verification
+  183 files / 1,851 tests; live compiled reads found 3 USAJOBS and 25 LinkedIn
+  cards without database writes. Source-only; no version bump, installer, or
+  push.
 
 ## Current 1.1.8 release-candidate checkpoint (2026-09-28)
 

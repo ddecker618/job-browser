@@ -3,6 +3,19 @@
 > Persistent, authoritative record of the external-beta productization sprint.
 > Resume sessions from THIS file, not from chat. Repository evidence wins over any stale claim in this file.
 
+## Current provider-reliability checkpoint (2026-09-28)
+
+- Local commit `0759d26` fixes USAJOBS hidden-empty-state waiting and LinkedIn
+  redesigned-card extraction. Browser pages that cannot be verified as cards
+  or an explicit empty result are incomplete and cannot drive snapshot-removal
+  reconciliation.
+- Focused tests: 5 files / 80 tests. Full verification: 183 files / 1,851
+  tests. Compiled live checks extracted 3 USAJOBS cards and 25 LinkedIn cards;
+  no Job Browser database write was performed by those checks.
+- Release status: source-only, not shipped. Installed 1.1.8 is unchanged. No
+  version bump, installer build/install, or push. Encyclis User-Agent repair is
+  the next separate provider defect after this release boundary.
+
 ## Sprint Metadata
 
 | Field                      | Value                                                                                                                                                                                                                                          |

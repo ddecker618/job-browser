@@ -1,5 +1,23 @@
 # Job Browser Project Memory
 
+## Current provider-reliability checkpoint (2026-09-28)
+
+- Commit `0759d26` repairs live USAJOBS extraction and LinkedIn's redesigned
+  result cards. USAJOBS no longer lets its hidden empty-state element mask
+  visible cards. LinkedIn now uses stable semantic card attributes rather than
+  randomized CSS classes.
+- Unverifiable empty or partial browser results are no longer complete
+  snapshots, preventing selector drift from retiring stored source
+  memberships. The next successful LinkedIn crawl will reactivate any prior
+  listings it rediscovers; no production database repair was applied here.
+- Focused validation passed 5 files / 80 tests; full verification passed 183
+  files / 1,851 tests. Compiled live checks read 3 USAJOBS cards and 25 LinkedIn
+  cards without writing the Job Browser database.
+- Installed 1.1.8 remains unchanged and does not contain the repair. Next:
+  close Job Browser, create a versioned release boundary, then return to the
+  separate confirmed Encyclis iCIMS User-Agent compatibility defect. No push
+  occurred.
+
 ## Current 1.1.8 release-candidate checkpoint (2026-09-28)
 
 - Fixed starter-source persistence: startup now inserts missing default sources

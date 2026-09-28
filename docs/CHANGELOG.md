@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+- USAJOBS now distinguishes visible result cards from its permanently present
+  hidden no-results element, eliminating the repeated 20-second false-empty
+  timeout observed on valid searches.
+- LinkedIn's redesigned results page is parsed through stable semantic card
+  attributes rather than randomized CSS classes.
+- Browser pages that cannot be verified as cards or an explicit empty result
+  are incomplete/truncated, preventing extraction failures from retiring
+  stored job memberships. Full verification passes 183 files / 1,851 tests;
+  compiled live reads found 3 USAJOBS cards and 25 LinkedIn cards.
+
 ## [1.1.8] - 2026-09-28
 
 - Starter-source seeding now inserts only missing providers and preserves every
