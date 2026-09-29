@@ -17,6 +17,9 @@
 - Parsing errors abstain; invalid/missing IDs and unavailable files use bounded
   safe errors. Responses must not expose paths, full resume text, secrets, stack
   traces, or private profile data.
+- Implementation is in progress. Focused current-resume API, evidence-adapter,
+  and Job Intelligence UI tests pass **13/13**. No production-data, Application,
+  snapshot, score, search-profile, or lifecycle data is changed by the preview.
 
 ## [1.1.9] - 2026-09-28
 

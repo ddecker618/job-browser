@@ -13,6 +13,8 @@ import { projectJobIntelligence } from '../src/intelligence/nlp/projection.js';
 import { buildNlpComparisonReport } from '../src/intelligence/nlp/comparison.js';
 import { projectRequirementCoverage } from '../src/intelligence/nlp/requirementCoverageProjection.js';
 import { adaptResumeSnapshotEvidence } from '../src/intelligence/nlp/snapshotEvidence.js';
+import { projectCurrentResumeCoverage } from '../src/intelligence/nlp/currentResumePreview.js';
+import { DEFAULT_SKILL_CATALOG } from '../src/intelligence/nlp/skills.js';
 import { projectRoleFamilySuggestion } from '../src/intelligence/nlp/roleFamilySuggestion.js';
 import { DEFAULT_SEARCH_PROFILE } from '../src/config/search-profile.js';
 afterEach(() => {
@@ -237,6 +239,172 @@ describe('P11 Job Intelligence coverage UI', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/all coverage rows reflect parser abstention/),
+    ).toBeInTheDocument();
+  });
+
+  it('requires an explicit selection and action, then labels current coverage separately from submitted evidence', async () => {
+    const enrichment = await extractNlpDocument({
+      title: 'Analyst',
+      location: null,
+      description: 'Linux required.',
+      requirements: null,
+      preferredQualifications: null,
+    });
+    const currentCoverage = projectCurrentResumeCoverage(
+      enrichment,
+      'resume-current',
+      {
+        parsingStatus: 'parsed',
+        skillTerms: [{ label: 'Linux', rawLabel: 'linux', matchedBy: 'name' }],
+        certificationTerms: [],
+      },
+      'resume-parser-v1',
+      'resume-normalization-v1',
+      { skills: DEFAULT_SKILL_CATALOG, certifications: [] },
+    );
+    expect(currentCoverage).not.toBeNull();
+    vi.spyOn(api, 'jobIntelligence').mockRejectedValue(
+      new ApiRequestError(
+        404,
+        'nlp_no_analysis',
+        'No current analysis exists.',
+      ),
+    );
+    vi.spyOn(api, 'analyzeJobIntelligence').mockResolvedValue(
+      await baseAnalysis({
+        coverage: projectRequirementCoverage(
+          enrichment,
+          adaptResumeSnapshotEvidence({
+            snapshotId: 'historical-snapshot',
+            interpretationId: 'historical-interpretation',
+            schemaVersion: 1,
+            parserVersion: 'resume-parser-v1',
+            normalizationVersion: 'resume-normalization-v1',
+            parsingStatus: 'parsed',
+            parsingError: null,
+            normalizedText: 'linux',
+            skills: [
+              {
+                rawLabel: 'Linux',
+                provenance: 'submitted-snapshot',
+                skillId: null,
+              },
+            ],
+            certifications: [],
+          }),
+        ),
+        coverageSource: {
+          snapshotId: 'historical-snapshot',
+          parserVersion: 'resume-parser-v1',
+          normalizationVersion: 'resume-normalization-v1',
+        },
+        coverageContext: { captureState: 'parsed', parsingError: null },
+      }),
+    );
+    const options = vi
+      .spyOn(api, 'resumePreviewOptions')
+      .mockResolvedValue([
+        { id: 'resume-current', displayName: 'Current work resume' },
+      ]);
+    const compare = vi.spyOn(api, 'currentResumePreview').mockResolvedValue({
+      source: 'current_resume_preview',
+      resumeId: 'resume-current',
+      parserVersion: 'resume-parser-v1',
+      normalizationVersion: 'resume-normalization-v1',
+      captureState: 'current_resume_preview',
+      coverage: currentCoverage!,
+      productionEffect: 'none',
+    });
+
+    renderPreview();
+    expect(options).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Analyze requirements' }),
+    );
+    expect(
+      await screen.findByText(
+        /Submitted resume snapshot evidence is the historical application evidence/,
+      ),
+    ).toBeInTheDocument();
+    expect(options).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Compare with a saved resume' }),
+    );
+    expect(
+      await screen.findByRole('option', { name: 'Current work resume' }),
+    ).toBeInTheDocument();
+    expect(compare).not.toHaveBeenCalled();
+    const selector = screen.getByRole('combobox', { name: 'Saved resume' });
+    fireEvent.change(selector, { target: { value: 'resume-current' } });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Compare this resume' }),
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Current resume preview' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('This is evidence coverage, not a job score.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /It does not change eligibility, ranking, or your application/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Snapshot evidence: Linux/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Current resume evidence: linux/),
+    ).toBeInTheDocument();
+    expect(compare).toHaveBeenCalledWith('job-1', 'resume-current');
+  });
+
+  it('labels current-resume parser failure as abstention, not missing evidence', async () => {
+    vi.spyOn(api, 'jobIntelligence').mockRejectedValue(
+      new ApiRequestError(
+        404,
+        'nlp_no_analysis',
+        'No current analysis exists.',
+      ),
+    );
+    vi.spyOn(api, 'analyzeJobIntelligence').mockImplementation(async () =>
+      baseAnalysis({
+        coverage: null,
+        coverageSource: null,
+        coverageContext: null,
+      }),
+    );
+    vi.spyOn(api, 'resumePreviewOptions').mockResolvedValue([
+      { id: 'resume-failed', displayName: 'Unreadable resume' },
+    ]);
+    vi.spyOn(api, 'currentResumePreview').mockResolvedValue({
+      source: 'current_resume_preview',
+      resumeId: 'resume-failed',
+      parserVersion: 'resume-parser-v1',
+      normalizationVersion: 'resume-normalization-v1',
+      captureState: 'failed',
+      coverage: null,
+      productionEffect: 'none',
+    });
+    renderPreview();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Analyze requirements' }),
+    );
+    await screen.findByText(/No captured resume snapshot is available/);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Compare with a saved resume' }),
+    );
+    await screen.findByRole('option', { name: 'Unreadable resume' });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Saved resume' }), {
+      target: { value: 'resume-failed' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Compare this resume' }),
+    );
+    expect(
+      await screen.findByText(
+        'This resume could not be parsed. No requirements are reported as missing from this preview.',
+      ),
     ).toBeInTheDocument();
   });
 });

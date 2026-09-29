@@ -17,9 +17,10 @@
   effects; no Application/snapshot/score/search writes; no migrations/cache,
   dependencies, embeddings, hosted AI, model downloads, or telemetry. Preserve
   P37 as SHADOW Level 0.
-- Baseline: clean, synchronized `main`/`origin/main` at `5fa2c44`. Source work
-  has not started. No installer, version bump, push, live discovery, or
-  production-database access in this stage.
+- Baseline: clean, synchronized `main`/`origin/main` at `5fa2c44`; P38 was first
+  recorded in commit `5255b5d`. Implementation is in the local working tree.
+  Focused API/adapter/UI tests pass **13/13**. No installer, version bump, push,
+  live discovery, or production-database access in this stage.
 - Verification budget: focused tests while implementing; format/lint/typecheck
   after source stabilizes; full verify, privacy, and NLP security each run once
   at the final gate.

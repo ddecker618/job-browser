@@ -1,5 +1,5 @@
 import { extname, resolve, sep } from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 
 import mammoth from 'mammoth';
 
@@ -24,6 +24,14 @@ export interface ResumeExtraction {
   proposedSkills: string[];
   proposedCertifications: string[];
 }
+
+export interface ResumeEvidenceExtraction {
+  parsingStatus: 'parsed' | 'failed';
+  skillTerms: ExtractedTermDetail[];
+  certificationTerms: ExtractedTermDetail[];
+}
+
+const MAX_RESUME_EVIDENCE_BYTES = 10 * 1024 * 1024;
 
 export async function extractResume(
   storagePath: string,
@@ -87,6 +95,47 @@ export async function extractResumeFromPath(
     };
   } catch (error) {
     return failedExtraction(error);
+  }
+}
+
+/**
+ * Read-only evidence extraction for a user-requested compatibility preview.
+ * It deliberately returns only catalog-matched skill/certification labels,
+ * never normalized resume text or parser exception details.
+ */
+export async function extractResumeEvidenceFromPath(
+  storagePath: string,
+  originalFilename: string,
+  config: ScoringConfig,
+): Promise<ResumeEvidenceExtraction> {
+  try {
+    const before = await stat(storagePath);
+    if (!before.isFile() || before.size > MAX_RESUME_EVIDENCE_BYTES) {
+      throw new Error('Resume file is unavailable for bounded parsing');
+    }
+    const contents = await readFile(storagePath);
+    if (contents.byteLength > MAX_RESUME_EVIDENCE_BYTES) {
+      throw new Error('Resume file changed during bounded parsing');
+    }
+    const after = await stat(storagePath);
+    if (after.size !== before.size || after.mtimeMs !== before.mtimeMs) {
+      throw new Error('Resume file changed during bounded parsing');
+    }
+    const normalized = normalizeText(
+      await extractText(contents, originalFilename),
+    );
+    return {
+      parsingStatus: 'parsed',
+      skillTerms: matchingTermDetails(normalized, config.skills),
+      certificationTerms: matchingTermDetails(
+        normalized,
+        config.certifications,
+      ),
+    };
+  } catch {
+    // Parsing details may contain document-derived text or local paths. The
+    // preview contract exposes only an abstention state.
+    return { parsingStatus: 'failed', skillTerms: [], certificationTerms: [] };
   }
 }
 

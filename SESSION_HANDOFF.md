@@ -8,8 +8,8 @@
 
 - **Baseline:** clean `main`, synchronized with `origin/main` at
   `5fa2c44`; 0 ahead / 0 behind. This is the expected starting checkpoint.
-- **Stage:** P38 is authorized and active. Source work has not started; the
-  P38 scope and trust boundary are recorded in the persistent trackers first.
+- **Stage:** P38 is authorized and active. The docs-first P38 scope was committed
+  before source edits; implementation is now in the local working tree.
 - **Behavior:** user explicitly selects one saved resume and requests a local
   current-resume preview in Job Intelligence, with or without an Application.
   This is not a submitted/historical snapshot and must not create an Application.
@@ -22,6 +22,13 @@
 - **Verification budget:** focused changed-module tests during implementation;
   format/lint/typecheck after stabilization; run full verify, privacy, and NLP
   security exactly once at the final source gate. Do not build/package/install.
+- **Implementation checkpoint:** saved-resume option listing returns only a
+  sanitized label and ID; current-preview POST validates a strict resume ID,
+  reads one bounded file after containment checks, and adapts catalog-matched
+  skills/certifications into existing coverage. Parser failure abstains. Focused
+  API/adapter/UI tests pass **13/13**. No application, snapshot, score, profile,
+  search, or lifecycle rows changed in the API tests. Source remains uncommitted;
+  no installer/version/push/live discovery/production DB access.
 - See `docs/AI_PRODUCT_CLAIMS_GAP_ANALYSIS.md` GC-03 and the P38 entries in the
   roadmap, project memory, trust-level guide, and beta tracker.
 

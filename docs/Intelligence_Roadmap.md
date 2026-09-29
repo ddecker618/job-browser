@@ -27,7 +27,7 @@ roles:
 
 ## Active P38 — Current Resume Compatibility Preview (GC-03)
 
-- **Status:** Authorized and in progress; source implementation has not started.
+- **Status:** Authorized and in progress; source implementation is underway.
 - **Trust level:** EXPLANATION (Level 1), user-initiated, local, reversible, and
   non-authoritative. It presents requirement coverage only, never a job score or
   possession claim.
@@ -47,6 +47,13 @@ roles:
   Parsing failure abstains safely; invalid/missing IDs and unavailable files use
   bounded errors. No path, resume text, secrets, stack, or private profile data
   may be serialized.
+- **Implementation checkpoint:** explicit `GET /api/resume-preview-options` and
+  strict `POST /api/jobs/:id/intelligence/current-resume-preview` contracts;
+  bounded read-only extraction adapter uses current scoring catalogs and the
+  reviewed coverage projection. UI requires compare action, saved-resume choice,
+  and a second compare action; historical submitted coverage stays separate.
+  Focused API/adapter/UI coverage passes **13 tests**. Source remains local and
+  uncommitted at this checkpoint; no installed application or artifact changed.
 - **Baseline:** clean `main` and `origin/main` at `5fa2c44` (1.1.9 record),
   0 ahead / 0 behind. Do not build an installer, bump version, push, crawl live
   providers, or access/modify the production database.

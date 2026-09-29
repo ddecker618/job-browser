@@ -98,6 +98,23 @@ export type JobIntelligenceResult =
       | null;
   };
 
+export interface ResumePreviewOption {
+  id: string;
+  displayName: string;
+}
+
+export interface CurrentResumePreviewResult {
+  source: 'current_resume_preview';
+  resumeId: string;
+  parserVersion: string;
+  normalizationVersion: string;
+  captureState: 'current_resume_preview' | 'failed';
+  coverage:
+    | import('../intelligence/nlp/requirementCoverage.js').RequirementCoverageProjection
+    | null;
+  productionEffect: 'none';
+}
+
 export function apiRequestErrorReason(error: unknown): string | null {
   if (!(error instanceof ApiRequestError)) return null;
   const reason = error.details['reason'];
@@ -274,6 +291,15 @@ export const api = {
       {
         method: 'POST',
       },
+    ),
+  resumePreviewOptions: () =>
+    request<ResumePreviewOption[]>('/api/resume-preview-options'),
+  currentResumePreview: (jobId: string, resumeId: string) =>
+    request<CurrentResumePreviewResult>(
+      '/api/jobs/' +
+        encodeURIComponent(jobId) +
+        '/intelligence/current-resume-preview',
+      json('POST', { resumeId }),
     ),
   job: (id: string) => request<JobDetail>(`/api/jobs/${id}`),
   updateJob: (

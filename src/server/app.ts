@@ -8,15 +8,26 @@ import {
 } from '../intelligence/nlp/document.js';
 import { projectJobIntelligence } from '../intelligence/nlp/projection.js';
 import { projectRoleFamilySuggestion } from '../intelligence/nlp/roleFamilySuggestion.js';
+import { redactSensitiveText } from '../intelligence/nlp/inspector.js';
 import { adaptResumeSnapshotEvidence } from '../intelligence/nlp/snapshotEvidence.js';
 import { projectRequirementCoverage } from '../intelligence/nlp/requirementCoverageProjection.js';
+import {
+  CURRENT_RESUME_PREVIEW_SOURCE,
+  projectCurrentResumeCoverage,
+} from '../intelligence/nlp/currentResumePreview.js';
 import { projectSearchProfileIntelligence } from '../intelligence/nlp/searchProfileIntelligence.js';
 import { capabilityEnabled } from '../intelligence/nlp/capabilityFlags.js';
 import { projectNlpStatus } from '../intelligence/nlp/nlpStatus.js';
 import type { NlpWorkerStatus } from '../intelligence/nlp/backgroundWorker.js';
 import { NLP_EXTRACTION_VERSION } from '../schemas/job-nlp.js';
 import type { JobNlpEnrichment } from '../schemas/job-nlp.js';
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { extname, resolve } from 'node:path';
 
 import express, {
@@ -55,6 +66,8 @@ import { DiscoveryAnalyticsService } from '../discovery/discoveryAnalyticsServic
 import type { CredentialResolver } from '../discovery/credentialResolver.js';
 import { manualAcceptanceNetworkStatus } from '../providers/manualAcceptancePolicy.js';
 import {
+  RESUME_SNAPSHOT_NORMALIZATION_VERSION,
+  RESUME_SNAPSHOT_PARSER_VERSION,
   ResumeSnapshotCaptureError,
   SNAPSHOT_MANAGED_DIRECTORY,
 } from '../domain/resume-snapshot.js';
@@ -83,6 +96,7 @@ import {
   initializeSnapshotStorage,
   reconcileSnapshotStorage,
 } from '../resumes/reconcileSnapshots.js';
+import { assertRealPathWithin } from '../resumes/snapshotStorage.js';
 import {
   captureResumeSnapshot,
   type PreparedResumeSnapshot,
@@ -94,6 +108,7 @@ import {
 import type { LegacyPreferences } from '../preferences/profilePreferencesAdapters.js';
 import {
   extractResume,
+  extractResumeEvidenceFromPath,
   resolveResumeStoragePath,
 } from '../resumes/resumeService.js';
 import {
@@ -541,6 +556,142 @@ export function createApp(
       } finally {
         nlpAnalysisRunning = false;
         response.off('close', abort);
+      }
+    }),
+  );
+  app.post(
+    '/api/jobs/:id/intelligence/current-resume-preview',
+    asyncRoute(async (request, response) => {
+      const jobId = routeParameter(request, 'id');
+      const job = repository.getJob(jobId);
+      if (job === null) {
+        response.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      if (!capabilityEnabled(database, 'jobIntelligenceExplanation')) {
+        response.status(409).json({
+          error: 'Job Intelligence explanations are disabled.',
+          code: 'nlp_capability_disabled',
+          details: { capability: 'jobIntelligenceExplanation' },
+        });
+        return;
+      }
+
+      const body = z
+        .strictObject({ resumeId: z.uuid() })
+        .safeParse(request.body);
+      if (!body.success) {
+        response.status(400).json({
+          error: 'Choose a valid saved resume.',
+          code: 'invalid_resume_id',
+        });
+        return;
+      }
+      const resume = repository.getResume(body.data.resumeId);
+      if (resume === null) {
+        response.status(404).json({
+          error: 'The selected saved resume was not found.',
+          code: 'resume_not_found',
+        });
+        return;
+      }
+      const storedPath = repository.getResumeStoragePath(resume.id);
+      if (storedPath === null) {
+        response.status(422).json({
+          error: 'The selected resume file is unavailable for preview.',
+          code: 'current_resume_unavailable',
+        });
+        return;
+      }
+
+      let resumePath: string;
+      try {
+        resumePath = resolveResumeStoragePath(resumeDirectory, storedPath);
+        assertRealPathWithin(resumePath, resumeDirectory);
+        if (!existsSync(resumePath)) throw new Error('Resume file unavailable');
+        const file = statSync(resumePath);
+        if (!file.isFile() || file.size > 10 * 1024 * 1024) {
+          throw new Error('Resume file is unavailable for bounded preview');
+        }
+      } catch {
+        response.status(422).json({
+          error: 'The selected resume file is unavailable for preview.',
+          code: 'current_resume_unavailable',
+        });
+        return;
+      }
+
+      const parts = {
+        title: job.title,
+        location: job.location,
+        description: job.description,
+        requirements: job.requirements,
+        preferredQualifications: job.preferredQualifications,
+      };
+      const hash = documentHash(parts);
+      const store = new JobNlpEnrichmentRepository(database);
+      const enrichment = store.isStale(jobId, NLP_EXTRACTION_VERSION, hash)
+        ? null
+        : store.get(jobId);
+      if (enrichment === null) {
+        response.status(404).json({
+          error: 'No current analysis exists for this job.',
+          code: 'nlp_no_analysis',
+        });
+        return;
+      }
+
+      try {
+        const config = loadScoringConfig(scoringPath, profilePreferencesPath);
+        const extraction = await extractResumeEvidenceFromPath(
+          resumePath,
+          resume.originalFilename,
+          config,
+        );
+        const coverage = projectCurrentResumeCoverage(
+          enrichment,
+          resume.id,
+          extraction,
+          RESUME_SNAPSHOT_PARSER_VERSION,
+          RESUME_SNAPSHOT_NORMALIZATION_VERSION,
+          { skills: config.skills, certifications: config.certifications },
+        );
+        const currentJob = repository.getJob(jobId);
+        if (currentJob === null) {
+          response.status(404).json({ error: 'Job not found' });
+          return;
+        }
+        const currentHash = documentHash({
+          title: currentJob.title,
+          location: currentJob.location,
+          description: currentJob.description,
+          requirements: currentJob.requirements,
+          preferredQualifications: currentJob.preferredQualifications,
+        });
+        if (currentHash !== hash) {
+          response.status(409).json({
+            error: 'The job changed during preview. Retry the comparison.',
+            code: 'job_changed_during_current_resume_preview',
+          });
+          return;
+        }
+        response.json({
+          source: CURRENT_RESUME_PREVIEW_SOURCE,
+          resumeId: resume.id,
+          parserVersion: RESUME_SNAPSHOT_PARSER_VERSION,
+          normalizationVersion: RESUME_SNAPSHOT_NORMALIZATION_VERSION,
+          captureState:
+            extraction.parsingStatus === 'parsed'
+              ? CURRENT_RESUME_PREVIEW_SOURCE
+              : 'failed',
+          coverage,
+          productionEffect: 'none',
+        });
+      } catch {
+        response.status(500).json({
+          error: 'The current resume preview could not be generated safely.',
+          code: 'current_resume_preview_failed',
+        });
       }
     }),
   );
@@ -1018,6 +1169,14 @@ export function createApp(
   app.get('/api/resumes', (_request, response) =>
     response.json(repository.listResumes()),
   );
+  app.get('/api/resume-preview-options', (_request, response) => {
+    response.json(
+      repository.listResumes().map((resume) => ({
+        id: resume.id,
+        displayName: safeResumePreviewDisplayName(resume.displayName),
+      })),
+    );
+  });
   app.post(
     '/api/resumes',
     upload.single('resume'),
@@ -1690,6 +1849,21 @@ function createCommandResumeId(body: unknown): string | null {
   return typeof resumeId === 'string' && resumeId.trim().length > 0
     ? resumeId
     : null;
+}
+
+function safeResumePreviewDisplayName(displayName: string): string {
+  const redacted = redactSensitiveText(displayName)
+    .value.replace(/\b[A-Za-z]:[\\/][^\s]+/g, '[path redacted]')
+    .replace(/(^|[\s(])\/(?:[^\s/]+\/)*[^\s/)]*/g, '$1[path redacted]');
+  let controlsRemoved = '';
+  for (let index = 0; index < redacted.length; index += 1) {
+    const code = redacted.charCodeAt(index);
+    if (code >= 32 && code !== 127) {
+      controlsRemoved += redacted[index] ?? '';
+    }
+  }
+  const safe = controlsRemoved.trim().slice(0, 80);
+  return safe || 'Saved resume';
 }
 
 function parsedResumeSnapshotTarget(body: unknown): void {

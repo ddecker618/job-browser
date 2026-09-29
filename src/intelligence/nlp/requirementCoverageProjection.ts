@@ -17,6 +17,7 @@ import {
 } from './requirementCoverage.js';
 
 export interface RequirementCoverageProjectionOptions {
+  skillCatalog?: readonly SkillCatalogEntry[];
   certificationCatalog?: readonly SkillCatalogEntry[];
 }
 
@@ -27,7 +28,8 @@ export function projectRequirementCoverage(
   evidence: readonly ResumeEvidenceItem[],
   options: RequirementCoverageProjectionOptions = {},
 ): RequirementCoverageProjection {
-  const skillTargets = skillConcepts();
+  const skillCatalog = options.skillCatalog;
+  const skillTargets = skillConcepts(skillCatalog);
   const certificationCatalog = options.certificationCatalog ?? [];
   const certificationTargets = skillConcepts(certificationCatalog);
   const inputs: RequirementCoverageInput[] = [];
@@ -41,7 +43,11 @@ export function projectRequirementCoverage(
     );
     for (const requirement of requirements) {
       const catalog =
-        requirement.kind === 'certification' ? certificationCatalog : undefined;
+        requirement.kind === 'certification'
+          ? certificationCatalog
+          : requirement.kind === 'skill'
+            ? skillCatalog
+            : undefined;
       const result = matchResumeEvidence({
         requirements: [requirement],
         evidence,

@@ -22,6 +22,13 @@
 - Verification budget: focused changed-module tests during implementation;
   formatting/lint/typecheck once source stabilizes; one final `npm run verify`,
   one `privacy:check`, and one `nlp:security-audit`.
+- Implementation status: safe selector endpoint and strict current-preview API
+  are implemented locally. The preview parses only after explicit selection,
+  uses current scoring catalogs, and renders separately from submitted-snapshot
+  coverage. Parser failure returns an abstention, never missing rows. Focused
+  API/adapter/UI tests pass **13/13**; current source edits are uncommitted. No
+  data writes, installer, version bump, push, live discovery, or production DB
+  access has occurred for P38.
 
 ## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
