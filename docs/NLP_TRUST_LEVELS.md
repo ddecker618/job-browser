@@ -106,8 +106,9 @@ reversible, and non-authoritative. It may present evidence coverage for one
 explicitly selected saved resume, including when no Application exists, but
 must not create or imply a historical submitted snapshot. Its UI must state that
 coverage is not a job score and does not change eligibility, ranking, or the
-application. Source implementation is in progress and remains local/unreleased;
-this entry records the approved trust boundary, not installed availability.
+application. Source verification is complete locally, but the feature remains
+unreleased and unavailable in installed 1.1.9; it requires a separate versioned
+installer boundary before installed use.
 
 All flags are read locally at decision time. `jobIntelligenceExplanation` —
 the EXPLANATION-level display capability — is enabled by default (its prior

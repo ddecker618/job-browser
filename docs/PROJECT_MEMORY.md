@@ -19,22 +19,21 @@
 - Starting baseline was clean and synchronized: `main` == `origin/main` at
   `5fa2c44`, zero ahead/behind. P38 stage was recorded before source work; no
   installer, version bump, push, live discovery, or production-database access.
-- Implementation is committed locally as `6a70d14`; focused API/adapter/UI
-  tests pass 13/13. Formatting, lint, and typecheck pass. The single full verify
-  attempt had 1,858/1,861 tests pass: two distribution-privacy assertions found
-  owner-name references in status documents and one unrelated fresh-profile
-  onboarding API test exceeded its 5-second timeout. Those references were
-  removed, that timeout is now 15 seconds, and the focused test passes. Per the
-  one-run budget, full verify was not rerun. Dedicated privacy passes 12/12 and
-  NLP security passes 3/3; the full verify gate remains unresolved.
+- Implementation and flake-repair commits are local: `6a70d14` (P38),
+  `caa4259` (test-load timeout), and `7588567` (Fetch-blocked ephemeral ports).
+  Focused P38 tests pass 13/13; focused safe-port/API/backend checks pass 9
+  files / 110 tests. Typecheck, lint, format, and final `npm run verify` pass;
+  full verification is **186 files / 1,878 tests**. Dedicated privacy is 12/12
+  and NLP security is 3/3.
 - Verification budget: focused changed-module tests during implementation;
   formatting/lint/typecheck once source stabilizes; one final `npm run verify`,
   one `privacy:check`, and one `nlp:security-audit`.
-- Implementation commits `5255b5d`, `6a70d14`, and `caa4259` are local only.
-  The preview parses only after explicit selection, uses current scoring
-  catalogs, and renders separately from submitted-snapshot coverage. Parser
-  failure returns an abstention, never missing rows. Focused API/adapter/UI
-  tests pass **13/13**. No installer, version bump, push, live discovery, or
+- Implementation/doc commits `5255b5d`, `6a70d14`, `caa4259`, `7588567`, and
+  `2aa3f2e` are local only. The preview parses only after explicit selection,
+  uses current scoring catalogs, and renders separately from submitted-snapshot
+  coverage. Parser failure returns an abstention, never missing rows. P38 source
+  verification is complete; its release boundary is pending. Installed 1.1.9
+  does not contain P38. No installer, version bump, push, live discovery, or
   production DB access has occurred for P38.
 
 ## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)

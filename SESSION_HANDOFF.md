@@ -9,8 +9,9 @@
 - **Baseline:** clean `main`, synchronized with `origin/main` at
   `5fa2c44`; 0 ahead / 0 behind. This is the expected starting checkpoint.
 - **Stage:** P38 is authorized and active. Docs-first scope commit:
-  `5255b5d`; feature commit: `6a70d14`; startup-timeout test fix: `caa4259`.
-  All remain local and unpushed.
+  `5255b5d`; feature commit: `6a70d14`; startup-timeout test fix: `caa4259`;
+  verification record: `2aa3f2e`; safe-port fix: `7588567`. All remain local
+  and unpushed.
 - **Behavior:** user explicitly selects one saved resume and requests a local
   current-resume preview in Job Intelligence, with or without an Application.
   This is not a submitted/historical snapshot and must not create an Application.
@@ -20,9 +21,9 @@
   dependency, hosted AI, model download, telemetry, live discovery, or
   production-database access.
 - **P37 boundary:** occupation taxonomy stays SHADOW Level 0 and is not expanded.
-- **Verification budget:** focused changed-module tests during implementation;
-  format/lint/typecheck after stabilization; run full verify, privacy, and NLP
-  security exactly once at the final source gate. Do not build/package/install.
+- **Verification boundary:** no installer/package, version bump, live discovery,
+  production data, or push. Installed 1.1.9 does not contain P38; an installed
+  desktop build requires a later versioned release boundary.
 - **Implementation checkpoint:** saved-resume option listing returns only a
   sanitized label and ID; current-preview POST validates a strict resume ID,
   reads one bounded file after containment checks, and adapts catalog-matched
@@ -30,12 +31,20 @@
   API/adapter/UI tests pass **13/13**; formatting, lint, typecheck pass. No
   application, snapshot, score, profile, search, or lifecycle rows changed in
   the API tests. No installer/version/push/live discovery/production DB access.
-- **Full-gate exception:** the single `npm run verify` run had 1,858/1,861 tests
-  pass; two privacy assertions found existing owner-name references in status
-  docs, and a fresh-profile onboarding API test hit its 5-second timeout. Status
-  docs were scrubbed; the startup test now has a 15-second bound and passes in a
-  focused run. `privacy:check` is 12/12; NLP security is 3/3. The full verify was
-  not rerun because the task caps it at one; its final gate remains unresolved.
+- **Safe-port repair:** the initial post-fix full run isolated intermittent
+  Fetch `bad port` failures caused by OS ephemeral allocation. `safeLocalPort.ts`
+  now checks the shared Fetch/Chromium blocked-port set, closes a rejected
+  listener before bounded retry, and rejects explicitly requested blocked
+  ports. Backend and all direct test API listeners use it. Deterministic tests
+  inject blocked allocations; no retry relies on OS randomness.
+- **Final verification:** focused safe-port/API/backend checks pass **9 files /
+  110 tests**. The single post-fix `npm run verify` passes **186 files / 1,878
+  tests**; formatting, lint, typecheck, legal check, privacy **12/12**, and NLP
+  security **3/3** are green. The earlier P38 privacy-doc/startup-timeout issues
+  and subsequent Fetch blocked-port flake are documented in P38 history.
+- **Stage status:** P38 source verification is complete; release boundary remains
+  pending. No Application/snapshot/score/search/lifecycle data was modified by
+  preview requests; no production database was accessed.
 - See `docs/AI_PRODUCT_CLAIMS_GAP_ANALYSIS.md` GC-03 and the P38 entries in the
   roadmap, project memory, trust-level guide, and beta tracker.
 

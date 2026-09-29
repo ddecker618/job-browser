@@ -27,7 +27,7 @@ roles:
 
 ## Active P38 — Current Resume Compatibility Preview (GC-03)
 
-- **Status:** Authorized and in progress; source implementation is underway.
+- **Status:** Source verification complete; release boundary pending.
 - **Trust level:** EXPLANATION (Level 1), user-initiated, local, reversible, and
   non-authoritative. It presents requirement coverage only, never a job score or
   possession claim.
@@ -47,23 +47,29 @@ roles:
   Parsing failure abstains safely; invalid/missing IDs and unavailable files use
   bounded errors. No path, resume text, secrets, stack, or private profile data
   may be serialized.
-- **Implementation checkpoint (`6a70d14`):** explicit `GET /api/resume-preview-options` and
+- **Implementation checkpoint (`6a70d14`):** explicit
+  `GET /api/resume-preview-options` and
   strict `POST /api/jobs/:id/intelligence/current-resume-preview` contracts;
   bounded read-only extraction adapter uses current scoring catalogs and the
   reviewed coverage projection. UI requires compare action, saved-resume choice,
   and a second compare action; historical submitted coverage stays separate.
   Focused API/adapter/UI coverage passes **13/13**; typecheck, lint, and format
   pass. No installed application or artifact changed.
-- **Verification note:** the single `npm run verify` attempt completed 183 files
-  / 185 test files, with 1,858 tests passing and 3 failing. Failures were two
-  existing owner-attribution privacy violations in status docs and one 5-second
-  timeout in the fresh-profile onboarding API test. The doc references were
-  removed, the API test timeout was raised and its focused case passes; the full
-  verify was not rerun under the task's one-run budget. Privacy passes **12/12**
-  after the doc fix; NLP security passes **3/3**. Full verify remains unresolved.
-- **Baseline:** clean `main` and `origin/main` at `5fa2c44` (1.1.9 record),
-  0 ahead / 0 behind. Do not build an installer, bump version, push, crawl live
-  providers, or access/modify the production database.
+- **Safe-port correction (`7588567`):** the shared server/test allocation path
+  classifies Fetch/Chromium blocked ports, retries a bounded number of ephemeral
+  allocations only after closing each rejected listener, and rejects an
+  explicitly requested blocked port. API tests bind to the requested loopback
+  host through the same helper; retry tests inject deterministic fake ports.
+- **Verification:** focused safe-port/API/backend checks pass **9 files / 110
+  tests**. Final `npm run verify` passes **186 files / 1,878 tests**, including
+  format, lint, typecheck, and legal check. Dedicated privacy passed **12/12**;
+  NLP security passed **3/3**. The earlier full-suite attempt and its privacy,
+  timeout, and blocked-port diagnoses remain documented in `SESSION_HANDOFF.md`.
+- **Starting baseline:** clean `main` and `origin/main` at `5fa2c44` (1.1.9
+  record), 0 ahead / 0 behind. P38 commits remain local (no push). Do not build an
+  installer, bump version, crawl live providers, or access/modify the production
+  database. Installed 1.1.9 does not contain P38; installed use needs a separate
+  versioned release boundary.
 - **Validation:** Focused tests during implementation; formatting/lint/typecheck
   after source stabilizes; one final `npm run verify`, one `privacy:check`, and
   one `nlp:security-audit`. No package/install/release tests are in scope.

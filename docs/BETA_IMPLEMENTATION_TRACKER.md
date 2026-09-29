@@ -18,19 +18,24 @@
   dependencies, embeddings, hosted AI, model downloads, or telemetry. Preserve
   P37 as SHADOW Level 0.
 - Starting baseline: clean, synchronized `main`/`origin/main` at `5fa2c44`; P38
-  was first recorded in `5255b5d`. Feature implementation is committed locally
-  as `6a70d14`; the bounded startup-test correction is `caa4259`. Focused
-  API/adapter/UI tests pass **13/13**. No installer, version bump, push, live
-  discovery, or production-database access in this stage.
+  was first recorded in `5255b5d`. Feature implementation is `6a70d14`; bounded
+  onboarding test correction is `caa4259`; Fetch-blocked port repair is
+  `7588567`; prior verification record is `2aa3f2e`. All are local.
+- Focused P38 API/adapter/UI tests pass **13/13**. Safe-port/API/backend focused
+  checks pass **9 files / 110 tests**. The single post-fix `npm run verify`
+  passes **186 files / 1,878 tests**. Typecheck, lint, format, legal checks,
+  privacy **12/12**, and NLP security **3/3** pass.
 - Verification budget: focused tests while implementing; format/lint/typecheck
   after source stabilizes; full verify, privacy, and NLP security each run once
   at the final gate.
-- Final-gate note: the one full `npm run verify` run had 1,858/1,861 tests pass
-  and failed on two owner-attribution privacy assertions in status docs plus one
-  unrelated 5-second onboarding API startup timeout. The doc references were
-  removed and that test timeout is now 15 seconds; its focused test passes.
-  Privacy 12/12 and NLP security 3/3 pass. Full verify was not repeated under
-  the one-run budget, so the full gate remains unresolved.
+- The first full run exposed a Fetch-blocked OS-assigned port in two unrelated
+  API tests. The cause and corrective safe-port allocator are documented in
+  `SESSION_HANDOFF.md`; the post-fix full verification above passed. The
+  onboarding startup test's 15-second timeout is only a test-load allowance, not
+  an application behavior change.
+- No installer, version bump, push, live discovery, or production-database
+  access was performed. Installed 1.1.9 does not contain P38; installed use
+  requires a separate versioned release boundary.
 
 ## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 

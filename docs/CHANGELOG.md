@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-### P38 — Current Resume Compatibility Preview (GC-03) — In progress
+### P38 — Current Resume Compatibility Preview (GC-03) — Source verification complete
 
 - Authorized source-only slice: an explicit user action will compare one saved
   resume against job requirements in the existing Job Intelligence panel, even
@@ -17,21 +17,22 @@
 - Parsing errors abstain; invalid/missing IDs and unavailable files use bounded
   safe errors. Responses must not expose paths, full resume text, secrets, stack
   traces, or private profile data.
-- P38 docs-first and feature commits are local: `5255b5d`, `6a70d14`; the
-  bounded onboarding-test correction is `caa4259`. No version bump, installer,
-  or push was made.
-- Implementation is in progress. Focused current-resume API, evidence-adapter,
-  and Job Intelligence UI tests pass **13/13**. No production-data, Application,
-  snapshot, score, search-profile, or lifecycle data is changed by the preview.
-- Local commits: `5255b5d` (P38 active-stage record), `6a70d14` (feature), and
-  `caa4259` (onboarding test timeout stabilization). The one full verification
-  run had 1,858/1,861 tests pass; two distribution-privacy failures came from
-  owner-name references in status docs and one existing onboarding API test
-  exceeded its 5-second timeout. The references were removed and the timeout
-  increased to 15 seconds; focused checks pass. Dedicated privacy is 12/12 and
-  NLP security is 3/3. Full verification was not rerun under the specified
-  one-run budget, so P38 remains in progress pending explicit resolution of
-  that final-gate result.
+- Local commits include P38 activation `5255b5d`, feature `6a70d14`, bounded
+  onboarding test timeout `caa4259`, and safe-port repair `7588567`. No version
+  bump, installer, or push was made.
+- Focused P38 API/adapter/UI tests pass **13/13**. The safe-port/API/backend
+  focused gate passes **9 files / 110 tests**. Formatting, lint, and typecheck
+  pass.
+- An initial full run exposed status-doc owner-name privacy failures and a
+  5-second fresh-profile API test timeout; both were corrected. Focused reruns
+  passed. A later focused run identified the shared Fetch-blocked ephemeral-port
+  allocation flake; the common safe-local-port allocator and deterministic retry
+  tests fixed it.
+- Final `npm run verify` passes **186 files / 1,878 tests**. Legal notices are
+  current for 168 production packages; the safe port fix does not change NLP
+  authority. P38 source verification is complete; the installed 1.1.9 app does
+  not contain P38, and a separate versioned installer/release boundary remains
+  pending. No production database was accessed or modified.
 
 ## [1.1.9] - 2026-09-28
 
