@@ -47,13 +47,20 @@ roles:
   Parsing failure abstains safely; invalid/missing IDs and unavailable files use
   bounded errors. No path, resume text, secrets, stack, or private profile data
   may be serialized.
-- **Implementation checkpoint:** explicit `GET /api/resume-preview-options` and
+- **Implementation checkpoint (`6a70d14`):** explicit `GET /api/resume-preview-options` and
   strict `POST /api/jobs/:id/intelligence/current-resume-preview` contracts;
   bounded read-only extraction adapter uses current scoring catalogs and the
   reviewed coverage projection. UI requires compare action, saved-resume choice,
   and a second compare action; historical submitted coverage stays separate.
-  Focused API/adapter/UI coverage passes **13 tests**. Source remains local and
-  uncommitted at this checkpoint; no installed application or artifact changed.
+  Focused API/adapter/UI coverage passes **13/13**; typecheck, lint, and format
+  pass. No installed application or artifact changed.
+- **Verification note:** the single `npm run verify` attempt completed 183 files
+  / 185 test files, with 1,858 tests passing and 3 failing. Failures were two
+  existing owner-attribution privacy violations in status docs and one 5-second
+  timeout in the fresh-profile onboarding API test. The doc references were
+  removed, the API test timeout was raised and its focused case passes; the full
+  verify was not rerun under the task's one-run budget. Privacy passes **12/12**
+  after the doc fix; NLP security passes **3/3**. Full verify remains unresolved.
 - **Baseline:** clean `main` and `origin/main` at `5fa2c44` (1.1.9 record),
   0 ahead / 0 behind. Do not build an installer, bump version, push, crawl live
   providers, or access/modify the production database.

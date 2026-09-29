@@ -16,19 +16,26 @@
   data, submitted snapshots, or active search/profile/source configuration.
   No migrations/cache, embeddings, hosted AI, downloads, telemetry, or dependency.
 - P37 remains SHADOW Level 0 and is not expanded or promoted.
-- Baseline verified clean and synchronized: `main` == `origin/main` at
-  `5fa2c44`, zero ahead/behind. P38 stage recorded before source work; no
+- Starting baseline was clean and synchronized: `main` == `origin/main` at
+  `5fa2c44`, zero ahead/behind. P38 stage was recorded before source work; no
   installer, version bump, push, live discovery, or production-database access.
+- Implementation is committed locally as `6a70d14`; focused API/adapter/UI
+  tests pass 13/13. Formatting, lint, and typecheck pass. The single full verify
+  attempt had 1,858/1,861 tests pass: two distribution-privacy assertions found
+  owner-name references in status documents and one unrelated fresh-profile
+  onboarding API test exceeded its 5-second timeout. Those references were
+  removed, that timeout is now 15 seconds, and the focused test passes. Per the
+  one-run budget, full verify was not rerun. Dedicated privacy passes 12/12 and
+  NLP security passes 3/3; the full verify gate remains unresolved.
 - Verification budget: focused changed-module tests during implementation;
   formatting/lint/typecheck once source stabilizes; one final `npm run verify`,
   one `privacy:check`, and one `nlp:security-audit`.
-- Implementation status: safe selector endpoint and strict current-preview API
-  are implemented locally. The preview parses only after explicit selection,
-  uses current scoring catalogs, and renders separately from submitted-snapshot
-  coverage. Parser failure returns an abstention, never missing rows. Focused
-  API/adapter/UI tests pass **13/13**; current source edits are uncommitted. No
-  data writes, installer, version bump, push, live discovery, or production DB
-  access has occurred for P38.
+- Implementation commits `5255b5d`, `6a70d14`, and `caa4259` are local only.
+  The preview parses only after explicit selection, uses current scoring
+  catalogs, and renders separately from submitted-snapshot coverage. Parser
+  failure returns an abstention, never missing rows. Focused API/adapter/UI
+  tests pass **13/13**. No installer, version bump, push, live discovery, or
+  production DB access has occurred for P38.
 
 ## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
@@ -36,7 +43,7 @@
 - Focused provider validation passed **7 files / 121 tests** across the two repair slices. Full verification passed **183 files / 1,853 tests**. Compiled read-only live checks extracted 3 USAJOBS cards, 25 LinkedIn cards, and validated 8 Encyclis jobs without running discovery or writing the Job Browser database.
 - Version **1.1.9** was built, silently installed, and copied to `%USERPROFILE%\Downloads\Job-Browser-Setup-1.1.9.exe`. Installer: 253,705,787 bytes, SHA-256 `245687A51D5F1C21CA8791328B03A0DC89ADA3A7D04F02FFEC8403A3E41DE8FD`.
 - Packaged and installed `app.asar` are identical at 74,791,161 bytes, SHA-256 `852464A524835931ABC8DE9EE75148E6B2F7120CCBCD59E72A503F74C5930660`. Installed ProductVersion is `1.1.9.0`; FileVersion is `1.1.9`.
-- Packaged normal and seeded-upgrade smokes, installed normal and seeded-upgrade smokes, privacy **12/12**, legal notices/checks, format, lint, typecheck, build, and package all passed. The asar contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`, author `Dustin Decker`, `UNLICENSED`, notification denial, and all three provider repair markers.
+- Packaged normal and seeded-upgrade smokes, installed normal and seeded-upgrade smokes, privacy **12/12**, legal notices/checks, format, lint, typecheck, build, and package all passed. The asar contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`, package author metadata, `UNLICENSED`, notification denial, and all three provider repair markers.
 - The production database remained byte-for-byte unchanged at 585,752,576 bytes, SHA-256 `397720D111AB29BD2FD65EEC75FC9A0B7420479586DF964C85A3ACF302727816`. No Job Browser/Electron process or port-6783 listener remained after validation. Release source and artifact records through `150598d` were pushed to `origin/main`; this reconciliation record follows them.
 - The NSIS configuration still uses assisted mode and `license: EULA.txt`; visual confirmation that this exact 1.1.9 installer presents the EULA remains the only release-gate item requiring a person. Until confirmed, treat 1.1.9 as a validated local release candidate rather than distribution-ready.
 

@@ -17,13 +17,20 @@
   effects; no Application/snapshot/score/search writes; no migrations/cache,
   dependencies, embeddings, hosted AI, model downloads, or telemetry. Preserve
   P37 as SHADOW Level 0.
-- Baseline: clean, synchronized `main`/`origin/main` at `5fa2c44`; P38 was first
-  recorded in commit `5255b5d`. Implementation is in the local working tree.
-  Focused API/adapter/UI tests pass **13/13**. No installer, version bump, push,
-  live discovery, or production-database access in this stage.
+- Starting baseline: clean, synchronized `main`/`origin/main` at `5fa2c44`; P38
+  was first recorded in `5255b5d`. Feature implementation is committed locally
+  as `6a70d14`; the bounded startup-test correction is `caa4259`. Focused
+  API/adapter/UI tests pass **13/13**. No installer, version bump, push, live
+  discovery, or production-database access in this stage.
 - Verification budget: focused tests while implementing; format/lint/typecheck
   after source stabilizes; full verify, privacy, and NLP security each run once
   at the final gate.
+- Final-gate note: the one full `npm run verify` run had 1,858/1,861 tests pass
+  and failed on two owner-attribution privacy assertions in status docs plus one
+  unrelated 5-second onboarding API startup timeout. The doc references were
+  removed and that test timeout is now 15 seconds; its focused test passes.
+  Privacy 12/12 and NLP security 3/3 pass. Full verify was not repeated under
+  the one-run budget, so the full gate remains unresolved.
 
 ## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
@@ -31,7 +38,7 @@
 - Focused provider validation passed **7 files / 121 tests** across the two repair slices. Full verification passed **183 files / 1,853 tests**. Compiled read-only live checks extracted 3 USAJOBS cards, 25 LinkedIn cards, and validated 8 Encyclis jobs without running discovery or writing the Job Browser database.
 - Version **1.1.9** was built, silently installed, and copied to `%USERPROFILE%\Downloads\Job-Browser-Setup-1.1.9.exe`. Installer: 253,705,787 bytes, SHA-256 `245687A51D5F1C21CA8791328B03A0DC89ADA3A7D04F02FFEC8403A3E41DE8FD`.
 - Packaged and installed `app.asar` are identical at 74,791,161 bytes, SHA-256 `852464A524835931ABC8DE9EE75148E6B2F7120CCBCD59E72A503F74C5930660`. Installed ProductVersion is `1.1.9.0`; FileVersion is `1.1.9`.
-- Packaged normal and seeded-upgrade smokes, installed normal and seeded-upgrade smokes, privacy **12/12**, legal notices/checks, format, lint, typecheck, build, and package all passed. The asar contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`, author `Dustin Decker`, `UNLICENSED`, notification denial, and all three provider repair markers.
+- Packaged normal and seeded-upgrade smokes, installed normal and seeded-upgrade smokes, privacy **12/12**, legal notices/checks, format, lint, typecheck, build, and package all passed. The asar contains `LICENSE.txt`, `EULA.txt`, `THIRD_PARTY_NOTICES.md`, package author metadata, `UNLICENSED`, notification denial, and all three provider repair markers.
 - The production database remained byte-for-byte unchanged at 585,752,576 bytes, SHA-256 `397720D111AB29BD2FD65EEC75FC9A0B7420479586DF964C85A3ACF302727816`. No Job Browser/Electron process or port-6783 listener remained after validation. Release source and artifact records through `150598d` were pushed to `origin/main`; this reconciliation record follows them.
 - The NSIS configuration still uses assisted mode and `license: EULA.txt`; visual confirmation that this exact 1.1.9 installer presents the EULA remains the only release-gate item requiring a person. Until confirmed, treat 1.1.9 as a validated local release candidate rather than distribution-ready.
 
