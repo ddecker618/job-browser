@@ -1,5 +1,28 @@
 # Job Browser Project Memory
 
+## Active P38 stage — Current Resume Compatibility Preview (GC-03)
+
+- Authorized work is user-initiated, local, reversible, and EXPLANATION Level 1
+  only. The current Job Intelligence coverage path requires an Application's
+  `submittedResumeSnapshotId`; P38 exposes a separate preview from one
+  explicitly selected saved resume without creating an Application or claiming
+  historical submitted evidence.
+- Parse only the selected resume on explicit action, reuse current local parsing
+  and existing evidence-coverage rules, and return bounded, redacted preview
+  context. Parsing failure abstains; never serialize paths, complete resume text,
+  secrets, stack traces, or private profile data.
+- Non-authoritative boundary: do not change score/recommendation, eligibility,
+  ranking, filtering, discovery, lifecycle/status, archive/removal, Application
+  data, submitted snapshots, or active search/profile/source configuration.
+  No migrations/cache, embeddings, hosted AI, downloads, telemetry, or dependency.
+- P37 remains SHADOW Level 0 and is not expanded or promoted.
+- Baseline verified clean and synchronized: `main` == `origin/main` at
+  `5fa2c44`, zero ahead/behind. P38 stage recorded before source work; no
+  installer, version bump, push, live discovery, or production-database access.
+- Verification budget: focused changed-module tests during implementation;
+  formatting/lint/typecheck once source stabilizes; one final `npm run verify`,
+  one `privacy:check`, and one `nlp:security-audit`.
+
 ## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
 - Source checkpoints `0759d26` and `def4e53` repair USAJOBS hidden-empty-state waiting, LinkedIn redesigned-card extraction, and Encyclis/iCIMS request compatibility. Unverifiable browser result pages remain incomplete and cannot retire stored memberships; iCIMS uses one honest provider-specific User-Agent while shared transport behavior stays unchanged.

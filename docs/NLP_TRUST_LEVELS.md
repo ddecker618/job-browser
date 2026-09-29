@@ -100,6 +100,15 @@ P35 current-source defaults apply to the P27 field-specific promotion levels:
 | Scoring and hard gates                                | Not promoted            | Unreachable                              | Deterministic only                                       |
 | Local occupation / job-type taxonomy classifier (P37) | SHADOW (0)              | No runtime consumer, no projection       | Additive shadow rows only; no production-field influence |
 
+**P38 — Current Resume Compatibility Preview (GC-03), authorized/in progress:**
+this capability is scoped to EXPLANATION (Level 1), is user-initiated, local,
+reversible, and non-authoritative. It may present evidence coverage for one
+explicitly selected saved resume, including when no Application exists, but
+must not create or imply a historical submitted snapshot. Its UI must state that
+coverage is not a job score and does not change eligibility, ranking, or the
+application. Source implementation is not yet present; this entry records the
+approved trust boundary, not an availability claim.
+
 All flags are read locally at decision time. `jobIntelligenceExplanation` —
 the EXPLANATION-level display capability — is enabled by default (its prior
 default of `off` contradicted the promotion recorded below and left the

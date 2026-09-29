@@ -4,6 +4,27 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
+## Active P38 checkpoint — Current Resume Compatibility Preview (GC-03)
+
+- **Baseline:** clean `main`, synchronized with `origin/main` at
+  `5fa2c44`; 0 ahead / 0 behind. This is the expected starting checkpoint.
+- **Stage:** P38 is authorized and active. Source work has not started; the
+  P38 scope and trust boundary are recorded in the persistent trackers first.
+- **Behavior:** user explicitly selects one saved resume and requests a local
+  current-resume preview in Job Intelligence, with or without an Application.
+  This is not a submitted/historical snapshot and must not create an Application.
+- **Trust and persistence:** EXPLANATION Level 1; evidence coverage only,
+  user-initiated, reversible, and non-authoritative. No score/search/profile or
+  lifecycle changes; no Application/snapshot/score write, migration/cache,
+  dependency, hosted AI, model download, telemetry, live discovery, or
+  production-database access.
+- **P37 boundary:** occupation taxonomy stays SHADOW Level 0 and is not expanded.
+- **Verification budget:** focused changed-module tests during implementation;
+  format/lint/typecheck after stabilization; run full verify, privacy, and NLP
+  security exactly once at the final source gate. Do not build/package/install.
+- See `docs/AI_PRODUCT_CLAIMS_GAP_ANALYSIS.md` GC-03 and the P38 entries in the
+  roadmap, project memory, trust-level guide, and beta tracker.
+
 ## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
 - Source checkpoints `0759d26` and `def4e53` repair USAJOBS hidden-empty-state waiting, LinkedIn redesigned-card extraction, and Encyclis/iCIMS request compatibility. Unverifiable browser result pages remain incomplete and cannot retire stored memberships; iCIMS uses one honest provider-specific User-Agent while shared transport behavior stays unchanged.

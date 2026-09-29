@@ -3,6 +3,27 @@
 > Persistent, authoritative record of the external-beta productization sprint.
 > Resume sessions from THIS file, not from chat. Repository evidence wins over any stale claim in this file.
 
+## Active P38 — Current Resume Compatibility Preview (GC-03)
+
+- Authorized scope: user-initiated, local, reversible, EXPLANATION Level 1 only.
+  Current coverage works only from an Application's submitted resume snapshot;
+  P38 adds a separate current-resume preview without creating an Application or
+  treating current evidence as historical submitted evidence.
+- Parse only the explicitly selected saved resume, locally, on user action.
+  Reuse existing parsing and the reviewed evidence/coverage pipeline. Parsing
+  failure abstains; API responses must not expose paths, resume text, secrets,
+  stack traces, or private profile data.
+- No score/eligibility/ranking/filter/discovery/lifecycle/status/archive/removal
+  effects; no Application/snapshot/score/search writes; no migrations/cache,
+  dependencies, embeddings, hosted AI, model downloads, or telemetry. Preserve
+  P37 as SHADOW Level 0.
+- Baseline: clean, synchronized `main`/`origin/main` at `5fa2c44`. Source work
+  has not started. No installer, version bump, push, live discovery, or
+  production-database access in this stage.
+- Verification budget: focused tests while implementing; format/lint/typecheck
+  after source stabilizes; full verify, privacy, and NLP security each run once
+  at the final gate.
+
 ## Current 1.1.9 provider-reliability release checkpoint (2026-09-28)
 
 - Source checkpoints `0759d26` and `def4e53` repair USAJOBS hidden-empty-state waiting, LinkedIn redesigned-card extraction, and Encyclis/iCIMS request compatibility. Unverifiable browser result pages remain incomplete and cannot retire stored memberships; iCIMS uses one honest provider-specific User-Agent while shared transport behavior stays unchanged.

@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### P38 — Current Resume Compatibility Preview (GC-03) — In progress
+
+- Authorized source-only slice: an explicit user action will compare one saved
+  resume against job requirements in the existing Job Intelligence panel, even
+  when no Application exists. It is EXPLANATION Level 1, local, reversible, and
+  non-authoritative.
+- Reuse local resume extraction and the reviewed evidence/requirement-coverage
+  rules. Preserve submitted-snapshot evidence as historical and display a
+  current-resume preview separately; never create an Application or snapshot.
+- No score, eligibility, ranking, filtering, discovery, lifecycle/status,
+  archive/removal, or search-setup changes. No migration/cache, dependency,
+  hosted AI, model download, telemetry, installer, version bump, or push.
+- Parsing errors abstain; invalid/missing IDs and unavailable files use bounded
+  safe errors. Responses must not expose paths, full resume text, secrets, stack
+  traces, or private profile data.
+
 ## [1.1.9] - 2026-09-28
 
 - USAJOBS now distinguishes visible result cards from its permanently present hidden no-results element. LinkedIn's redesigned results page is parsed through stable semantic card attributes. Unverifiable empty or partial browser results are incomplete and cannot retire stored memberships.

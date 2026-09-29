@@ -25,6 +25,37 @@ roles:
 
 ---
 
+## Active P38 — Current Resume Compatibility Preview (GC-03)
+
+- **Status:** Authorized and in progress; source implementation has not started.
+- **Trust level:** EXPLANATION (Level 1), user-initiated, local, reversible, and
+  non-authoritative. It presents requirement coverage only, never a job score or
+  possession claim.
+- **Scope:** Let a user explicitly select one saved resume from Job Intelligence
+  and compare it with a job before creating/submitting an Application. Parse only
+  the selected resume on action, locally, and adapt its safe parsed evidence to
+  the existing `resumeEvidence` / `requirementCoverage` pipeline.
+- **Persistence boundary:** Read-only in-memory adapter. Do not create an
+  Application, historical snapshot, association, score, profile/search setting,
+  or lifecycle record. Never overwrite submitted-snapshot evidence. No migration
+  or cache in this first slice.
+- **Authority boundary:** No score, eligibility, ranking, filtering, discovery,
+  lifecycle, status, archive, or removal effects. Preserve P37 at SHADOW (Level
+  0); no embeddings, hosted AI, model downloads, telemetry, or dependencies.
+- **Safety/UI:** Clearly label `Current resume preview`; say it is evidence
+  coverage and does not change job score, eligibility, ranking, or application.
+  Parsing failure abstains safely; invalid/missing IDs and unavailable files use
+  bounded errors. No path, resume text, secrets, stack, or private profile data
+  may be serialized.
+- **Baseline:** clean `main` and `origin/main` at `5fa2c44` (1.1.9 record),
+  0 ahead / 0 behind. Do not build an installer, bump version, push, crawl live
+  providers, or access/modify the production database.
+- **Validation:** Focused tests during implementation; formatting/lint/typecheck
+  after source stabilizes; one final `npm run verify`, one `privacy:check`, and
+  one `nlp:security-audit`. No package/install/release tests are in scope.
+
+---
+
 ## Current provider-reliability checkpoint (2026-09-28)
 
 - Commit `0759d26` repairs USAJOBS hidden-empty-state waiting and LinkedIn's
@@ -140,21 +171,19 @@ preserve local data, source provenance, and current deterministic authority.
 ## RESUME POINT (read this first)
 
 ```
-CURRENT_STAGE:       1.1.9 provider-reliability release candidate built,
-                     installed, and validated locally
-CURRENT_TASK:        post-push 1.1.9 acceptance; source and release records are
-                     on origin/main
-LAST_COMPLETED:      USAJOBS + LinkedIn + Encyclis repairs; focused 7/121,
-                     verify 183/1853, live read-only checks 3/25/8; four smokes,
-                     privacy 12/12, legal/package/asars/database checks green
-NEXT_ACTION:         visually confirm the exact 1.1.9 installer presents the
-                     EULA; then request explicit approval before any push
-FILES_IN_PROGRESS:   none after the release-record commit
-TESTS_TO_RUN:        no automated rerun; only exact-installer EULA visual check
-KNOWN_FAILURES:      none in automated validation; real user discovery remains
-                     the practical provider acceptance check
-LATEST_CHECKPOINT:   `150598d` 1.1.9 release boundary is on `origin/main`; this
-                     documentation reconciliation follows it
+CURRENT_STAGE:       P38 — Current Resume Compatibility Preview (GC-03)
+CURRENT_TASK:        explicit user-initiated comparison of one saved resume
+                     with job requirements; EXPLANATION Level 1 only
+LAST_COMPLETED:      1.1.9 provider-reliability boundary, source and release
+                     records on origin/main
+NEXT_ACTION:         source-only implementation behind explicit action; preserve
+                     historical snapshot and all score/search/lifecycle data
+FILES_IN_PROGRESS:   P38 docs-first checkpoint; source work not started
+TESTS_TO_RUN:        focused changed-module tests until source stabilizes; full
+                     verify/privacy/security once at the final gate
+KNOWN_FAILURES:      current coverage requires submittedResumeSnapshotId; P38
+                     must work without an Application or historical snapshot
+LATEST_CHECKPOINT:   clean `main` == `origin/main` at `5fa2c44`, 0 ahead/behind
 DO_NOT_REPEAT:       keep category and strength separate; evidence spans must be
                      validated; never touch production scoring; catalog matching must
                      not over-broaden ("grade A+" is not CompTIA A+ -> blockWhen);
