@@ -29,6 +29,7 @@ import { seedEmployerRegistry } from '../db/seeds/employerRegistry.js';
 import type { LogWriter } from '../logging/logger.js';
 import { log } from '../logging/logger.js';
 import { createApp, type AppOptions } from './app.js';
+import { listenOnSafeLocalPort } from './safeLocalPort.js';
 import { providerRegistry } from '../providers/providerRegistry.js';
 import { SourceRepository } from '../repositories/source-repository.js';
 import { JobRepository } from '../repositories/job-repository.js';
@@ -433,16 +434,18 @@ export async function startBackend(
     await yieldStartup();
     const host = options.host ?? '127.0.0.1';
     const port = options.port ?? 0;
-    server = await timeStartupPhase(
-      logger,
-      'binding-local-service',
-      () =>
-        new Promise<Server>((resolveServer, reject) => {
-          const candidate = app.listen(port, host, () =>
-            resolveServer(candidate),
-          );
-          candidate.once('error', reject);
-        }),
+    server = await timeStartupPhase(logger, 'binding-local-service', () =>
+      listenOnSafeLocalPort(
+        host,
+        port,
+        (candidatePort, candidateHost) =>
+          new Promise<Server>((resolveServer, reject) => {
+            const candidate = app.listen(candidatePort, candidateHost, () =>
+              resolveServer(candidate),
+            );
+            candidate.once('error', reject);
+          }),
+      ),
     );
     const address = server.address();
     if (address === null || typeof address === 'string')

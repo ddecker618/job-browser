@@ -16,6 +16,7 @@ import { openDatabase, type JobDatabase } from '../src/db/database.js';
 import { runMigrations } from '../src/db/migration-runner.js';
 import { ResumeSnapshotRepository } from '../src/repositories/resume-snapshot-repository.js';
 import { createApp } from '../src/server/app.js';
+import { listenTestApp } from './helpers/safeLocalTestServer.js';
 
 const databases: JobDatabase[] = [];
 const servers: Server[] = [];
@@ -156,9 +157,8 @@ async function startServer(
     resumeDirectory,
     snapshotDirectory: join(directory, 'snapshots'),
   });
-  const server = app.listen(0, '127.0.0.1');
+  const server = await listenTestApp(app);
   servers.push(server);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('No test port');
   return { url: 'http://127.0.0.1:' + String(address.port), resumeDirectory };

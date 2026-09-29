@@ -1,4 +1,4 @@
-import { createServer, type AddressInfo } from 'node:net';
+import { createServer } from 'node:net';
 import {
   copyFileSync,
   existsSync,
@@ -22,6 +22,7 @@ import { DatabaseRecoveryError, openDatabase } from '../src/db/database.js';
 import { DEFAULT_MIGRATIONS_DIRECTORY } from '../src/db/migration-runner.js';
 import { DiscoveryCoordinator } from '../src/discovery/discoveryCoordinator.js';
 import { leaveCommittedWal } from './helpers/wal-fixture.js';
+import { listenOnSafeLocalPort } from '../src/server/safeLocalPort.js';
 
 const directories: string[] = [];
 const handles: BackendHandle[] = [];
@@ -119,13 +120,20 @@ describe('backend lifecycle', () => {
     );
     await first.stop();
 
-    const occupied = createServer();
-    const occupiedPort = await new Promise<number>((resolve, reject) => {
-      occupied.once('error', reject);
-      occupied.listen(0, '127.0.0.1', () => {
-        resolve((occupied.address() as AddressInfo).port);
-      });
-    });
+    const occupied = await listenOnSafeLocalPort(
+      '127.0.0.1',
+      0,
+      (port, host) =>
+        new Promise<ReturnType<typeof createServer>>((resolve, reject) => {
+          const server = createServer();
+          server.once('error', reject);
+          server.listen(port, host, () => resolve(server));
+        }),
+    );
+    const address = occupied.address();
+    if (address === null || typeof address === 'string')
+      throw new Error('Occupied listener did not bind a TCP port');
+    const occupiedPort = address.port;
     try {
       const second = await backend(directory, { databasePath });
       handles.push(second);
@@ -139,7 +147,9 @@ describe('backend lifecycle', () => {
           .get()?.value,
       ).toBe('kept');
     } finally {
-      occupied.close();
+      await new Promise<void>((resolve, reject) =>
+        occupied.close((error) => (error ? reject(error) : resolve())),
+      );
     }
   });
 

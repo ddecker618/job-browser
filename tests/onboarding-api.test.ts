@@ -7,13 +7,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { AddressInfo } from 'node:net';
-import { createServer } from 'node:http';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../src/server/app.js';
 import { createTestDatabase } from './helpers/test-database.js';
+import { listenTestApp } from './helpers/safeLocalTestServer.js';
 import { SourceRepository } from '../src/repositories/source-repository.js';
 import type { JobDatabase } from '../src/db/database.js';
 import { candidateProfileSchema } from '../src/schemas/candidate-profile.js';
@@ -322,9 +320,11 @@ async function startBackend(
       : { onboardingStatusReadinessFailures: options.statusReadinessFailures }),
   });
 
-  const server = createServer(app);
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address() as AddressInfo;
+  const server = await listenTestApp(app);
+  const address = server.address();
+  if (address === null || typeof address === 'string') {
+    throw new Error('Test backend did not bind a TCP port');
+  }
   const baseUrl = `http://127.0.0.1:${String(address.port)}`;
   const handle: BackendHandle = {
     baseUrl,

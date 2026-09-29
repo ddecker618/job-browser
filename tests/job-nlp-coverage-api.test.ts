@@ -7,6 +7,7 @@ import { openDatabase, type JobDatabase } from '../src/db/database.js';
 import { runMigrations } from '../src/db/migration-runner.js';
 import { createApp } from '../src/server/app.js';
 import { ResumeSnapshotRepository } from '../src/repositories/resume-snapshot-repository.js';
+import { listenTestApp } from './helpers/safeLocalTestServer.js';
 
 interface CoverageBody {
   coverage: {
@@ -152,9 +153,8 @@ async function startServer(db: JobDatabase): Promise<string> {
     resumeDirectory: join(dir, 'resumes'),
     snapshotDirectory: join(dir, 'snapshots'),
   });
-  const server = app.listen(0, '127.0.0.1');
+  const server = await listenTestApp(app);
   servers.push(server);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
   const address = server.address();
   if (!address || typeof address === 'string') throw Error('No port');
   return 'http://127.0.0.1:' + String(address.port);

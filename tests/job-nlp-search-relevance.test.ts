@@ -23,6 +23,7 @@ import { loadCandidateProfile } from '../src/config/candidate-profile.js';
 import { loadScoringConfig } from '../src/config/scoring-config.js';
 import { createScoreVersion } from '../src/intelligence/scoreIdentity.js';
 import { createApp } from '../src/server/app.js';
+import { listenTestApp } from './helpers/safeLocalTestServer.js';
 import { createJobFixture } from './helpers/job-fixture.js';
 import {
   createTestDatabase,
@@ -377,9 +378,8 @@ describe('API gating for NLP search relevance (P6)', () => {
     saveIndexedScore(database, apiUuid(1), 0.05);
 
     const app = createApp(database, {});
-    const server = app.listen(0, '127.0.0.1');
+    const server = await listenTestApp(app);
     servers.push(server);
-    await new Promise<void>((resolve) => server.once('listening', resolve));
     const address = server.address();
     if (!address || typeof address === 'string') throw Error('No port');
     const url = 'http://127.0.0.1:' + String(address.port);
