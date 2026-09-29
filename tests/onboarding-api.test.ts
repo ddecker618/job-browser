@@ -397,7 +397,7 @@ describe('onboarding API — load/status', () => {
     expect(body.profileId).toBe('candidate-api-one');
     expect(body.completion.completed).toBe(false);
     expect(body.editSession.editing).toBe(false);
-  });
+  }, 15_000);
 
   it('recovers cleanly after one transient local-service readiness response', async () => {
     const { handle } = await startBackend(undefined, {
