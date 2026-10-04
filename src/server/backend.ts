@@ -421,6 +421,11 @@ export async function startBackend(
             limit: options.clientRequestsPerMinute ?? 1_200,
             standardHeaders: 'draft-8',
             legacyHeaders: false,
+            validate: {
+              trustProxy: false,
+              xForwardedForHeader: false,
+              forwardedHeader: false,
+            },
             message: { error: 'Too many client requests; retry in one minute' },
           }),
         );
