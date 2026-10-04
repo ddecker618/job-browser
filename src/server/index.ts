@@ -5,10 +5,26 @@ import { startBackend } from './backend.js';
 
 const production = process.env['NODE_ENV'] === 'production';
 const backend = await startBackend({
-  host: '127.0.0.1',
-  port: Number(process.env['PORT'] ?? 4173),
+  host: process.env['HOST'] ?? '0.0.0.0',
+  port: Number(process.env['PORT'] ?? 3000),
   development: !production,
   clientDirectory: resolve(process.cwd(), 'dist', 'client'),
+  seedDefaultSources: true,
+  profilePreferencesPath: resolve(
+    process.cwd(),
+    'data',
+    'settings',
+    'profile-preferences.json',
+  ),
+  backupDirectory: resolve(process.cwd(), 'data', 'backups'),
+  resumeDirectory: resolve(process.cwd(), 'data', 'resumes'),
+  snapshotDirectory: resolve(process.cwd(), 'data', 'snapshots'),
+  candidateProfilePath: resolve(
+    process.cwd(),
+    'config',
+    'candidate-profile.json',
+  ),
+  scoringConfigPath: resolve(process.cwd(), 'config', 'scoring-config.json'),
 });
 log('info', 'Job Browser dashboard started', { url: backend.url });
 

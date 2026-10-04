@@ -1,0 +1,159 @@
+{
+  "weights": {
+    "title": 25,
+    "skills": 20,
+    "certifications": 10,
+    "location": 15,
+    "remotePreference": 10,
+    "salary": 5,
+    "experience": 5,
+    "employmentType": 5,
+    "recency": 5
+  },
+  "recommendationThresholds": {
+    "applyImmediately": 80,
+    "strongMatch": 65,
+    "possibleMatch": 45
+  },
+  "recency": {
+    "freshDays": 7,
+    "recentDays": 30
+  },
+  "skills": [
+    {
+      "name": "Windows Server",
+      "aliases": ["windows server"]
+    },
+    {
+      "name": "Linux",
+      "aliases": ["linux"]
+    },
+    {
+      "name": "PowerShell",
+      "aliases": ["powershell"]
+    },
+    {
+      "name": "Python",
+      "aliases": ["python"]
+    },
+    {
+      "name": "Networking",
+      "aliases": ["networking", "network troubleshooting"]
+    },
+    {
+      "name": "TCP/IP",
+      "aliases": ["tcp/ip", "tcp ip"]
+    },
+    {
+      "name": "Active Directory",
+      "aliases": ["active directory", "ad ds"]
+    },
+    {
+      "name": "Azure",
+      "aliases": ["azure", "microsoft azure"]
+    },
+    {
+      "name": "AWS",
+      "aliases": ["aws", "amazon web services"]
+    },
+    {
+      "name": "Splunk",
+      "aliases": ["splunk"]
+    },
+    {
+      "name": "CrowdStrike",
+      "aliases": ["crowdstrike"]
+    },
+    {
+      "name": "VMware",
+      "aliases": ["vmware", "vsphere"]
+    },
+    {
+      "name": "Docker",
+      "aliases": ["docker"]
+    },
+    {
+      "name": "Kubernetes",
+      "aliases": ["kubernetes", "k8s"]
+    },
+    {
+      "name": "Cisco",
+      "aliases": ["cisco"]
+    },
+    {
+      "name": "Firewall",
+      "aliases": ["firewall", "firewalls"]
+    },
+    {
+      "name": "SIEM",
+      "aliases": ["siem"]
+    },
+    {
+      "name": "EDR",
+      "aliases": ["edr"]
+    },
+    {
+      "name": "Cribl",
+      "aliases": ["cribl"]
+    },
+    {
+      "name": "DNS",
+      "aliases": ["dns"]
+    },
+    {
+      "name": "DHCP",
+      "aliases": ["dhcp"]
+    },
+    {
+      "name": "VLANs",
+      "aliases": ["vlan", "vlans"]
+    },
+    {
+      "name": "Wireshark",
+      "aliases": ["wireshark"]
+    },
+    {
+      "name": "Nmap",
+      "aliases": ["nmap"]
+    }
+  ],
+  "certifications": [
+    {
+      "name": "CompTIA Security+",
+      "aliases": ["comptia security+", "security+", "sec+"]
+    },
+    {
+      "name": "CompTIA Network+",
+      "aliases": ["comptia network+", "network+", "net+"]
+    },
+    {
+      "name": "CompTIA A+",
+      "aliases": ["comptia a+"]
+    },
+    {
+      "name": "CompTIA CySA+",
+      "aliases": ["comptia cysa+", "cysa+"]
+    },
+    {
+      "name": "CISSP",
+      "aliases": ["cissp"]
+    },
+    {
+      "name": "CISM",
+      "aliases": ["cism"]
+    },
+    {
+      "name": "CCNA",
+      "aliases": ["ccna", "cisco ccna"]
+    },
+    {
+      "name": "CCNP",
+      "aliases": ["ccnp", "cisco ccnp"]
+    }
+  ],
+  "verification": {
+    "enabled": true,
+    "eligibilityGate": true,
+    "scoreContribution": 100
+  }
+}
