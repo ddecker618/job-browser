@@ -1,5 +1,7 @@
 # Job Browser Project Memory
 
+> Current GitHub reconciliation (2026-10-04): P38 through `0363659` and AI Studio setup through `0857dd0` are combined in this checkpoint. Earlier local-only/no-push P38 statements describe prior checkpoints. See `AI_STUDIO_HANDOFF.md` and `SESSION_HANDOFF.md` for the current integration boundary.
+
 ## Active P38 stage — Current Resume Compatibility Preview (GC-03)
 
 - Authorized work is user-initiated, local, reversible, and EXPLANATION Level 1

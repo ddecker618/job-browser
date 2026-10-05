@@ -4,6 +4,14 @@
 > are preserved in [`docs/history/`](docs/history/) and identified
 > as historical, not current instructions.
 
+## GitHub / AI Studio reconciliation — 2026-10-04
+
+- This checkpoint combines local P38 work through `0363659` with GitHub AI Studio setup through `0857dd0`; earlier statements that P38 exists only locally describe the pre-reconciliation state.
+- P38 and the safe-port fix are retained. The dependency lockfile, Node 24 version hint, and this handoff are restored. Package engines retain the cloud branch's Node 22–24 range; Node 24 is the locally validated runtime.
+- AI Studio startup, metadata, entry HTML, environment paths, and proxy configuration are retained. This is source synchronization, not a verified cloud deployment or new desktop release.
+- The original desktop checkout and personal data were not modified. Its uncommitted deletion of `tests/onboarding-contract.test.ts` is not included.
+- See `docs/AI_STUDIO_HANDOFF.md` before further cloud changes.
+
 ## Active P38 checkpoint — Current Resume Compatibility Preview (GC-03)
 
 - **Baseline:** clean `main`, synchronized with `origin/main` at

@@ -1,5 +1,7 @@
 # Job Browser delivery board
 
+> Current GitHub reconciliation (2026-10-04): P38 through `0363659` and AI Studio setup through `0857dd0` are combined in this checkpoint. Earlier local-only/no-push P38 statements describe prior checkpoints. See `AI_STUDIO_HANDOFF.md` and `SESSION_HANDOFF.md` for the current integration boundary.
+
 **Prepared:** September 18, 2026.  
 **Purpose:** Proposed single authority for market-release task status after adoption.  
 **Latest inspected baseline:** local 1.1.9 provider-reliability candidate with

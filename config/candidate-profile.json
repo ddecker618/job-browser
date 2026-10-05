@@ -1,0 +1,52 @@
+{
+  "id": "default-candidate",
+  "name": "New Candidate",
+  "preferredLocations": [
+    {
+      "city": "Example City",
+      "state": "EX"
+    }
+  ],
+  "searchRadiusMiles": 25,
+  "secondarySearchRadiusMiles": 50,
+  "remotePreference": "preferred",
+  "desiredSalary": null,
+  "certifications": ["CompTIA Security+"],
+  "degrees": [],
+  "skills": [
+    "Windows Server",
+    "Linux",
+    "PowerShell",
+    "Networking",
+    "TCP/IP",
+    "Active Directory",
+    "Splunk",
+    "SIEM",
+    "DNS",
+    "DHCP",
+    "VLANs",
+    "Wireshark",
+    "Nmap",
+    "Firewall"
+  ],
+  "clearanceEligibility": "unknown",
+  "yearsOfExperience": null,
+  "desiredJobTitles": [
+    "Systems Administrator",
+    "Network Administrator",
+    "Network Analyst",
+    "SOC Analyst",
+    "Cybersecurity Analyst",
+    "IT Security Specialist",
+    "IT Support Specialist"
+  ],
+  "excludedJobTitles": ["Director", "Vice President", "Chief", "Principal"],
+  "desiredEmploymentTypes": ["full-time"],
+  "degreeRequired": false,
+  "degreeInProgressOk": true,
+  "maxTravelPercent": null,
+  "noWeekends": false,
+  "noOnCall": false,
+  "noRotatingShifts": true,
+  "noOvernightShifts": true
+}

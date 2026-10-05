@@ -1,5 +1,7 @@
 # Job Browser Intelligence Roadmap
 
+> Current GitHub reconciliation (2026-10-04): P38 through `0363659` and AI Studio setup through `0857dd0` are combined in this checkpoint. Earlier local-only/no-push P38 statements describe prior checkpoints. See `AI_STUDIO_HANDOFF.md` and `SESSION_HANDOFF.md` for the current integration boundary.
+
 > **AUTHORITATIVE implementation tracker for the Job Browser Intelligence / NLP
 > program.** This document supersedes the earlier "historical concept roadmap"
 > framing: it is now the required resume point and stage registry for the

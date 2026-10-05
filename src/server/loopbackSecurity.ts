@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
-const LOOPBACK_HOST = /^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i;
+const ALLOWED_HOST =
+  /^(?:127\.0\.0\.1|0\.0\.0\.0|localhost|\[::1\]|(?:[a-z0-9-]+\.)*run\.app)(?::\d+)?$/i;
 
 export function enforceLoopbackRequest(
   request: Request,
@@ -8,7 +9,7 @@ export function enforceLoopbackRequest(
   next: NextFunction,
 ): void {
   const host = request.headers.host ?? '';
-  if (!LOOPBACK_HOST.test(host)) {
+  if (!ALLOWED_HOST.test(host)) {
     response.status(403).json({ error: 'Only loopback requests are allowed' });
     return;
   }
@@ -17,7 +18,10 @@ export function enforceLoopbackRequest(
     if (origin !== undefined) {
       try {
         const parsed = new URL(origin);
-        if (!LOOPBACK_HOST.test(parsed.host)) {
+        if (
+          !ALLOWED_HOST.test(parsed.host) &&
+          parsed.host.toLowerCase() !== host.toLowerCase()
+        ) {
           response
             .status(403)
             .json({ error: 'Cross-origin requests are not allowed' });

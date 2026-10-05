@@ -1,0 +1,5 @@
+{
+  "name": "Job Browser",
+  "description": "Local job discovery, deduplication, and application tracking",
+  "requestFramePermissions": []
+}

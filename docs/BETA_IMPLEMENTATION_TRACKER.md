@@ -1,5 +1,7 @@
 # BETA IMPLEMENTATION TRACKER — Job Browser
 
+> Current GitHub reconciliation (2026-10-04): P38 through `0363659` and AI Studio setup through `0857dd0` are combined in this checkpoint. Earlier local-only/no-push P38 statements describe prior checkpoints. See `AI_STUDIO_HANDOFF.md` and `SESSION_HANDOFF.md` for the current integration boundary.
+
 > Persistent, authoritative record of the external-beta productization sprint.
 > Resume sessions from THIS file, not from chat. Repository evidence wins over any stale claim in this file.
 

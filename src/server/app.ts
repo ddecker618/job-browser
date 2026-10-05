@@ -192,6 +192,7 @@ export function createApp(
   options: AppOptions = {},
 ): express.Express {
   const app = express();
+  app.set('trust proxy', 1);
   const profilePath = options.candidateProfilePath;
   const scoringPath = options.scoringConfigPath;
   const profilePreferencesPath = options.profilePreferencesPath;
@@ -265,6 +266,11 @@ export function createApp(
       limit: options.apiRequestsPerMinute ?? 600,
       standardHeaders: 'draft-8',
       legacyHeaders: false,
+      validate: {
+        trustProxy: false,
+        xForwardedForHeader: false,
+        forwardedHeader: false,
+      },
       message: { error: 'Too many API requests; retry in one minute' },
     }),
   );

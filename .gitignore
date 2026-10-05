@@ -16,8 +16,6 @@ data/**/*.db-wal
 data/resumes/
 data/**/backups/
 data/desktop-dev/
-config/candidate-profile.json
-config/scoring-config.json
 SESSION_HANDOFF.md
 
 artifacts/
@@ -36,7 +34,6 @@ test-results/
 
 hunterhub/
 hunterhub-test-package.zip
-index.html
 inspect_db_2.js
 
 # Ad-hoc development artifacts that must never be committed
